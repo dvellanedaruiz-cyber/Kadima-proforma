@@ -79,6 +79,7 @@
       <tr>
         <th>#</th>
         <th class="col-codigo" style="display:none">Cód. Pedido</th>
+        <th class="col-fecha-prod" style="display:none">Fecha entrega</th>
         <th>Producto</th>
         <th>Descripción / Personalización</th>
         <th style="text-align:center">Cant.</th>
@@ -201,6 +202,7 @@ try {
       tbody.innerHTML = prods.map((p,i)=>`<tr>
         <td>${i+1}</td>
         <td class="col-codigo" style="display:none">${p.codigo||'-'}</td>
+        <td class="col-fecha-prod" style="display:none">${p.fecha||'-'}</td>
         <td><strong>${p.producto||'-'}</strong></td>
         <td>${p.descripcion||'-'}</td>
         <td style="text-align:center">${p.cantidad||'-'}</td>
@@ -222,6 +224,7 @@ if (tipoProforma.toLowerCase() === 'diferida') {
   document.getElementById('fila_fletes').style.display = 'table-row';
   // Mostrar columna de código de pedido en la tabla de productos
   document.querySelectorAll('.col-codigo').forEach(el => el.style.display = 'table-cell');
+  document.querySelectorAll('.col-fecha-prod').forEach(el => el.style.display = 'table-cell');
   // Cambiar encabezado: de "Código de Pedido" a "Período"
   document.getElementById('label_codigo').textContent = 'Período:';
   document.getElementById('codigo_pedido').textContent = get('periodo');
