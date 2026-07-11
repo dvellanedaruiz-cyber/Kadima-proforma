@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kadima | Central de Accesos</title>
+<meta name="robots" content="noindex, nofollow, noarchive">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A5%90%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* =========================================================
+     CONFIGURACIÓN DE MARCA — tokens de Kadima
+     ========================================================= */
+  :root {
+    --guinda: #7B1A1A;
+    --guinda-oscuro: #5A1212;
+    --guinda-suave: #9C3131;
+    --crema: #F5ECD7;
+    --crema-clara: #FBF7EE;
+    --dorado: #C98A2C;
+    --texto: #3A2418;
+    --texto-suave: #7A6656;
+    --borde: #E4D6BC;
+    --sombra: 0 4px 14px rgba(90, 18, 18, 0.08);
+    --radio: 14px;
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body: 'Work Sans', -apple-system, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--crema);
+    color: var(--texto);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* =========================================================
+     ENCABEZADO — tablero de panadería
+     ========================================================= */
+  header {
+    background: linear-gradient(160deg, var(--guinda) 0%, var(--guinda-oscuro) 100%);
+    background-image:
+      repeating-linear-gradient(135deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 2px, transparent 2px, transparent 12px),
+      linear-gradient(160deg, var(--guinda) 0%, var(--guinda-oscuro) 100%);
+    color: var(--crema-clara);
+    padding: 40px 20px 56px;
+    text-align: center;
+    position: relative;
+  }
+
+  header .eyebrow {
+    font-family: var(--font-body);
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--dorado);
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+
+  header h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(28px, 6vw, 40px);
+    margin: 0 0 8px;
+  }
+
+  header p {
+    margin: 0;
+    font-size: 15px;
+    color: rgba(245, 236, 215, 0.82);
+    max-width: 420px;
+    margin-inline: auto;
+  }
+
+  /* curva tipo mostrador que separa el header del cuerpo */
+  .curva {
+    position: relative;
+    margin-top: -28px;
+  }
+  .curva svg { display: block; width: 100%; height: 32px; }
+
+  main {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 0 16px 60px;
+  }
+
+  /* =========================================================
+     BUSCADOR
+     ========================================================= */
+  .buscador-wrap {
+    margin-top: -14px;
+    margin-bottom: 28px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .buscador {
+    width: 100%;
+    padding: 14px 18px 14px 44px;
+    border-radius: 999px;
+    border: 1px solid var(--borde);
+    background: var(--crema-clara) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%237A6656' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") no-repeat 16px center;
+    font-family: var(--font-body);
+    font-size: 15px;
+    color: var(--texto);
+    box-shadow: var(--sombra);
+    outline: none;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  }
+  .buscador:focus {
+    border-color: var(--guinda-suave);
+    box-shadow: 0 0 0 3px rgba(123, 26, 26, 0.14);
+  }
+
+  /* =========================================================
+     SECCIONES / CATEGORÍAS — estilo "bandeja"
+     ========================================================= */
+  .categoria { margin-bottom: 30px; }
+
+  .categoria-titulo {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 19px;
+    color: var(--guinda);
+    margin: 0 0 12px 4px;
+  }
+  .categoria-titulo .icono { font-size: 20px; }
+  .categoria-titulo .conteo {
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 11px;
+    color: var(--dorado);
+    background: rgba(201, 138, 44, 0.14);
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-left: auto;
+  }
+
+  .lista { display: flex; flex-direction: column; gap: 10px; }
+
+  /* tarjeta tipo "etiqueta" con muesca de amarre */
+  .link-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--crema-clara);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio) var(--radio) var(--radio) 4px;
+    padding: 14px 16px;
+    text-decoration: none;
+    color: var(--texto);
+    box-shadow: var(--sombra);
+    position: relative;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  }
+  .link-card::before {
+    content: "";
+    position: absolute;
+    top: 10px;
+    left: -5px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--crema);
+    border: 2px solid var(--dorado);
+  }
+  .link-card:hover {
+    border-color: var(--guinda-suave);
+    box-shadow: 0 8px 20px rgba(90, 18, 18, 0.13);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .link-card:hover { transform: translateY(-2px); }
+  }
+
+  .link-card .emoji {
+    font-size: 22px;
+    flex-shrink: 0;
+    width: 34px;
+    text-align: center;
+  }
+  .link-card .texto-link { flex: 1; min-width: 0; }
+  .link-card .nombre {
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 1.3;
+  }
+  .link-card .dominio {
+    font-size: 12px;
+    color: var(--texto-suave);
+    margin-top: 1px;
+  }
+  .link-card .flecha {
+    color: var(--dorado);
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  /* =========================================================
+     ESTADOS: cargando / error / vacío / config
+     ========================================================= */
+  .estado {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--texto-suave);
+  }
+  .estado .icono-grande { font-size: 34px; margin-bottom: 10px; display: block; }
+  .estado button {
+    margin-top: 14px;
+    background: var(--guinda);
+    color: var(--crema-clara);
+    border: none;
+    padding: 10px 22px;
+    border-radius: 999px;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .estado button:hover { background: var(--guinda-oscuro); }
+
+  .config-card {
+    background: var(--crema-clara);
+    border: 1px dashed var(--dorado);
+    border-radius: var(--radio);
+    padding: 22px;
+    text-align: left;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .config-card h3 { margin-top: 0; font-family: var(--font-display); color: var(--guinda); }
+  .config-card code {
+    background: var(--crema);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12.5px;
+  }
+  .config-card ol { padding-left: 20px; }
+
+  /* skeleton de carga */
+  .skeleton { display: flex; flex-direction: column; gap: 10px; }
+  .skeleton .barra {
+    height: 56px;
+    border-radius: var(--radio) var(--radio) var(--radio) 4px;
+    background: linear-gradient(90deg, #ECE1C7 25%, #F5ECD7 37%, #ECE1C7 63%);
+    background-size: 400% 100%;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .skeleton .barra { animation: brillo 1.4s ease infinite; }
+  }
+  @keyframes brillo {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  footer {
+    text-align: center;
+    padding: 10px 20px 40px;
+    font-size: 12.5px;
+    color: var(--texto-suave);
+  }
+
+  /* =========================================================
+     CORTINA DE ACCESO — pantalla de contraseña simple
+     ========================================================= */
+  #cortina {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: linear-gradient(160deg, var(--guinda) 0%, var(--guinda-oscuro) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .cortina-card {
+    background: var(--crema-clara);
+    border-radius: var(--radio);
+    padding: 32px 26px;
+    max-width: 340px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+  }
+  .cortina-card .icono {
+    font-size: 30px;
+    margin-bottom: 6px;
+    display: block;
+  }
+  .cortina-card h2 {
+    font-family: var(--font-display);
+    color: var(--guinda);
+    margin: 0 0 4px;
+    font-size: 21px;
+  }
+  .cortina-card p {
+    font-size: 13.5px;
+    color: var(--texto-suave);
+    margin: 0 0 18px;
+  }
+  .cortina-card input {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--borde);
+    font-family: var(--font-body);
+    font-size: 15px;
+    text-align: center;
+    outline: none;
+    margin-bottom: 10px;
+  }
+  .cortina-card input:focus {
+    border-color: var(--guinda-suave);
+    box-shadow: 0 0 0 3px rgba(123, 26, 26, 0.14);
+  }
+  .cortina-card button {
+    width: 100%;
+    background: var(--guinda);
+    color: var(--crema-clara);
+    border: none;
+    padding: 12px;
+    border-radius: 10px;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 14.5px;
+    cursor: pointer;
+  }
+  .cortina-card button:hover { background: var(--guinda-oscuro); }
+  .cortina-error {
+    color: var(--guinda);
+    font-size: 12.5px;
+    font-weight: 600;
+    height: 16px;
+    margin-bottom: 4px;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .cortina-shake { animation: shake 0.35s; }
+  }
+  @keyframes shake {
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+  }
+</style>
+</head>
+<body>
+
+<div id="cortina">
+  <div class="cortina-card" id="cortinaCard">
+    <span class="icono">🥐</span>
+    <h2>Acceso Kadima</h2>
+    <p>Ingresa tu usuario y clave para continuar.</p>
+    <div class="cortina-error" id="cortinaError"></div>
+    <input type="text" id="cortinaUsuario" placeholder="Usuario" autocomplete="off">
+    <input type="password" id="cortinaClave" placeholder="Clave" autocomplete="off">
+    <button id="cortinaBtn">Entrar</button>
+  </div>
+</div>
+
+<header>
+  <div class="eyebrow">Kadima Pastelería &amp; Panadería</div>
+  <h1>Central de Accesos</h1>
+  <p>Documentos, videos, calendarios y formularios en un solo lugar.</p>
+</header>
+<div class="curva">
+  <svg viewBox="0 0 500 30" preserveAspectRatio="none"><path d="M0,0 C150,30 350,30 500,0 L500,30 L0,30 Z" fill="var(--crema)"/></svg>
+</div>
+
+<main>
+  <div class="buscador-wrap">
+    <input type="text" class="buscador" id="buscador" placeholder="Buscar un acceso..." autocomplete="off">
+  </div>
+
+  <div id="contenido">
+    <div class="skeleton">
+      <div class="barra"></div><div class="barra"></div><div class="barra"></div>
+    </div>
+  </div>
+</main>
+
+<footer id="pie"></footer>
+
+<script>
+/* =========================================================
+   PASO 1 (OBLIGATORIO): pega aquí el link de tu Google Sheet
+   publicado como CSV. En Google Sheets: Archivo > Compartir >
+   Publicar en la Web > elige la hoja > formato "Valores separados
+   por comas (.csv)" > Publicar. Copia esa URL abajo.
+   ========================================================= */
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRqjRo5XDweGed5fy9WQ2fttITAdPjM1YUveRl0D5cq57izCALbU2AYXMlCRgViw0CphpNj6fBnxgtK/pub?gid=0&single=true&output=csv";
+
+/* =========================================================
+   PASO 2 (OBLIGATORIO): pega aquí el link CSV de la hoja de
+   USUARIOS (segunda pestaña de tu Google Sheet, publicada por
+   separado). Columnas esperadas: Usuario | Clave | Nombre.
+
+   Esto sigue siendo una "cortina simple" — cualquiera que revise
+   el código fuente o la URL publicada puede ver esta lista. No la
+   uses para proteger información realmente confidencial, y no
+   compartas este link fuera del equipo.
+
+   Cuando alguien deje el equipo: borra su fila en la hoja de
+   Usuarios y pierde el acceso automáticamente, sin afectar a
+   las demás.
+   ========================================================= */
+const USUARIOS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRqjRo5XDweGed5fy9WQ2fttITAdPjM1YUveRl0D5cq57izCALbU2AYXMlCRgViw0CphpNj6fBnxgtK/pub?gid=1840955796&single=true&output=csv";
+const CLAVE_STORAGE_KEY = "kadima_accesos_usuario";
+let USUARIOS = [];
+
+async function cargarUsuarios() {
+  if (!USUARIOS_CSV_URL) return null; // null = falta configurar
+  const resp = await fetch(USUARIOS_CSV_URL + (USUARIOS_CSV_URL.includes("?") ? "&" : "?") + "cachebust=" + Date.now());
+  if (!resp.ok) throw new Error("HTTP " + resp.status);
+  const texto = await resp.text();
+  return filasAObjetos(parseCSV(texto))
+    .map(f => ({ usuario: f.usuario || "", clave: f.clave || "", nombre: f.nombre || f.usuario || "" }))
+    .filter(u => u.usuario && u.clave);
+}
+
+/* Columnas esperadas en la hoja (el orden no importa, los
+   nombres de encabezado sí):
+   Categoria | Nombre | URL | Icono (opcional) | Orden (opcional) */
+
+const ICONOS_POR_DEFECTO = {
+  "documentos": "📄",
+  "videos": "🎥",
+  "calendarios": "📅",
+  "formularios": "📝",
+  "capacitacion": "🎓",
+  "capacitación": "🎓",
+  "operaciones": "🥐",
+  "finanzas": "🧾",
+};
+const ICONO_GENERICO = "🔗";
+
+function iconoPara(categoria, iconoCelda) {
+  if (iconoCelda && iconoCelda.trim()) return iconoCelda.trim();
+  const clave = categoria.trim().toLowerCase();
+  return ICONOS_POR_DEFECTO[clave] || ICONO_GENERICO;
+}
+
+function dominioDe(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ""); }
+  catch { return url; }
+}
+
+/* Parser CSV simple que respeta comillas y comas dentro de campos */
+function parseCSV(texto) {
+  const filas = [];
+  let fila = [], campo = "", enComillas = false;
+  for (let i = 0; i < texto.length; i++) {
+    const c = texto[i];
+    if (enComillas) {
+      if (c === '"') {
+        if (texto[i + 1] === '"') { campo += '"'; i++; }
+        else enComillas = false;
+      } else campo += c;
+    } else {
+      if (c === '"') enComillas = true;
+      else if (c === ",") { fila.push(campo); campo = ""; }
+      else if (c === "\n" || c === "\r") {
+        if (c === "\r" && texto[i + 1] === "\n") i++;
+        fila.push(campo); campo = "";
+        if (fila.length > 1 || fila[0] !== "") filas.push(fila);
+        fila = [];
+      } else campo += c;
+    }
+  }
+  if (campo !== "" || fila.length) { fila.push(campo); filas.push(fila); }
+  return filas;
+}
+
+function filasAObjetos(filas) {
+  if (!filas.length) return [];
+  const encabezados = filas[0].map(h => h.trim().toLowerCase());
+  return filas.slice(1)
+    .filter(f => f.some(v => v.trim() !== ""))
+    .map(f => {
+      const obj = {};
+      encabezados.forEach((h, i) => obj[h] = (f[i] || "").trim());
+      return obj;
+    });
+}
+
+function agruparPorCategoria(items) {
+  const orden = [];
+  const grupos = {};
+  items.forEach((it, idx) => {
+    const cat = it.categoria || "Otros";
+    if (!grupos[cat]) { grupos[cat] = []; orden.push(cat); }
+    grupos[cat].push({ ...it, _idx: idx });
+  });
+  orden.forEach(cat => {
+    grupos[cat].sort((a, b) => {
+      const oa = parseFloat(a.orden), ob = parseFloat(b.orden);
+      if (!isNaN(oa) && !isNaN(ob)) return oa - ob;
+      return a._idx - b._idx;
+    });
+  });
+  return { orden, grupos };
+}
+
+function render(items) {
+  const contenido = document.getElementById("contenido");
+  if (!items.length) {
+    contenido.innerHTML = `
+      <div class="estado">
+        <span class="icono-grande">🔍</span>
+        No encontramos accesos con ese criterio.
+      </div>`;
+    return;
+  }
+  const { orden, grupos } = agruparPorCategoria(items);
+  contenido.innerHTML = orden.map(cat => {
+    const enlaces = grupos[cat];
+    const tarjetas = enlaces.map(it => `
+      <a class="link-card" href="${escapeAttr(it.url)}" target="_blank" rel="noopener">
+        <span class="emoji">${iconoPara(cat, it.icono)}</span>
+        <span class="texto-link">
+          <span class="nombre">${escapeHtml(it.nombre || "Sin nombre")}</span>
+          <span class="dominio">${escapeHtml(dominioDe(it.url))}</span>
+        </span>
+        <span class="flecha">→</span>
+      </a>`).join("");
+    return `
+      <section class="categoria">
+        <h2 class="categoria-titulo">
+          <span class="icono">${iconoPara(cat, "")}</span>
+          ${escapeHtml(cat)}
+          <span class="conteo">${enlaces.length}</span>
+        </h2>
+        <div class="lista">${tarjetas}</div>
+      </section>`;
+  }).join("");
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function escapeAttr(s) { return escapeHtml(s); }
+
+let TODOS_LOS_ITEMS = [];
+
+function mostrarConfiguracionFaltante() {
+  document.getElementById("contenido").innerHTML = `
+    <div class="config-card">
+      <h3>Falta un paso 🥐</h3>
+      <p>Esta página todavía no tiene conectada la hoja de accesos.</p>
+      <ol>
+        <li>Crea una Google Sheet con las columnas <code>Categoria</code>, <code>Nombre</code>, <code>URL</code> (y opcional <code>Icono</code>, <code>Orden</code>).</li>
+        <li>Ve a <strong>Archivo &gt; Compartir &gt; Publicar en la Web</strong>, elige la hoja y el formato <strong>CSV</strong>, y publica.</li>
+        <li>Copia esa URL y pégala en la constante <code>SHEET_CSV_URL</code> dentro de este archivo HTML.</li>
+        <li>Vuelve a subir el archivo a GitHub Pages.</li>
+      </ol>
+    </div>`;
+}
+
+function mostrarError() {
+  document.getElementById("contenido").innerHTML = `
+    <div class="estado">
+      <span class="icono-grande">⚠️</span>
+      No pudimos cargar los accesos ahora mismo.<br>Revisa tu conexión e intenta de nuevo.
+      <div><button onclick="cargarDatos()">Reintentar</button></div>
+    </div>`;
+}
+
+async function cargarDatos() {
+  if (!SHEET_CSV_URL) { mostrarConfiguracionFaltante(); return; }
+  document.getElementById("contenido").innerHTML = `
+    <div class="skeleton"><div class="barra"></div><div class="barra"></div><div class="barra"></div></div>`;
+  try {
+    const resp = await fetch(SHEET_CSV_URL + (SHEET_CSV_URL.includes("?") ? "&" : "?") + "cachebust=" + Date.now());
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    const texto = await resp.text();
+    const items = filasAObjetos(parseCSV(texto)).filter(it => it.url);
+    TODOS_LOS_ITEMS = items;
+    render(items);
+    document.getElementById("pie").textContent =
+      "Actualizado: " + new Date().toLocaleString("es-PE", { dateStyle: "medium", timeStyle: "short" });
+  } catch (e) {
+    console.error(e);
+    mostrarError();
+  }
+}
+
+document.getElementById("buscador").addEventListener("input", (e) => {
+  const q = e.target.value.trim().toLowerCase();
+  if (!q) { render(TODOS_LOS_ITEMS); return; }
+  render(TODOS_LOS_ITEMS.filter(it =>
+    (it.nombre || "").toLowerCase().includes(q) ||
+    (it.categoria || "").toLowerCase().includes(q)
+  ));
+});
+
+/* =========================================================
+   Lógica de la cortina de acceso
+   ========================================================= */
+function buscarUsuario(usuario) {
+  const u = (usuario || "").trim().toLowerCase();
+  return USUARIOS.find(x => x.usuario.trim().toLowerCase() === u) || null;
+}
+
+function abrirContenido(nombre) {
+  document.getElementById("cortina").style.display = "none";
+  const pie = document.getElementById("pie");
+  cargarDatos().then(() => {
+    const saludo = document.createElement("div");
+    saludo.style.marginTop = "6px";
+    saludo.innerHTML = `Conectado como <strong>${escapeHtml(nombre)}</strong> · <a href="#" id="cerrarSesion" style="color:var(--guinda);">Cerrar sesión</a>`;
+    pie.appendChild(saludo);
+    document.getElementById("cerrarSesion").addEventListener("click", (e) => {
+      e.preventDefault();
+      try { localStorage.removeItem(CLAVE_STORAGE_KEY); } catch (err) {}
+      location.reload();
+    });
+  });
+}
+
+function intentarEntrar() {
+  const usuarioInput = document.getElementById("cortinaUsuario");
+  const claveInput = document.getElementById("cortinaClave");
+  const error = document.getElementById("cortinaError");
+  const card = document.getElementById("cortinaCard");
+  const encontrado = buscarUsuario(usuarioInput.value);
+  if (encontrado && claveInput.value === encontrado.clave) {
+    try { localStorage.setItem(CLAVE_STORAGE_KEY, encontrado.usuario.trim().toLowerCase()); } catch (e) {}
+    abrirContenido(encontrado.nombre);
+  } else {
+    error.textContent = "Usuario o clave incorrectos.";
+    card.classList.remove("cortina-shake");
+    void card.offsetWidth; // reinicia la animación
+    card.classList.add("cortina-shake");
+    claveInput.value = "";
+    claveInput.focus();
+  }
+}
+
+document.getElementById("cortinaBtn").addEventListener("click", intentarEntrar);
+["cortinaUsuario", "cortinaClave"].forEach(id => {
+  document.getElementById(id).addEventListener("keydown", (e) => {
+    if (e.key === "Enter") intentarEntrar();
+  });
+});
+
+function mostrarCortinaConfigFaltante() {
+  document.querySelector(".cortina-card").innerHTML = `
+    <span class="icono">🥐</span>
+    <h2>Falta un paso</h2>
+    <p style="text-align:left;">Pega el link CSV de la hoja de Usuarios en la constante
+    <code>USUARIOS_CSV_URL</code> dentro de este archivo HTML.</p>`;
+}
+
+function mostrarCortinaError() {
+  document.querySelector(".cortina-card").innerHTML = `
+    <span class="icono">⚠️</span>
+    <h2>No se pudo conectar</h2>
+    <p>Revisa tu conexión e intenta de nuevo.</p>
+    <button onclick="location.reload()">Reintentar</button>`;
+}
+
+async function iniciar() {
+  const btn = document.getElementById("cortinaBtn");
+  const error = document.getElementById("cortinaError");
+  btn.disabled = true;
+  error.textContent = "Cargando...";
+  try {
+    const usuarios = await cargarUsuarios();
+    if (usuarios === null) { mostrarCortinaConfigFaltante(); return; }
+    USUARIOS = usuarios;
+    error.textContent = "";
+    btn.disabled = false;
+
+    let usuarioGuardado = null;
+    try { usuarioGuardado = localStorage.getItem(CLAVE_STORAGE_KEY); } catch (e) {}
+    const sesionValida = usuarioGuardado ? buscarUsuario(usuarioGuardado) : null;
+
+    if (sesionValida) {
+      abrirContenido(sesionValida.nombre);
+    } else {
+      if (usuarioGuardado) { try { localStorage.removeItem(CLAVE_STORAGE_KEY); } catch (e) {} }
+      document.getElementById("cortinaUsuario").focus();
+    }
+  } catch (e) {
+    console.error(e);
+    mostrarCortinaError();
+  }
+}
+
+iniciar();
+</script>
+
+</body>
+</html>
