@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reporte de Asistencia · Kadima Pastelería &amp; Panadería</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Libre+Franklin:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --guinda:#7B1A1A; --guinda-90:#6A1616; --guinda-osc:#4E0F0F;
+    --crema:#F5ECD7; --fondo:#F7F5F0; --sup:#FFF; --linea:#E7E2D8;
+    --tinta:#28211C; --tinta2:#6E645B; --tinta3:#9C9188;
+    --ok:#4E6B49; --ok-bg:#EFF3EE; --ok-ln:#CBD8C8;
+    --warn:#B07C1F; --warn-bg:#FAF3E3; --warn-ln:#E8D6AC;
+    --mal:#8F4E3E; --mal-bg:#F8F0ED; --mal-ln:#E4CCC4;
+    --sombra:0 1px 2px rgba(40,33,28,.05),0 4px 16px rgba(40,33,28,.06);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{font-family:'Libre Franklin',system-ui,sans-serif;background:var(--fondo);color:var(--tinta);font-size:15px;line-height:1.45}
+
+  .topbar{background:linear-gradient(180deg,var(--guinda),var(--guinda-90));color:#fff}
+  .topbar-in{max-width:560px;margin:0 auto;padding:16px 20px}
+  .brand-row{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid rgba(245,236,215,.25);padding-bottom:12px}
+  .brand{font-family:'Fraunces',serif;font-weight:700;font-size:1.25rem;color:var(--crema)}
+  .brand-sub{font-size:.64rem;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(245,236,215,.75)}
+  .doc{margin-top:12px;font-size:.68rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(245,236,215,.7)}
+  .quien{font-family:'Fraunces',serif;font-size:1.12rem;margin-top:2px}
+  .salir{background:none;border:1px solid rgba(245,236,215,.4);color:var(--crema);border-radius:999px;padding:4px 12px;font-size:.72rem;font-weight:700;cursor:pointer;margin-top:10px;font-family:inherit}
+
+  main{max-width:560px;margin:0 auto;padding:18px 14px 50px}
+
+  /* ===== Login ===== */
+  .login{background:var(--sup);border:1px solid var(--linea);border-radius:14px;box-shadow:var(--sombra);padding:26px 22px;margin-top:7vh}
+  .login h1{font-family:'Fraunces',serif;color:var(--guinda-osc);font-size:1.35rem;margin-bottom:4px;text-align:center}
+  .login p{text-align:center;color:var(--tinta2);font-size:.85rem;margin-bottom:20px}
+  .campo{margin-bottom:14px}
+  .campo label{display:block;font-size:.7rem;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--tinta3);margin-bottom:6px}
+  .campo input{width:100%;padding:12px 14px;border:1.5px solid var(--linea);border-radius:10px;font-size:1rem;background:#FDFCF9;font-family:inherit}
+  .campo input:focus{outline:2px solid var(--guinda);border-color:var(--guinda)}
+  .btn{width:100%;padding:13px;background:var(--guinda);color:var(--crema);border:0;border-radius:10px;font-size:1rem;font-weight:800;cursor:pointer;margin-top:6px;font-family:inherit}
+  .btn:disabled{opacity:.6}
+  .error{background:var(--mal-bg);border:1px solid var(--mal-ln);color:var(--mal);border-radius:10px;padding:10px 14px;font-size:.85rem;font-weight:600;margin-bottom:14px;display:none}
+
+  /* ===== Navegador de semana ===== */
+  .sem-nav{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+  .sem-btn{flex:none;width:38px;height:38px;border-radius:10px;border:1px solid var(--linea);background:var(--sup);color:var(--guinda);font-size:1.1rem;font-weight:800;cursor:pointer;box-shadow:var(--sombra);font-family:inherit}
+  .sem-btn:disabled{opacity:.3}
+  .sem-tit{flex:1;text-align:center;min-width:0}
+  .sem-tit .t{font-family:'Fraunces',serif;font-size:1.02rem;color:var(--guinda-osc);font-weight:700}
+  .sem-tit .p{font-size:.64rem;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--tinta3)}
+
+  .card{background:var(--sup);border:1px solid var(--linea);border-radius:14px;box-shadow:var(--sombra);overflow:hidden;margin-bottom:14px}
+  .card-h{background:var(--guinda);color:var(--crema);padding:9px 16px;font-size:.72rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase}
+
+  table{width:100%;border-collapse:collapse;font-size:.82rem}
+  thead th{background:#F3EFE6;color:var(--tinta2);font-size:.64rem;font-weight:800;letter-spacing:.8px;text-transform:uppercase;padding:8px 6px;text-align:center}
+  thead th:first-child{text-align:left;padding-left:14px}
+  tbody td{padding:9px 6px;border-top:1px solid #F1EDE4;text-align:center}
+  tbody td:first-child{text-align:left;padding-left:14px;font-weight:700;white-space:nowrap}
+  .chip{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.68rem;font-weight:800;border:1px solid;white-space:nowrap}
+  .c-ok{background:var(--ok-bg);border-color:var(--ok-ln);color:var(--ok)}
+  .c-warn{background:var(--warn-bg);border-color:var(--warn-ln);color:var(--warn)}
+  .c-mal{background:var(--mal-bg);border-color:var(--mal-ln);color:var(--mal)}
+  .c-neu{background:#F2F0EC;border-color:#DAD5CC;color:var(--tinta2)}
+  .tarde-si{color:var(--mal);font-weight:800}
+  .tarde-no{color:var(--tinta3)}
+
+  .res{padding:6px 16px 12px}
+  .res-fila{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F1EDE4;font-size:.88rem}
+  .res-fila:last-child{border-bottom:0}
+  .res-fila b.rojo{color:var(--mal)}
+
+  .banner{border-radius:14px;padding:16px;text-align:center;font-weight:800;font-size:1rem;margin-bottom:14px;border:1.5px solid}
+  .b-ok{background:var(--ok-bg);border-color:var(--ok-ln);color:var(--ok)}
+  .b-warn{background:var(--warn-bg);border-color:var(--warn-ln);color:var(--warn)}
+  .banner small{display:block;font-weight:600;font-size:.78rem;margin-top:4px;opacity:.85}
+
+  .nota{text-align:center;font-size:.72rem;color:var(--tinta3);line-height:1.6;margin-top:8px}
+  .cargando{text-align:center;padding:50px 20px;color:var(--tinta3);font-weight:600}
+  footer{text-align:center;padding:20px;font-size:.72rem;color:var(--tinta3)}
+  footer .lema{font-family:'Fraunces',serif;font-style:italic;color:var(--guinda);font-size:.82rem}
+  [hidden]{display:none!important}
+  @media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="vLogin">
+  <main>
+    <div class="login">
+      <h1>Kadima</h1>
+      <p>Reporte de asistencia · Acceso personal</p>
+      <div class="error" id="loginError"></div>
+      <div class="campo">
+        <label for="inUser">Usuario</label>
+        <input id="inUser" autocomplete="username" placeholder="Ej.: T001" autocapitalize="characters">
+      </div>
+      <div class="campo">
+        <label for="inPass">Clave</label>
+        <input id="inPass" type="password" inputmode="numeric" autocomplete="current-password" placeholder="Tu clave">
+      </div>
+      <button class="btn" id="btnLogin">Ingresar</button>
+      <p class="nota">Usa el mismo usuario y clave de tu Central de Accesos Kadima.<br>Si olvidaste tu clave, solicítala a administración.</p>
+    </div>
+  </main>
+</div>
+
+<!-- ===== REPORTE ===== -->
+<div id="vApp" hidden>
+  <div class="topbar"><div class="topbar-in">
+    <div class="brand-row"><div class="brand">Kadima</div><div class="brand-sub">Pastelería &amp; Panadería</div></div>
+    <div class="doc">Reporte semanal de asistencia</div>
+    <div class="quien" id="quien"></div>
+    <button class="salir" id="btnSalir">Cerrar sesión</button>
+  </div></div>
+
+  <main>
+    <div class="sem-nav">
+      <button class="sem-btn" id="bPrev" aria-label="Semana anterior">‹</button>
+      <div class="sem-tit"><div class="t" id="semTit"></div><div class="p" id="semPos"></div></div>
+      <button class="sem-btn" id="bNext" aria-label="Semana siguiente">›</button>
+    </div>
+
+    <div id="contenido"><div class="cargando">Cargando…</div></div>
+
+    <p class="nota">Documento informativo. Si detectas una diferencia con tus marcaciones,<br><b>comunícala a administración dentro de la misma semana.</b></p>
+  </main>
+
+  <footer><div class="lema">“Creamos historias, conectamos corazones”</div>Kadima Pastelería &amp; Panadería · San Juan de Lurigancho</footer>
+</div>
+
+<script>
+/* ============================================================
+   CONFIGURACIÓN — pega los DOS enlaces CSV publicados:
+
+   URL_USUARIOS: el CSV de tu hoja "Usuarios" de la Central de
+     Accesos (columnas: Usuario | Clave | Nombre).
+   URL_ASISTENCIA: el CSV de la hoja "BD_Asistencia" (columnas:
+     Fecha | ID | Nombre | Turno | Entrada | Salida | MinTarde |
+     Tramo | HorasTrab | Asistencia | Descuento).
+
+   Ambos: Archivo → Compartir → Publicar en la web → la hoja →
+   formato CSV → Publicar → copiar enlace.
+   ============================================================ */
+const URL_USUARIOS   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRqjRo5XDweGed5fy9WQ2fttITAdPjM1YUveRl0D5cq57izCALbU2AYXMlCRgViw0CphpNj6fBnxgtK/pub?gid=1840955796&single=true&output=csv";
+const URL_ASISTENCIA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRVGxA4YApG9g5xQb0dVNZLx5-bKFxRRY8Rhqli4LStXSbwRkoV9Uv0uHDuYLEoNPxz5drYWy4EvBfI/pub?gid=0&single=true&output=csv";
+
+const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const DIAS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+let usuarios=[], asistencia=[], semanas=[], idx=0, yo=null;
+
+/* ---------- CSV ---------- */
+function parseCSV(text){
+  const rows=[];let row=[],cur="",q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
+    else if(c==='"')q=true;
+    else if(c===','){row.push(cur);cur="";}
+    else if(c==='\n'||c==='\r'){ if(c==='\r'&&text[i+1]==='\n')i++; row.push(cur);cur=""; if(row.some(x=>x.trim()!==""))rows.push(row); row=[]; }
+    else cur+=c;
+  }
+  row.push(cur); if(row.some(x=>x.trim()!==""))rows.push(row);
+  return rows;
+}
+function aObjetos(rows){ /* usa la fila de encabezados para mapear por nombre */
+  if(!rows.length)return[];
+  const head=rows[0].map(h=>String(h||"").trim().toLowerCase());
+  return rows.slice(1).map(r=>{
+    const o={};
+    head.forEach((h,i)=>o[h]=r[i]!==undefined?String(r[i]).trim():"");
+    return o;
+  });
+}
+function num(x){const n=parseFloat(String(x??"").replace(",",".").trim());return isNaN(n)?0:n;}
+function pf(s){const m=String(s||"").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);return m?new Date(+m[3],+m[2]-1,+m[1]):null;}
+function lunes(d){const x=new Date(d);const w=x.getDay();x.setDate(x.getDate()-(w===0?6:w-1));x.setHours(0,0,0,0);return x;}
+function k(d){return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();}
+
+/* ---------- Carga inicial ---------- */
+async function traer(url){
+  const res=await fetch(url+(url.includes("?")?"&":"?")+"t="+Date.now(),{cache:"no-store"});
+  if(!res.ok)throw new Error("HTTP "+res.status);
+  return aObjetos(parseCSV(await res.text()));
+}
+async function init(){
+  if(URL_USUARIOS.startsWith("PEGA_AQUI")||URL_ASISTENCIA.startsWith("PEGA_AQUI")){
+    mostrarError("Falta configurar los enlaces CSV en el archivo.");return;
+  }
+  try{ usuarios=await traer(URL_USUARIOS); }
+  catch(e){ mostrarError("No se pudo cargar la configuración. Revisa tu conexión."); }
+}
+init();
+
+/* ---------- Login ---------- */
+function mostrarError(m){const e=document.getElementById("loginError");e.textContent=m;e.style.display="block";}
+async function intentar(){
+  const u=document.getElementById("inUser").value.trim().toUpperCase();
+  const c=document.getElementById("inPass").value.trim();
+  const btn=document.getElementById("btnLogin");
+  if(!u||!c){mostrarError("Ingresa usuario y clave.");return;}
+  if(!usuarios.length){await init();}
+  const fila=usuarios.find(x=>String(x.usuario||"").toUpperCase()===u&&String(x.clave||"")===c);
+  if(!fila){mostrarError("Usuario o clave incorrectos.");return;}
+  yo={id:u,nombre:fila.nombre||u};
+  btn.disabled=true;btn.textContent="Cargando tu reporte…";
+  try{
+    asistencia=(await traer(URL_ASISTENCIA)).filter(r=>String(r.id||"").toUpperCase()===u);
+    iniciarApp();
+  }catch(e){mostrarError("No se pudo cargar el reporte. Intenta de nuevo.");}
+  btn.disabled=false;btn.textContent="Ingresar";
+}
+document.getElementById("btnLogin").onclick=intentar;
+document.getElementById("inPass").addEventListener("keydown",e=>{if(e.key==="Enter")intentar();});
+document.getElementById("btnSalir").onclick=()=>location.reload();
+
+/* ---------- App ---------- */
+function iniciarApp(){
+  document.getElementById("vLogin").hidden=true;
+  document.getElementById("vApp").hidden=false;
+  document.getElementById("quien").textContent=nombrePropio(yo.nombre);
+
+  const mapa={};
+  asistencia.forEach(f=>{
+    const d=pf(f.fecha);if(!d)return;
+    const l=lunes(d),kk=k(l);
+    if(!mapa[kk])mapa[kk]={inicio:l,dias:{}};
+    mapa[kk].dias[d.getDay()===0?6:d.getDay()-1]=f;
+  });
+  semanas=Object.values(mapa).sort((a,b)=>a.inicio-b.inicio);
+  idx=semanas.length-1;
+  const hoy=lunes(new Date());
+  semanas.forEach((s,i)=>{if(k(s.inicio)===k(hoy))idx=i;});
+  render();
+}
+function nombrePropio(n){
+  return String(n||"").toLowerCase().replace(/(^|\s)\p{L}/gu,c=>c.toUpperCase());
+}
+function titulo(s){
+  const f=new Date(s.inicio);f.setDate(f.getDate()+6);
+  if(s.inicio.getMonth()===f.getMonth())
+    return "Semana del "+s.inicio.getDate()+" al "+f.getDate()+" de "+MESES[s.inicio.getMonth()];
+  return "Del "+s.inicio.getDate()+" de "+MESES[s.inicio.getMonth()]+" al "+f.getDate()+" de "+MESES[f.getMonth()];
+}
+function chipTramo(f){
+  if(!f)return '<span class="chip c-neu">—</span>';
+  const t=(f.tramo||"").toLowerCase(),turno=(f.turno||"").toUpperCase();
+  if(turno==="D")return '<span class="chip c-neu">Descanso</span>';
+  if(turno==="V")return '<span class="chip c-neu">Vacaciones</span>';
+  if(t.includes("falta")||turno==="A")return '<span class="chip c-mal">Falta</span>';
+  if(t.includes("1")||t.includes("toler"))return '<span class="chip c-ok">'+f.tramo+'</span>';
+  if(t===""||t==="—")return '<span class="chip c-neu">—</span>';
+  return '<span class="chip c-warn">'+f.tramo+'</span>';
+}
+function render(){
+  const s=semanas[idx],c=document.getElementById("contenido");
+  document.getElementById("bPrev").disabled=idx<=0;
+  document.getElementById("bNext").disabled=idx>=semanas.length-1;
+  if(!s){c.innerHTML='<div class="cargando">Aún no hay registros de asistencia.</div>';
+    document.getElementById("semTit").textContent="—";document.getElementById("semPos").textContent="";return;}
+
+  document.getElementById("semTit").textContent=titulo(s);
+  document.getElementById("semPos").textContent="Semana "+(idx+1)+" de "+semanas.length;
+
+  let filasHtml="",tTarde=0,tFaltas=0,tTrab=0,tVac=0,tDscto=0;
+  for(let i=0;i<7;i++){
+    const d=new Date(s.inicio);d.setDate(d.getDate()+i);
+    const f=s.dias[i];
+    if(f){
+      tTarde+=num(f.mintarde);tTrab+=num(f.asistencia);tDscto+=num(f.descuento);
+      const tu=(f.turno||"").toUpperCase(),tr=(f.tramo||"").toLowerCase();
+      if(tu==="A"||tr.includes("falta"))tFaltas++;
+      if(tu==="V")tVac++;
+    }
+    filasHtml+='<tr><td>'+DIAS[i]+' '+("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2)+'</td>'+
+      '<td>'+(f&&f.turno?f.turno:"—")+'</td>'+
+      '<td>'+(f&&f.entrada?f.entrada:"—")+'</td>'+
+      '<td class="'+(f&&num(f.mintarde)>0?"tarde-si":"tarde-no")+'">'+(f?num(f.mintarde):"—")+'</td>'+
+      '<td>'+chipTramo(f)+'</td></tr>';
+  }
+
+  const esOk=tTarde===0&&tFaltas===0;
+  const banner=esOk
+    ?'<div class="banner b-ok">¡MUY BIEN!<small>Esta semana cumpliste con todos tus días y horarios, sin tardanzas ni descuentos. ¡Excelente trabajo!</small></div>'
+    :'<div class="banner b-warn">Semana con observaciones<small>'+(tFaltas>0?tFaltas+' falta(s) · ':'')+tTarde+' min de tardanza acumulados. ¡Tú puedes mejorarlo la próxima semana!</small></div>';
+
+  c.innerHTML=
+    '<div class="card"><div class="card-h">Detalle de la semana</div>'+
+    '<table><thead><tr><th>Día</th><th>Turno</th><th>Entrada</th><th>Min. tarde</th><th>Estado</th></tr></thead>'+
+    '<tbody>'+filasHtml+'</tbody></table></div>'+
+    '<div class="card"><div class="card-h">Resumen de la semana</div><div class="res">'+
+    '<div class="res-fila"><span>Días trabajados (efectivos)</span><b>'+tTrab+'</b></div>'+
+    '<div class="res-fila"><span>Faltas</span><b class="'+(tFaltas>0?"rojo":"")+'">'+tFaltas+'</b></div>'+
+    '<div class="res-fila"><span>Total minutos de tardanza</span><b class="'+(tTarde>0?"rojo":"")+'">'+tTarde+'</b></div>'+
+    '<div class="res-fila"><span>Días de vacaciones</span><b>'+tVac+'</b></div>'+
+    '<div class="res-fila"><span>Descuento acumulado (S/)</span><b class="'+(tDscto>0?"rojo":"")+'">'+tDscto.toFixed(2)+'</b></div>'+
+    '</div></div>'+banner;
+}
+document.getElementById("bPrev").onclick=()=>{if(idx>0){idx--;render();}};
+document.getElementById("bNext").onclick=()=>{if(idx<semanas.length-1){idx++;render();}};
+</script>
+</body>
+</html>
