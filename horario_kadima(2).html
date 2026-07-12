@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Horario y Asistencia · Kadima Pastelería &amp; Panadería</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Libre+Franklin:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --guinda:#7B1A1A; --guinda-90:#6A1616; --guinda-osc:#4E0F0F;
+    --crema:#F5ECD7; --fondo:#F7F5F0; --sup:#FFF; --linea:#E7E2D8;
+    --tinta:#28211C; --tinta2:#6E645B; --tinta3:#9C9188;
+    --manana:#B07C1F; --manana-bg:#FAF3E3; --manana-ln:#E8D6AC;
+    --tarde:#7B1A1A; --tarde-bg:#F8EFEF; --tarde-ln:#E3C6C6;
+    --descanso:#4E6B49; --descanso-bg:#EFF3EE; --descanso-ln:#CBD8C8;
+    --vacaciones:#3E6B8F; --vacaciones-bg:#EDF3F8; --vacaciones-ln:#C4D6E4;
+    --permiso:#7A5C96; --permiso-bg:#F3EFF7; --permiso-ln:#D8CCE4;
+    --falta:#8F4E3E; --falta-bg:#F8F0ED; --falta-ln:#E4CCC4;
+    --sombra:0 1px 2px rgba(40,33,28,.05),0 4px 16px rgba(40,33,28,.06);
+    --radio:12px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{font-family:'Libre Franklin',system-ui,sans-serif;background:var(--fondo);color:var(--tinta);font-size:15px;line-height:1.45}
+
+  /* ===== Cabecera ===== */
+  .topbar{background:linear-gradient(180deg,var(--guinda),var(--guinda-90));color:#fff}
+  .topbar-in{max-width:640px;margin:0 auto;padding:18px 20px}
+  .brand-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;border-bottom:1px solid rgba(245,236,215,.25);padding-bottom:14px}
+  .brand{font-family:'Fraunces',serif;font-weight:700;font-size:1.3rem;letter-spacing:.3px;color:var(--crema)}
+  .brand-sub{font-size:.68rem;font-weight:600;letter-spacing:2.2px;text-transform:uppercase;color:rgba(245,236,215,.75)}
+  .doc-title{margin-top:14px;font-size:.7rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(245,236,215,.7)}
+  .week-nav{display:flex;align-items:center;gap:8px;margin-top:6px}
+  .week-btn{flex:none;width:38px;height:38px;border-radius:10px;border:1px solid rgba(245,236,215,.35);background:rgba(255,255,255,.1);color:var(--crema);font-size:1.05rem;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+  .week-btn:disabled{opacity:.25;cursor:default}
+  .week-title{flex:1;text-align:center;min-width:0}
+  .week-title .w{font-family:'Fraunces',serif;font-weight:600;font-size:1.1rem;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .week-title .pos{font-size:.66rem;font-weight:700;letter-spacing:1.2px;color:rgba(245,236,215,.65);text-transform:uppercase;margin-top:1px}
+  .badge-actual{display:inline-block;font-size:.62rem;font-weight:800;letter-spacing:1px;background:var(--crema);color:var(--guinda);border-radius:5px;padding:2px 7px;margin-left:6px;vertical-align:2px}
+  .estado-fila{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}
+  .updated{display:inline-flex;align-items:center;gap:6px;font-size:.74rem;font-weight:600;color:var(--crema);background:rgba(255,255,255,.12);border:1px solid rgba(245,236,215,.3);padding:4px 10px;border-radius:999px;min-width:0}
+  .updated span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .updated .dot{width:6px;height:6px;border-radius:50%;background:#8FD08F;flex:none}
+  .btn-refresh{flex:none;display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:.74rem;font-weight:700;cursor:pointer;color:var(--guinda);background:var(--crema);border:0;border-radius:999px;padding:6px 13px}
+  .btn-refresh:active{transform:scale(.97)}
+  .btn-refresh svg{width:13px;height:13px;flex:none}
+  .btn-refresh.girando svg{animation:girar .8s linear infinite}
+  @keyframes girar{to{transform:rotate(360deg)}}
+
+  main{max-width:640px;margin:0 auto;padding:20px 16px 40px}
+
+  /* ===== Pestañas ===== */
+  .seg{display:flex;background:#EDE9E0;border-radius:10px;padding:3px;margin-bottom:18px}
+  .seg button{flex:1;border:0;background:transparent;font-family:inherit;font-weight:700;font-size:.8rem;color:var(--tinta2);padding:9px 4px;border-radius:8px;cursor:pointer;white-space:nowrap}
+  .seg button.on{background:var(--sup);color:var(--guinda);box-shadow:var(--sombra)}
+
+  /* ===== Selector de persona ===== */
+  .field-label{font-size:.7rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tinta3);margin:0 2px 8px}
+  .personas{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:22px}
+  .persona{border:1px solid var(--linea);background:var(--sup);border-radius:10px;padding:10px 6px;font-family:inherit;font-weight:600;font-size:.84rem;color:var(--tinta);cursor:pointer;box-shadow:var(--sombra);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .persona.on{border-color:var(--guinda);color:var(--guinda);font-weight:800;background:linear-gradient(180deg,#fff,var(--tarde-bg))}
+
+  /* ===== Tarjetas ===== */
+  .card{background:var(--sup);border:1px solid var(--linea);border-radius:var(--radio);box-shadow:var(--sombra);overflow:hidden;margin-bottom:14px}
+  .card-h{background:var(--guinda);color:var(--crema);padding:9px 16px;font-size:.72rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase}
+  .card-head{padding:14px 18px;border-bottom:1px solid var(--linea);display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .card-head h2{font-family:'Fraunces',serif;font-weight:600;font-size:1.15rem;color:var(--guinda-osc)}
+  .resumen{font-size:.74rem;font-weight:600;color:var(--tinta2);text-align:right;line-height:1.3}
+
+  /* ===== Vista personal horario ===== */
+  .fila{display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid #F1EDE4}
+  .fila:last-child{border-bottom:0}
+  .fila.hoy{background:#FDFAF3}
+  .f-dia{width:96px;flex:none}
+  .f-dia b{display:block;font-size:.9rem;font-weight:700}
+  .f-dia span{font-size:.68rem;font-weight:600;color:var(--tinta3);letter-spacing:.5px;text-transform:uppercase}
+  .estado-chip{display:inline-flex;align-items:center;gap:8px;font-size:.84rem;font-weight:700;padding:6px 13px;border-radius:8px;border:1px solid}
+  .estado-chip i{width:7px;height:7px;border-radius:50%;flex:none}
+  .e-manana{background:var(--manana-bg);border-color:var(--manana-ln);color:var(--manana)}.e-manana i{background:var(--manana)}
+  .e-tarde{background:var(--tarde-bg);border-color:var(--tarde-ln);color:var(--tarde)}.e-tarde i{background:var(--tarde)}
+  .e-descanso{background:var(--descanso-bg);border-color:var(--descanso-ln);color:var(--descanso)}.e-descanso i{background:var(--descanso)}
+  .e-vacaciones{background:var(--vacaciones-bg);border-color:var(--vacaciones-ln);color:var(--vacaciones)}.e-vacaciones i{background:var(--vacaciones)}
+  .e-permiso{background:var(--permiso-bg);border-color:var(--permiso-ln);color:var(--permiso)}.e-permiso i{background:var(--permiso)}
+  .e-falta{background:var(--falta-bg);border-color:var(--falta-ln);color:var(--falta)}.e-falta i{background:var(--falta)}
+  .e-otro{background:#F2F0EC;border-color:#DAD5CC;color:var(--tinta2)}.e-otro i{background:var(--tinta3)}
+  .tag-hoy{margin-left:auto;font-size:.62rem;font-weight:800;letter-spacing:1.2px;color:var(--guinda);border:1px solid var(--guinda);border-radius:6px;padding:3px 8px}
+
+  /* ===== Tabla equipo ===== */
+  .tabla-scroll{overflow-x:auto}
+  table{border-collapse:collapse;width:100%}
+  .t-horario{min-width:600px}
+  thead th{background:var(--guinda);color:var(--crema);font-size:.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:10px 8px;text-align:center}
+  thead th:first-child{text-align:left;padding-left:16px}
+  thead th.hoy-col{background:var(--guinda-osc)}
+  thead th small{display:block;font-size:.62rem;opacity:.75;font-weight:600}
+  tbody th{text-align:left;padding:10px 8px 10px 16px;font-size:.84rem;font-weight:700;color:var(--tinta);background:var(--sup);position:sticky;left:0;border-bottom:1px solid #F1EDE4;white-space:nowrap}
+  tbody td{padding:8px 6px;text-align:center;border-bottom:1px solid #F1EDE4;background:var(--sup)}
+  tbody tr:last-child th,tbody tr:last-child td{border-bottom:0}
+  td.hoy-col{background:#FDFAF3}
+  .mini{display:inline-block;min-width:56px;padding:4px 8px;border-radius:6px;font-size:.7rem;font-weight:700;border:1px solid}
+  .m-manana{background:var(--manana-bg);border-color:var(--manana-ln);color:var(--manana)}
+  .m-tarde{background:var(--tarde-bg);border-color:var(--tarde-ln);color:var(--tarde)}
+  .m-descanso{background:var(--descanso-bg);border-color:var(--descanso-ln);color:var(--descanso)}
+  .m-vacaciones{background:var(--vacaciones-bg);border-color:var(--vacaciones-ln);color:var(--vacaciones)}
+  .m-permiso{background:var(--permiso-bg);border-color:var(--permiso-ln);color:var(--permiso)}
+  .m-falta{background:var(--falta-bg);border-color:var(--falta-ln);color:var(--falta)}
+  .m-otro{background:#F2F0EC;border-color:#DAD5CC;color:var(--tinta2)}
+
+  /* ===== Reporte de asistencia ===== */
+  .t-rep thead th{background:#F3EFE6;color:var(--tinta2);font-size:.64rem}
+  .t-rep tbody td{font-size:.82rem}
+  .t-rep tbody td:first-child{text-align:left;padding-left:14px;font-weight:700;white-space:nowrap}
+  .chip{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.68rem;font-weight:800;border:1px solid;white-space:nowrap}
+  .c-ok{background:var(--descanso-bg);border-color:var(--descanso-ln);color:var(--descanso)}
+  .c-warn{background:var(--manana-bg);border-color:var(--manana-ln);color:var(--manana)}
+  .c-mal{background:var(--falta-bg);border-color:var(--falta-ln);color:var(--falta)}
+  .c-neu{background:#F2F0EC;border-color:#DAD5CC;color:var(--tinta2)}
+  .tarde-si{color:var(--falta);font-weight:800}
+  .tarde-no{color:var(--tinta3)}
+  .res{padding:6px 16px 12px}
+  .res-fila{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F1EDE4;font-size:.88rem}
+  .res-fila:last-child{border-bottom:0}
+  .res-fila b.rojo{color:var(--falta)}
+  .banner{border-radius:14px;padding:16px;text-align:center;font-weight:800;font-size:1rem;margin-bottom:14px;border:1.5px solid}
+  .b-ok{background:var(--descanso-bg);border-color:var(--descanso-ln);color:var(--descanso)}
+  .b-warn{background:var(--manana-bg);border-color:var(--manana-ln);color:var(--manana)}
+  .banner small{display:block;font-weight:600;font-size:.78rem;margin-top:4px;opacity:.85}
+  .rep-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .rep-head .n{font-family:'Fraunces',serif;font-weight:700;color:var(--guinda-osc);font-size:1.05rem}
+  .salir{background:none;border:1px solid var(--linea);color:var(--tinta2);border-radius:999px;padding:4px 12px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit}
+
+  /* ===== Login ===== */
+  .login{background:var(--sup);border:1px solid var(--linea);border-radius:14px;box-shadow:var(--sombra);padding:24px 20px;max-width:400px;margin:10px auto}
+  .login h2{font-family:'Fraunces',serif;color:var(--guinda-osc);font-size:1.2rem;margin-bottom:4px;text-align:center}
+  .login p{text-align:center;color:var(--tinta2);font-size:.83rem;margin-bottom:18px}
+  .campo{margin-bottom:13px}
+  .campo label{display:block;font-size:.7rem;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--tinta3);margin-bottom:6px}
+  .campo input{width:100%;padding:12px 14px;border:1.5px solid var(--linea);border-radius:10px;font-size:1rem;background:#FDFCF9;font-family:inherit}
+  .campo input:focus{outline:2px solid var(--guinda);border-color:var(--guinda)}
+  .btn{width:100%;padding:13px;background:var(--guinda);color:var(--crema);border:0;border-radius:10px;font-size:1rem;font-weight:800;cursor:pointer;margin-top:4px;font-family:inherit}
+  .btn:disabled{opacity:.6}
+  .error{background:var(--falta-bg);border:1px solid var(--falta-ln);color:var(--falta);border-radius:10px;padding:10px 14px;font-size:.85rem;font-weight:600;margin-bottom:13px}
+
+  /* ===== Varios ===== */
+  .leyenda{display:flex;gap:14px 18px;flex-wrap:wrap;justify-content:center;margin-top:16px;font-size:.74rem;font-weight:600;color:var(--tinta2)}
+  .leyenda span{display:inline-flex;align-items:center;gap:6px}
+  .leyenda i{width:9px;height:9px;border-radius:50%}
+  .nota{margin-top:22px;text-align:center;font-size:.74rem;color:var(--tinta3);line-height:1.6}
+  .nota b{color:var(--tinta2)}
+  footer{border-top:1px solid var(--linea);margin-top:28px;padding:18px 16px 26px;text-align:center}
+  footer .lema{font-family:'Fraunces',serif;font-size:.85rem;color:var(--guinda);font-style:italic}
+  footer .legal{font-size:.68rem;color:var(--tinta3);margin-top:4px}
+  .estado-msg{text-align:center;padding:48px 20px;color:var(--tinta3);font-weight:600}
+  .estado-msg.error-msg{color:var(--guinda)}
+  [hidden]{display:none!important}
+  @media (max-width:380px){.personas{grid-template-columns:repeat(2,1fr)}}
+  @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <div class="brand-row">
+      <div class="brand">Kadima</div>
+      <div class="brand-sub">Pastelería &amp; Panadería</div>
+    </div>
+    <div class="doc-title" id="docTitle">Horario del equipo · Tienda</div>
+
+    <div class="week-nav">
+      <button class="week-btn" id="btnPrev" aria-label="Semana anterior">‹</button>
+      <div class="week-title">
+        <div class="w" id="tituloSemana">Cargando…</div>
+        <div class="pos" id="posSemana"></div>
+      </div>
+      <button class="week-btn" id="btnNext" aria-label="Semana siguiente">›</button>
+    </div>
+
+    <div class="estado-fila">
+      <div class="updated" id="actualizado" hidden><span class="dot"></span><span id="actualizadoTxt"></span></div>
+      <button class="btn-refresh" id="btnRefresh">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
+        Actualizar
+      </button>
+    </div>
+  </div>
+</div>
+
+<main>
+  <div class="seg" role="tablist">
+    <button id="tabMio" class="on">Mi horario</button>
+    <button id="tabEquipo">Todo el equipo</button>
+    <button id="tabReporte">Mi reporte 🔒</button>
+  </div>
+
+  <div id="bloquePersonas">
+    <div class="field-label">Selecciona tu nombre</div>
+    <div class="personas" id="personas"></div>
+  </div>
+
+  <div id="contenido"><div class="estado-msg">Cargando horario…</div></div>
+
+  <div class="leyenda" id="leyenda">
+    <span><i style="background:var(--manana)"></i> Mañana</span>
+    <span><i style="background:var(--tarde)"></i> Tarde</span>
+    <span><i style="background:var(--descanso)"></i> Descanso</span>
+    <span><i style="background:var(--vacaciones)"></i> Vacaciones</span>
+    <span><i style="background:var(--permiso)"></i> Permiso</span>
+  </div>
+
+  <p class="nota" id="nota">Este horario es informativo y puede actualizarse durante la semana.<br>
+  <b>Si detectas un error, comunícalo a tu supervisora de turno.</b></p>
+</main>
+
+<footer>
+  <div class="lema">“Creamos historias, conectamos corazones”</div>
+  <div class="legal">Kadima Pastelería &amp; Panadería · San Juan de Lurigancho, Lima</div>
+</footer>
+
+<script>
+/* ============================================================
+   CONFIGURACIÓN — pega tus TRES enlaces:
+
+   DATA_URL       → CSV publicado de la BD de HORARIOS
+                    (Fecha | Trabajador | Estado)  [el que ya usas]
+   URL_USUARIOS   → CSV publicado de la hoja Usuarios de la
+                    Central de Accesos (Usuario | Clave | Nombre)
+   URL_ASISTENCIA → CSV publicado de la hoja BD_Asistencia
+                    (Fecha | ID | Nombre | Turno | Entrada | Salida |
+                     MinTarde | Tramo | HorasTrab | Asistencia | Descuento)
+   ============================================================ */
+const DATA_URL       = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRio9kXuEYu2CejjtvBRsV7TifWiPCa3x3HcRkRG9Q0cMbI9xtkGcWp5eEHuGD3hNBvaYecHryBTG0f/pub?gid=0&single=true&output=csv";
+const URL_USUARIOS   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRqjRo5XDweGed5fy9WQ2fttITAdPjM1YUveRl0D5cq57izCALbU2AYXMlCRgViw0CphpNj6fBnxgtK/pub?gid=1840955796&single=true&output=csv";
+const URL_ASISTENCIA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRVGxA4YApG9g5xQb0dVNZLx5-bKFxRRY8Rhqli4LStXSbwRkoV9Uv0uHDuYLEoNPxz5drYWy4EvBfI/pub?gid=0&single=true&output=csv";
+
+const DIAS=["Lun","Mar","Mie","Jue","Vie","Sab","Dom"];
+const NOM={Lun:["Lunes","LUN"],Mar:["Martes","MAR"],Mie:["Miércoles","MIÉ"],Jue:["Jueves","JUE"],Vie:["Viernes","VIE"],Sab:["Sábado","SÁB"],Dom:["Domingo","DOM"]};
+const DIAS_REP=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+const MESES=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+let vista="mio";
+let semanas=[],idx=0,seleccion=null,meta={actualizado:""};   /* horario */
+let yo=null,repSem=[],repIdx=0,usuarios=[];                   /* reporte */
+
+/* ============ utilidades ============ */
+function parseCSV(text){
+  const rows=[];let row=[],cur="",q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
+    else if(c==='"')q=true;
+    else if(c===','){row.push(cur);cur="";}
+    else if(c==='\n'||c==='\r'){ if(c==='\r'&&text[i+1]==='\n')i++; row.push(cur);cur=""; if(row.some(x=>x.trim()!==""))rows.push(row); row=[]; }
+    else cur+=c;
+  }
+  row.push(cur); if(row.some(x=>x.trim()!==""))rows.push(row);
+  return rows;
+}
+function aObjetos(rows){
+  if(!rows.length)return[];
+  const head=rows[0].map(h=>String(h||"").trim().toLowerCase());
+  return rows.slice(1).map(r=>{const o={};head.forEach((h,i)=>o[h]=r[i]!==undefined?String(r[i]).trim():"");return o;});
+}
+function num(x){const n=parseFloat(String(x??"").replace(",",".").trim());return isNaN(n)?0:n;}
+function pf(s){
+  s=String(s||"").trim();
+  let m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+  if(m){let y=+m[3];if(y<100)y+=2000;const d=new Date(y,+m[2]-1,+m[1]);return isNaN(d)?null:d;}
+  m=s.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/);
+  if(m){const d=new Date(+m[1],+m[2]-1,+m[3]);return isNaN(d)?null:d;}
+  return null;
+}
+function lunesDe(f){const d=new Date(f);const w=d.getDay();d.setDate(d.getDate()-(w===0?6:w-1));d.setHours(0,0,0,0);return d;}
+function kDia(f){return f.getFullYear()+"-"+String(f.getMonth()+1).padStart(2,"0")+"-"+String(f.getDate()).padStart(2,"0");}
+function hoyIdx(){const d=new Date().getDay();return d===0?6:d-1;}
+function tituloDe(lunes){
+  const fin=new Date(lunes);fin.setDate(fin.getDate()+6);
+  if(lunes.getMonth()===fin.getMonth())return "Semana del "+lunes.getDate()+" al "+fin.getDate()+" de "+MESES[lunes.getMonth()];
+  return "Del "+lunes.getDate()+" de "+MESES[lunes.getMonth()]+" al "+fin.getDate()+" de "+MESES[fin.getMonth()];
+}
+function esActual(inicio){
+  const hoy=new Date();hoy.setHours(0,0,0,0);
+  const fin=new Date(inicio);fin.setDate(fin.getDate()+6);
+  return hoy>=inicio&&hoy<=fin;
+}
+function nombrePropio(n){return String(n||"").toLowerCase().replace(/(^|\s)\p{L}/gu,c=>c.toUpperCase());}
+async function traer(url){
+  const res=await fetch(url+(url.includes("?")?"&":"?")+"t="+Date.now(),{cache:"no-store"});
+  if(!res.ok)throw new Error("HTTP "+res.status);
+  return await res.text();
+}
+
+/* ============ HORARIO ============ */
+function clasificar(v){
+  const raw=(v==null?"":String(v)).trim();
+  const t=raw.toLowerCase().replace(/\s/g,"");
+  if(!t)return{cls:"otro",txt:"—"};
+  if(t==="t/m"||t==="tm"||t==="m")return{cls:"manana",txt:"Mañana"};
+  if(t==="t/t"||t==="tt"||t==="t")return{cls:"tarde",txt:"Tarde"};
+  if(t==="d")return{cls:"descanso",txt:"Descanso"};
+  if(t==="a")return{cls:"falta",txt:"Ausencia"};
+  if(t==="v")return{cls:"vacaciones",txt:"Vacaciones"};
+  if(t==="p")return{cls:"permiso",txt:"Permiso"};
+  if(t.includes("vacac"))return{cls:"vacaciones",txt:"Vacaciones"};
+  if(t.includes("perm"))return{cls:"permiso",txt:"Permiso"};
+  if(t.includes("falta")||t.includes("ausen"))return{cls:"falta",txt:"Ausencia"};
+  if(t.includes("desc")||t.includes("libre"))return{cls:"descanso",txt:"Descanso"};
+  if(t.includes("mañ")||t.includes("man"))return{cls:"manana",txt:raw};
+  if(t.includes("tar"))return{cls:"tarde",txt:raw};
+  return{cls:"otro",txt:raw};
+}
+
+function cargarHorario(rows){
+  semanas=[];meta={actualizado:""};
+  let ini=-1,cF=0,cN=1,cE=2;
+  for(let i=0;i<rows.length;i++){
+    const k=(rows[i][0]||"").trim().toLowerCase();
+    if(k==="actualizado"){meta.actualizado=rows[i][1]||"";continue;}
+    if(k==="fecha"){
+      ini=i+1;
+      rows[i].forEach((c,j)=>{
+        const h=(c||"").trim().toLowerCase();
+        if(h==="fecha")cF=j;
+        if(h==="trabajador"||h==="nombre"||h==="colaboradora")cN=j;
+        if(h==="estado"||h==="turno")cE=j;
+      });
+      break;
+    }
+  }
+  if(ini<0)return;
+  const mapa=new Map(),orden=[];
+  for(let i=ini;i<rows.length;i++){
+    const f=pf(rows[i][cF]);const n=(rows[i][cN]||"").toString().trim();
+    if(!f||!n)continue;
+    const l=lunesDe(f),kk=kDia(l);
+    if(!mapa.has(kk))mapa.set(kk,{inicio:l,personas:new Map()});
+    const s=mapa.get(kk);
+    if(!s.personas.has(n))s.personas.set(n,["","","","","","",""]);
+    if(!orden.includes(n))orden.push(n);
+    const dow=f.getDay();s.personas.get(n)[dow===0?6:dow-1]=rows[i][cE]||"";
+  }
+  semanas=[...mapa.values()].sort((a,b)=>a.inicio-b.inicio)
+    .map(s=>({inicio:s.inicio,titulo:tituloDe(s.inicio),
+      personas:orden.filter(n=>s.personas.has(n)).map(n=>({nombre:n,dias:s.personas.get(n)}))}));
+  idx=0;let ok=false;
+  semanas.forEach((s,i)=>{if(esActual(s.inicio)){idx=i;ok=true;}});
+  if(!ok){const hoy=new Date();hoy.setHours(0,0,0,0);
+    for(let i=0;i<semanas.length;i++){if(semanas[i].inicio>=hoy){idx=i;break;}}}
+  const up=document.getElementById("actualizado");
+  if(meta.actualizado){up.hidden=false;document.getElementById("actualizadoTxt").textContent="Actualizado: "+meta.actualizado;}
+  else up.hidden=true;
+  const noms=semanas[idx]?semanas[idx].personas.map(p=>p.nombre):[];
+  if(!seleccion&&noms.length)seleccion=noms[0];
+}
+
+/* ============ NAVEGACIÓN Y RENDER ============ */
+function sincronizar(){
+  document.getElementById("tabMio").className=vista==="mio"?"on":"";
+  document.getElementById("tabEquipo").className=vista==="equipo"?"on":"";
+  document.getElementById("tabReporte").className=vista==="reporte"?"on":"";
+  document.getElementById("bloquePersonas").style.display=vista==="mio"?"":"none";
+  document.getElementById("leyenda").style.display=vista==="reporte"?"none":"";
+  document.getElementById("docTitle").textContent=vista==="reporte"?"Reporte semanal de asistencia":"Horario del equipo · Tienda";
+  document.getElementById("nota").innerHTML=vista==="reporte"
+    ?'Documento informativo. Si detectas una diferencia con tus marcaciones,<br><b>comunícala a administración dentro de la misma semana.</b>'
+    :'Este horario es informativo y puede actualizarse durante la semana.<br><b>Si detectas un error, comunícalo a tu supervisora de turno.</b>';
+  refrescar();
+}
+
+function refrescar(){
+  const t=document.getElementById("tituloSemana"),p=document.getElementById("posSemana");
+  const bp=document.getElementById("btnPrev"),bn=document.getElementById("btnNext");
+  if(vista==="reporte"){
+    if(!yo||!repSem.length){
+      t.textContent="Reporte de asistencia";p.textContent=yo?"Sin registros":"Acceso personal";
+      bp.disabled=true;bn.disabled=true;
+    }else{
+      const s=repSem[repIdx];
+      t.innerHTML=s.titulo+(esActual(s.inicio)?'<span class="badge-actual">ACTUAL</span>':"");
+      p.textContent="Semana "+(repIdx+1)+" de "+repSem.length;
+      bp.disabled=repIdx<=0;bn.disabled=repIdx>=repSem.length-1;
+    }
+  }else{
+    const s=semanas[idx];
+    if(!s){t.textContent="Sin horarios cargados";p.textContent="";bp.disabled=true;bn.disabled=true;}
+    else{
+      t.innerHTML=s.titulo+(esActual(s.inicio)?'<span class="badge-actual">ACTUAL</span>':"");
+      p.textContent="Semana "+(idx+1)+" de "+semanas.length;
+      bp.disabled=idx===0;bn.disabled=idx===semanas.length-1;
+    }
+    pintarPersonas();
+  }
+  pintar();
+}
+
+function pintarPersonas(){
+  const c=document.getElementById("personas");c.innerHTML="";
+  const s=semanas[idx];if(!s)return;
+  s.personas.forEach(pp=>{
+    const b=document.createElement("button");
+    b.className="persona"+(seleccion===pp.nombre?" on":"");
+    b.textContent=pp.nombre;
+    b.onclick=()=>{seleccion=pp.nombre;vista="mio";sincronizar();};
+    c.appendChild(b);
+  });
+}
+
+function pintar(){
+  const cont=document.getElementById("contenido");
+  if(vista==="reporte"){pintarReporte(cont);return;}
+  const s=semanas[idx];
+  if(!s){cont.innerHTML='<div class="estado-msg">No hay horarios para mostrar</div>';return;}
+  const hoy=esActual(s.inicio)?hoyIdx():-1;
+  const fechas=DIAS.map((_,i)=>{const d=new Date(s.inicio);d.setDate(d.getDate()+i);return d;});
+
+  if(vista==="mio"){
+    const p=s.personas.find(x=>x.nombre===seleccion)||s.personas[0];
+    if(!p){cont.innerHTML='<div class="estado-msg">Selecciona tu nombre</div>';return;}
+    const nLib=p.dias.filter(v=>["descanso","vacaciones","permiso"].includes(clasificar(v).cls)).length;
+    const nTr=p.dias.filter(v=>["manana","tarde"].includes(clasificar(v).cls)).length;
+    cont.innerHTML=`<div class="card">
+      <div class="card-head"><h2>${p.nombre}</h2>
+        <div class="resumen">${nTr} día${nTr!==1?"s":""} de trabajo<br>${nLib} día${nLib!==1?"s":""} libre${nLib!==1?"s":""}</div></div>
+      ${DIAS.map((d,i)=>{
+        const c=clasificar(p.dias[i]);
+        return `<div class="fila${i===hoy?" hoy":""}">
+          <div class="f-dia"><b>${NOM[d][0]} ${fechas[i].getDate()}</b><span>${MESES[fechas[i].getMonth()].slice(0,3)}</span></div>
+          <span class="estado-chip e-${c.cls}"><i></i>${c.txt}</span>
+          ${i===hoy?'<span class="tag-hoy">HOY</span>':""}</div>`;
+      }).join("")}</div>`;
+  }else{
+    cont.innerHTML=`<div class="card"><div class="tabla-scroll"><table class="t-horario">
+      <thead><tr><th>Colaboradora</th>${DIAS.map((d,i)=>`<th class="${i===hoy?'hoy-col':''}">${NOM[d][1]}<small>${fechas[i].getDate()}</small></th>`).join("")}</tr></thead>
+      <tbody>${s.personas.map(p=>`<tr><th>${p.nombre}</th>${p.dias.map((v,i)=>{
+        const c=clasificar(v);
+        const ab={Descanso:"Desc.",Vacaciones:"Vacac.",Permiso:"Perm.",Ausencia:"Aus."}[c.txt]||c.txt;
+        return `<td class="${i===hoy?'hoy-col':''}"><span class="mini m-${c.cls}">${ab}</span></td>`;
+      }).join("")}</tr>`).join("")}</tbody></table></div></div>`;
+  }
+}
+
+/* ============ REPORTE ============ */
+function pintarReporte(cont){
+  if(!yo){
+    cont.innerHTML=`<div class="login">
+      <h2>Acceso personal</h2>
+      <p>Ingresa con tu usuario y clave de la Central de Accesos Kadima.</p>
+      <div class="error" id="loginError" hidden></div>
+      <div class="campo"><label for="inUser">Usuario</label>
+        <input id="inUser" autocomplete="username" placeholder="Ej.: T001" autocapitalize="characters"></div>
+      <div class="campo"><label for="inPass">Clave</label>
+        <input id="inPass" type="password" inputmode="numeric" autocomplete="current-password" placeholder="Tu clave"></div>
+      <button class="btn" id="btnLogin">Ingresar</button>
+      <p class="nota" style="margin-top:12px">Solo verás tu propio reporte.<br>Si olvidaste tu clave, solicítala a administración.</p>
+    </div>`;
+    document.getElementById("btnLogin").onclick=intentarLogin;
+    document.getElementById("inPass").addEventListener("keydown",e=>{if(e.key==="Enter")intentarLogin();});
+    return;
+  }
+  const s=repSem[repIdx];
+  const head=`<div class="rep-head"><div class="n">${nombrePropio(yo.nombre)}</div>
+    <button class="salir" id="btnSalir">Cerrar sesión</button></div>`;
+  if(!s){cont.innerHTML=head+'<div class="estado-msg">Aún no hay registros de asistencia.</div>';
+    document.getElementById("btnSalir").onclick=salir;return;}
+
+  let filas="",tT=0,tF=0,tTr=0,tV=0,tD=0;
+  for(let i=0;i<7;i++){
+    const d=new Date(s.inicio);d.setDate(d.getDate()+i);
+    const f=s.dias[i];
+    if(f){
+      tT+=num(f.mintarde);tTr+=num(f.asistencia);tD+=num(f.descuento);
+      const tu=(f.turno||"").toUpperCase(),tr=(f.tramo||"").toLowerCase();
+      if(tu==="A"||tr.includes("falta"))tF++;
+      if(tu==="V")tV++;
+    }
+    filas+='<tr><td>'+DIAS_REP[i]+' '+("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2)+'</td>'+
+      '<td>'+(f&&f.turno?f.turno:"—")+'</td>'+
+      '<td>'+(f&&f.entrada?f.entrada:"—")+'</td>'+
+      '<td class="'+(f&&num(f.mintarde)>0?"tarde-si":"tarde-no")+'">'+(f?num(f.mintarde):"—")+'</td>'+
+      '<td>'+chipTramo(f)+'</td></tr>';
+  }
+  const ok=tT===0&&tF===0;
+  const banner=ok
+    ?'<div class="banner b-ok">¡MUY BIEN!<small>Esta semana cumpliste con todos tus días y horarios, sin tardanzas ni descuentos. ¡Excelente trabajo!</small></div>'
+    :'<div class="banner b-warn">Semana con observaciones<small>'+(tF>0?tF+' falta(s) · ':'')+tT+' min de tardanza acumulados. ¡Tú puedes mejorarlo la próxima semana!</small></div>';
+
+  cont.innerHTML=head+
+    '<div class="card"><div class="card-h">Detalle de la semana</div>'+
+    '<div class="tabla-scroll"><table class="t-rep"><thead><tr><th>Día</th><th>Turno</th><th>Entrada</th><th>Min. tarde</th><th>Estado</th></tr></thead>'+
+    '<tbody>'+filas+'</tbody></table></div></div>'+
+    '<div class="card"><div class="card-h">Resumen de la semana</div><div class="res">'+
+    '<div class="res-fila"><span>Días trabajados (efectivos)</span><b>'+tTr+'</b></div>'+
+    '<div class="res-fila"><span>Faltas</span><b class="'+(tF>0?"rojo":"")+'">'+tF+'</b></div>'+
+    '<div class="res-fila"><span>Total minutos de tardanza</span><b class="'+(tT>0?"rojo":"")+'">'+tT+'</b></div>'+
+    '<div class="res-fila"><span>Días de vacaciones</span><b>'+tV+'</b></div>'+
+    '<div class="res-fila"><span>Descuento acumulado (S/)</span><b class="'+(tD>0?"rojo":"")+'">'+tD.toFixed(2)+'</b></div>'+
+    '</div></div>'+banner;
+  document.getElementById("btnSalir").onclick=salir;
+}
+function chipTramo(f){
+  if(!f)return '<span class="chip c-neu">—</span>';
+  const t=(f.tramo||"").toLowerCase(),turno=(f.turno||"").toUpperCase();
+  if(turno==="D")return '<span class="chip c-neu">Descanso</span>';
+  if(turno==="V")return '<span class="chip c-neu">Vacaciones</span>';
+  if(t.includes("falta")||turno==="A")return '<span class="chip c-mal">Falta</span>';
+  if(t.includes("1")||t.includes("toler"))return '<span class="chip c-ok">'+f.tramo+'</span>';
+  if(t===""||t==="—")return '<span class="chip c-neu">—</span>';
+  return '<span class="chip c-warn">'+f.tramo+'</span>';
+}
+function errLogin(m){const e=document.getElementById("loginError");if(e){e.textContent=m;e.hidden=false;}}
+async function intentarLogin(){
+  const u=document.getElementById("inUser").value.trim().toUpperCase();
+  const c=document.getElementById("inPass").value.trim();
+  const btn=document.getElementById("btnLogin");
+  if(!u||!c){errLogin("Ingresa usuario y clave.");return;}
+  if(URL_USUARIOS.startsWith("PEGA_AQUI")||URL_ASISTENCIA.startsWith("PEGA_AQUI")){
+    errLogin("El reporte aún no está configurado. Avisa a administración.");return;
+  }
+  btn.disabled=true;btn.textContent="Verificando…";
+  try{
+    if(!usuarios.length)usuarios=aObjetos(parseCSV(await traer(URL_USUARIOS)));
+    const fila=usuarios.find(x=>String(x.usuario||"").toUpperCase()===u&&String(x.clave||"")!==""&&String(x.clave||"")===c);
+    if(!fila){errLogin("Usuario o clave incorrectos.");btn.disabled=false;btn.textContent="Ingresar";return;}
+    yo={id:u,nombre:fila.nombre||u};
+    btn.textContent="Cargando tu reporte…";
+    const asis=aObjetos(parseCSV(await traer(URL_ASISTENCIA))).filter(r=>String(r.id||"").toUpperCase()===u);
+    const mapa={};
+    asis.forEach(f=>{
+      const d=pf(f.fecha);if(!d)return;
+      const l=lunesDe(d),kk=kDia(l);
+      if(!mapa[kk])mapa[kk]={inicio:l,titulo:tituloDe(l),dias:{}};
+      mapa[kk].dias[d.getDay()===0?6:d.getDay()-1]=f;
+    });
+    repSem=Object.values(mapa).sort((a,b)=>a.inicio-b.inicio);
+    repIdx=repSem.length-1;
+    repSem.forEach((s,i)=>{if(esActual(s.inicio))repIdx=i;});
+    refrescar();
+  }catch(e){
+    errLogin("No se pudo cargar la información. Revisa tu conexión e intenta de nuevo.");
+    btn.disabled=false;btn.textContent="Ingresar";
+  }
+}
+function salir(){yo=null;repSem=[];repIdx=0;refrescar();}
+
+/* ============ EVENTOS ============ */
+document.getElementById("btnPrev").onclick=()=>{
+  if(vista==="reporte"){if(repIdx>0){repIdx--;refrescar();}}
+  else if(idx>0){idx--;refrescar();}
+};
+document.getElementById("btnNext").onclick=()=>{
+  if(vista==="reporte"){if(repIdx<repSem.length-1){repIdx++;refrescar();}}
+  else if(idx<semanas.length-1){idx++;refrescar();}
+};
+document.getElementById("tabMio").onclick=()=>{vista="mio";sincronizar();};
+document.getElementById("tabEquipo").onclick=()=>{vista="equipo";sincronizar();};
+document.getElementById("tabReporte").onclick=()=>{vista="reporte";sincronizar();};
+document.getElementById("btnRefresh").onclick=async function(){
+  this.classList.add("girando");
+  usuarios=[];
+  await initHorario();
+  setTimeout(()=>this.classList.remove("girando"),500);
+};
+
+async function initHorario(){
+  if(!DATA_URL||DATA_URL.startsWith("PEGA_AQUI")){
+    document.getElementById("contenido").innerHTML='<div class="estado-msg error-msg">Falta configurar el enlace del horario (DATA_URL).</div>';
+    document.getElementById("tituloSemana").textContent="Horario del equipo";return;
+  }
+  try{
+    cargarHorario(parseCSV(await traer(DATA_URL)));
+    sincronizar();
+  }catch(e){
+    document.getElementById("contenido").innerHTML='<div class="estado-msg error-msg">No se pudo cargar el horario.<br>Verifica tu conexión e intenta con el botón Actualizar.</div>';
+    document.getElementById("tituloSemana").textContent="Horario del equipo";
+  }
+}
+initHorario();
+</script>
+</body>
+</html>
