@@ -108,10 +108,12 @@
   .section-title { font-size: 26px; font-weight: 500; margin-bottom: 20px; }
 
   .order-line {
-    display: flex; align-items: center; justify-content: space-between;
+    display: grid; grid-template-columns: 1fr 110px 90px; align-items: center; gap: 12px;
     padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 14.5px;
   }
-  .order-line .qty-controls { display: flex; align-items: center; gap: 8px; }
+  .order-line > span:last-child { text-align: right; }
+  .order-line .qty-controls { display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .order-line .qty-controls span { min-width: 18px; text-align: center; display: inline-block; }
   .order-line .qty-controls button {
     width: 24px; height: 24px; border: 1px solid var(--line); background: #fff; border-radius: 4px; cursor: pointer; font-family: inherit;
   }
@@ -362,8 +364,12 @@
     const current = cart[id] || 0;
     const next = Math.max(0, current + delta);
     cart[id] = next;
-    document.getElementById(`qty-${id}`).textContent = next;
+    const qtyEl = document.getElementById(`qty-${id}`);
+    if (qtyEl) qtyEl.textContent = next;
     updateCartBar();
+    if (document.getElementById("checkout").style.display !== "none") {
+      renderOrderLines();
+    }
   }
 
   function addToCart(id) {
