@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Libro de Reclamaciones — Kadima | Panadería y Pastelería</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --espresso: #2E1B12; --cream: #FFFFFF; --wine: #7A2E3D; --wine-dark: #5E212C; --gold: #C98A2B;
+    --line: rgba(46, 27, 18, 0.16);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--cream); color: var(--espresso); font-family: 'Work Sans', sans-serif; line-height: 1.55; }
+  h1, h2, h3 { font-family: 'Fraunces', serif; margin: 0; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 56px 24px 56px; }
+  .kicker { font-size: 15px; color: var(--wine); font-weight: 600; margin-bottom: 10px; }
+  h1 { font-size: 30px; font-weight: 500; margin-bottom: 10px; }
+  .aviso {
+    background: #fff8ea; border: 1px solid #e8cf9a; border-radius: 4px;
+    padding: 14px 18px; font-size: 13.5px; color: #6b4c15; margin: 18px 0 32px;
+  }
+  a.back { display: inline-block; margin-bottom: 24px; color: var(--wine); font-size: 14px; text-decoration: none; }
+  a.back:hover { text-decoration: underline; }
+
+  .form-card { border: 1px solid var(--line); border-radius: 6px; padding: 32px; }
+  .section-label { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--wine); margin: 28px 0 14px; }
+  .section-label:first-child { margin-top: 0; }
+
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 16px; }
+  .field { display: flex; flex-direction: column; }
+  .field.full { grid-column: 1 / -1; }
+  .field label { font-size: 13.5px; font-weight: 500; margin-bottom: 6px; color: #4a352a; }
+  .field input, .field select, .field textarea {
+    font-family: inherit; font-size: 14.5px; padding: 10px 12px;
+    border: 1px solid var(--line); border-radius: 3px; background: #fff; color: var(--espresso);
+  }
+  .field textarea { resize: vertical; min-height: 90px; }
+  .field small { color: #8a7256; font-size: 12px; margin-top: 5px; }
+
+  .tipo-opts { display: flex; gap: 14px; }
+  .tipo-opt { flex: 1; border: 1px solid var(--line); border-radius: 5px; padding: 12px 14px; cursor: pointer; font-size: 14px; }
+  .tipo-opt.selected { border-color: var(--wine); background: #fbf5f6; }
+  .tipo-opt strong { display: block; font-size: 14.5px; margin-bottom: 3px; }
+  .tipo-opt span { font-size: 12px; color: #8a7256; }
+
+  .submit-btn {
+    width: 100%; background: var(--wine); color: #fff; border: none; padding: 15px;
+    font-size: 15.5px; font-weight: 500; border-radius: 4px; cursor: pointer; font-family: inherit; margin-top: 8px;
+  }
+  .submit-btn:hover { background: var(--wine-dark); }
+
+  #resultado { display: none; text-align: center; padding: 20px 0; }
+  .code-box {
+    display: inline-block; border: 1px dashed var(--gold); border-radius: 3px;
+    padding: 14px 28px; font-family: 'Fraunces', serif; font-size: 20px; margin: 16px 0;
+  }
+  .print-btn {
+    background: none; border: 1px solid var(--line); color: var(--espresso);
+    padding: 10px 20px; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 14px; margin-top: 12px;
+  }
+
+  .datos-establecimiento { font-size: 13px; color: #6b5643; border-top: 1px dashed var(--line); margin-top: 32px; padding-top: 16px; }
+
+  @media print {
+    a.back, .submit-btn, #formulario { display: none; }
+  }
+  @media (max-width: 640px) {
+    .field-row, .tipo-opts { grid-template-columns: 1fr; flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="pedidos_kadima.html">← Volver a la tienda</a>
+  <div class="kicker">Kadima | Panadería y Pastelería</div>
+  <h1>Libro de Reclamaciones</h1>
+  <div class="aviso">Este establecimiento cuenta con Libro de Reclamaciones a su disposición, conforme al D.S. N° 011-2011-PCM.</div>
+
+  <!--
+    TODO Diego (importante, verificar antes de publicar):
+    Genera el formato oficial actualizado (Anexo I y el aviso obligatorio) en la
+    herramienta "Tu Libro" de INDECOPI: consumidor.indecopi.gob.pe/tul
+    Ahí sale el texto legal exacto vigente (incluyendo el plazo de respuesta,
+    que cambió recientemente y no quise inventar un número que pudiera estar
+    desactualizado). Cuando lo tengas, reemplaza el texto de este archivo
+    marcado como "TODO" por el texto oficial.
+  -->
+
+  <div class="form-card" id="formulario">
+
+    <div class="section-label">Tipo de reclamación</div>
+    <div class="tipo-opts">
+      <div class="tipo-opt selected" id="opt-reclamo" onclick="selectTipo('reclamo')">
+        <strong>Reclamo</strong>
+        <span>Disconformidad relacionada al producto o servicio</span>
+      </div>
+      <div class="tipo-opt" id="opt-queja" onclick="selectTipo('queja')">
+        <strong>Queja</strong>
+        <span>Disconformidad con la atención, no relacionada al producto/servicio</span>
+      </div>
+    </div>
+
+    <div class="section-label">Datos del consumidor</div>
+    <div class="field-row">
+      <div class="field">
+        <label for="nombres">Nombres y apellidos</label>
+        <input type="text" id="nombres" required>
+      </div>
+      <div class="field">
+        <label for="dni">DNI / CE</label>
+        <input type="text" id="dni" required>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="domicilio">Domicilio</label>
+        <input type="text" id="domicilio">
+      </div>
+      <div class="field">
+        <label for="telefono-rec">Teléfono</label>
+        <input type="tel" id="telefono-rec" required>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field full">
+        <label for="email-rec">Correo electrónico</label>
+        <input type="email" id="email-rec" required>
+        <small>Te enviaremos una copia de este reclamo a este correo.</small>
+      </div>
+    </div>
+
+    <div class="section-label">Datos del producto o servicio</div>
+    <div class="field-row">
+      <div class="field">
+        <label for="producto">Producto o servicio contratado</label>
+        <input type="text" id="producto">
+      </div>
+      <div class="field">
+        <label for="monto">Monto reclamado (S/)</label>
+        <input type="number" id="monto" step="0.01">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field full">
+        <label for="fecha-hecho">Fecha del pedido o del hecho</label>
+        <input type="date" id="fecha-hecho">
+      </div>
+    </div>
+
+    <div class="section-label">Detalle</div>
+    <div class="field-row">
+      <div class="field full">
+        <label for="detalle">Detalle de la reclamación</label>
+        <textarea id="detalle" required></textarea>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field full">
+        <label for="pedido">Pedido del consumidor (¿qué solicitas?)</label>
+        <textarea id="pedido" required></textarea>
+      </div>
+    </div>
+
+    <button class="submit-btn" onclick="enviarReclamo()">Enviar reclamación</button>
+  </div>
+
+  <div id="resultado">
+    <h3>Reclamación registrada</h3>
+    <p>Este es tu código de reclamación. Guárdalo o imprime esta hoja para tu constancia.</p>
+    <div class="code-box" id="codigo-reclamo">000000000</div>
+    <div id="hoja-resumen" style="text-align:left; font-size:14px; margin-top:20px;"></div>
+    <div><button class="print-btn" onclick="window.print()">Imprimir esta hoja</button></div>
+  </div>
+
+  <div class="datos-establecimiento">
+    <strong>Datos del establecimiento:</strong><br>
+    Inversiones La Sonesta S.A.C. — RUC 20535962236<br>
+    Mz K2 Lt. 3A, San Juan de Lurigancho 15434, Lima, Perú<br>
+    WhatsApp: 987 023 767 — Correo: contacto@kadima.pe
+  </div>
+</div>
+
+<script>
+  // TODO Diego: pegar aquí la URL del flujo de Power Automate que guarde
+  // el reclamo en SharePoint y envíe la copia automática al correo del consumidor.
+  const FLOW_URL_SUBMIT_RECLAMO = "";
+
+  let tipoSeleccionado = "reclamo";
+  function selectTipo(tipo) {
+    tipoSeleccionado = tipo;
+    document.getElementById("opt-reclamo").classList.toggle("selected", tipo === "reclamo");
+    document.getElementById("opt-queja").classList.toggle("selected", tipo === "queja");
+  }
+
+  function generarCodigo() {
+    const now = new Date();
+    const pad = n => n.toString().padStart(2, "0");
+    return `${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  }
+
+  async function enviarReclamo() {
+    const requeridos = ["nombres", "dni", "telefono-rec", "email-rec", "detalle", "pedido"];
+    for (const id of requeridos) {
+      if (!document.getElementById(id).value) {
+        alert("Por favor completa todos los campos obligatorios.");
+        return;
+      }
+    }
+
+    const payload = {
+      codigo: generarCodigo(),
+      tipo: tipoSeleccionado,
+      nombres: document.getElementById("nombres").value,
+      dni: document.getElementById("dni").value,
+      domicilio: document.getElementById("domicilio").value,
+      telefono: document.getElementById("telefono-rec").value,
+      email: document.getElementById("email-rec").value,
+      producto: document.getElementById("producto").value,
+      monto: document.getElementById("monto").value,
+      fechaHecho: document.getElementById("fecha-hecho").value,
+      detalle: document.getElementById("detalle").value,
+      pedido: document.getElementById("pedido").value,
+      fechaReclamo: new Date().toISOString(),
+    };
+
+    if (FLOW_URL_SUBMIT_RECLAMO) {
+      try {
+        await fetch(FLOW_URL_SUBMIT_RECLAMO, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } catch (e) {
+        console.error("No se pudo registrar el reclamo", e);
+      }
+    }
+    // Modo de prueba: sin flujo conectado, solo muestra la constancia en pantalla/impresión.
+
+    document.getElementById("codigo-reclamo").textContent = payload.codigo;
+    document.getElementById("hoja-resumen").innerHTML = `
+      <p><strong>Tipo:</strong> ${payload.tipo === "reclamo" ? "Reclamo" : "Queja"}</p>
+      <p><strong>Consumidor:</strong> ${payload.nombres} — DNI/CE: ${payload.dni}</p>
+      <p><strong>Contacto:</strong> ${payload.telefono} / ${payload.email}</p>
+      <p><strong>Detalle:</strong> ${payload.detalle}</p>
+      <p><strong>Pedido del consumidor:</strong> ${payload.pedido}</p>
+      <p><strong>Fecha:</strong> ${new Date(payload.fechaReclamo).toLocaleString("es-PE")}</p>
+    `;
+    document.getElementById("formulario").style.display = "none";
+    document.getElementById("resultado").style.display = "block";
+  }
+</script>
+</body>
+</html>
