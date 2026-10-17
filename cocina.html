@@ -193,7 +193,6 @@ function agrupar() {
   st.items.forEach(i => {
     if (!g.has(i.pedido_id)) g.set(i.pedido_id, { id: i.pedido_id, tipo: i.tipo, mesa: i.mesa, mozo: i.mozo, desde: i.enviado_en, items: [] });
     const p = g.get(i.pedido_id); p.items.push(i);
-    if (i.obs_envio && !(p.obs || []).includes(i.obs_envio)) p.obs = (p.obs || []).concat(i.obs_envio);
     if (i.enviado_en < p.desde) p.desde = i.enviado_en;
   });
   return [...g.values()].sort((a, b) => a.desde.localeCompare(b.desde));
@@ -209,10 +208,9 @@ function dibujar() {
     return `<div class="card ${clase}">
       <div class="cab"><span class="titulo">${titulo(p)}</span><span class="tiempo">${min} min</span></div>
       <div class="sub">#${p.id}${p.mozo ? ' · ' + esc(p.mozo) : ''} · ${new Date(p.desde).toLocaleTimeString('es-PE', { hour:'2-digit', minute:'2-digit' })}</div>
-      ${(p.obs || []).map(o => `<div class="obs">📝 ${esc(o)}</div>`).join('')}
       ${p.items.map(i => `<button class="item ${i.estado_cocina}" data-id="${i.id}" data-e="${i.estado_cocina}">
           <span class="q">${Number(i.cantidad)}×</span>
-          <span><span class="n">${esc(i.producto)}</span>${i.nota ? `<br><span class="nota">${esc(i.nota)}</span>` : ''}</span>
+          <span><span class="n">${esc(i.producto)}</span>${i.nota ? `<br><span class="nota">${esc(i.nota)}</span>` : ''}${i.obs_envio ? `<br><span class="nota">📝 ${esc(i.obs_envio)}</span>` : ''}</span>
           <span class="est">${ESTADO[i.estado_cocina]}</span></button>`).join('')}
       <div class="acciones">${todosListos
         ? `<button class="b-entregar" data-entregar="${p.id}">Entregado ✓</button>`
@@ -263,8 +261,7 @@ function imprimirComanda(items) {
   items.forEach(i => { if (!g.has(i.pedido_id)) g.set(i.pedido_id, { ...i, lista: [] }); g.get(i.pedido_id).lista.push(i); });
   $('comanda').innerHTML = [...g.values()].map(p => `
     <div class="c"><b>COMANDA</b><br><b style="font-size:18px">${titulo(p)}</b><br>#${p.pedido_id}${p.mozo ? ' · ' + esc(p.mozo) : ''}<br>${new Date().toLocaleTimeString('es-PE')}</div><hr>
-    ${[...new Set(p.lista.map(i => i.obs_envio).filter(Boolean))].map(o => `<div><b>OBS: ${esc(o)}</b></div>`).join('')}
-    ${p.lista.map(i => `<div><b>${Number(i.cantidad)} x ${esc(i.producto)}</b>${i.nota ? `<br>&nbsp;&nbsp;* ${esc(i.nota)}` : ''}</div>`).join('')}<hr>`).join('<br>');
+    ${p.lista.map(i => `<div><b>${Number(i.cantidad)} x ${esc(i.producto)}</b>${i.nota ? `<br>&nbsp;&nbsp;* ${esc(i.nota)}` : ''}${i.obs_envio ? `<br>&nbsp;&nbsp;* ${esc(i.obs_envio)}` : ''}</div>`).join('')}<hr>`).join('<br>');
   window.print();
 }
 

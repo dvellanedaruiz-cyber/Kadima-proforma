@@ -125,6 +125,10 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 .cuotas-tabla{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}
 .cuotas-tabla td{padding:4px}.cuotas-tabla input{width:100%;padding:8px;border:1px solid var(--borde);border-radius:8px;font:inherit}
 .ret-info{background:#fff8e6;color:#8a5a00;padding:8px 12px;border-radius:10px;font-size:13px;margin:6px 0}
+.mm-items .mi{display:grid;grid-template-columns:1fr 1.3fr;gap:8px;align-items:center;padding:4px 0}
+.mm-items .mi span{font-size:14px;font-weight:600}
+.mm-items input{width:100%;padding:8px 10px;border:1px solid var(--borde);border-radius:8px;font:inherit}
+.ml .ed{background:none;border:none;color:var(--rojo);font-size:13px;cursor:pointer;padding:0 4px;text-decoration:underline}
 .mm-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
 .mm-chips button{padding:5px 10px;border-radius:14px;background:var(--fondo);font-size:12px;font-weight:600;border:1px solid var(--borde)}
 .mm-chips button:hover{border-color:var(--rojo);color:var(--rojo)}
@@ -271,9 +275,10 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
     <div id="mm-abiertas" class="mm-abiertas"></div>
     <div class="campo"><label>Mesa (si ya está abierta, se suma a su cuenta · "3+4" si se juntaron)</label><input id="mm-mesa" placeholder="Ej. 3" autocomplete="off"></div>
     <div class="campo"><label>Mozo</label><select id="mm-mozo"></select></div>
-    <div class="campo"><label>Observaciones para cocina (opcional)</label>
+    <div class="campo"><label>Observación de cada producto (opcional)</label><div id="mm-items" class="mm-items"></div></div>
+    <div class="campo"><label>Observación para todo el envío (opcional)</label>
       <div class="mm-chips" id="mm-chips"><button>Para llevar</button><button>Urgente</button><button>Todo junto</button><button>Primero las bebidas</button><button>Cliente alérgico</button></div>
-      <textarea id="mm-obs" rows="2" maxlength="200" placeholder="Ej. Sin cebolla en todo, cliente apurado" style="width:100%;font:inherit;padding:10px 12px;border:1px solid var(--borde);border-radius:10px;resize:vertical"></textarea></div>
+      <textarea id="mm-obs" rows="2" maxlength="200" placeholder="Ej. Cliente apurado, todo para llevar" style="width:100%;font:inherit;padding:10px 12px;border:1px solid var(--borde);border-radius:10px;resize:vertical"></textarea></div>
     <div class="fila" style="margin-top:12px">
       <button class="btn-sec" id="mm-cancelar">Cancelar</button>
       <button class="btn" id="mm-ok">Enviar</button>
@@ -913,6 +918,7 @@ $('enviar-mesa').onclick = async () => {
   msg('v-error');
   if (!navigator.onLine) return msg('v-error', 'Enviar a mesa necesita internet (la cocina lo recibe en línea).');
   msg('mm-error'); $('mm-mesa').value = st.ctx && st.ctx.tipo === 'agregar' ? st.ctx.pedido.mesa : ''; $('mm-obs').value = '';
+  $('mm-items').innerHTML = st.carrito.map((l, i) => `<div class="mi"><span>${l.cantidad} × ${esc(l.nombre)}</span><input data-i="${i}" maxlength="120" placeholder="Ej. sin cebolla, término medio" value="${esc(l.nota || '')}"></div>`).join('');
   const { data } = await sb.from('usuarios').select('id,nombre').eq('rol', 'mozo').eq('activo', true).order('nombre');
   st.mozos = data || [];
   $('mm-mozo').innerHTML = '<option value="">— Sin mozo —</option>' + st.mozos.map(m => `<option value="${m.id}">${esc(m.nombre)}</option>`).join('');
@@ -939,6 +945,7 @@ $('mm-ok').onclick = async () => {
 };
 async function enviarItems(pedido) {
   const obs = ($('mm-obs').value || '').trim() || null;
+  document.querySelectorAll('#mm-items input').forEach(x => { const l = st.carrito[x.dataset.i]; if (l) l.nota = x.value.trim() || null; });
   const filas = st.carrito.map(l => ({ pedido_id: pedido.id, producto_id: l.producto_id, cantidad: l.cantidad, precio_unit: l.precio_unit, nota: l.nota, obs_envio: obs }));
   const { error } = await sb.from('pedido_items').insert(filas);
   if (error) return msg('v-error', errorTexto(error));
@@ -965,18 +972,18 @@ async function abrirMesas() {
   // productos de cada mesa
   const porMesa = {};
   if (data.length) {
-    const r = await sb.from('pedido_items').select('pedido_id,cantidad,precio_unit,nota,obs_envio,estado_cocina,productos(nombre)')
+    const r = await sb.from('pedido_items').select('id,pedido_id,cantidad,precio_unit,nota,obs_envio,estado_cocina,productos(nombre)')
       .in('pedido_id', data.map(m => m.id)).neq('estado_cocina', 'anulado').order('id');
     (r.data || []).forEach(i => (porMesa[i.pedido_id] = porMesa[i.pedido_id] || []).push(i));
   }
   const ICONO = { pendiente:'🕒 en cocina', preparando:'👨‍🍳 preparando', listo:'✅ listo', entregado:'' };
   $('ms-lista').innerHTML = data.length ? data.map(m => {
     const min = Math.floor((Date.now() - new Date(m.creado_en)) / 60000);
-    const lineas = (porMesa[m.id] || []).map(i => `<div class="ml"><span>${Number(i.cantidad)} × ${esc(i.productos.nombre)}${i.nota ? ` <i>(${esc(i.nota)})</i>` : ''} <small>${ICONO[i.estado_cocina] || ''}</small></span><span>${S(i.cantidad * i.precio_unit)}</span></div>`).join('');
+    const lineas = (porMesa[m.id] || []).map(i => `<div class="ml"><span>${Number(i.cantidad)} × ${esc(i.productos.nombre)}${i.nota ? ` <i>(${esc(i.nota)})</i>` : ''}${i.obs_envio ? ` <i>📝 ${esc(i.obs_envio)}</i>` : ''} <small>${ICONO[i.estado_cocina] || ''}</small>${i.estado_cocina !== 'entregado' ? ` <button class="ed" data-nota-item="${i.id}" data-nota="${esc(i.nota || '')}">✎ obs.</button>` : ''}</span><span>${S(i.cantidad * i.precio_unit)}</span></div>`).join('');
     return `<div class="mesa-row">
       <div class="top"><span class="nom">${esc(m.mesa)}${m.en_cocina ? `<span class="etq coc">${m.en_cocina} en cocina</span>` : ''}${m.listos ? `<span class="etq lis">${m.listos} listo(s) para servir</span>` : ''}</span><b>${S(m.total)}</b></div>
       <div class="det">${m.mozo ? esc(m.mozo) + ' · ' : ''}hace ${min} min</div>
-      <div class="mlista">${[...new Set((porMesa[m.id] || []).map(i => i.obs_envio).filter(Boolean))].map(o => `<div class="obs">📝 ${esc(o)}</div>`).join('')}${lineas || '<div class="ml"><span>Sin productos</span></div>'}</div>
+      <div class="mlista">${lineas || '<div class="ml"><span>Sin productos</span></div>'}</div>
       <div class="acc">
         <button class="btn-sec" data-acc="agregar" data-id="${m.id}">+ Agregar</button>
         <button class="btn-sec" data-acc="precuenta" data-id="${m.id}">Precuenta</button>
@@ -995,6 +1002,13 @@ async function itemsDe(pedidoId) {
   return data;
 }
 $('ms-lista').onclick = async e => {
+  if (e.target.dataset.notaItem) {
+    const v = prompt('Observación para cocina (déjalo vacío para quitarla):', e.target.dataset.nota);
+    if (v === null) return;
+    const { error } = await sb.from('pedido_items').update({ nota: v.trim() || null }).eq('id', Number(e.target.dataset.notaItem));
+    if (error) return msg('ms-error', errorTexto(error));
+    await abrirMesas(); msg('ms-error', '✓ Observación actualizada: cocina ya la ve.'); return;
+  }
   const acc = e.target.dataset.acc; if (!acc) return;
   const m = st.mesasAbiertas.find(x => x.id == e.target.dataset.id);
   const pedido = { id: m.id, mesa: m.mesa };
