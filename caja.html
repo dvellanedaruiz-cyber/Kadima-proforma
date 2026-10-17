@@ -56,6 +56,10 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 .mesa-row .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .mesa-row .nom{font-size:18px;font-weight:800}
 .mesa-row .det{font-size:13px;color:var(--gris);margin:4px 0 10px}
+.mlista{margin:0 0 10px;font-size:14px}
+.ml{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px dashed var(--borde)}
+.ml small{color:var(--gris);font-size:12px;white-space:nowrap}
+.ml i{color:#b26a00;font-style:normal;font-size:12px}
 .mesa-row .acc{display:flex;flex-wrap:wrap;gap:6px}
 .mesa-row .acc button{padding:8px 10px;font-size:13px}
 .etq{font-size:12px;font-weight:700;padding:3px 8px;border-radius:10px;margin-left:4px}
@@ -128,6 +132,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
   #ticket table{width:100%;border-collapse:collapse}
   #ticket td{vertical-align:top;padding:1px 0}
   #ticket td.r{text-align:right;white-space:nowrap}
+  #ticket svg{width:32mm;height:32mm}
 }
 
 /* Tablet vertical y celular */
@@ -321,12 +326,13 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 <div id="ticket"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script>
 // ===== CONFIGURACIÓN =====
 const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
 const EMPRESA = { nombre:'Kadima Pastelería & Panadería', razon:'INVERSIONES LA SONESTA S.A.C.', ruc:'20535962236', dir:'San Juan de Lurigancho, Lima' };
-const VERSION = 'v3 · mesas y cocina';
+const VERSION = 'v4 · SUNAT';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = id => document.getElementById(id);
@@ -490,7 +496,7 @@ async function abrirPos() {
   } catch (e) { msg('v-error', errorTexto(e)); }
   await actualizarNumeros();
   dibujarCats(); dibujarGrilla(); dibujarCarrito();
-  enviarCola(); contarMesas();
+  enviarCola(); contarMesas(); setTimeout(reenviarPendientes, 3000);
   $('buscar').focus();
 }
 // numeración local: continúa desde el último número del servidor y de lo vendido sin internet
@@ -594,6 +600,7 @@ $('cobrar').onclick = () => {
   if (st.doc !== 'factura' && doc && !/^\d{8}$/.test(doc))
     return msg('v-error', 'El DNI debe tener 8 dígitos.');
   if (doc && !$('c-nombre').value.trim()) return msg('v-error', 'Ingresa el nombre del cliente.');
+  if (st.doc === 'boleta' && totales().total >= 700 && !doc) return msg('v-error', 'Boletas de S/ 700 o más necesitan el DNI del cliente (regla SUNAT).');
   st.pagos = []; elegirMetodo('efectivo');
   $('p-total').textContent = S(totales().total);
   actualizarPago();
@@ -664,13 +671,20 @@ $('p-confirmar').onclick = async () => {
     res = { serie, numero, total: t.total, op_gravada: t.gravada, igv: t.igv };
   }
   st.ult[res.serie] = Math.max(st.ult[res.serie] || 0, res.numero); guardar('ult', st.ult);
+  let sunat = null;
+  if (!enCola && st.doc !== 'nota_venta') {
+    $('p-confirmar').textContent = 'Enviando a SUNAT…';
+    sunat = await enviarSunat(res.venta_id, 8000);
+  }
   st.ultimaVenta = { ...res, doc: st.doc, carrito: st.carrito.slice(), pagos: st.pagos.slice(),
+    hash: sunat && sunat.codigo_hash, qr: sunat && sunat.cadena_qr,
     cliente: payload.cliente, fecha: new Date(payload.emitida_en), cajero: st.usuario.nombre };
   $('m-pago').classList.add('oculto');
   $('ok-doc').textContent = `${NOMBRE_DOC[st.doc]} ${res.serie}-${String(res.numero).padStart(8,'0')}`;
   const vuelto = vueltoDe(st.pagos);
   $('ok-det').textContent = `Total ${S(res.total)}` + (vuelto > 0 ? ` · Vuelto ${S(vuelto)}` : '') +
-    (enCola ? ' · Guardada sin internet: se enviará sola al volver la conexión.' : '');
+    (enCola ? ' · Guardada sin internet: se enviará sola al volver la conexión.' : '') +
+    (sunat && sunat.error ? ` · ⚠ SUNAT/Nubefact: ${sunat.error}. Quedó pendiente y se reintentará.` : '');
   $('m-ok').classList.remove('oculto');
   $('p-confirmar').textContent = 'Confirmar venta';
   pintarRed();
@@ -680,6 +694,30 @@ $('ok-nueva').onclick = () => {
   $('m-ok').classList.add('oculto'); dibujarCarrito(); $('buscar').focus();
 };
 $('ok-imprimir').onclick = () => { armarTicket(st.ultimaVenta); window.print(); };
+
+// ===== SUNAT (Nubefact) =====
+async function enviarSunat(ventaId, espera) {
+  try {
+    const llamada = sb.functions.invoke('nubefact', { body: { venta_id: ventaId, accion: 'enviar' } });
+    const tiempo = new Promise(r => setTimeout(() => r({ data: null, error: { message: 'tardó demasiado' } }), espera || 15000));
+    const { data, error } = await Promise.race([llamada, tiempo]);
+    if (error) return { error: error.message || 'sin respuesta' };
+    return data;
+  } catch (e) { return { error: String(e.message || e) }; }
+}
+// reintenta las boletas/facturas de este equipo que aún no se enviaron
+let reenviando = false;
+async function reenviarPendientes() {
+  if (reenviando || !navigator.onLine || !st.disp) return;
+  reenviando = true;
+  try {
+    const { data } = await sb.from('ventas').select('id').eq('dispositivo_id', st.disp.id).eq('estado', 'emitida')
+      .eq('estado_sunat', 'pendiente').is('respuesta_nubefact', null).neq('tipo_doc', 'nota_venta').order('id').limit(20);
+    for (const v of data || []) await enviarSunat(v.id);
+  } catch (e) {}
+  reenviando = false;
+}
+setInterval(reenviarPendientes, 5 * 60000);
 
 // ===== COLA: envía las ventas hechas sin internet =====
 let enviando = false;
@@ -698,12 +736,17 @@ async function enviarCola() {
         console.warn('El servidor reasignó el número', p.numero, '→', data.numero);
       }
       c = cola(); c.shift(); guardar('cola', c);
+      if (data && p.tipo_doc !== 'nota_venta') enviarSunat(data.venta_id);
     }
   } catch (e) { /* se reintenta en el siguiente ciclo */ }
   enviando = false; pintarRed();
 }
 setInterval(enviarCola, 20000);
 
+function qrSvg(texto) {
+  try { const q = qrcode(0, 'M'); q.addData(texto); q.make(); return q.createSvgTag({ cellSize: 3, margin: 0 }); }
+  catch (e) { return ''; }
+}
 function armarTicket(v) {
   const nombreDoc = { boleta:'BOLETA DE VENTA ELECTRÓNICA', factura:'FACTURA ELECTRÓNICA', nota_venta:'NOTA DE VENTA' }[v.doc];
   const filas = v.carrito.map(l => `<tr><td>${l.cantidad} x ${l.nombre}</td><td class="r">${(l.cantidad * l.precio_unit).toFixed(2)}</td></tr>`).join('');
@@ -719,6 +762,7 @@ function armarTicket(v) {
       <tr><td><b>TOTAL S/</b></td><td class="r"><b>${Number(v.total).toFixed(2)}</b></td></tr>
     </table><hr>
     <table>${pagos}${vuelto > 0 ? `<tr><td>Vuelto</td><td class="r">${vuelto.toFixed(2)}</td></tr>` : ''}</table><hr>
+    ${v.qr ? `<div class="c">${qrSvg(v.qr)}<br>Hash: ${esc(v.hash || '')}</div><hr>` : ''}
     <div class="c">${v.doc === 'nota_venta' ? 'Documento interno. No válido como comprobante de pago.' : 'Representación impresa del comprobante electrónico.'}<br>¡Gracias por tu compra!</div>`;
 }
 
@@ -774,11 +818,21 @@ async function abrirMesas() {
   if (!navigator.onLine) return msg('v-error', 'Ver mesas necesita internet.');
   const { data, error } = await sb.from('v_mesas_abiertas').select('*').eq('sede_id', st.disp.sede_id).order('creado_en');
   if (error) return msg('v-error', errorTexto(error));
+  // productos de cada mesa
+  const porMesa = {};
+  if (data.length) {
+    const r = await sb.from('pedido_items').select('pedido_id,cantidad,precio_unit,nota,estado_cocina,productos(nombre)')
+      .in('pedido_id', data.map(m => m.id)).neq('estado_cocina', 'anulado').order('id');
+    (r.data || []).forEach(i => (porMesa[i.pedido_id] = porMesa[i.pedido_id] || []).push(i));
+  }
+  const ICONO = { pendiente:'🕒 en cocina', preparando:'👨‍🍳 preparando', listo:'✅ listo', entregado:'' };
   $('ms-lista').innerHTML = data.length ? data.map(m => {
     const min = Math.floor((Date.now() - new Date(m.creado_en)) / 60000);
+    const lineas = (porMesa[m.id] || []).map(i => `<div class="ml"><span>${Number(i.cantidad)} × ${esc(i.productos.nombre)}${i.nota ? ` <i>(${esc(i.nota)})</i>` : ''} <small>${ICONO[i.estado_cocina] || ''}</small></span><span>${S(i.cantidad * i.precio_unit)}</span></div>`).join('');
     return `<div class="mesa-row">
       <div class="top"><span class="nom">${esc(m.mesa)}${m.en_cocina ? `<span class="etq coc">${m.en_cocina} en cocina</span>` : ''}${m.listos ? `<span class="etq lis">${m.listos} listo(s) para servir</span>` : ''}</span><b>${S(m.total)}</b></div>
       <div class="det">${m.mozo ? esc(m.mozo) + ' · ' : ''}hace ${min} min</div>
+      <div class="mlista">${lineas || '<div class="ml"><span>Sin productos</span></div>'}</div>
       <div class="acc">
         <button class="btn-sec" data-acc="agregar" data-id="${m.id}">+ Agregar</button>
         <button class="btn-sec" data-acc="precuenta" data-id="${m.id}">Precuenta</button>
