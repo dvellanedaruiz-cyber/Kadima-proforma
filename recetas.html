@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kadima Recetas</title>
+<meta name="theme-color" content="#8B0000">
+<link rel="manifest" href="recetas-manifest.webmanifest">
+<link rel="icon" href="pos-icon-192.png">
+<style>
+:root{--rojo:#8B0000;--fondo:#f6f4f2;--borde:#e3dfdb;--gris:#6b6b6b;--texto:#1f1f1f;--ok:#1e7d3a;--aviso:#b26a00;--mal:#b00020}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--fondo);color:var(--texto);font-size:14px}
+button{font:inherit;cursor:pointer;border:none;border-radius:8px}
+input,select,textarea{font:inherit;padding:9px 10px;border:1px solid var(--borde);border-radius:8px;background:#fff;width:100%}
+.oculto{display:none!important}
+.btn{background:var(--rojo);color:#fff;padding:10px 16px;font-weight:600}.btn:disabled{opacity:.5}
+.btn-sec{background:#fff;color:var(--rojo);border:1.5px solid var(--rojo);padding:7px 12px;font-weight:600}
+.btn-mini{background:var(--fondo);padding:5px 10px;font-size:13px;font-weight:600}
+.error{color:var(--mal);min-height:18px;margin-top:8px;white-space:pre-line}.okmsg{color:var(--ok);min-height:18px;margin-top:8px;font-weight:600}
+.centro{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.tarjeta{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);padding:24px;width:100%;max-width:380px}
+.marca{color:var(--rojo);font-weight:800;font-size:22px;margin:0}.sub{color:var(--gris);margin:4px 0 16px}
+.pin-puntos{display:flex;gap:10px;justify-content:center;margin:10px 0 16px}
+.pin-puntos span{width:14px;height:14px;border-radius:50%;border:2px solid var(--rojo)}.pin-puntos span.lleno{background:var(--rojo)}
+.teclado{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.teclado button{padding:16px;font-size:20px;background:var(--fondo);font-weight:600}
+.barra{background:var(--rojo);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:5}
+.barra b{font-size:18px}.barra .usr{margin-left:auto;font-size:13px;opacity:.9}
+.barra button{background:rgba(255,255,255,.15);color:#fff;padding:7px 12px;font-weight:600}
+.barra .tabs{display:flex;gap:4px}.barra .tabs button{background:transparent;opacity:.75}.barra .tabs button.activa{background:rgba(255,255,255,.2);opacity:1}
+.cuerpo{display:grid;grid-template-columns:360px 1fr;min-height:calc(100vh - 52px)}
+.lista{background:#fff;border-right:1px solid var(--borde);display:flex;flex-direction:column;max-height:calc(100vh - 52px);position:sticky;top:52px}
+.lista .f{padding:10px;border-bottom:1px solid var(--borde);display:flex;flex-direction:column;gap:8px}
+.lista .items{overflow:auto;flex:1}
+.rec{padding:10px 12px;border-bottom:1px solid #f1eeeb;cursor:pointer;display:flex;justify-content:space-between;gap:8px}
+.rec:hover{background:#fbf9f7}.rec.sel{background:#fff5f5;border-left:3px solid var(--rojo)}
+.rec .n{font-weight:600}.rec small{color:var(--gris)}
+.fc{font-weight:700;font-size:13px;white-space:nowrap}.fc.bien{color:var(--ok)}.fc.medio{color:var(--aviso)}.fc.mal{color:var(--mal)}
+.panel{padding:18px 22px;max-width:1100px}
+.bloque{background:#fff;border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.bloque h3{margin:0 0 12px;font-size:15px;color:var(--rojo)}
+.fila{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}.fila>.campo{flex:1;min-width:140px}
+.campo label{display:block;font-size:12px;color:var(--gris);margin-bottom:3px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chips button{background:var(--fondo);padding:5px 10px;font-size:12px;font-weight:600;color:var(--gris)}.chips button.activa{background:var(--rojo);color:#fff}
+.buscador{position:relative}
+.resultados{position:absolute;left:0;right:0;top:100%;background:#fff;border:1px solid var(--borde);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:8;max-height:280px;overflow:auto}
+.resultados div{padding:8px 10px;cursor:pointer;display:flex;justify-content:space-between;gap:10px}.resultados div:hover,.resultados div.foco{background:#fff5f5}.resultados small{color:#999}
+table.t{width:100%;border-collapse:collapse}
+.t th{text-align:left;font-size:12px;color:var(--gris);padding:8px 6px;border-bottom:1px solid var(--borde)}
+.t td{padding:6px;border-bottom:1px solid #f3f0ed;vertical-align:middle}
+.t td.n,.t th.n{text-align:right;white-space:nowrap}
+.t input,.t select{padding:7px 8px}
+.t .w-c{width:100px}.t .w-u{width:80px}.t .w-a{width:80px}
+.x{background:none;color:var(--mal);font-size:18px}
+.tipo{font-size:11px;font-weight:700;padding:2px 7px;border-radius:8px;background:#eee;color:#555;white-space:nowrap}
+.tipo.insumo{background:#e8f0fb;color:#1f4f99}.tipo.intermedio{background:#f3e8fb;color:#6b2b99}.tipo.producto_terminado{background:#fff1e0;color:#9a5300}
+.tipo.paqueteria{background:#e9f5ef;color:#1e6b44}.tipo.mercaderia{background:#fdeaea;color:#8b1a1a}.tipo.plato{background:#fffbe0;color:#7a6500}.tipo.servicio{background:#eee}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.kpi{background:var(--fondo);border-radius:12px;padding:12px}.kpi span{display:block;font-size:12px;color:var(--gris)}.kpi b{font-size:20px}
+.sin-costo{color:var(--aviso);font-size:12px}
+.ayuda{color:var(--gris);font-size:13px;margin:-4px 0 12px}
+.vacio{color:var(--gris);text-align:center;padding:30px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:20}
+.modal .tarjeta{max-width:620px;max-height:92vh;overflow:auto}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.check{display:flex;gap:8px;align-items:center;font-size:14px}.check input{width:auto}
+.prods td{font-size:13px}
+@media (max-width:900px){.cuerpo{grid-template-columns:1fr}.lista{position:static;max-height:40vh}.kpis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<section id="v-login" class="centro oculto">
+  <form class="tarjeta" id="f-login">
+    <p class="marca">KADIMA</p><p class="sub">Recetas y Food Cost · iniciar sesión</p>
+    <input id="l-email" type="email" value="caja@kadima.pe" required style="margin-bottom:10px">
+    <input id="l-pass" type="password" placeholder="Contraseña" required style="margin-bottom:10px">
+    <button class="btn" style="width:100%">Ingresar</button><div class="error" id="l-error"></div>
+  </form>
+</section>
+<section id="v-pin" class="centro oculto">
+  <div class="tarjeta" style="max-width:340px">
+    <p class="marca">KADIMA</p><p class="sub">Recetas · Ingresa tu PIN</p>
+    <div class="pin-puntos" id="pin-puntos"></div><div class="teclado" id="teclado"></div>
+    <div class="error" id="pin-error" style="text-align:center"></div>
+  </div>
+</section>
+
+<section id="v-app" class="oculto">
+  <div class="barra"><b>KADIMA</b>
+    <div class="tabs" id="tabs"><button data-t="recetas" class="activa">Recetas y food cost</button><button data-t="productos">Productos</button></div>
+    <span class="usr" id="b-usr"></span><button id="b-salir">Cambiar usuario</button></div>
+  <div id="t-recetas" class="cuerpo">
+    <div class="lista">
+      <div class="f">
+        <button class="btn" id="r-nueva">+ Nueva receta</button>
+        <div class="chips" id="r-tipos"><button data-k="" class="activa">Todas</button><button data-k="producto_terminado">Terminados</button><button data-k="intermedio">Bases</button><button data-k="plato">Platos</button></div>
+        <input id="r-q" placeholder="Buscar receta">
+      </div>
+      <div class="items" id="r-lista"></div>
+    </div>
+    <div class="panel" id="r-panel"><div class="vacio">Elige una receta o crea una nueva.</div></div>
+  </div>
+  <div id="t-productos" class="oculto" style="padding:16px;max-width:1300px;margin:0 auto">
+    <div class="bloque">
+      <div class="fila" style="margin-bottom:12px">
+        <div class="chips" id="p-tipos"></div>
+        <div class="campo" style="max-width:300px"><input id="p-q" placeholder="Buscar nombre o código"></div>
+        <label class="check" style="font-size:13px;color:var(--gris)"><input type="checkbox" id="p-inact"> Ver inactivos</label>
+        <button class="btn" id="p-nuevo" style="margin-left:auto">+ Nuevo producto</button>
+      </div>
+      <div style="overflow:auto;max-height:75vh"><table class="t prods"><thead><tr><th>Código</th><th>Nombre</th><th>Tipo</th><th>Unidad</th><th>Categoría</th><th class="n">Precio venta</th><th>Se descuenta</th><th>Receta</th><th></th></tr></thead><tbody id="p-filas"></tbody></table></div>
+    </div>
+  </div>
+</section>
+
+<div class="modal oculto" id="modal"><div class="tarjeta" id="modal-c"></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
+<script>
+const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const S = (n, d = 2) => n === null || n === undefined || isNaN(n) ? '—' : 'S/ ' + Number(n).toLocaleString('es-PE', { minimumFractionDigits: d, maximumFractionDigits: d });
+const N = (n, d = 3) => Number(n || 0).toLocaleString('es-PE', { maximumFractionDigits: d });
+const errTxt = e => { const m = (e && (e.message || e.error_description)) || String(e); return /fetch|network/i.test(m) ? 'Sin conexión a internet.' : /Invalid login/i.test(m) ? 'Correo o contraseña incorrectos.' : m; };
+const TIPO = { insumo: 'Insumo', intermedio: 'Base', producto_terminado: 'Terminado', paqueteria: 'Paquetería', mercaderia: 'Mercadería', plato: 'Plato', servicio: 'Servicio' };
+const UNI = { Kilo: 'kg', Litro: 'L', Unidad: 'und' };
+const UNIDADES_RECETA = { Kilo: ['g', 'kg'], Litro: ['ml', 'l'], Unidad: ['und'] };
+const A_BASE = { g: 0.001, kg: 1, ml: 0.001, l: 1, und: 1 };
+const DESCUENTO = { unidad: 'Por unidad (stock)', receta: 'Por receta (insumos)', porcion: 'Porción de un entero', ninguno: 'No controla stock' };
+const tipoTag = t => `<span class="tipo ${t}">${TIPO[t] || t}</span>`;
+const fcClase = p => p == null ? '' : p <= 30 ? 'bien' : p <= 38 ? 'medio' : 'mal';
+
+const st = { usuario: null, productos: [], categorias: [], costos: {}, recetas: [], filtro: '', sel: null, ed: null, ptipo: '' };
+
+function vista(id) { ['v-login','v-pin','v-app'].forEach(v => $(v).classList.toggle('oculto', v !== id)); }
+$('f-login').addEventListener('submit', async ev => {
+  ev.preventDefault(); $('l-error').textContent = '';
+  const { error } = await sb.auth.signInWithPassword({ email: $('l-email').value.trim(), password: $('l-pass').value });
+  if (error) return $('l-error').textContent = errTxt(error);
+  iniciar();
+});
+async function iniciar() { const { data } = await sb.auth.getSession(); if (!data.session) return vista('v-login'); pedirPin(); }
+let pin = '';
+function pedirPin() { pin = ''; vista('v-pin'); $('pin-error').textContent = ''; dibujarPin(); }
+function dibujarPin() { $('pin-puntos').innerHTML = [0,1,2,3].map(i => `<span class="${i < pin.length ? 'lleno' : ''}"></span>`).join(''); }
+$('teclado').innerHTML = ['1','2','3','4','5','6','7','8','9','⌫','0','OK'].map(t => `<button data-t="${t}">${t}</button>`).join('');
+$('teclado').onclick = e => { const t = e.target.dataset.t; if (!t) return; if (t === '⌫') pin = pin.slice(0, -1); else if (t === 'OK') return validarPin(); else if (pin.length < 6) pin += t; dibujarPin(); if (pin.length === 4) validarPin(); };
+document.addEventListener('keydown', e => {
+  if ($('v-pin').classList.contains('oculto')) return;
+  if (/^[0-9]$/.test(e.key) && pin.length < 6) { pin += e.key; dibujarPin(); if (pin.length === 4) validarPin(); }
+  if (e.key === 'Backspace') { pin = pin.slice(0, -1); dibujarPin(); }
+});
+async function validarPin() {
+  const { data, error } = await sb.from('usuarios').select('id,nombre,rol,pin').eq('activo', true);
+  if (error) { $('pin-error').textContent = errTxt(error); pin = ''; return dibujarPin(); }
+  const u = data.find(x => x.pin === pin);
+  if (!u) { $('pin-error').textContent = 'PIN incorrecto'; pin = ''; return dibujarPin(); }
+  st.usuario = u; abrirApp();
+}
+$('b-salir').onclick = pedirPin;
+
+async function cargarMaestros() {
+  const [p, c, k, r] = await Promise.all([
+    sb.from('productos').select('*').order('nombre'),
+    sb.from('categorias').select('id,nombre').order('nombre'),
+    sb.from('v_costos').select('*'),
+    sb.from('v_recetas').select('*').order('producto')
+  ]);
+  st.productos = p.data || []; st.categorias = c.data || []; st.recetas = r.data || [];
+  st.costos = {}; (k.data || []).forEach(x => st.costos[x.producto_id] = x.costo == null ? null : Number(x.costo));
+}
+async function abrirApp() {
+  vista('v-app'); $('b-usr').textContent = st.usuario.nombre;
+  await cargarMaestros(); pintarLista();
+}
+$('tabs').onclick = e => { const t = e.target.dataset.t; if (!t) return; [...$('tabs').children].forEach(b => b.classList.toggle('activa', b.dataset.t === t));
+  $('t-recetas').classList.toggle('oculto', t !== 'recetas'); $('t-productos').classList.toggle('oculto', t !== 'productos'); if (t === 'productos') pintarProductos(); };
+
+// ===== LISTA DE RECETAS =====
+$('r-tipos').onclick = e => { const k = e.target.dataset.k; if (k === undefined) return; st.filtro = k; [...$('r-tipos').children].forEach(b => b.classList.toggle('activa', b.dataset.k === k)); pintarLista(); };
+$('r-q').oninput = pintarLista;
+function pintarLista() {
+  const q = $('r-q').value.trim().toLowerCase();
+  const l = st.recetas.filter(r => (!st.filtro || r.tipo_item === st.filtro) && (!q || r.producto.toLowerCase().includes(q) || r.codigo.toLowerCase().includes(q) || r.producto_codigo.toLowerCase().includes(q)));
+  $('r-lista').innerHTML = l.map(r => `<div class="rec ${st.sel === r.producto_id ? 'sel' : ''}" data-p="${r.producto_id}">
+    <div><div class="n">${esc(r.producto)}</div><small>${r.codigo} · ${TIPO[r.tipo_item]} · rinde ${N(r.rendimiento)} ${UNI[r.unidad_medida]}</small></div>
+    <div style="text-align:right"><div>${S(r.costo_unitario)}<small>/${UNI[r.unidad_medida]}</small></div>${r.food_cost_pct != null ? `<div class="fc ${fcClase(r.food_cost_pct)}">FC ${N(r.food_cost_pct, 1)}%</div>` : ''}</div></div>`).join('')
+    || '<div class="vacio">Sin recetas.</div>';
+}
+$('r-lista').onclick = e => { const d = e.target.closest('[data-p]'); if (d) abrirReceta(Number(d.dataset.p)); };
+$('r-nueva').onclick = () => abrirReceta(null);
+
+// ===== EDITOR DE RECETA =====
+async function abrirReceta(prodId) {
+  st.sel = prodId; pintarLista();
+  const r = prodId ? st.recetas.find(x => x.producto_id === prodId) : null;
+  let lineas = [];
+  if (r) {
+    const { data } = await sb.from('v_receta_detalle').select('*').eq('receta_id', r.id).order('id');
+    lineas = (data || []).map(d => ({ insumo_id: d.insumo_id, cantidad: Number(d.cantidad_receta), unidad: d.unidad_receta, aprovechamiento: Number(d.aprovechamiento_pct) }));
+  }
+  st.ed = { producto_id: prodId, rendimiento: r ? Number(r.rendimiento) : 1, notas: r ? r.notas || '' : '', lineas };
+  pintarEditor();
+}
+function prodDe(id) { return st.productos.find(p => p.id === id); }
+function tieneReceta(id) { return st.recetas.some(r => r.producto_id === id); }
+function pintarEditor() {
+  const ed = st.ed, p = ed.producto_id ? prodDe(ed.producto_id) : null;
+  $('r-panel').innerHTML = `
+    <div class="bloque"><h3>${p ? 'Receta de ' + esc(p.nombre) : 'Nueva receta'}</h3>
+      <div class="fila">
+        <div class="campo buscador" style="flex:2"><label>Producto (terminado, base o plato)</label>
+          <input id="e-prod" value="${p ? esc(p.nombre) : ''}" placeholder="Buscar producto…" autocomplete="off" ${p && tieneReceta(p.id) ? 'disabled' : ''}><div class="resultados oculto" id="e-pres"></div></div>
+        <div class="campo" style="max-width:170px"><label>Rinde (${p ? UNI[p.unidad_medida] : 'unidad del producto'})</label><input id="e-rend" type="number" step="0.001" min="0" value="${ed.rendimiento}"></div>
+        ${p ? '' : '<button class="btn-sec" id="e-crear" style="margin-bottom:1px">+ Crear producto nuevo</button>'}
+      </div>
+      <p class="ayuda" style="margin:8px 0 0">Ej. una base de bizcocho que rinde 2 kg, una torta que rinde 1 unidad o un jugo que rinde 1 vaso.</p>
+    </div>
+    <div class="bloque"><h3>Insumos y bases</h3>
+      <div class="buscador" style="margin-bottom:8px"><input id="e-ins" placeholder="Agregar insumo o base (Enter)…" autocomplete="off"><div class="resultados oculto" id="e-ires"></div></div>
+      <table class="t"><thead><tr><th>Insumo</th><th class="n">Cantidad</th><th>Unidad</th><th class="n">% aprov.</th><th class="n">Bruto</th><th class="n">Costo base</th><th class="n">Costo</th><th></th></tr></thead><tbody id="e-filas"></tbody></table>
+      <p class="ayuda" style="margin:10px 0 0">Cantidad = lo que lleva la receta ya limpio (neto). % aprovechamiento = cuánto se aprovecha al comprar (ej. fresa sin hojas 90%). El costo usa la cantidad bruta y el costo promedio sin IGV.</p>
+    </div>
+    <div class="bloque"><div class="kpis" id="e-kpis"></div></div>
+    <div class="bloque"><h3>Preparación / notas</h3><textarea id="e-notas" rows="4" placeholder="Pasos, temperatura, tiempo de horno…">${esc(ed.notas)}</textarea></div>
+    <div class="fila" style="justify-content:flex-end"><button class="btn" id="e-guardar">Guardar receta</button></div>
+    <div class="error" id="e-error"></div><div class="okmsg" id="e-ok"></div>`;
+  buscadorProducto();
+  buscadorInsumo();
+  pintarLineas();
+  $('e-rend').oninput = () => { ed.rendimiento = Number($('e-rend').value); calcular(); };
+  $('e-notas').oninput = () => ed.notas = $('e-notas').value;
+  if ($('e-crear')) $('e-crear').onclick = () => formProducto(null, nuevo => { st.ed.producto_id = nuevo.id; pintarEditor(); });
+  $('e-guardar').onclick = guardarReceta;
+}
+function buscadorProducto() {
+  const inp = $('e-prod'), res = $('e-pres'); if (inp.disabled) return;
+  inp.oninput = () => {
+    const q = inp.value.trim().toLowerCase(); if (q.length < 2) return res.classList.add('oculto');
+    const enc = st.productos.filter(p => p.activo && ['producto_terminado','intermedio','plato'].includes(p.tipo_item) && (p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q))).slice(0, 15);
+    res.innerHTML = enc.map(p => `<div data-p="${p.id}"><span>${esc(p.nombre)} <small>${p.codigo}</small></span><span>${tipoTag(p.tipo_item)}${tieneReceta(p.id) ? ' <small>ya tiene receta</small>' : ''}</span></div>`).join('') || '<div>Sin resultados. Usa “Crear producto nuevo”.</div>';
+    res.classList.remove('oculto');
+  };
+  res.onclick = e => { const d = e.target.closest('[data-p]'); if (!d) return; const id = Number(d.dataset.p);
+    if (tieneReceta(id)) return abrirReceta(id);
+    st.ed.producto_id = id; pintarEditor(); };
+}
+function buscadorInsumo() {
+  const inp = $('e-ins'), res = $('e-ires'); let enc = [], foco = 0;
+  inp.oninput = () => {
+    const q = inp.value.trim().toLowerCase(); if (q.length < 2) return res.classList.add('oculto');
+    enc = st.productos.filter(p => p.activo && ['insumo','intermedio','paqueteria','producto_terminado'].includes(p.tipo_item) && p.id !== st.ed.producto_id && (p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q))).slice(0, 15); foco = 0;
+    res.innerHTML = enc.map((p, i) => `<div data-p="${p.id}" class="${i ? '' : 'foco'}"><span>${esc(p.nombre)} <small>${p.codigo}</small></span><span>${tipoTag(p.tipo_item)} <small>${st.costos[p.id] != null ? S(st.costos[p.id]) + '/' + UNI[p.unidad_medida] : 'sin costo'}</small></span></div>`).join('') || '<div>Sin resultados</div>';
+    res.classList.remove('oculto');
+  };
+  inp.onkeydown = e => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); foco = Math.max(0, Math.min(enc.length - 1, foco + (e.key === 'ArrowDown' ? 1 : -1))); [...res.children].forEach((d, i) => d.classList.toggle('foco', i === foco)); }
+    if (e.key === 'Enter' && enc[foco]) { e.preventDefault(); agregar(enc[foco].id); }
+  };
+  res.onclick = e => { const d = e.target.closest('[data-p]'); if (d) agregar(Number(d.dataset.p)); };
+  function agregar(id) {
+    const p = prodDe(id);
+    if (st.ed.lineas.some(l => l.insumo_id === id)) { inp.value = ''; res.classList.add('oculto'); return; }
+    st.ed.lineas.push({ insumo_id: id, cantidad: '', unidad: UNIDADES_RECETA[p.unidad_medida][0], aprovechamiento: 100 });
+    inp.value = ''; res.classList.add('oculto'); pintarLineas();
+    const c = $('e-filas').querySelectorAll('.l-c'); c[c.length - 1].focus();
+  }
+}
+function lineaCalc(l) {
+  const p = prodDe(l.insumo_id), base = Number(l.cantidad || 0) * A_BASE[l.unidad], bruto = base * 100 / (Number(l.aprovechamiento) || 100);
+  const cu = st.costos[l.insumo_id];
+  return { p, base, bruto, cu, costo: cu == null ? null : bruto * cu };
+}
+function pintarLineas() {
+  $('e-filas').innerHTML = st.ed.lineas.map((l, i) => { const k = lineaCalc(l), p = k.p;
+    return `<tr><td>${esc(p.nombre)} ${p.tipo_item === 'intermedio' ? '<span class="tipo intermedio">Base</span>' : ''}<br><small style="color:#999">${p.codigo}</small></td>
+      <td class="n"><input class="l-c w-c" data-i="${i}" type="number" step="0.001" min="0" value="${l.cantidad}"></td>
+      <td><select class="l-u w-u" data-i="${i}">${UNIDADES_RECETA[p.unidad_medida].map(u => `<option ${u === l.unidad ? 'selected' : ''}>${u}</option>`).join('')}</select></td>
+      <td class="n"><input class="l-a w-a" data-i="${i}" type="number" step="1" min="1" max="100" value="${l.aprovechamiento}"></td>
+      <td class="n l-bruto">${N(k.bruto, 4)} ${UNI[p.unidad_medida]}</td>
+      <td class="n">${k.cu == null ? '<span class="sin-costo">sin costo</span>' : S(k.cu, 2) + '/' + UNI[p.unidad_medida]}</td>
+      <td class="n l-costo"><b>${k.costo == null ? '—' : S(k.costo, 3)}</b></td>
+      <td><button class="x" data-q="${i}">✕</button></td></tr>`; }).join('') || '<tr><td colspan="8" class="vacio">Agrega los insumos y bases de la receta.</td></tr>';
+  $('e-filas').oninput = $('e-filas').onchange = e => {
+    const i = e.target.dataset.i; if (i === undefined) return; const l = st.ed.lineas[i];
+    if (e.target.classList.contains('l-c')) l.cantidad = e.target.value;
+    if (e.target.classList.contains('l-u')) l.unidad = e.target.value;
+    if (e.target.classList.contains('l-a')) l.aprovechamiento = e.target.value;
+    const k = lineaCalc(l), tr = e.target.closest('tr');
+    tr.querySelector('.l-bruto').textContent = `${N(k.bruto, 4)} ${UNI[k.p.unidad_medida]}`;
+    tr.querySelector('.l-costo').innerHTML = `<b>${k.costo == null ? '—' : S(k.costo, 3)}</b>`;
+    calcular();
+  };
+  $('e-filas').onclick = e => { const q = e.target.dataset.q; if (q !== undefined) { st.ed.lineas.splice(Number(q), 1); pintarLineas(); } };
+  calcular();
+}
+function calcular() {
+  const ed = st.ed, p = ed.producto_id ? prodDe(ed.producto_id) : null;
+  const total = ed.lineas.reduce((a, l) => a + (lineaCalc(l).costo || 0), 0);
+  const sin = ed.lineas.filter(l => lineaCalc(l).cu == null).length;
+  const unit = ed.rendimiento > 0 ? total / ed.rendimiento : null;
+  const pv = p && p.precio_venta ? Number(p.precio_venta) / (p.afecto_igv ? 1.18 : 1) : null;
+  const fc = pv && unit != null ? unit / pv * 100 : null;
+  $('e-kpis').innerHTML = `
+    <div class="kpi"><span>Costo total de la receta</span><b>${S(total)}</b></div>
+    <div class="kpi"><span>Costo por ${p ? UNI[p.unidad_medida] : 'unidad'}</span><b>${S(unit)}</b></div>
+    <div class="kpi"><span>Precio de venta sin IGV</span><b>${pv ? S(pv) : '—'}</b></div>
+    <div class="kpi"><span>Food cost</span><b class="fc ${fcClase(fc)}" style="font-size:20px">${fc == null ? '—' : N(fc, 1) + '%'}</b></div>
+    ${sin ? `<div class="sin-costo" style="grid-column:1/-1">⚠ ${sin} insumo(s) aún sin costo: registra una compra o su costo inicial para que el food cost sea real.</div>` : ''}`;
+}
+async function guardarReceta() {
+  $('e-error').textContent = ''; $('e-ok').textContent = '';
+  const ed = st.ed;
+  if (!ed.producto_id) return $('e-error').textContent = 'Elige o crea el producto de la receta.';
+  if (ed.lineas.some(l => !(Number(l.cantidad) > 0))) return $('e-error').textContent = 'Cada insumo necesita una cantidad.';
+  $('e-guardar').disabled = true;
+  const { error } = await sb.rpc('guardar_receta', { p: { producto_id: ed.producto_id, rendimiento: ed.rendimiento, notas: ed.notas,
+    items: ed.lineas.map(l => ({ insumo_id: l.insumo_id, cantidad: Number(l.cantidad), unidad: l.unidad, aprovechamiento: Number(l.aprovechamiento) || 100 })) } });
+  $('e-guardar').disabled = false;
+  if (error) return $('e-error').textContent = errTxt(error);
+  await cargarMaestros(); st.sel = ed.producto_id; pintarLista(); await abrirReceta(ed.producto_id);
+  $('e-ok').textContent = '✓ Receta guardada. El costo de las recetas que usan esta base se actualiza solo.';
+}
+
+// ===== PRODUCTOS (maestro) =====
+const TIPOS_P = [['', 'Todos'], ['insumo', 'Insumos'], ['intermedio', 'Bases'], ['producto_terminado', 'Terminados'], ['plato', 'Platos'], ['paqueteria', 'Paquetería'], ['mercaderia', 'Mercadería'], ['servicio', 'Servicios']];
+$('p-tipos').innerHTML = TIPOS_P.map(([k, n]) => `<button data-k="${k}" class="${k ? '' : 'activa'}">${n}</button>`).join('');
+$('p-tipos').onclick = e => { const k = e.target.dataset.k; if (k === undefined) return; st.ptipo = k; [...$('p-tipos').children].forEach(b => b.classList.toggle('activa', b.dataset.k === k)); pintarProductos(); };
+$('p-q').oninput = () => pintarProductos(); $('p-inact').onchange = () => pintarProductos();
+$('p-nuevo').onclick = () => formProducto(null, () => pintarProductos());
+function pintarProductos() {
+  const q = $('p-q').value.trim().toLowerCase(), inact = $('p-inact').checked;
+  const cat = id => (st.categorias.find(c => c.id === id) || {}).nombre || '';
+  const l = st.productos.filter(p => (inact || p.activo) && (!st.ptipo || p.tipo_item === st.ptipo) && (!q || p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q)));
+  $('p-filas').innerHTML = l.map(p => `<tr style="${p.activo ? '' : 'color:#aaa'}"><td>${p.codigo}</td><td>${esc(p.nombre)}</td><td>${tipoTag(p.tipo_item)}</td><td>${UNI[p.unidad_medida]}</td><td>${esc(cat(p.categoria_id))}</td>
+    <td class="n">${p.vendible ? S(p.precio_venta) : ''}</td><td>${DESCUENTO[p.modo_descuento]}${p.modo_descuento === 'porcion' ? ` (${p.porciones_por_unidad})` : ''}</td>
+    <td>${tieneReceta(p.id) ? `<button class="btn-mini" data-rec="${p.id}">Ver receta</button>` : ''}</td><td><button class="btn-mini" data-ed="${p.id}">Editar</button></td></tr>`).join('') || '<tr><td colspan="9" class="vacio">Sin productos.</td></tr>';
+  $('p-filas').onclick = e => {
+    if (e.target.dataset.ed) formProducto(prodDe(Number(e.target.dataset.ed)), () => pintarProductos());
+    if (e.target.dataset.rec) { $('tabs').querySelector('[data-t="recetas"]').click(); abrirReceta(Number(e.target.dataset.rec)); }
+  };
+}
+function cerrarModal() { $('modal').classList.add('oculto'); }
+$('modal').onclick = e => { if (e.target === $('modal')) cerrarModal(); };
+
+// Formulario de producto (nuevo o editar). alGuardar(producto) se llama al terminar.
+function formProducto(p, alGuardar) {
+  const n = !p;
+  p = p || { tipo_item: 'insumo', unidad_medida: 'Kilo', modo_descuento: 'unidad', vendible: false, afecto_igv: true, area_preparacion: 'vitrina', activo: true };
+  $('modal-c').innerHTML = `<h3 style="margin-top:0">${n ? 'Nuevo producto' : 'Editar ' + esc(p.codigo)}</h3>
+    <div class="grid2">
+      <div class="campo"><label>Tipo de ítem</label><select id="f-tipo" ${n ? '' : 'disabled'}>${Object.entries(TIPO).map(([k, v]) => `<option value="${k}" ${k === p.tipo_item ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+      <div class="campo"><label>Código</label><input id="f-cod" value="${esc(p.codigo || '')}" ${n ? '' : 'disabled'} placeholder="se genera solo"></div>
+    </div>
+    <div class="campo" style="margin-top:10px"><label>Nombre</label><input id="f-nom" value="${esc(p.nombre || '')}"></div>
+    <div class="grid2" style="margin-top:10px">
+      <div class="campo"><label>Unidad base de inventario</label><select id="f-uni">${['Kilo','Litro','Unidad'].map(u => `<option ${u === p.unidad_medida ? 'selected' : ''}>${u}</option>`).join('')}</select></div>
+      <div class="campo"><label>Categoría</label><select id="f-cat"><option value="">—</option>${st.categorias.map(c => `<option value="${c.id}" ${c.id === p.categoria_id ? 'selected' : ''}>${esc(c.nombre)}</option>`).join('')}</select></div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:18px;flex-wrap:wrap">
+      <label class="check"><input type="checkbox" id="f-vend" ${p.vendible ? 'checked' : ''}> Se vende en caja</label>
+      <label class="check"><input type="checkbox" id="f-igv" ${p.afecto_igv ? 'checked' : ''}> Afecto a IGV</label>
+      <label class="check"><input type="checkbox" id="f-act" ${p.activo ? 'checked' : ''}> Activo</label>
+    </div>
+    <div id="f-venta" class="grid2" style="margin-top:10px">
+      <div class="campo"><label>Precio de venta (con IGV)</label><input id="f-precio" type="number" step="0.10" min="0" value="${p.precio_venta ?? ''}"></div>
+      <div class="campo"><label>Se prepara en</label><select id="f-area"><option value="vitrina" ${p.area_preparacion === 'vitrina' ? 'selected' : ''}>Vitrina (sale directo)</option><option value="cocina" ${p.area_preparacion === 'cocina' ? 'selected' : ''}>Cocina (va a la pantalla)</option></select></div>
+      <div class="campo"><label>Al venderse descuenta</label><select id="f-modo">${Object.entries(DESCUENTO).map(([k, v]) => `<option value="${k}" ${k === p.modo_descuento ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+      <div></div>
+      <div class="campo" id="f-padre-box"><label>Producto entero del que sale</label><select id="f-padre"><option value="">—</option>${st.productos.filter(x => x.tipo_item === 'producto_terminado' && x.id !== p.id).map(x => `<option value="${x.id}" ${x.id === p.producto_padre_id ? 'selected' : ''}>${esc(x.nombre)}</option>`).join('')}</select></div>
+      <div class="campo" id="f-porc-box"><label>Porciones por entero</label><input id="f-porc" type="number" min="1" step="1" value="${p.porciones_por_unidad ?? ''}"></div>
+    </div>
+    <p class="ayuda" style="margin-top:10px">Unidad base: la que usas para contar el stock y en las recetas (no la presentación de compra). Ej. azúcar en Kilo aunque la compres en sacos.</p>
+    <div class="fila" style="justify-content:flex-end;margin-top:12px"><button class="btn-sec" onclick="cerrarModal()">Cancelar</button><button class="btn" id="f-ok">Guardar</button></div>
+    <div class="error" id="f-err"></div>`;
+  $('modal').classList.remove('oculto');
+  const sinc = () => {
+    const vend = $('f-vend').checked; $('f-venta').classList.toggle('oculto', !vend);
+    const porc = $('f-modo').value === 'porcion'; $('f-padre-box').classList.toggle('oculto', !porc); $('f-porc-box').classList.toggle('oculto', !porc);
+  };
+  const codigo = async () => { if (!n) return; const { data } = await sb.rpc('siguiente_codigo', { p_tipo: $('f-tipo').value }); $('f-cod').value = data || ''; };
+  $('f-tipo').onchange = () => {
+    const t = $('f-tipo').value;
+    $('f-modo').value = t === 'plato' ? 'receta' : t === 'servicio' ? 'ninguno' : 'unidad';
+    $('f-vend').checked = ['producto_terminado','plato','mercaderia','servicio'].includes(t);
+    if (t === 'plato') $('f-area').value = 'cocina';
+    sinc(); codigo();
+  };
+  $('f-vend').onchange = sinc; $('f-modo').onchange = sinc;
+  sinc(); codigo();
+  $('f-ok').onclick = async () => {
+    $('f-err').textContent = '';
+    const nombre = $('f-nom').value.trim(); if (!nombre) return $('f-err').textContent = 'Escribe el nombre.';
+    const vend = $('f-vend').checked, modo = vend ? $('f-modo').value : ($('f-tipo').value === 'servicio' ? 'ninguno' : 'unidad');
+    const reg = {
+      nombre, unidad_medida: $('f-uni').value, categoria_id: $('f-cat').value ? Number($('f-cat').value) : null,
+      vendible: vend, afecto_igv: $('f-igv').checked, activo: $('f-act').checked,
+      precio_venta: vend ? Number($('f-precio').value || 0) : null, area_preparacion: vend ? $('f-area').value : 'vitrina',
+      modo_descuento: modo,
+      producto_padre_id: modo === 'porcion' && $('f-padre').value ? Number($('f-padre').value) : null,
+      porciones_por_unidad: modo === 'porcion' && $('f-porc').value ? Number($('f-porc').value) : null
+    };
+    if (vend && !(reg.precio_venta > 0) && $('f-tipo').value !== 'servicio') return $('f-err').textContent = 'Indica el precio de venta.';
+    if (modo === 'porcion' && (!reg.producto_padre_id || !reg.porciones_por_unidad)) return $('f-err').textContent = 'Para porción indica el producto entero y cuántas porciones salen.';
+    let res;
+    if (n) { reg.tipo_item = $('f-tipo').value; reg.codigo = $('f-cod').value.trim().toUpperCase(); res = await sb.from('productos').insert(reg).select().single(); }
+    else res = await sb.from('productos').update(reg).eq('id', p.id).select().single();
+    if (res.error) return $('f-err').textContent = /duplicate|unique/i.test(res.error.message) ? 'Ese código ya existe.' : errTxt(res.error);
+    cerrarModal(); await cargarMaestros(); pintarLista(); alGuardar && alGuardar(res.data);
+  };
+}
+
+iniciar();
+</script>
+</body>
+</html>
