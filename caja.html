@@ -125,6 +125,10 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 .cuotas-tabla{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}
 .cuotas-tabla td{padding:4px}.cuotas-tabla input{width:100%;padding:8px;border:1px solid var(--borde);border-radius:8px;font:inherit}
 .ret-info{background:#fff8e6;color:#8a5a00;padding:8px 12px;border-radius:10px;font-size:13px;margin:6px 0}
+.mm-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.mm-chips button{padding:5px 10px;border-radius:14px;background:var(--fondo);font-size:12px;font-weight:600;border:1px solid var(--borde)}
+.mm-chips button:hover{border-color:var(--rojo);color:var(--rojo)}
+.mlista .obs{background:#fff4d6;color:#7a4a00;font-size:12px;padding:3px 8px;border-radius:6px;margin:2px 0}
 .mm-abiertas{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
 .mm-abiertas button{padding:8px 12px;border:2px solid var(--borde);background:#fff;border-radius:10px;font-weight:700}
 .mm-abiertas button:hover{border-color:var(--rojo);color:var(--rojo)}
@@ -267,6 +271,9 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
     <div id="mm-abiertas" class="mm-abiertas"></div>
     <div class="campo"><label>Mesa (si ya está abierta, se suma a su cuenta · "3+4" si se juntaron)</label><input id="mm-mesa" placeholder="Ej. 3" autocomplete="off"></div>
     <div class="campo"><label>Mozo</label><select id="mm-mozo"></select></div>
+    <div class="campo"><label>Observaciones para cocina (opcional)</label>
+      <div class="mm-chips" id="mm-chips"><button>Para llevar</button><button>Urgente</button><button>Todo junto</button><button>Primero las bebidas</button><button>Cliente alérgico</button></div>
+      <textarea id="mm-obs" rows="2" maxlength="200" placeholder="Ej. Sin cebolla en todo, cliente apurado" style="width:100%;font:inherit;padding:10px 12px;border:1px solid var(--borde);border-radius:10px;resize:vertical"></textarea></div>
     <div class="fila" style="margin-top:12px">
       <button class="btn-sec" id="mm-cancelar">Cancelar</button>
       <button class="btn" id="mm-ok">Enviar</button>
@@ -905,8 +912,7 @@ $('ctx-cancelar').onclick = () => { st.ctx = null; st.carrito = []; dibujarCarri
 $('enviar-mesa').onclick = async () => {
   msg('v-error');
   if (!navigator.onLine) return msg('v-error', 'Enviar a mesa necesita internet (la cocina lo recibe en línea).');
-  if (st.ctx && st.ctx.tipo === 'agregar') return enviarItems(st.ctx.pedido);
-  msg('mm-error'); $('mm-mesa').value = '';
+  msg('mm-error'); $('mm-mesa').value = st.ctx && st.ctx.tipo === 'agregar' ? st.ctx.pedido.mesa : ''; $('mm-obs').value = '';
   const { data } = await sb.from('usuarios').select('id,nombre').eq('rol', 'mozo').eq('activo', true).order('nombre');
   st.mozos = data || [];
   $('mm-mozo').innerHTML = '<option value="">— Sin mozo —</option>' + st.mozos.map(m => `<option value="${m.id}">${esc(m.nombre)}</option>`).join('');
@@ -917,6 +923,7 @@ $('enviar-mesa').onclick = async () => {
 };
 $('mm-cancelar').onclick = () => $('m-mesa').classList.add('oculto');
 $('mm-mesa').onkeydown = e => { if (e.key === 'Enter') $('mm-ok').click(); };
+$('mm-chips').onclick = e => { if (e.target.tagName !== 'BUTTON') return; const t = $('mm-obs').value.trim(); $('mm-obs').value = t ? t + ', ' + e.target.textContent.toLowerCase() : e.target.textContent; $('mm-obs').focus(); };
 $('mm-abiertas').onclick = e => { const b = e.target.closest('[data-mesa]'); if (b) { $('mm-mesa').value = b.dataset.mesa; $('mm-ok').click(); } };
 $('mm-ok').onclick = async () => {
   const mesa = $('mm-mesa').value.trim();
@@ -931,7 +938,8 @@ $('mm-ok').onclick = async () => {
   enviarItems(data);
 };
 async function enviarItems(pedido) {
-  const filas = st.carrito.map(l => ({ pedido_id: pedido.id, producto_id: l.producto_id, cantidad: l.cantidad, precio_unit: l.precio_unit, nota: l.nota }));
+  const obs = ($('mm-obs').value || '').trim() || null;
+  const filas = st.carrito.map(l => ({ pedido_id: pedido.id, producto_id: l.producto_id, cantidad: l.cantidad, precio_unit: l.precio_unit, nota: l.nota, obs_envio: obs }));
   const { error } = await sb.from('pedido_items').insert(filas);
   if (error) return msg('v-error', errorTexto(error));
   const aCocina = st.carrito.filter(l => l.area === 'cocina').length;
@@ -957,7 +965,7 @@ async function abrirMesas() {
   // productos de cada mesa
   const porMesa = {};
   if (data.length) {
-    const r = await sb.from('pedido_items').select('pedido_id,cantidad,precio_unit,nota,estado_cocina,productos(nombre)')
+    const r = await sb.from('pedido_items').select('pedido_id,cantidad,precio_unit,nota,obs_envio,estado_cocina,productos(nombre)')
       .in('pedido_id', data.map(m => m.id)).neq('estado_cocina', 'anulado').order('id');
     (r.data || []).forEach(i => (porMesa[i.pedido_id] = porMesa[i.pedido_id] || []).push(i));
   }
@@ -968,7 +976,7 @@ async function abrirMesas() {
     return `<div class="mesa-row">
       <div class="top"><span class="nom">${esc(m.mesa)}${m.en_cocina ? `<span class="etq coc">${m.en_cocina} en cocina</span>` : ''}${m.listos ? `<span class="etq lis">${m.listos} listo(s) para servir</span>` : ''}</span><b>${S(m.total)}</b></div>
       <div class="det">${m.mozo ? esc(m.mozo) + ' · ' : ''}hace ${min} min</div>
-      <div class="mlista">${lineas || '<div class="ml"><span>Sin productos</span></div>'}</div>
+      <div class="mlista">${[...new Set((porMesa[m.id] || []).map(i => i.obs_envio).filter(Boolean))].map(o => `<div class="obs">📝 ${esc(o)}</div>`).join('')}${lineas || '<div class="ml"><span>Sin productos</span></div>'}</div>
       <div class="acc">
         <button class="btn-sec" data-acc="agregar" data-id="${m.id}">+ Agregar</button>
         <button class="btn-sec" data-acc="precuenta" data-id="${m.id}">Precuenta</button>

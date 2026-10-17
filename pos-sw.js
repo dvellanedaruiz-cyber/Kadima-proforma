@@ -1,5 +1,5 @@
 // Kadima Caja · guarda la app en el equipo para abrirla sin internet
-const CACHE = 'kadima-caja-v6';
+const CACHE = 'kadima-caja-v7';
 const APP = [
   'caja.html',
   'cocina.html',
