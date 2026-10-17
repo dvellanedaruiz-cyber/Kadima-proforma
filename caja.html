@@ -57,6 +57,11 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 .mesa-row .nom{font-size:18px;font-weight:800}
 .mesa-row .det{font-size:13px;color:var(--gris);margin:4px 0 10px}
 .mlista{margin:0 0 10px;font-size:14px}
+.vrow{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #f1eeeb;font-size:14px}
+.vrow .d{font-weight:700}.vrow .s{font-size:12px;color:var(--gris)}
+.vrow.anulada{opacity:.55}.vrow.anulada .d{text-decoration:line-through}
+.est-s{font-size:11px;font-weight:700;padding:2px 6px;border-radius:6px;background:#eee;color:#555}
+.est-s.aceptado{background:#e3f5e9;color:#1e7d3a}.est-s.rechazado{background:#fde2e2;color:#b00020}.est-s.anulado{background:#eee;color:#555}
 .ml{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px dashed var(--borde)}
 .ml small{color:var(--gris);font-size:12px;white-space:nowrap}
 .ml i{color:#b26a00;font-style:normal;font-size:12px}
@@ -206,6 +211,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
       <span class="info" id="b-info"></span>
       <span class="red ok" id="b-red">En línea</span>
       <button id="b-mesas">Mesas <b id="b-nmesas"></b></button>
+      <button id="b-ventas">Ventas</button>
       <button id="b-cerrar">Cerrar caja</button>
       <button id="b-salir">Cambiar usuario</button>
     </div>
@@ -262,6 +268,45 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
     <div id="ms-lista"></div>
     <div class="fila" style="margin-top:12px"><button class="btn-sec" id="ms-cerrar">Volver</button></div>
     <div class="error" id="ms-error"></div>
+  </div>
+</div>
+
+<!-- MODAL VENTAS DEL TURNO -->
+<div class="modal oculto" id="m-ventas">
+  <div class="caja" style="max-width:620px">
+    <h3>Ventas de este turno</h3>
+    <input id="vt-buscar" placeholder="Buscar por número (ej. 52) o cliente" autocomplete="off" style="margin:10px 0">
+    <div id="vt-lista"></div>
+    <div class="fila" style="margin-top:12px"><button class="btn-sec" id="vt-cerrar">Volver</button></div>
+    <div class="error" id="vt-error"></div>
+  </div>
+</div>
+
+<!-- MODAL ANULAR VENTA -->
+<div class="modal oculto" id="m-anular">
+  <div class="caja">
+    <h3>Anular venta</h3>
+    <p class="sub" id="an-doc"></p>
+    <div class="campo"><label>Motivo</label>
+      <select id="an-motivo">
+        <option value="">— Elige el motivo —</option>
+        <option>Error de digitación</option>
+        <option>Producto equivocado</option>
+        <option>Error en el cobro o medio de pago</option>
+        <option>Cliente desistió de la compra</option>
+        <option>Comprobante con datos de cliente errados</option>
+        <option>Venta duplicada</option>
+        <option>Otro</option>
+      </select></div>
+    <div class="campo"><label>Justificación (qué pasó, obligatorio)</label>
+      <textarea id="an-just" rows="3" placeholder="Ej. Se marcó 3 panes en vez de 3 kekes. El cliente pagó con Yape y se le devolvió en efectivo." style="font:inherit;padding:10px 12px;border:1px solid var(--borde);border-radius:10px;width:100%;resize:vertical"></textarea></div>
+    <div class="campo"><label>PIN de un administrador que autoriza</label><input id="an-pin" type="password" inputmode="numeric" maxlength="6" autocomplete="off"></div>
+    <p class="sub" style="font-size:13px">Al anular: el stock vuelve solo, la venta sale del cuadre de caja y, si es boleta o factura, se informa la anulación a SUNAT.</p>
+    <div class="fila" style="margin-top:12px">
+      <button class="btn-sec" id="an-cancelar">Cancelar</button>
+      <button class="btn" id="an-ok">Anular venta</button>
+    </div>
+    <div class="error" id="an-error"></div>
   </div>
 </div>
 
@@ -332,7 +377,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
 const EMPRESA = { nombre:'Kadima Pastelería & Panadería', razon:'INVERSIONES LA SONESTA S.A.C.', ruc:'20535962236', dir:'San Juan de Lurigancho, Lima' };
-const VERSION = 'v4 · SUNAT';
+const VERSION = 'v5 · anulaciones';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = id => document.getElementById(id);
@@ -905,6 +950,64 @@ function armarPrecuenta(m, items) {
     <div class="c">Documento informativo. No es comprobante de pago.</div>`;
 }
 
+// ===== VENTAS DEL TURNO Y ANULACIÓN =====
+const NOMBRE_SUNAT = { no_aplica:'interna', pendiente:'SUNAT pendiente', aceptado:'SUNAT aceptado', rechazado:'SUNAT rechazado', anulado:'SUNAT anulado' };
+$('b-ventas').onclick = abrirVentas;
+$('vt-cerrar').onclick = () => $('m-ventas').classList.add('oculto');
+$('vt-buscar').oninput = dibujarVentas;
+async function abrirVentas() {
+  msg('v-error'); msg('vt-error');
+  if (!navigator.onLine) return msg('v-error', 'Ver y anular ventas necesita internet.');
+  const { data, error } = await sb.from('ventas')
+    .select('id,tipo_doc,serie,numero,total,estado,estado_sunat,emitida_en,clientes(nombre,num_doc),venta_pagos(metodo,monto)')
+    .eq('turno_id', st.turno.id).order('id', { ascending: false });
+  if (error) return msg('v-error', errorTexto(error));
+  st.ventasTurno = data; $('vt-buscar').value = '';
+  dibujarVentas();
+  $('m-ventas').classList.remove('oculto');
+}
+function dibujarVentas() {
+  const q = $('vt-buscar').value.trim().toLowerCase();
+  const lista = (st.ventasTurno || []).filter(v => !q || String(v.numero).includes(q) || (v.clientes && (v.clientes.nombre || '').toLowerCase().includes(q)));
+  $('vt-lista').innerHTML = lista.length ? lista.map(v => `
+    <div class="vrow ${v.estado}">
+      <div><div class="d">${NOMBRE_DOC[v.tipo_doc]} ${v.serie}-${String(v.numero).padStart(8,'0')}</div>
+        <div class="s">${new Date(v.emitida_en).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})} · ${v.venta_pagos.map(p => NOMBRES_METODO[p.metodo]).join(' + ') || '—'}${v.clientes && v.clientes.num_doc !== '00000000' ? ' · ' + esc(v.clientes.nombre) : ''}
+          · <span class="est-s ${v.estado_sunat}">${v.estado === 'anulada' ? 'ANULADA' : NOMBRE_SUNAT[v.estado_sunat]}</span></div></div>
+      <b>${S(v.total)}</b>
+      ${v.estado === 'emitida' ? `<button class="btn-sec" data-anular="${v.id}" style="padding:6px 10px;font-size:13px">Anular</button>` : '<span></span>'}
+    </div>`).join('') : '<div class="vacio">No hay ventas.</div>';
+}
+$('vt-lista').onclick = e => {
+  const id = e.target.dataset.anular; if (!id) return;
+  const v = st.ventasTurno.find(x => x.id == id);
+  st.anulando = v;
+  $('an-doc').textContent = `${NOMBRE_DOC[v.tipo_doc]} ${v.serie}-${String(v.numero).padStart(8,'0')} · ${S(v.total)}`;
+  $('an-motivo').value = ''; $('an-just').value = ''; $('an-pin').value = ''; msg('an-error');
+  $('m-anular').classList.remove('oculto'); $('an-motivo').focus();
+};
+$('an-cancelar').onclick = () => $('m-anular').classList.add('oculto');
+$('an-ok').onclick = async () => {
+  msg('an-error');
+  const motivo = $('an-motivo').value, just = $('an-just').value.trim(), pinA = $('an-pin').value.trim();
+  if (!motivo) return msg('an-error', 'Elige el motivo.');
+  if (just.length < 10) return msg('an-error', 'Escribe una justificación de al menos 10 caracteres.');
+  if (!pinA) return msg('an-error', 'Falta el PIN del administrador que autoriza.');
+  $('an-ok').disabled = true; $('an-ok').textContent = 'Anulando…';
+  const { data, error } = await sb.rpc('anular_venta', { p_venta: st.anulando.id, p_motivo: motivo, p_justificacion: just,
+    p_usuario: st.usuario.id, p_pin_autoriza: pinA });
+  $('an-ok').disabled = false; $('an-ok').textContent = 'Anular venta';
+  if (error) return msg('an-error', errorTexto(error));
+  let aviso = `✓ Anulada (autorizó ${data.autorizado_por}). El stock ya volvió.`;
+  if (st.anulando.tipo_doc !== 'nota_venta') {
+    const r = await sb.functions.invoke('nubefact', { body: { venta_id: st.anulando.id, accion: 'anular', motivo } }).catch(e => ({ error: e }));
+    const fallo = r.error || (r.data && r.data.error);
+    aviso += fallo ? ' ⚠ No se pudo informar a SUNAT todavía; revísalo en v_anulaciones.' : ' Anulación informada a SUNAT.';
+  }
+  $('m-anular').classList.add('oculto');
+  await abrirVentas(); msg('vt-error', aviso);
+};
+
 // ===== CIERRE DE CAJA =====
 let resumenCierre = { efectivoEsperado: 0 };
 $('b-cerrar').onclick = async () => {
@@ -916,6 +1019,7 @@ $('b-cerrar').onclick = async () => {
   const { data, error } = await sb.from('ventas').select('total,estado,venta_pagos(metodo,monto)').eq('turno_id', st.turno.id);
   if (error) return msg('v-error', errorTexto(error));
   const validas = data.filter(v => v.estado === 'emitida');
+  const anuladas = data.filter(v => v.estado === 'anulada');
   const porMetodo = {};
   validas.forEach(v => v.venta_pagos.forEach(p => porMetodo[p.metodo] = r2((porMetodo[p.metodo] || 0) + Number(p.monto))));
   const totalVentas = r2(validas.reduce((a, v) => a + Number(v.total), 0));
@@ -924,7 +1028,8 @@ $('b-cerrar').onclick = async () => {
   $('ci-tabla').innerHTML =
     `<tr><td>Efectivo inicial</td><td>${S(st.turno.monto_inicial)}</td></tr>` +
     Object.keys(NOMBRES_METODO).filter(m => porMetodo[m]).map(m => `<tr><td>${NOMBRES_METODO[m]}</td><td>${S(porMetodo[m])}</td></tr>`).join('') +
-    `<tr><td><b>Efectivo que debería haber</b></td><td>${S(resumenCierre.efectivoEsperado)}</td></tr>`;
+    `<tr><td><b>Efectivo que debería haber</b></td><td>${S(resumenCierre.efectivoEsperado)}</td></tr>` +
+    (anuladas.length ? `<tr><td>Ventas anuladas (no suman)</td><td>${anuladas.length} · ${S(anuladas.reduce((a, v) => a + Number(v.total), 0))}</td></tr>` : '');
   $('m-cierre').classList.remove('oculto');
 };
 $('ci-contado').oninput = () => {
