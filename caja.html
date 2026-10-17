@@ -975,7 +975,7 @@ function dibujarVentas() {
         <div class="s">${new Date(v.emitida_en).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})} · ${v.venta_pagos.map(p => NOMBRES_METODO[p.metodo]).join(' + ') || '—'}${v.clientes && v.clientes.num_doc !== '00000000' ? ' · ' + esc(v.clientes.nombre) : ''}
           · <span class="est-s ${v.estado_sunat}">${v.estado === 'anulada' ? 'ANULADA' : NOMBRE_SUNAT[v.estado_sunat]}</span></div></div>
       <b>${S(v.total)}</b>
-      ${v.estado === 'emitida' ? `<button class="btn-sec" data-anular="${v.id}" style="padding:6px 10px;font-size:13px">Anular</button>` : '<span></span>'}
+      <span style="display:flex;gap:6px"><a class="btn-sec" href="comprobantes.html?venta=${v.id}" target="_blank" style="padding:6px 10px;font-size:13px;text-decoration:none">PDF</a>${v.estado === 'emitida' ? `<button class="btn-sec" data-anular="${v.id}" style="padding:6px 10px;font-size:13px">Anular</button>` : ''}</span>
     </div>`).join('') : '<div class="vacio">No hay ventas.</div>';
 }
 $('vt-lista').onclick = e => {

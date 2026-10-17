@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kadima Comprobantes</title>
+<meta name="theme-color" content="#8B0000">
+<link rel="icon" href="pos-icon-192.png">
+<style>
+:root{--rojo:#8B0000;--fondo:#f6f4f2;--borde:#e3dfdb;--gris:#6b6b6b;--texto:#1f1f1f;--ok:#1e7d3a}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--fondo);color:var(--texto);font-size:14px}
+button{font:inherit;cursor:pointer;border:none;border-radius:8px}
+input,select{font:inherit;padding:9px 10px;border:1px solid var(--borde);border-radius:8px;background:#fff}
+.oculto{display:none!important}
+.btn{background:var(--rojo);color:#fff;padding:9px 14px;font-weight:600}
+.btn-sec{background:#fff;color:var(--rojo);border:1.5px solid var(--rojo);padding:6px 10px;font-weight:600;font-size:13px}
+.error{color:#b00020;min-height:18px;margin-top:8px}
+.centro{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.tarjeta{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);padding:28px;width:100%;max-width:380px}
+.tarjeta input{width:100%;margin-bottom:10px}
+.barra{background:var(--rojo);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:12px}
+.barra b{font-size:18px}
+.filtros{display:flex;flex-wrap:wrap;gap:8px;padding:14px 16px;align-items:end}
+.filtros label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--gris)}
+.tabla-wrap{padding:0 16px 24px;overflow-x:auto}
+table.lista{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden}
+.lista th{background:#f1ece8;text-align:left;padding:10px;font-size:12px;color:var(--gris);font-weight:700}
+.lista td{padding:10px;border-top:1px solid #f1eeeb;vertical-align:middle}
+.lista td.n{text-align:right;white-space:nowrap}
+.lista tr.anulada td{color:#999;text-decoration:line-through}
+.lista tr.anulada td:last-child{text-decoration:none}
+.chip{font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;background:#eee;color:#555;white-space:nowrap}
+.chip.aceptado{background:#e3f5e9;color:var(--ok)}.chip.rechazado{background:#fde2e2;color:#b00020}
+.resumen{padding:0 16px 8px;color:var(--gris)}
+.acc{display:flex;gap:6px;white-space:nowrap}
+
+/* ===== Comprobante A4 (mismo formato que el PDF de referencia) ===== */
+#lienzo{position:fixed;left:-10000px;top:0}
+.a4{width:210mm;min-height:290mm;padding:14mm 12mm;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:9.5pt}
+.a4 .cab{display:flex;justify-content:space-between;gap:10mm}
+.a4 .emp b{font-size:12pt}
+.a4 .emp div{font-size:7.5pt;line-height:1.35}
+.a4 .caja-doc{border:1px solid #999;padding:4mm 6mm;text-align:center;min-width:62mm;font-weight:700;font-size:11pt;line-height:1.9}
+.a4 .datos{display:grid;grid-template-columns:32mm 1fr 22mm 30mm;row-gap:2mm;margin:8mm 0 3mm;font-size:8pt}
+.a4 .datos .k{font-weight:700}
+.a4 table.items{width:100%;border-collapse:collapse;font-size:8pt}
+.a4 .items th{border:1px solid #999;padding:1.5mm;font-weight:700}
+.a4 .items td{border-left:1px solid #999;border-right:1px solid #999;padding:1.2mm 2mm;text-align:center}
+.a4 .items tr:last-child td{border-bottom:1px solid #999}
+.a4 .items td.d{text-align:left}
+.a4 .pie{display:flex;justify-content:space-between;align-items:flex-start;margin-top:3mm;font-size:8pt}
+.a4 .pie .son{font-weight:700}
+.a4 table.tot{border-collapse:collapse;font-size:8pt;width:72mm}
+.a4 .tot td{border:1px solid #999;padding:1.8mm 2mm}
+.a4 .tot td.k{font-weight:700;text-align:center;width:45mm}
+.a4 .legal{border-top:1px solid #444;border-bottom:1px solid #444;margin-top:8mm;padding:5mm 0;text-align:center;font-size:8pt;line-height:1.6}
+.a4 .legal svg{width:26mm;height:26mm;margin-top:2mm}
+.a4 .marca{color:#b00020;font-weight:700;font-size:10pt;margin-top:2mm}
+</style>
+</head>
+<body>
+
+<section id="v-login" class="centro">
+  <form class="tarjeta" id="f-login">
+    <h2 style="color:var(--rojo);margin:0 0 4px">KADIMA</h2>
+    <p style="color:var(--gris);margin:0 0 16px">Comprobantes · iniciar sesión</p>
+    <input id="l-email" type="email" value="caja@kadima.pe" required>
+    <input id="l-pass" type="password" placeholder="Contraseña" required>
+    <button class="btn" style="width:100%">Ingresar</button>
+    <div class="error" id="l-error"></div>
+  </form>
+</section>
+
+<section id="v-app" class="oculto">
+  <div class="barra"><b>KADIMA</b><span>Comprobantes</span></div>
+  <div class="filtros">
+    <label>Desde<input type="date" id="f-desde"></label>
+    <label>Hasta<input type="date" id="f-hasta"></label>
+    <label>Tipo<select id="f-tipo"><option value="">Todos</option><option value="boleta">Boleta</option><option value="factura">Factura</option><option value="nota_venta">Nota de venta</option></select></label>
+    <label style="flex:1;min-width:200px">Buscar<input id="f-q" placeholder="Número (ej. 420), cliente o DNI/RUC"></label>
+    <button class="btn" id="f-buscar">Buscar</button>
+  </div>
+  <div class="resumen" id="resumen"></div>
+  <div class="tabla-wrap"><table class="lista"><thead><tr>
+    <th>Fecha</th><th>Comprobante</th><th>Cliente</th><th>Total</th><th>SUNAT</th><th></th>
+  </tr></thead><tbody id="filas"></tbody></table>
+  <div class="error" id="a-error"></div></div>
+</section>
+
+<div id="lienzo"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+<script>
+const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
+// Datos que salen en la cabecera del comprobante (editables aquí)
+const EMPRESA = {
+  razon: 'INVERSIONES LA SONESTA S.A.C.', ruc: '20535962236',
+  direccion: 'AV. PROCERES DE LA INDEPENDEN MZA. K2 LOTE. 3A URB. CANTO REY 2DA ETAPA (1ER PISO)',
+  ubigeo: 'LIMA - LIMA - SAN JUAN DE LURIGANCHO', local: 'SAN MARTIN', telefono: '',
+  consulta: 'www.nubefact.com/20535962236', resolucion: '034-005-0005315'
+};
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const S = n => 'S/ ' + Number(n || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const NOMBRE_DOC = { boleta:'BOLETA DE VENTA ELECTRONICA', factura:'FACTURA ELECTRONICA', nota_venta:'NOTA DE VENTA' };
+const CORTO = { boleta:'Boleta', factura:'Factura', nota_venta:'Nota de venta' };
+const nro = v => `${v.serie} - ${String(v.numero).padStart(8, '0')}`;
+const hoyLima = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Lima' })).toISOString().slice(0, 10);
+const fechaLima = iso => new Date(iso).toLocaleDateString('es-PE', { timeZone: 'America/Lima', day:'2-digit', month:'2-digit', year:'numeric' });
+let ventas = [];
+
+// ===== Número a letras (soles) =====
+function letras(n) {
+  const U = ['','UNO','DOS','TRES','CUATRO','CINCO','SEIS','SIETE','OCHO','NUEVE','DIEZ','ONCE','DOCE','TRECE','CATORCE','QUINCE','DIECISEIS','DIECISIETE','DIECIOCHO','DIECINUEVE','VEINTE','VEINTIUNO','VEINTIDOS','VEINTITRES','VEINTICUATRO','VEINTICINCO','VEINTISEIS','VEINTISIETE','VEINTIOCHO','VEINTINUEVE'];
+  const D = ['','','','TREINTA','CUARENTA','CINCUENTA','SESENTA','SETENTA','OCHENTA','NOVENTA'];
+  const C = ['','CIENTO','DOSCIENTOS','TRESCIENTOS','CUATROCIENTOS','QUINIENTOS','SEISCIENTOS','SETECIENTOS','OCHOCIENTOS','NOVECIENTOS'];
+  const menos1000 = x => {
+    if (x === 0) return '';
+    if (x === 100) return 'CIEN';
+    const c = Math.floor(x / 100), r = x % 100;
+    let t = r < 30 ? U[r] : D[Math.floor(r / 10)] + (r % 10 ? ' Y ' + U[r % 10] : '');
+    return [C[c], t].filter(Boolean).join(' ');
+  };
+  const entero = Math.floor(n), cent = Math.round((n - entero) * 100);
+  let txt;
+  if (entero === 0) txt = 'CERO';
+  else {
+    const mill = Math.floor(entero / 1e6), mil = Math.floor((entero % 1e6) / 1000), r = entero % 1000;
+    txt = [mill ? (mill === 1 ? 'UN MILLON' : menos1000(mill) + ' MILLONES') : '',
+           mil ? (mil === 1 ? 'MIL' : menos1000(mil) + ' MIL') : '', menos1000(r)].filter(Boolean).join(' ');
+  }
+  return `${txt.replace(/UNO$/, 'UN')} Y ${String(cent).padStart(2, '0')}/100 SOLES`;
+}
+
+// ===== Login =====
+$('f-login').addEventListener('submit', async e => {
+  e.preventDefault(); $('l-error').textContent = '';
+  const { error } = await sb.auth.signInWithPassword({ email: $('l-email').value.trim(), password: $('l-pass').value });
+  if (error) return $('l-error').textContent = /Invalid login/.test(error.message) ? 'Correo o contraseña incorrectos.' : error.message;
+  iniciar();
+});
+async function iniciar() {
+  const { data } = await sb.auth.getSession();
+  if (!data.session) return;
+  $('v-login').classList.add('oculto'); $('v-app').classList.remove('oculto');
+  const h = hoyLima(); $('f-desde').value = h; $('f-hasta').value = h;
+  const id = new URLSearchParams(location.search).get('venta');
+  await buscar(id);
+  if (id) descargar(Number(id));
+}
+
+// ===== Búsqueda =====
+$('f-buscar').onclick = () => buscar();
+$('f-q').onkeydown = e => { if (e.key === 'Enter') buscar(); };
+async function buscar(soloId) {
+  $('a-error').textContent = '';
+  let q = sb.from('ventas').select('id,tipo_doc,serie,numero,emitida_en,total,op_gravada,igv,descuento,estado,estado_sunat,pdf_url,codigo_hash,cadena_qr,contado_credito,dias_credito,clientes(tipo_doc,num_doc,nombre,direccion),venta_items(descripcion,cantidad,precio_unit,importe,productos(unidad_medida))')
+    .order('emitida_en', { ascending: false }).limit(500);
+  if (soloId) q = q.eq('id', soloId);
+  else {
+    q = q.gte('emitida_en', $('f-desde').value + 'T00:00:00-05:00').lte('emitida_en', $('f-hasta').value + 'T23:59:59-05:00');
+    if ($('f-tipo').value) q = q.eq('tipo_doc', $('f-tipo').value);
+  }
+  const { data, error } = await q;
+  if (error) return $('a-error').textContent = error.message;
+  const t = $('f-q').value.trim().toLowerCase();
+  ventas = data.filter(v => !t || String(v.numero).includes(t) || `${v.serie}-${v.numero}`.toLowerCase().includes(t) ||
+    (v.clientes && ((v.clientes.nombre || '').toLowerCase().includes(t) || (v.clientes.num_doc || '').includes(t))));
+  const validas = ventas.filter(v => v.estado === 'emitida');
+  $('resumen').textContent = `${ventas.length} comprobantes · Total emitido ${S(validas.reduce((a, v) => a + Number(v.total), 0))}`;
+  $('filas').innerHTML = ventas.map(v => `<tr class="${v.estado}">
+    <td>${fechaLima(v.emitida_en)} ${new Date(v.emitida_en).toLocaleTimeString('es-PE', { timeZone:'America/Lima', hour:'2-digit', minute:'2-digit' })}</td>
+    <td><b>${CORTO[v.tipo_doc]}</b> ${nro(v)}</td>
+    <td>${v.clientes && v.clientes.tipo_doc !== 'SIN_DOC' ? esc(v.clientes.nombre) + '<br><small>' + esc(v.clientes.num_doc) + '</small>' : '<small>Clientes varios</small>'}</td>
+    <td class="n">${S(v.total)}</td>
+    <td>${v.estado === 'anulada' ? '<span class="chip">ANULADA</span>' : v.tipo_doc === 'nota_venta' ? '<span class="chip">interna</span>' : `<span class="chip ${v.estado_sunat}">${v.estado_sunat}</span>`}</td>
+    <td><div class="acc"><button class="btn-sec" data-pdf="${v.id}">PDF A4</button>${v.pdf_url ? `<a class="btn-sec" style="text-decoration:none" href="${esc(v.pdf_url)}" target="_blank">Ticket</a>` : ''}</div></td>
+  </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:#888;padding:24px">Sin comprobantes en ese rango.</td></tr>';
+}
+$('filas').onclick = e => { const id = e.target.dataset.pdf; if (id) descargar(Number(id)); };
+
+// ===== Comprobante A4 =====
+function qr(v) {
+  const tipo = v.tipo_doc === 'factura' ? '01' : '03';
+  const c = v.clientes || {};
+  const texto = v.cadena_qr || [EMPRESA.ruc, tipo, v.serie, v.numero, Number(v.igv).toFixed(2), Number(v.total).toFixed(2),
+    fechaLima(v.emitida_en), c.tipo_doc === 'RUC' ? '6' : c.tipo_doc === 'DNI' ? '1' : '-', c.num_doc && c.tipo_doc !== 'SIN_DOC' ? c.num_doc : '-', v.codigo_hash || ''].join('|');
+  try { const q = qrcode(0, 'M'); q.addData(texto); q.make(); return q.createSvgTag({ cellSize: 3, margin: 0 }); } catch (e) { return ''; }
+}
+function armar(v) {
+  const c = v.clientes && v.clientes.tipo_doc !== 'SIN_DOC' ? v.clientes : null;
+  const interna = v.tipo_doc === 'nota_venta';
+  const unidad = u => u === 'Kilo' ? 'KGM' : u === 'Litro' ? 'LTR' : 'NIU';
+  return `<div class="a4">
+    <div class="cab">
+      <div class="emp"><b>${EMPRESA.razon}</b>
+        <div>${EMPRESA.direccion}<br>${EMPRESA.ubigeo}<br>${EMPRESA.local}${EMPRESA.telefono ? '<br>Telf: ' + EMPRESA.telefono : ''}</div></div>
+      <div class="caja-doc">R.U.C. ${EMPRESA.ruc}<br>${NOMBRE_DOC[v.tipo_doc]}<br>Nro. ${nro(v)}</div>
+    </div>
+    <div class="datos">
+      <span class="k">NOMBRE / R. SOCIAL:</span><span>${c ? esc(c.nombre) : 'CLIENTES VARIOS'}</span><span class="k">F. EMISIÓN:</span><span>${fechaLima(v.emitida_en)}</span>
+      <span class="k">DNI / RUC:</span><span>${c ? esc(c.num_doc) : '-'}</span><span class="k">MONEDA:</span><span>SOLES</span>
+      <span class="k">DIRECCIÓN:</span><span>${c && c.direccion ? esc(c.direccion) : '-'}</span><span class="k">F. VCTO:</span><span>${v.contado_credito === 'credito' && v.dias_credito ? fechaLima(new Date(new Date(v.emitida_en).getTime() + v.dias_credito * 864e5).toISOString()) : '-'}</span>
+    </div>
+    <table class="items"><thead><tr><th style="width:14mm">Cant.</th><th style="width:14mm">Unid.</th><th>Descripción</th><th style="width:34mm">Valor Venta Unit</th><th style="width:30mm">Importe</th></tr></thead>
+      <tbody>${v.venta_items.map(i => `<tr><td>${Number(i.cantidad)}</td><td>${unidad(i.productos && i.productos.unidad_medida)}</td><td class="d">${esc(i.descripcion)}</td><td>${S(i.precio_unit)}</td><td>${S(i.importe)}</td></tr>`).join('')}</tbody></table>
+    <div class="pie">
+      <div class="son">SON: ${letras(Number(v.total))}</div>
+      <table class="tot">
+        <tr><td class="k">Descuento sin imp.</td><td>${S(v.descuento)}</td></tr>
+        <tr><td class="k">Total Gravado</td><td>${S(v.op_gravada)}</td></tr>
+        <tr><td class="k">Total Inafecto</td><td>${S(0)}</td></tr>
+        <tr><td class="k">Total Exonerado</td><td>${S(0)}</td></tr>
+        <tr><td class="k">IGV 18.00%</td><td>${S(v.igv)}</td></tr>
+        <tr><td class="k">Importe Total</td><td>${S(v.total)}</td></tr>
+      </table>
+    </div>
+    <div class="legal">${interna
+      ? 'Documento interno. No es un comprobante de pago.'
+      : `Representación impresa del comprobante Electrónico puede ser consultada en ${EMPRESA.consulta}<br>
+         AUTORIZADO MEDIANTE RESOLUCIÓN DE INTENDENCIA - N°. ${EMPRESA.resolucion}/SUNAT.${v.codigo_hash ? '<br>Resumen: ' + esc(v.codigo_hash) : ''}<br>${qr(v)}`}
+      ${v.estado === 'anulada' ? '<div class="marca">COMPROBANTE ANULADO</div>' : ''}</div>
+  </div>`;
+}
+async function descargar(id) {
+  const v = ventas.find(x => x.id === id); if (!v) return;
+  $('lienzo').innerHTML = armar(v);
+  const nombre = `${v.serie}-${String(v.numero).padStart(8, '0')}.pdf`;
+  await html2pdf().set({ margin: 0, filename: nombre, image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } })
+    .from($('lienzo').firstElementChild).save();
+  $('lienzo').innerHTML = '';
+}
+iniciar();
+</script>
+</body>
+</html>
