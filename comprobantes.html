@@ -34,6 +34,15 @@ table.lista{width:100%;border-collapse:collapse;background:#fff;border-radius:12
 .chip.aceptado{background:#e3f5e9;color:var(--ok)}.chip.rechazado{background:#fde2e2;color:#b00020}
 .resumen{padding:0 16px 8px;color:var(--gris)}
 .acc{display:flex;gap:6px;white-space:nowrap}
+.tabs{display:flex;gap:4px;margin-left:16px}
+.tabs button{background:transparent;color:#fff;padding:7px 12px;opacity:.75;font-weight:600}
+.tabs button.activa{background:rgba(255,255,255,.18);opacity:1}
+.chip.vencida{background:#fde2e2;color:#b00020}.chip.pagada{background:#e3f5e9;color:var(--ok)}.chip.aldia{background:#fff4d6;color:#8a5a00}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
+.modal .tarjeta{max-width:420px}
+.modal label{display:block;font-size:12px;color:var(--gris);margin-bottom:3px}
+.modal select{width:100%;margin-bottom:10px}
+.fila2{display:flex;gap:8px}.fila2>*{flex:1}
 
 /* ===== Comprobante A4 (mismo formato que el PDF de referencia) ===== */
 #lienzo{position:fixed;left:-10000px;top:0}
@@ -56,6 +65,10 @@ table.lista{width:100%;border-collapse:collapse;background:#fff;border-radius:12
 .a4 .tot td.k{font-weight:700;text-align:center;width:45mm}
 .a4 .legal{border-top:1px solid #444;border-bottom:1px solid #444;margin-top:8mm;padding:5mm 0;text-align:center;font-size:8pt;line-height:1.6}
 .a4 .legal svg{width:26mm;height:26mm;margin-top:2mm}
+.a4 .cred{margin-top:5mm;font-size:8pt;border:1px solid #999;padding:3mm 4mm}
+.a4 .cred b{display:block;margin-bottom:1.5mm}
+.a4 .cred table{border-collapse:collapse;margin-top:2mm}
+.a4 .cred td,.a4 .cred th{border:1px solid #bbb;padding:1mm 4mm;text-align:center}
 .a4 .marca{color:#b00020;font-weight:700;font-size:10pt;margin-top:2mm}
 </style>
 </head>
@@ -73,7 +86,9 @@ table.lista{width:100%;border-collapse:collapse;background:#fff;border-radius:12
 </section>
 
 <section id="v-app" class="oculto">
-  <div class="barra"><b>KADIMA</b><span>Comprobantes</span></div>
+  <div class="barra"><b>KADIMA</b>
+    <div class="tabs" id="tabs"><button data-t="comp" class="activa">Comprobantes</button><button data-t="cxc">Por cobrar</button></div></div>
+  <div id="t-comp">
   <div class="filtros">
     <label>Desde<input type="date" id="f-desde"></label>
     <label>Hasta<input type="date" id="f-hasta"></label>
@@ -86,7 +101,42 @@ table.lista{width:100%;border-collapse:collapse;background:#fff;border-radius:12
     <th>Fecha</th><th>Comprobante</th><th>Cliente</th><th>Total</th><th>SUNAT</th><th></th>
   </tr></thead><tbody id="filas"></tbody></table>
   <div class="error" id="a-error"></div></div>
+  </div>
+
+  <div id="t-cxc" class="oculto">
+    <div class="filtros">
+      <label>Mostrar<select id="x-ver"><option value="pend">Pendientes de cobro</option><option value="todas">Todas (incluye pagadas)</option></select></label>
+      <label style="flex:1;min-width:200px">Buscar<input id="x-q" placeholder="Cliente, RUC o número"></label>
+      <button class="btn" id="x-buscar">Actualizar</button>
+    </div>
+    <div class="resumen" id="x-resumen"></div>
+    <div class="tabla-wrap"><table class="lista"><thead><tr>
+      <th>Emisión</th><th>Factura</th><th>Cliente</th><th>Neto a cobrar</th><th>Cobrado</th><th>Saldo</th><th>Vence</th><th>Estado</th><th>Retención</th><th></th>
+    </tr></thead><tbody id="x-filas"></tbody></table>
+    <div class="error" id="x-error"></div></div>
+  </div>
 </section>
+
+<div class="modal oculto" id="m-cobro"><div class="tarjeta">
+  <h3 style="margin:0 0 4px">Registrar cobro</h3>
+  <p style="color:var(--gris);margin:0 0 14px" id="mc-sub"></p>
+  <div class="fila2">
+    <div><label>Monto (S/)</label><input id="mc-monto" type="number" step="0.01" style="width:100%"></div>
+    <div><label>Medio</label><select id="mc-metodo"><option value="transferencia">Transferencia</option><option value="yape">Yape</option><option value="plin">Plin</option><option value="efectivo">Efectivo</option><option value="visa">Visa</option><option value="mastercard">Mastercard</option><option value="otro">Otro</option></select></div>
+  </div>
+  <label>N° de operación / referencia</label><input id="mc-ref" style="width:100%;margin-bottom:12px">
+  <div class="fila2"><button class="btn-sec" id="mc-cancelar">Cancelar</button><button class="btn" id="mc-ok">Guardar cobro</button></div>
+  <div class="error" id="mc-error"></div>
+</div></div>
+
+<div class="modal oculto" id="m-ret"><div class="tarjeta">
+  <h3 style="margin:0 0 4px">Comprobante de retención</h3>
+  <p style="color:var(--gris);margin:0 0 14px" id="mr-sub"></p>
+  <label>N° del comprobante de retención (ej. R001-00001234)</label><input id="mr-num" style="width:100%;margin-bottom:10px">
+  <label>Fecha en que lo recibiste</label><input id="mr-fecha" type="date" style="width:100%;margin-bottom:12px">
+  <div class="fila2"><button class="btn-sec" id="mr-cancelar">Cancelar</button><button class="btn" id="mr-ok">Guardar</button></div>
+  <div class="error" id="mr-error"></div>
+</div></div>
 
 <div id="lienzo"></div>
 
@@ -113,6 +163,7 @@ const nro = v => `${v.serie} - ${String(v.numero).padStart(8, '0')}`;
 const hoyLima = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Lima' })).toISOString().slice(0, 10);
 const fechaLima = iso => new Date(iso).toLocaleDateString('es-PE', { timeZone: 'America/Lima', day:'2-digit', month:'2-digit', year:'numeric' });
 let ventas = [];
+const fechaCorta = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '-';
 
 // ===== Número a letras (soles) =====
 function letras(n) {
@@ -159,7 +210,7 @@ $('f-buscar').onclick = () => buscar();
 $('f-q').onkeydown = e => { if (e.key === 'Enter') buscar(); };
 async function buscar(soloId) {
   $('a-error').textContent = '';
-  let q = sb.from('ventas').select('id,tipo_doc,serie,numero,emitida_en,total,op_gravada,igv,descuento,estado,estado_sunat,pdf_url,codigo_hash,cadena_qr,contado_credito,dias_credito,clientes(tipo_doc,num_doc,nombre,direccion),venta_items(descripcion,cantidad,precio_unit,importe,productos(unidad_medida))')
+  let q = sb.from('ventas').select('id,tipo_doc,serie,numero,emitida_en,total,op_gravada,igv,descuento,estado,estado_sunat,pdf_url,codigo_hash,cadena_qr,contado_credito,dias_credito,condiciones_pago,fecha_vencimiento,retencion_monto,venta_cuotas(cuota,fecha_pago,importe),clientes(tipo_doc,num_doc,nombre,direccion),venta_items(descripcion,cantidad,precio_unit,importe,productos(unidad_medida))')
     .order('emitida_en', { ascending: false }).limit(500);
   if (soloId) q = q.eq('id', soloId);
   else {
@@ -195,6 +246,9 @@ function qr(v) {
 function armar(v) {
   const c = v.clientes && v.clientes.tipo_doc !== 'SIN_DOC' ? v.clientes : null;
   const interna = v.tipo_doc === 'nota_venta';
+  const credito = v.contado_credito === 'credito';
+  const ret = Number(v.retencion_monto || 0), neto = Number(v.total) - ret;
+  const cuotas = (v.venta_cuotas || []).slice().sort((a, b) => a.cuota - b.cuota);
   const unidad = u => u === 'Kilo' ? 'KGM' : u === 'Litro' ? 'LTR' : 'NIU';
   return `<div class="a4">
     <div class="cab">
@@ -205,7 +259,8 @@ function armar(v) {
     <div class="datos">
       <span class="k">NOMBRE / R. SOCIAL:</span><span>${c ? esc(c.nombre) : 'CLIENTES VARIOS'}</span><span class="k">F. EMISIÓN:</span><span>${fechaLima(v.emitida_en)}</span>
       <span class="k">DNI / RUC:</span><span>${c ? esc(c.num_doc) : '-'}</span><span class="k">MONEDA:</span><span>SOLES</span>
-      <span class="k">DIRECCIÓN:</span><span>${c && c.direccion ? esc(c.direccion) : '-'}</span><span class="k">F. VCTO:</span><span>${v.contado_credito === 'credito' && v.dias_credito ? fechaLima(new Date(new Date(v.emitida_en).getTime() + v.dias_credito * 864e5).toISOString()) : '-'}</span>
+      <span class="k">DIRECCIÓN:</span><span>${c && c.direccion ? esc(c.direccion) : '-'}</span><span class="k">F. VCTO:</span><span>${credito && v.fecha_vencimiento ? fechaCorta(v.fecha_vencimiento) : '-'}</span>
+      <span class="k">FORMA DE PAGO:</span><span>${interna ? '-' : credito ? 'CRÉDITO' : 'CONTADO'}</span><span></span><span></span>
     </div>
     <table class="items"><thead><tr><th style="width:14mm">Cant.</th><th style="width:14mm">Unid.</th><th>Descripción</th><th style="width:34mm">Valor Venta Unit</th><th style="width:30mm">Importe</th></tr></thead>
       <tbody>${v.venta_items.map(i => `<tr><td>${Number(i.cantidad)}</td><td>${unidad(i.productos && i.productos.unidad_medida)}</td><td class="d">${esc(i.descripcion)}</td><td>${S(i.precio_unit)}</td><td>${S(i.importe)}</td></tr>`).join('')}</tbody></table>
@@ -218,8 +273,12 @@ function armar(v) {
         <tr><td class="k">Total Exonerado</td><td>${S(0)}</td></tr>
         <tr><td class="k">IGV 18.00%</td><td>${S(v.igv)}</td></tr>
         <tr><td class="k">Importe Total</td><td>${S(v.total)}</td></tr>
+        ${ret > 0 ? `<tr><td class="k">Retención IGV 3%</td><td>${S(ret)}</td></tr><tr><td class="k">Neto a pagar</td><td>${S(neto)}</td></tr>` : ''}
       </table>
     </div>
+    ${ret > 0 ? `<div class="cred"><b>Operación sujeta a retención del IGV</b>Base imponible de la retención: ${S(v.total)} · Porcentaje: 3% · Monto de la retención: ${S(ret)}</div>` : ''}
+    ${credito && cuotas.length ? `<div class="cred"><b>Información del crédito</b>Monto neto pendiente de pago: ${S(neto)} · N° de cuotas: ${cuotas.length}
+      <table><tr><th>N° cuota</th><th>Fec. venc.</th><th>Monto</th></tr>${cuotas.map(q => `<tr><td>${q.cuota}</td><td>${fechaCorta(q.fecha_pago)}</td><td>${S(q.importe)}</td></tr>`).join('')}</table></div>` : ''}
     <div class="legal">${interna
       ? 'Documento interno. No es un comprobante de pago.'
       : `Representación impresa del comprobante Electrónico puede ser consultada en ${EMPRESA.consulta}<br>
@@ -236,6 +295,76 @@ async function descargar(id) {
     .from($('lienzo').firstElementChild).save();
   $('lienzo').innerHTML = '';
 }
+
+// ===== Pestañas =====
+$('tabs').onclick = e => {
+  const t = e.target.dataset.t; if (!t) return;
+  [...$('tabs').children].forEach(b => b.classList.toggle('activa', b.dataset.t === t));
+  $('t-comp').classList.toggle('oculto', t !== 'comp'); $('t-cxc').classList.toggle('oculto', t !== 'cxc');
+  if (t === 'cxc') cargarCxc();
+};
+
+// ===== Cuentas por cobrar =====
+let cxc = [], sel = null;
+$('x-buscar').onclick = () => cargarCxc();
+$('x-ver').onchange = () => cargarCxc();
+$('x-q').onkeydown = e => { if (e.key === 'Enter') cargarCxc(); };
+async function cargarCxc() {
+  $('x-error').textContent = '';
+  let q = sb.from('v_cuentas_por_cobrar').select('*').order('fecha_vencimiento');
+  if ($('x-ver').value === 'pend') q = q.neq('estado', 'pagada');
+  const { data, error } = await q;
+  if (error) return $('x-error').textContent = error.message;
+  const t = $('x-q').value.trim().toLowerCase();
+  cxc = data.filter(r => !t || r.cliente.toLowerCase().includes(t) || r.ruc.includes(t) || r.comprobante.toLowerCase().includes(t));
+  const saldo = cxc.reduce((a, r) => a + Number(r.saldo), 0), vencido = cxc.filter(r => r.estado === 'vencida').reduce((a, r) => a + Number(r.saldo), 0);
+  $('x-resumen').innerHTML = `${cxc.length} facturas · Por cobrar <b>${S(saldo)}</b> · Vencido <b style="color:#b00020">${S(vencido)}</b>`;
+  $('x-filas').innerHTML = cxc.map(r => `<tr>
+    <td>${fechaLima(r.emitida_en)}</td><td><b>${r.comprobante}</b></td>
+    <td>${esc(r.cliente)}<br><small>${esc(r.ruc)}</small></td>
+    <td class="n">${S(r.neto_cobrar)}</td><td class="n">${S(r.cobrado)}</td><td class="n"><b>${S(r.saldo)}</b></td>
+    <td>${fechaCorta(r.fecha_vencimiento)}${r.dias_vencido > 0 && r.estado !== 'pagada' ? `<br><small style="color:#b00020">${r.dias_vencido} días vencida</small>` : ''}</td>
+    <td><span class="chip ${r.estado === 'al día' ? 'aldia' : r.estado}">${r.estado}</span></td>
+    <td>${Number(r.retencion_monto) > 0 ? `${S(r.retencion_monto)}<br><small>${r.retencion_comprobante ? esc(r.retencion_comprobante) : '<a href="#" data-ret="' + r.id + '">registrar comprobante</a>'}</small>` : '-'}</td>
+    <td><div class="acc">${r.estado !== 'pagada' ? `<button class="btn-sec" data-cob="${r.id}">Cobrar</button>` : ''}<button class="btn-sec" data-pdf2="${r.id}">PDF A4</button></div></td>
+  </tr>`).join('') || '<tr><td colspan="10" style="text-align:center;color:#888;padding:24px">No hay facturas al crédito pendientes.</td></tr>';
+}
+$('x-filas').onclick = async e => {
+  const d = e.target.dataset;
+  if (d.cob) {
+    sel = cxc.find(r => r.id === Number(d.cob));
+    $('mc-sub').textContent = `${sel.comprobante} · ${sel.cliente} · Saldo ${S(sel.saldo)}`;
+    $('mc-monto').value = Number(sel.saldo).toFixed(2); $('mc-ref').value = ''; $('mc-error').textContent = '';
+    $('m-cobro').classList.remove('oculto'); $('mc-monto').focus();
+  } else if (d.ret) {
+    e.preventDefault();
+    sel = cxc.find(r => r.id === Number(d.ret));
+    $('mr-sub').textContent = `${sel.comprobante} · ${sel.cliente} · Retención ${S(sel.retencion_monto)}`;
+    $('mr-num').value = ''; $('mr-fecha').value = hoyLima(); $('mr-error').textContent = '';
+    $('m-ret').classList.remove('oculto'); $('mr-num').focus();
+  } else if (d.pdf2) {
+    await buscar(Number(d.pdf2)); descargar(Number(d.pdf2));
+  }
+};
+$('mc-cancelar').onclick = () => $('m-cobro').classList.add('oculto');
+$('mr-cancelar').onclick = () => $('m-ret').classList.add('oculto');
+$('mc-ok').onclick = async () => {
+  const monto = Math.round(Number($('mc-monto').value || 0) * 100) / 100;
+  if (monto <= 0) return $('mc-error').textContent = 'Ingresa un monto mayor a cero.';
+  $('mc-ok').disabled = true;
+  const { error } = await sb.rpc('registrar_cobro', { p_venta: sel.id, p_monto: monto, p_metodo: $('mc-metodo').value,
+    p_referencia: $('mc-ref').value, p_usuario: null, p_caja: null });
+  $('mc-ok').disabled = false;
+  if (error) return $('mc-error').textContent = error.message;
+  $('m-cobro').classList.add('oculto'); cargarCxc();
+};
+$('mr-ok').onclick = async () => {
+  const num = $('mr-num').value.trim().toUpperCase();
+  if (num.length < 5) return $('mr-error').textContent = 'Escribe el número del comprobante de retención.';
+  const { error } = await sb.from('ventas').update({ retencion_comprobante: num, retencion_recibida_en: $('mr-fecha').value || null }).eq('id', sel.id);
+  if (error) return $('mr-error').textContent = error.message;
+  $('m-ret').classList.add('oculto'); cargarCxc();
+};
 iniciar();
 </script>
 </body>

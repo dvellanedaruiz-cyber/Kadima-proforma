@@ -117,6 +117,14 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 .pagos-lista div{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--borde)}
 .resumen{display:flex;justify-content:space-between;font-size:16px;margin:6px 0}
 .resumen b{font-size:18px}
+.ret-check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--gris);margin-top:6px}
+.ret-check input{width:18px;height:18px}
+.formas{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0}
+.formas button{padding:10px;border:2px solid var(--borde);border-radius:10px;background:#fff;font-weight:700}
+.formas button.activa{border-color:var(--rojo);color:var(--rojo);background:#fff5f5}
+.cuotas-tabla{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}
+.cuotas-tabla td{padding:4px}.cuotas-tabla input{width:100%;padding:8px;border:1px solid var(--borde);border-radius:8px;font:inherit}
+.ret-info{background:#fff8e6;color:#8a5a00;padding:8px 12px;border-radius:10px;font-size:13px;margin:6px 0}
 .vuelto{background:#e9f6ee;color:var(--ok);padding:10px 12px;border-radius:10px;font-weight:700;text-align:center}
 .fila{display:flex;gap:8px}
 .fila>*{flex:1}
@@ -233,6 +241,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
         <input id="c-doc" placeholder="DNI (opcional)" inputmode="numeric" maxlength="11">
         <input id="c-nombre" placeholder="Nombre del cliente">
       </div>
+      <label class="ret-check oculto" id="c-ret-box"><input type="checkbox" id="c-ret"> El cliente es agente de retención (retiene 3% en facturas de más de S/ 700)</label>
       <div class="totales">
         <div><div class="g" id="t-igv">Op. gravada S/ 0.00 · IGV S/ 0.00</div></div>
         <div class="t" id="t-total">S/ 0.00</div>
@@ -315,6 +324,20 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
   <div class="caja">
     <h3>Cobrar</h3>
     <div class="resumen"><span>Total</span><b id="p-total">S/ 0.00</b></div>
+    <div class="ret-info oculto" id="p-ret"></div>
+    <div class="formas oculto" id="formas">
+      <button data-f="contado" class="activa">Al contado</button>
+      <button data-f="credito">Al crédito</button>
+    </div>
+    <div class="oculto" id="p-credito">
+      <div class="fila">
+        <div class="campo"><label>N° de cuotas</label><select id="cr-n"><option>1</option><option>2</option><option>3</option><option>4</option><option>6</option></select></div>
+        <div class="campo"><label>Días entre cuotas</label><select id="cr-dias"><option>7</option><option>15</option><option selected>30</option><option>45</option><option>60</option></select></div>
+      </div>
+      <table class="cuotas-tabla"><tbody id="cr-filas"></tbody></table>
+      <div class="resumen"><span>Suma de cuotas</span><b id="cr-suma">S/ 0.00</b></div>
+    </div>
+    <div id="p-contado">
     <div class="metodos" id="metodos">
       <button data-m="efectivo" class="activa">Efectivo</button>
       <button data-m="yape">Yape</button>
@@ -331,6 +354,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
     <div class="pagos-lista" id="p-lista"></div>
     <div class="resumen"><span>Falta</span><b id="p-falta">S/ 0.00</b></div>
     <div class="vuelto oculto" id="p-vuelto"></div>
+    </div>
     <div class="fila" style="margin-top:12px">
       <button class="btn-sec" id="p-cancelar">Cancelar</button>
       <button class="btn" id="p-confirmar" disabled>Confirmar venta</button>
@@ -393,7 +417,7 @@ const uuid = () => (crypto.randomUUID ? crypto.randomUUID() :
 const st = {
   disp: null, caja: null, canal: null, usuario: null, turno: null,
   productos: [], categorias: [], cat: 'todas', carrito: [], doc: 'boleta',
-  pagos: [], metodo: 'efectivo', ultimaVenta: null, ult: {}, ctx: null, mozos: []
+  pagos: [], metodo: 'efectivo', forma: 'contado', ultimaVenta: null, ult: {}, ctx: null, mozos: []
 };
 
 // ===== RED =====
@@ -633,7 +657,50 @@ $('docs').onclick = e => {
   [...$('docs').children].forEach(b => b.classList.toggle('activa', b.dataset.doc === d));
   $('c-doc').placeholder = d === 'factura' ? 'RUC (obligatorio)' : 'DNI (opcional)';
   $('c-nombre').placeholder = d === 'factura' ? 'Razón social' : 'Nombre del cliente';
+  $('c-ret-box').classList.toggle('oculto', d !== 'factura');
 };
+// si el cliente ya compró antes, se completan sus datos solos
+$('c-doc').onchange = async () => {
+  const doc = $('c-doc').value.trim();
+  if (!/^(\d{8}|\d{11})$/.test(doc) || !navigator.onLine) return;
+  const { data } = await sb.from('clientes').select('nombre,agente_retencion').eq('num_doc', doc).maybeSingle();
+  if (data) { if (!$('c-nombre').value.trim()) $('c-nombre').value = data.nombre; $('c-ret').checked = !!data.agente_retencion; }
+};
+// retención 3%: factura + cliente agente de retención + total mayor a S/ 700
+function retencion() {
+  const t = totales().total;
+  return st.doc === 'factura' && $('c-ret').checked && t > 700 ? r2(t * 0.03) : 0;
+}
+function neto() { return r2(totales().total - retencion()); }
+const hoyMas = d => { const x = new Date(); x.setDate(x.getDate() + d); return x.toLocaleDateString('en-CA'); };
+function armarCuotas() {
+  const n = Number($('cr-n').value), dias = Number($('cr-dias').value), tot = neto();
+  const base = Math.floor(tot / n * 100) / 100;
+  $('cr-filas').innerHTML = Array.from({ length: n }, (_, i) => {
+    const imp = i === n - 1 ? r2(tot - base * (n - 1)) : base;
+    return `<tr><td style="width:70px">Cuota ${i + 1}</td><td><input type="date" class="cr-f" value="${hoyMas(dias * (i + 1))}"></td><td style="width:120px"><input type="number" step="0.01" class="cr-i" value="${imp.toFixed(2)}"></td></tr>`;
+  }).join('');
+  sumarCuotas();
+}
+function leerCuotas() {
+  const f = [...document.querySelectorAll('.cr-f')], i = [...document.querySelectorAll('.cr-i')];
+  return f.map((x, k) => ({ fecha_pago: x.value, importe: r2(Number(i[k].value || 0)) }));
+}
+function sumarCuotas() {
+  const s = r2(leerCuotas().reduce((a, c) => a + c.importe, 0));
+  $('cr-suma').textContent = S(s);
+  if (st.forma === 'credito') $('p-confirmar').disabled = s !== neto();
+}
+$('cr-n').onchange = armarCuotas; $('cr-dias').onchange = armarCuotas;
+$('cr-filas').oninput = sumarCuotas;
+function elegirForma(f) {
+  st.forma = f;
+  [...$('formas').children].forEach(b => b.classList.toggle('activa', b.dataset.f === f));
+  $('p-credito').classList.toggle('oculto', f !== 'credito');
+  $('p-contado').classList.toggle('oculto', f === 'credito');
+  if (f === 'credito') armarCuotas(); else actualizarPago();
+}
+$('formas').onclick = e => { const f = e.target.dataset.f; if (f) elegirForma(f); };
 
 // ===== COBRO =====
 $('cobrar').onclick = () => {
@@ -648,11 +715,15 @@ $('cobrar').onclick = () => {
   if (st.doc === 'boleta' && totales().total >= 700 && !doc) return msg('v-error', 'Boletas de S/ 700 o más necesitan el DNI del cliente (regla SUNAT).');
   st.pagos = []; elegirMetodo('efectivo');
   $('p-total').textContent = S(totales().total);
-  actualizarPago();
+  const ret = retencion();
+  $('p-ret').classList.toggle('oculto', ret === 0);
+  $('p-ret').innerHTML = `Retención 3% (la retiene el cliente): − ${S(ret)}<br><b>Neto a cobrar: ${S(neto())}</b><br>Pide al cliente su comprobante de retención.`;
+  $('formas').classList.toggle('oculto', st.doc !== 'factura');
+  elegirForma('contado');
   $('m-pago').classList.remove('oculto');
   $('p-monto').focus(); $('p-monto').select();
 };
-function falta() { return r2(totales().total - st.pagos.reduce((a, p) => a + p.monto, 0)); }
+function falta() { return r2(neto() - st.pagos.reduce((a, p) => a + p.monto, 0)); }
 function elegirMetodo(m) {
   st.metodo = m;
   [...$('metodos').children].forEach(b => b.classList.toggle('activa', b.dataset.m === m));
@@ -681,6 +752,7 @@ function actualizarPago() {
   $('p-vuelto').classList.toggle('oculto', vuelto <= 0);
   $('p-vuelto').textContent = `Vuelto: ${S(vuelto)}`;
   $('p-confirmar').disabled = f > 0;
+  if (st.forma === 'credito') sumarCuotas();
 }
 $('p-lista').onclick = e => { const q = e.target.dataset.q; if (q === undefined) return; st.pagos.splice(q, 1); actualizarPago(); elegirMetodo(st.metodo); };
 $('p-monto').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('p-agregar').click(); if (!$('p-confirmar').disabled) $('p-confirmar').focus(); } };
@@ -691,14 +763,22 @@ $('p-confirmar').onclick = async () => {
   const serie = serieDe(st.doc);
   const numero = (st.ult[serie] || 0) + 1;
   const t = totales();
+  const credito = st.doc === 'factura' && st.forma === 'credito';
+  if (credito && leerCuotas().some(c => !c.fecha_pago || c.fecha_pago <= hoyMas(0) || c.importe <= 0)) {
+    msg('p-error', 'Cada cuota necesita una fecha posterior a hoy y un importe mayor a cero.');
+    $('p-confirmar').textContent = 'Confirmar venta'; $('p-confirmar').disabled = false; return;
+  }
   const payload = {
     id_local: uuid(), numero, emitida_en: new Date().toISOString(),
     tipo_doc: st.doc, dispositivo_id: st.disp.id, caja_id: st.caja.id, canal_id: st.canal.id,
     turno_id: st.turno.id, usuario_id: st.usuario.id,
     pedido_id: st.ctx && st.ctx.tipo === 'cobrar' ? st.ctx.pedido.id : null,
-    cliente: { num_doc: $('c-doc').value.trim(), nombre: $('c-nombre').value.trim() },
+    cliente: { num_doc: $('c-doc').value.trim(), nombre: $('c-nombre').value.trim(),
+               ...(st.doc === 'factura' ? { agente_retencion: $('c-ret').checked } : {}) },
     items: st.carrito.map(l => ({ producto_id: l.producto_id, cantidad: l.cantidad, precio_unit: l.precio_unit })),
-    pagos: st.pagos.map(p => ({ metodo: p.metodo, monto: p.monto, referencia: p.referencia }))
+    contado_credito: credito ? 'credito' : 'contado',
+    pagos: credito ? [] : st.pagos.map(p => ({ metodo: p.metodo, monto: p.monto, referencia: p.referencia })),
+    ...(credito ? { cuotas: leerCuotas() } : {})
   };
   let res, enCola = false;
   try {
@@ -708,12 +788,12 @@ $('p-confirmar').onclick = async () => {
   } catch (e) {
     if (!esErrorDeRed(e)) {
       msg('p-error', errorTexto(e));
-      $('p-confirmar').textContent = 'Confirmar venta'; $('p-confirmar').disabled = falta() > 0;
+      $('p-confirmar').textContent = 'Confirmar venta'; $('p-confirmar').disabled = credito ? false : falta() > 0;
       return;
     }
     // sin internet: se guarda en la cola con su número y se envía después
     const c = cola(); c.push(payload); guardar('cola', c); enCola = true;
-    res = { serie, numero, total: t.total, op_gravada: t.gravada, igv: t.igv };
+    res = { serie, numero, total: t.total, op_gravada: t.gravada, igv: t.igv, retencion: retencion() };
   }
   st.ult[res.serie] = Math.max(st.ult[res.serie] || 0, res.numero); guardar('ult', st.ult);
   let sunat = null;
@@ -721,13 +801,15 @@ $('p-confirmar').onclick = async () => {
     $('p-confirmar').textContent = 'Enviando a SUNAT…';
     sunat = await enviarSunat(res.venta_id, 8000);
   }
-  st.ultimaVenta = { ...res, doc: st.doc, carrito: st.carrito.slice(), pagos: st.pagos.slice(),
+  st.ultimaVenta = { ...res, doc: st.doc, carrito: st.carrito.slice(), pagos: credito ? [] : st.pagos.slice(),
+    cuotas: credito ? payload.cuotas : null, retencion: Number(res.retencion || 0),
     hash: sunat && sunat.codigo_hash, qr: sunat && sunat.cadena_qr,
     cliente: payload.cliente, fecha: new Date(payload.emitida_en), cajero: st.usuario.nombre };
   $('m-pago').classList.add('oculto');
   $('ok-doc').textContent = `${NOMBRE_DOC[st.doc]} ${res.serie}-${String(res.numero).padStart(8,'0')}`;
   const vuelto = vueltoDe(st.pagos);
-  $('ok-det').textContent = `Total ${S(res.total)}` + (vuelto > 0 ? ` · Vuelto ${S(vuelto)}` : '') +
+  $('ok-det').textContent = `Total ${S(res.total)}` + (credito ? ` · Al crédito en ${payload.cuotas.length} cuota(s)` : '') +
+    (Number(res.retencion) > 0 ? ` · Retención ${S(res.retencion)} · Neto ${S(res.total - res.retencion)}` : '') + (vuelto > 0 ? ` · Vuelto ${S(vuelto)}` : '') +
     (enCola ? ' · Guardada sin internet: se enviará sola al volver la conexión.' : '') +
     (sunat && sunat.error ? ` · ⚠ SUNAT/Nubefact: ${sunat.error}. Quedó pendiente y se reintentará.` : '');
   $('m-ok').classList.remove('oculto');
@@ -735,7 +817,7 @@ $('p-confirmar').onclick = async () => {
   pintarRed();
 };
 $('ok-nueva').onclick = () => {
-  st.carrito = []; st.pagos = []; st.ctx = null; contarMesas(); $('c-doc').value = ''; $('c-nombre').value = '';
+  st.carrito = []; st.pagos = []; st.ctx = null; contarMesas(); $('c-doc').value = ''; $('c-nombre').value = ''; $('c-ret').checked = false;
   $('m-ok').classList.add('oculto'); dibujarCarrito(); $('buscar').focus();
 };
 $('ok-imprimir').onclick = () => { armarTicket(st.ultimaVenta); window.print(); };
@@ -806,7 +888,9 @@ function armarTicket(v) {
       ${v.doc !== 'nota_venta' ? `<tr><td>Op. gravada</td><td class="r">${Number(v.op_gravada).toFixed(2)}</td></tr><tr><td>IGV 18%</td><td class="r">${Number(v.igv).toFixed(2)}</td></tr>` : ''}
       <tr><td><b>TOTAL S/</b></td><td class="r"><b>${Number(v.total).toFixed(2)}</b></td></tr>
     </table><hr>
-    <table>${pagos}${vuelto > 0 ? `<tr><td>Vuelto</td><td class="r">${vuelto.toFixed(2)}</td></tr>` : ''}</table><hr>
+    ${v.retencion > 0 ? `<table><tr><td>Retención 3%</td><td class="r">-${v.retencion.toFixed(2)}</td></tr><tr><td><b>Neto a pagar</b></td><td class="r"><b>${(v.total - v.retencion).toFixed(2)}</b></td></tr></table><hr>` : ''}
+    ${v.cuotas ? `<div><b>Forma de pago: CRÉDITO</b></div><table>${v.cuotas.map((c, i) => `<tr><td>Cuota ${i + 1} · vence ${c.fecha_pago.split('-').reverse().join('/')}</td><td class="r">${c.importe.toFixed(2)}</td></tr>`).join('')}</table><hr>`
+      : `<table>${pagos}${vuelto > 0 ? `<tr><td>Vuelto</td><td class="r">${vuelto.toFixed(2)}</td></tr>` : ''}</table><hr>`}
     ${v.qr ? `<div class="c">${qrSvg(v.qr)}<br>Hash: ${esc(v.hash || '')}</div><hr>` : ''}
     <div class="c">${v.doc === 'nota_venta' ? 'Documento interno. No válido como comprobante de pago.' : 'Representación impresa del comprobante electrónico.'}<br>¡Gracias por tu compra!</div>`;
 }
@@ -1016,12 +1100,14 @@ $('b-cerrar').onclick = async () => {
   await enviarCola();
   if (cola().length) return msg('v-error', 'Aún hay ventas sin enviar. Espera a que se envíen para cerrar la caja.');
   msg('ci-error'); $('ci-contado').value = ''; $('ci-dif').textContent = '—';
-  const { data, error } = await sb.from('ventas').select('total,estado,venta_pagos(metodo,monto)').eq('turno_id', st.turno.id);
+  const { data, error } = await sb.from('ventas').select('total,estado,contado_credito,retencion_monto,venta_pagos(metodo,monto)').eq('turno_id', st.turno.id);
   if (error) return msg('v-error', errorTexto(error));
   const validas = data.filter(v => v.estado === 'emitida');
   const anuladas = data.filter(v => v.estado === 'anulada');
   const porMetodo = {};
   validas.forEach(v => v.venta_pagos.forEach(p => porMetodo[p.metodo] = r2((porMetodo[p.metodo] || 0) + Number(p.monto))));
+  const credito = validas.filter(v => v.contado_credito === 'credito');
+  const retenido = r2(validas.reduce((a, v) => a + Number(v.retencion_monto || 0), 0));
   const totalVentas = r2(validas.reduce((a, v) => a + Number(v.total), 0));
   resumenCierre.efectivoEsperado = r2(Number(st.turno.monto_inicial) + (porMetodo.efectivo || 0));
   $('ci-sub').textContent = `${st.caja.nombre} · ${validas.length} ventas · ${S(totalVentas)}`;
@@ -1029,6 +1115,8 @@ $('b-cerrar').onclick = async () => {
     `<tr><td>Efectivo inicial</td><td>${S(st.turno.monto_inicial)}</td></tr>` +
     Object.keys(NOMBRES_METODO).filter(m => porMetodo[m]).map(m => `<tr><td>${NOMBRES_METODO[m]}</td><td>${S(porMetodo[m])}</td></tr>`).join('') +
     `<tr><td><b>Efectivo que debería haber</b></td><td>${S(resumenCierre.efectivoEsperado)}</td></tr>` +
+    (credito.length ? `<tr><td>Facturas al crédito (por cobrar)</td><td>${credito.length} · ${S(credito.reduce((a, v) => a + Number(v.total) - Number(v.retencion_monto), 0))}</td></tr>` : '') +
+    (retenido > 0 ? `<tr><td>Retenciones 3% (las paga el cliente a SUNAT)</td><td>${S(retenido)}</td></tr>` : '') +
     (anuladas.length ? `<tr><td>Ventas anuladas (no suman)</td><td>${anuladas.length} · ${S(anuladas.reduce((a, v) => a + Number(v.total), 0))}</td></tr>` : '');
   $('m-cierre').classList.remove('oculto');
 };
