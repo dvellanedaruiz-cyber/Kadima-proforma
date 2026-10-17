@@ -1,5 +1,5 @@
 // Kadima Caja · guarda la app en el equipo para abrirla sin internet
-const CACHE = 'kadima-caja-v3';
+const CACHE = 'kadima-caja-v4';
 const APP = [
   'caja.html',
   'cocina.html',
@@ -7,7 +7,8 @@ const APP = [
   'pos-manifest.webmanifest',
   'pos-icon-192.png',
   'pos-icon-512.png',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js'
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js'
 ];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(APP)).then(() => self.skipWaiting()));
