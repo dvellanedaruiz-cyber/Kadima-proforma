@@ -189,6 +189,7 @@ function tabsDisponibles() {
   t.push(['merma', 'Merma']);
   if (a.tipo === 'venta') t.push(['porcionar', 'Porcionar']);
   t.push(['conteo', 'Conteo / cierre'], ['kardex', 'Kardex']);
+  if (['admin','almacen'].includes(st.usuario.rol)) t.push(['inicial', 'Inventario inicial']);
   return t;
 }
 async function cambiarAlmacen() {
@@ -200,7 +201,7 @@ async function cambiarAlmacen() {
   abrirTab(st.tab);
 }
 $('tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (!b) return; st.tab = b.dataset.tab; [...$('tabs').children].forEach(x => x.classList.toggle('activa', x === b)); abrirTab(st.tab); };
-function abrirTab(t) { ({ stock: tabStock, compra: tabCompra, traslado: tabTraslado, produccion: tabProduccion, merma: tabMerma, porcionar: tabPorcionar, conteo: tabConteo, kardex: tabKardex })[t](); }
+function abrirTab(t) { ({ stock: tabStock, compra: tabCompra, traslado: tabTraslado, produccion: tabProduccion, merma: tabMerma, porcionar: tabPorcionar, conteo: tabConteo, kardex: tabKardex, inicial: tabInicial })[t](); }
 
 // ===== Buscador de productos + líneas reutilizable =====
 // opciones: { tipos: [...], precio: bool, stock: bool }
@@ -237,12 +238,13 @@ function editorLineas(cont, op) {
     lis.innerHTML = lineas.map((l, i) => `<div class="ln">
       <div class="nom">${esc(l.nombre)}<small>${l.codigo}${op.stock ? ' · stock ' + C(stockDe(l.producto_id), l.unidad) : ''}</small></div>
       <div><input class="l-cant" type="number" step="0.001" min="0" placeholder="Cantidad" value="${l.cantidad}"><span class="u">en ${UNI[l.unidad]}</span></div>
-      ${op.precio ? `<div><input class="l-imp" type="number" step="0.01" min="0" placeholder="Importe con IGV" value="${l.importe}"><span class="u">total de la línea</span></div>` : ''}
+      ${op.precio ? `<div><input class="l-imp" type="number" step="0.0001" min="0" placeholder="${op.costoUnit ? 'Costo unit. sin IGV' : 'Importe con IGV'}" value="${l.importe}"><span class="u">${op.costoUnit ? 'por ' + UNI[l.unidad] + ' (sin IGV)' : 'total de la línea'}</span></div>` : ''}
       <div class="u l-pu" style="text-align:right">${op.precio ? precioUnit(l) : ''}</div>
       <button class="x" data-q="${i}" title="Quitar">✕</button></div>`).join('') || '<div class="vacio">Busca y agrega productos.</div>';
     if (op.onCambio) op.onCambio(lineas);
   }
-  const precioUnit = l => Number(l.cantidad) > 0 && Number(l.importe) > 0 ? `${S(Number(l.importe) / Number(l.cantidad))} / ${UNI[l.unidad]}` : '';
+  const precioUnit = l => op.costoUnit ? (Number(l.cantidad) > 0 && Number(l.importe) > 0 ? `valor ${S(Number(l.importe) * Number(l.cantidad))}` : '')
+    : Number(l.cantidad) > 0 && Number(l.importe) > 0 ? `${S(Number(l.importe) / Number(l.cantidad))} / ${UNI[l.unidad]}` : '';
   function leerDom() {
     const c = lis.querySelectorAll('.l-cant'), m = lis.querySelectorAll('.l-imp'), pu = lis.querySelectorAll('.l-pu');
     lineas.forEach((l, i) => { if (!c[i]) return; l.cantidad = c[i].value; if (m[i]) { l.importe = m[i].value; pu[i].textContent = precioUnit(l); } });
@@ -607,6 +609,34 @@ async function historialConteo() {
     ${data.map(r => `<tr><td>${esc(r.producto)}</td><td class="n">${C(r.cantidad_sistema, r.unidad_medida)}</td><td class="n">${C(r.cantidad_contada, r.unidad_medida)}</td><td class="n">${C(r.diferencia, r.unidad_medida)}</td>
       <td><span class="res ${r.resultado}">${r.resultado}</span></td><td class="n">${S(r.valor_diferencia)}</td><td>${esc(r.usuario || '')}</td></tr>`).join('')}</table>
     <div class="total"><span>Consumo <b>${S(suma('consumo'))}</b></span><span>Faltantes <b class="neg">${S(suma('faltante'))}</b></span><span>Sobrantes <b>${S(Math.abs(suma('sobrante')))}</b></span></div>`;
+}
+
+// ===== INVENTARIO INICIAL =====
+let edIni;
+async function tabInicial() {
+  $('main').innerHTML = `<div class="bloque"><h3>Inventario inicial · ${esc(st.alm.nombre)}</h3>
+    <p class="ayuda">Carga el stock con el que arranca este almacén. La cantidad <b>reemplaza</b> la que hay (no suma). Para insumos, paquetería y mercadería pon el <b>costo unitario sin IGV</b>; en terminados y bases el costo sale de la receta. Con cantidad 0 y un costo, solo carga el costo.</p>
+    <div id="i-lineas"></div>
+    <div class="total"><span>Valor cargado <b id="i-total">S/ 0.00</b></span></div>
+    <div class="fila" style="margin-top:12px;justify-content:flex-end"><button class="btn" id="i-ok">Guardar inventario inicial</button></div>
+    <div class="error" id="i-error"></div><div class="okmsg" id="i-okmsg"></div></div>`;
+  edIni = editorLineas($('i-lineas'), { stock: await stockMapa(st.alm.id), precio: true, costoUnit: true,
+    onCambio: ls => { if ($('i-total')) $('i-total').textContent = S(ls.reduce((a, l) => a + Number(l.importe || 0) * Number(l.cantidad || 0), 0)); } });
+  $('i-ok').onclick = async () => {
+    $('i-error').textContent = ''; $('i-okmsg').textContent = '';
+    const ls = edIni.lineas();
+    if (!ls.length) return $('i-error').textContent = 'Agrega al menos un producto.';
+    if (ls.some(l => l.cantidad === '' || Number(l.cantidad) < 0)) return $('i-error').textContent = 'Cada línea necesita cantidad (puede ser 0).';
+    const sinCosto = ls.filter(l => ['insumo','paqueteria','mercaderia'].includes((st.productos.find(p => p.id === l.producto_id) || {}).tipo_item) && !(Number(l.importe) > 0));
+    if (sinCosto.length && !confirm(`Sin costo: ${sinCosto.map(l => l.nombre).join(', ')}.\n¿Guardar igual? (su food cost saldrá en 0 hasta la primera compra)`)) return;
+    if (!confirm(`Se dejará el stock de ${ls.length} producto(s) con las cantidades indicadas. ¿Continuar?`)) return;
+    $('i-ok').disabled = true;
+    const { data, error } = await sb.rpc('registrar_inventario_inicial', { p: { almacen_id: st.alm.id, usuario_id: st.usuario.id,
+      items: ls.map(l => ({ producto_id: l.producto_id, cantidad: Number(l.cantidad), costo_unitario: l.importe === '' ? null : Number(l.importe) })) } });
+    $('i-ok').disabled = false;
+    if (error) return $('i-error').textContent = errTxt(error);
+    $('i-okmsg').textContent = `✓ Inventario inicial cargado: ${data} producto(s).`; edIni.limpiar();
+  };
 }
 
 // ===== KARDEX =====
