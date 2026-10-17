@@ -24,7 +24,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 .oculto{display:none!important}
 .btn{background:var(--rojo);color:#fff;padding:12px 16px;font-weight:600}
 .btn:hover{background:var(--rojo2)}
-.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:disabled,.btn-sec:disabled{opacity:.45;cursor:not-allowed}
 .btn-sec{background:#fff;color:var(--rojo);border:1.5px solid var(--rojo);padding:10px 14px;font-weight:600}
 .btn-link{background:none;color:var(--gris);text-decoration:underline;padding:4px}
 .error{color:#b00020;font-size:14px;min-height:18px;margin-top:8px}
@@ -49,6 +49,17 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 .barra{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--rojo);color:#fff}
 .barra .logo{font-weight:800;font-size:20px}
 .barra .info{font-size:13px;opacity:.9;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctx{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#fff6db;border-bottom:1px solid #f0dca0;padding:8px 16px;font-size:14px;font-weight:600;color:#6a4b00}
+.linea .nota{font-size:12px;color:#b26a00;font-weight:600}
+.linea .n button{background:none;color:var(--gris);font-size:12px;padding:0 4px;text-decoration:underline}
+.mesa-row{border:1px solid var(--borde);border-radius:12px;padding:12px;margin-top:10px}
+.mesa-row .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.mesa-row .nom{font-size:18px;font-weight:800}
+.mesa-row .det{font-size:13px;color:var(--gris);margin:4px 0 10px}
+.mesa-row .acc{display:flex;flex-wrap:wrap;gap:6px}
+.mesa-row .acc button{padding:8px 10px;font-size:13px}
+.etq{font-size:12px;font-weight:700;padding:3px 8px;border-radius:10px;margin-left:4px}
+.etq.coc{background:#e8f0fe;color:#1a56c4}.etq.lis{background:#e3f5e9;color:#1e7d3a}
 .red{font-size:12px;font-weight:600;padding:5px 10px;border-radius:20px;white-space:nowrap}
 .red.ok{background:rgba(255,255,255,.2)}
 .red.pend{background:#ffd27a;color:#4a3000}
@@ -189,6 +200,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
       <span class="logo">KADIMA</span>
       <span class="info" id="b-info"></span>
       <span class="red ok" id="b-red">En línea</span>
+      <button id="b-mesas">Mesas <b id="b-nmesas"></b></button>
       <button id="b-cerrar">Cerrar caja</button>
       <button id="b-salir">Cambiar usuario</button>
     </div>
@@ -197,7 +209,8 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
     <div class="grilla" id="grilla"></div>
   </div>
   <aside class="der">
-    <h2>Venta actual <button class="btn-link" id="vaciar">Vaciar</button></h2>
+    <h2><span id="t-carrito">Venta actual</span> <button class="btn-link" id="vaciar">Vaciar</button></h2>
+    <div class="ctx oculto" id="ctx"><span id="ctx-txt"></span><button class="btn-link" id="ctx-cancelar">Cancelar</button></div>
     <div class="carrito" id="carrito"></div>
     <div class="pie">
       <div class="docs" id="docs">
@@ -213,11 +226,39 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
         <div><div class="g" id="t-igv">Op. gravada S/ 0.00 · IGV S/ 0.00</div></div>
         <div class="t" id="t-total">S/ 0.00</div>
       </div>
-      <button class="btn cobrar" id="cobrar" disabled>Cobrar</button>
+      <div class="fila">
+        <button class="btn-sec" id="enviar-mesa" disabled>Enviar a mesa</button>
+        <button class="btn cobrar" id="cobrar" disabled>Cobrar</button>
+      </div>
       <div class="error" id="v-error"></div>
     </div>
   </aside>
 </section>
+
+<!-- MODAL ENVIAR A MESA -->
+<div class="modal oculto" id="m-mesa">
+  <div class="caja">
+    <h3>Enviar a mesa</h3>
+    <p class="sub">Los productos de cocina aparecen al instante en la pantalla de cocina.</p>
+    <div class="campo"><label>Mesa (puedes escribir "3+4" si se juntaron)</label><input id="mm-mesa" placeholder="Ej. Mesa 3" autocomplete="off"></div>
+    <div class="campo"><label>Mozo</label><select id="mm-mozo"></select></div>
+    <div class="fila" style="margin-top:12px">
+      <button class="btn-sec" id="mm-cancelar">Cancelar</button>
+      <button class="btn" id="mm-ok">Enviar</button>
+    </div>
+    <div class="error" id="mm-error"></div>
+  </div>
+</div>
+
+<!-- MODAL MESAS ABIERTAS -->
+<div class="modal oculto" id="m-mesas">
+  <div class="caja" style="max-width:620px">
+    <h3>Mesas abiertas</h3>
+    <div id="ms-lista"></div>
+    <div class="fila" style="margin-top:12px"><button class="btn-sec" id="ms-cerrar">Volver</button></div>
+    <div class="error" id="ms-error"></div>
+  </div>
+</div>
 
 <!-- MODAL PAGO -->
 <div class="modal oculto" id="m-pago">
@@ -285,7 +326,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
 const EMPRESA = { nombre:'Kadima Pastelería & Panadería', razon:'INVERSIONES LA SONESTA S.A.C.', ruc:'20535962236', dir:'San Juan de Lurigancho, Lima' };
-const VERSION = 'v2 · sin internet';
+const VERSION = 'v3 · mesas y cocina';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = id => document.getElementById(id);
@@ -301,7 +342,7 @@ const uuid = () => (crypto.randomUUID ? crypto.randomUUID() :
 const st = {
   disp: null, caja: null, canal: null, usuario: null, turno: null,
   productos: [], categorias: [], cat: 'todas', carrito: [], doc: 'boleta',
-  pagos: [], metodo: 'efectivo', ultimaVenta: null, ult: {}
+  pagos: [], metodo: 'efectivo', ultimaVenta: null, ult: {}, ctx: null, mozos: []
 };
 
 // ===== RED =====
@@ -442,14 +483,14 @@ async function abrirPos() {
   vista('v-pos'); pintarRed();
   $('b-info').textContent = `${st.caja.nombre} · ${st.canal.nombre} · ${st.usuario.nombre} · Turno ${new Date(st.turno.abierto_en).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}`;
   try {
-    st.productos = await conCopia('productos', () => sb.from('productos').select('id,codigo,nombre,precio_venta,tipo_item,afecto_igv,categoria_id').eq('vendible', true).eq('activo', true).order('nombre'));
+    st.productos = await conCopia('productos', () => sb.from('productos').select('id,codigo,nombre,precio_venta,tipo_item,afecto_igv,categoria_id,area_preparacion').eq('vendible', true).eq('activo', true).order('nombre'));
     const cats = await conCopia('categorias', () => sb.from('categorias').select('id,nombre').order('nombre'));
     const usadas = new Set(st.productos.map(x => x.categoria_id));
     st.categorias = cats.filter(x => usadas.has(x.id));
   } catch (e) { msg('v-error', errorTexto(e)); }
   await actualizarNumeros();
   dibujarCats(); dibujarGrilla(); dibujarCarrito();
-  enviarCola();
+  enviarCola(); contarMesas();
   $('buscar').focus();
 }
 // numeración local: continúa desde el último número del servidor y de lo vendido sin internet
@@ -493,7 +534,7 @@ $('grilla').onclick = e => { const b = e.target.closest('.prod'); if (b) agregar
 function agregar(id) {
   const p = st.productos.find(x => x.id === id);
   const l = st.carrito.find(x => x.producto_id === id);
-  if (l) l.cantidad++; else st.carrito.push({ producto_id: id, nombre: p.nombre, precio_unit: Number(p.precio_venta), cantidad: 1, afecto_igv: p.afecto_igv });
+  if (l && !l.nota) l.cantidad++; else st.carrito.push({ producto_id: id, nombre: p.nombre, precio_unit: Number(p.precio_venta), cantidad: 1, afecto_igv: p.afecto_igv, area: p.area_preparacion, nota: null });
   dibujarCarrito();
 }
 function totales() {
@@ -504,7 +545,7 @@ function totales() {
 function dibujarCarrito() {
   $('carrito').innerHTML = st.carrito.length ? st.carrito.map((l, i) => `
     <div class="linea">
-      <div><div class="n">${l.nombre}</div><div class="u">${S(l.precio_unit)} c/u</div></div>
+      <div><div class="n">${esc(l.nombre)} <button data-nota="${i}" title="Agregar nota para cocina">nota</button></div>${l.nota ? `<div class="nota">→ ${esc(l.nota)}</div>` : ''}<div class="u">${S(l.precio_unit)} c/u</div></div>
       <div class="cant"><button data-i="${i}" data-a="-">−</button><span>${l.cantidad}</span><button data-i="${i}" data-a="+">+</button></div>
       <div class="imp">${S(l.cantidad * l.precio_unit)}</div>
     </div>`).join('') : '<div class="vacio">Toca un producto para agregarlo.</div>';
@@ -512,8 +553,20 @@ function dibujarCarrito() {
   $('t-total').textContent = S(t.total);
   $('t-igv').textContent = `Op. gravada ${S(t.gravada)} · IGV ${S(t.igv)}`;
   $('cobrar').disabled = !st.carrito.length;
+  $('enviar-mesa').disabled = !st.carrito.length || (st.ctx && st.ctx.tipo === 'cobrar');
+  $('enviar-mesa').textContent = st.ctx && st.ctx.tipo === 'agregar' ? `Enviar a ${st.ctx.pedido.mesa}` : 'Enviar a mesa';
+  $('ctx').classList.toggle('oculto', !st.ctx);
+  if (st.ctx) $('ctx-txt').textContent = st.ctx.tipo === 'agregar' ? `Agregando productos a ${st.ctx.pedido.mesa}` : `Cobrando ${st.ctx.pedido.mesa}`;
+  $('t-carrito').textContent = st.ctx && st.ctx.tipo === 'cobrar' ? `Cuenta de ${st.ctx.pedido.mesa}` : 'Venta actual';
 }
 $('carrito').onclick = e => {
+  const n = e.target.dataset.nota;
+  if (n !== undefined) {
+    const l = st.carrito[n];
+    const t = prompt(`Nota para cocina · ${l.nombre}`, l.nota || '');
+    if (t !== null) { l.nota = t.trim() || null; dibujarCarrito(); }
+    return;
+  }
   const i = e.target.dataset.i; if (i === undefined) return;
   const l = st.carrito[i];
   l.cantidad += e.target.dataset.a === '+' ? 1 : -1;
@@ -521,6 +574,7 @@ $('carrito').onclick = e => {
   dibujarCarrito();
 };
 $('vaciar').onclick = () => { st.carrito = []; dibujarCarrito(); };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 
 $('docs').onclick = e => {
   const d = e.target.dataset.doc; if (!d) return;
@@ -589,6 +643,7 @@ $('p-confirmar').onclick = async () => {
     id_local: uuid(), numero, emitida_en: new Date().toISOString(),
     tipo_doc: st.doc, dispositivo_id: st.disp.id, caja_id: st.caja.id, canal_id: st.canal.id,
     turno_id: st.turno.id, usuario_id: st.usuario.id,
+    pedido_id: st.ctx && st.ctx.tipo === 'cobrar' ? st.ctx.pedido.id : null,
     cliente: { num_doc: $('c-doc').value.trim(), nombre: $('c-nombre').value.trim() },
     items: st.carrito.map(l => ({ producto_id: l.producto_id, cantidad: l.cantidad, precio_unit: l.precio_unit })),
     pagos: st.pagos.map(p => ({ metodo: p.metodo, monto: p.monto, referencia: p.referencia }))
@@ -621,7 +676,7 @@ $('p-confirmar').onclick = async () => {
   pintarRed();
 };
 $('ok-nueva').onclick = () => {
-  st.carrito = []; st.pagos = []; $('c-doc').value = ''; $('c-nombre').value = '';
+  st.carrito = []; st.pagos = []; st.ctx = null; contarMesas(); $('c-doc').value = ''; $('c-nombre').value = '';
   $('m-ok').classList.add('oculto'); dibujarCarrito(); $('buscar').focus();
 };
 $('ok-imprimir').onclick = () => { armarTicket(st.ultimaVenta); window.print(); };
@@ -665,6 +720,135 @@ function armarTicket(v) {
     </table><hr>
     <table>${pagos}${vuelto > 0 ? `<tr><td>Vuelto</td><td class="r">${vuelto.toFixed(2)}</td></tr>` : ''}</table><hr>
     <div class="c">${v.doc === 'nota_venta' ? 'Documento interno. No válido como comprobante de pago.' : 'Representación impresa del comprobante electrónico.'}<br>¡Gracias por tu compra!</div>`;
+}
+
+// ===== MESAS =====
+$('ctx-cancelar').onclick = () => { st.ctx = null; st.carrito = []; dibujarCarrito(); };
+$('enviar-mesa').onclick = async () => {
+  msg('v-error');
+  if (!navigator.onLine) return msg('v-error', 'Enviar a mesa necesita internet (la cocina lo recibe en línea).');
+  if (st.ctx && st.ctx.tipo === 'agregar') return enviarItems(st.ctx.pedido);
+  msg('mm-error'); $('mm-mesa').value = '';
+  const { data } = await sb.from('usuarios').select('id,nombre').eq('rol', 'mozo').eq('activo', true).order('nombre');
+  st.mozos = data || [];
+  $('mm-mozo').innerHTML = '<option value="">— Sin mozo —</option>' + st.mozos.map(m => `<option value="${m.id}">${esc(m.nombre)}</option>`).join('');
+  $('m-mesa').classList.remove('oculto'); $('mm-mesa').focus();
+};
+$('mm-cancelar').onclick = () => $('m-mesa').classList.add('oculto');
+$('mm-mesa').onkeydown = e => { if (e.key === 'Enter') $('mm-ok').click(); };
+$('mm-ok').onclick = async () => {
+  let mesa = $('mm-mesa').value.trim();
+  if (!mesa) return msg('mm-error', 'Escribe la mesa.');
+  if (/^\d+(\s*\+\s*\d+)*$/.test(mesa)) mesa = 'Mesa ' + mesa.replace(/\s+/g, '');
+  $('mm-ok').disabled = true;
+  const { data, error } = await sb.from('pedidos').insert({
+    sede_id: st.disp.sede_id, canal_id: st.canal.id, tipo: 'mesa', mesa,
+    mozo_id: Number($('mm-mozo').value) || null, creado_por: st.usuario.id
+  }).select().single();
+  $('mm-ok').disabled = false;
+  if (error) return msg('mm-error', errorTexto(error));
+  $('m-mesa').classList.add('oculto');
+  enviarItems(data);
+};
+async function enviarItems(pedido) {
+  const filas = st.carrito.map(l => ({ pedido_id: pedido.id, producto_id: l.producto_id, cantidad: l.cantidad, precio_unit: l.precio_unit, nota: l.nota }));
+  const { error } = await sb.from('pedido_items').insert(filas);
+  if (error) return msg('v-error', errorTexto(error));
+  const aCocina = st.carrito.filter(l => l.area === 'cocina').length;
+  st.carrito = []; st.ctx = null; dibujarCarrito(); contarMesas();
+  msg('v-error', `✓ Enviado a ${pedido.mesa}` + (aCocina ? ` · ${aCocina} producto(s) a cocina` : ''));
+  setTimeout(() => msg('v-error'), 4000);
+}
+
+async function contarMesas() {
+  if (!navigator.onLine || !st.disp) return;
+  const { count } = await sb.from('v_mesas_abiertas').select('id', { count: 'exact', head: true }).eq('sede_id', st.disp.sede_id);
+  $('b-nmesas').textContent = count ? `(${count})` : '';
+}
+setInterval(() => { if (!$('v-pos').classList.contains('oculto')) contarMesas(); }, 20000);
+
+$('b-mesas').onclick = abrirMesas;
+$('ms-cerrar').onclick = () => $('m-mesas').classList.add('oculto');
+async function abrirMesas() {
+  msg('v-error'); msg('ms-error');
+  if (!navigator.onLine) return msg('v-error', 'Ver mesas necesita internet.');
+  const { data, error } = await sb.from('v_mesas_abiertas').select('*').eq('sede_id', st.disp.sede_id).order('creado_en');
+  if (error) return msg('v-error', errorTexto(error));
+  $('ms-lista').innerHTML = data.length ? data.map(m => {
+    const min = Math.floor((Date.now() - new Date(m.creado_en)) / 60000);
+    return `<div class="mesa-row">
+      <div class="top"><span class="nom">${esc(m.mesa)}${m.en_cocina ? `<span class="etq coc">${m.en_cocina} en cocina</span>` : ''}${m.listos ? `<span class="etq lis">${m.listos} listo(s) para servir</span>` : ''}</span><b>${S(m.total)}</b></div>
+      <div class="det">${m.mozo ? esc(m.mozo) + ' · ' : ''}hace ${min} min</div>
+      <div class="acc">
+        <button class="btn-sec" data-acc="agregar" data-id="${m.id}">+ Agregar</button>
+        <button class="btn-sec" data-acc="precuenta" data-id="${m.id}">Precuenta</button>
+        <button class="btn-sec" data-acc="mover" data-id="${m.id}">Cambiar mesa</button>
+        <button class="btn-sec" data-acc="anular" data-id="${m.id}">Anular</button>
+        <button class="btn" data-acc="cobrar" data-id="${m.id}">Cobrar</button>
+      </div></div>`;
+  }).join('') : '<div class="vacio">No hay mesas abiertas.</div>';
+  st.mesasAbiertas = data;
+  $('m-mesas').classList.remove('oculto');
+}
+async function itemsDe(pedidoId) {
+  const { data, error } = await sb.from('pedido_items').select('id,producto_id,cantidad,precio_unit,nota,estado_cocina,productos(nombre,afecto_igv,area_preparacion)')
+    .eq('pedido_id', pedidoId).neq('estado_cocina', 'anulado').order('id');
+  if (error) throw error;
+  return data;
+}
+$('ms-lista').onclick = async e => {
+  const acc = e.target.dataset.acc; if (!acc) return;
+  const m = st.mesasAbiertas.find(x => x.id == e.target.dataset.id);
+  const pedido = { id: m.id, mesa: m.mesa };
+  try {
+    if (acc === 'agregar') {
+      if (st.carrito.length && !st.ctx) return msg('ms-error', 'Primero termina o vacía la venta actual.');
+      st.ctx = { tipo: 'agregar', pedido }; st.carrito = [];
+      $('m-mesas').classList.add('oculto'); dibujarCarrito(); $('buscar').focus();
+    }
+    if (acc === 'cobrar') {
+      if (st.carrito.length && !st.ctx) return msg('ms-error', 'Primero termina o vacía la venta actual.');
+      const items = await itemsDe(m.id);
+      st.carrito = [];
+      items.forEach(i => {
+        const l = st.carrito.find(x => x.producto_id === i.producto_id && Number(x.precio_unit) === Number(i.precio_unit));
+        if (l) l.cantidad += Number(i.cantidad);
+        else st.carrito.push({ producto_id: i.producto_id, nombre: i.productos.nombre, precio_unit: Number(i.precio_unit),
+          cantidad: Number(i.cantidad), afecto_igv: i.productos.afecto_igv, area: i.productos.area_preparacion, nota: null });
+      });
+      st.ctx = { tipo: 'cobrar', pedido };
+      $('m-mesas').classList.add('oculto'); dibujarCarrito();
+    }
+    if (acc === 'precuenta') {
+      const items = await itemsDe(m.id);
+      armarPrecuenta(m, items); window.print();
+    }
+    if (acc === 'mover') {
+      const nueva = prompt(`Nueva mesa para ${m.mesa}`, m.mesa);
+      if (!nueva || !nueva.trim()) return;
+      const etiqueta = /^\d+(\s*\+\s*\d+)*$/.test(nueva.trim()) ? 'Mesa ' + nueva.trim().replace(/\s+/g, '') : nueva.trim();
+      const { error } = await sb.from('pedidos').update({ mesa: etiqueta }).eq('id', m.id);
+      if (error) throw error;
+      abrirMesas();
+    }
+    if (acc === 'anular') {
+      if (e.target.dataset.seguro !== '1') { e.target.dataset.seguro = '1'; e.target.textContent = '¿Seguro? Toca otra vez'; return; }
+      const r1 = await sb.from('pedido_items').update({ estado_cocina: 'anulado' }).eq('pedido_id', m.id).neq('estado_cocina', 'entregado');
+      if (r1.error) throw r1.error;
+      const r2 = await sb.from('pedidos').update({ estado: 'anulado' }).eq('id', m.id);
+      if (r2.error) throw r2.error;
+      abrirMesas(); contarMesas();
+    }
+  } catch (err) { msg('ms-error', errorTexto(err)); }
+};
+function armarPrecuenta(m, items) {
+  const total = items.reduce((a, i) => a + i.cantidad * i.precio_unit, 0);
+  $('ticket').innerHTML = `
+    <div class="c"><b>${EMPRESA.nombre}</b></div><hr>
+    <div class="c"><b>PRECUENTA</b><br>${esc(m.mesa)}${m.mozo ? ' · ' + esc(m.mozo) : ''}<br>${new Date().toLocaleString('es-PE')}</div><hr>
+    <table>${items.map(i => `<tr><td>${Number(i.cantidad)} x ${esc(i.productos.nombre)}</td><td class="r">${(i.cantidad * i.precio_unit).toFixed(2)}</td></tr>`).join('')}</table><hr>
+    <table><tr><td><b>TOTAL S/</b></td><td class="r"><b>${total.toFixed(2)}</b></td></tr></table><hr>
+    <div class="c">Documento informativo. No es comprobante de pago.</div>`;
 }
 
 // ===== CIERRE DE CAJA =====

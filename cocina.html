@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kadima Cocina</title>
+<meta name="theme-color" content="#1b1b1b">
+<link rel="manifest" href="cocina-manifest.webmanifest">
+<link rel="icon" href="pos-icon-192.png">
+<link rel="apple-touch-icon" href="pos-icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+:root{
+  --fondo:#141414; --tarjeta:#232323; --borde:#333; --texto:#f2f2f2; --gris:#a3a3a3;
+  --rojo:#c62828; --ambar:#f2a900; --verde:#2e9d4f; --azul:#3b82f6; --kadima:#8B0000;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--fondo);color:var(--texto)}
+button{font:inherit;cursor:pointer;border:none;border-radius:10px}
+input,select{font:inherit;padding:10px 12px;border:1px solid var(--borde);border-radius:10px;width:100%;background:#1b1b1b;color:var(--texto)}
+.oculto{display:none!important}
+.btn{background:var(--kadima);color:#fff;padding:12px 16px;font-weight:600}
+.error{color:#ff8a80;font-size:14px;min-height:18px;margin-top:8px}
+.centro{min-height:100%;display:flex;align-items:center;justify-content:center;padding:16px}
+.form{background:var(--tarjeta);border-radius:16px;padding:28px;width:100%;max-width:380px}
+.form h1{margin:0 0 4px;color:#fff}
+.form p{color:var(--gris);margin:0 0 18px}
+.campo{margin-bottom:12px}
+.campo label{display:block;font-size:13px;color:var(--gris);margin-bottom:4px}
+
+.barra{display:flex;align-items:center;gap:12px;padding:10px 16px;background:#000;position:sticky;top:0;z-index:2}
+.barra .logo{font-weight:800;font-size:20px;color:#fff}
+.barra .info{flex:1;color:var(--gris);font-size:14px}
+.chip{font-size:13px;font-weight:700;padding:6px 12px;border-radius:20px;background:#2b2b2b}
+.chip.ok{color:#7ee2a0}.chip.off{color:#ff8a80}
+.toggle{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--gris);cursor:pointer;user-select:none}
+.toggle input{width:20px;height:20px}
+
+.tablero{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;padding:16px;align-items:start}
+.card{background:var(--tarjeta);border-radius:14px;border-top:8px solid var(--azul);overflow:hidden}
+.card.t1{border-top-color:var(--ambar)} .card.t2{border-top-color:var(--rojo)} .card.listo{border-top-color:var(--verde)}
+.card .cab{display:flex;justify-content:space-between;align-items:baseline;padding:12px 14px 6px}
+.card .titulo{font-size:22px;font-weight:800}
+.card .tiempo{font-size:20px;font-weight:800}
+.card.t1 .tiempo{color:var(--ambar)} .card.t2 .tiempo{color:#ff6b6b}
+.card .sub{padding:0 14px 8px;color:var(--gris);font-size:13px}
+.item{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-top:1px solid var(--borde);width:100%;text-align:left;background:none;color:inherit;border-radius:0}
+.item .q{font-size:24px;font-weight:800;min-width:42px}
+.item .n{font-size:19px;font-weight:600;line-height:1.25}
+.item .nota{display:inline-block;margin-top:4px;background:var(--ambar);color:#000;font-weight:700;font-size:14px;padding:2px 8px;border-radius:6px}
+.item .est{margin-left:auto;font-size:12px;font-weight:700;padding:4px 8px;border-radius:6px;white-space:nowrap;background:#333;color:var(--gris)}
+.item.preparando .est{background:var(--azul);color:#fff}
+.item.listo{opacity:.55}.item.listo .n{text-decoration:line-through}
+.item.listo .est{background:var(--verde);color:#fff}
+.acciones{display:flex;gap:8px;padding:12px 14px;border-top:1px solid var(--borde)}
+.acciones button{flex:1;padding:14px;font-weight:700;font-size:16px}
+.b-listo{background:var(--verde);color:#fff}
+.b-entregar{background:#fff;color:#000}
+.vacio{grid-column:1/-1;text-align:center;color:var(--gris);font-size:20px;padding:80px 16px}
+
+#comanda{display:none}
+@media print{
+  @page{size:80mm auto;margin:0}
+  body *{visibility:hidden}
+  #comanda,#comanda *{visibility:visible}
+  #comanda{display:block;position:absolute;left:0;top:0;width:72mm;padding:3mm 4mm;font-family:"Courier New",monospace;font-size:13px;color:#000;background:#fff}
+  #comanda .c{text-align:center}
+  #comanda hr{border:none;border-top:1px dashed #000;margin:4px 0}
+}
+</style>
+</head>
+<body>
+
+<section id="v-login" class="centro">
+  <form class="form" id="f-login">
+    <h1>Kadima Cocina</h1>
+    <p>Iniciar sesión del equipo</p>
+    <div class="campo"><label>Correo</label><input id="l-email" type="email" required value="caja@kadima.pe"></div>
+    <div class="campo"><label>Contraseña</label><input id="l-pass" type="password" required></div>
+    <button class="btn" style="width:100%">Ingresar</button>
+    <div class="error" id="l-error"></div>
+  </form>
+</section>
+
+<section id="v-equipo" class="centro oculto">
+  <div class="form">
+    <h1>Kadima Cocina</h1>
+    <p>¿Qué pantalla es esta? Se guarda en este equipo.</p>
+    <div class="campo"><select id="e-disp"></select></div>
+    <button class="btn" style="width:100%" id="e-ok">Guardar</button>
+    <div class="error" id="e-error"></div>
+  </div>
+</section>
+
+<section id="v-tablero" class="oculto">
+  <div class="barra">
+    <span class="logo">COCINA</span>
+    <span class="info" id="b-info"></span>
+    <label class="toggle"><input type="checkbox" id="imprimir"> Imprimir comandas</label>
+    <span class="chip ok" id="b-red">En vivo</span>
+  </div>
+  <div class="tablero" id="tablero"></div>
+</section>
+
+<div id="comanda"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
+<script>
+const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+const guardar = (k, v) => { try { localStorage.setItem('kadima_cocina_' + k, JSON.stringify(v)); } catch (e) {} };
+const leer = k => { try { return JSON.parse(localStorage.getItem('kadima_cocina_' + k)); } catch (e) { return null; } };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const ESTADO = { pendiente:'NUEVO', preparando:'PREPARANDO', listo:'LISTO' };
+const SIGUIENTE = { pendiente:'preparando', preparando:'listo', listo:'preparando' };
+
+const st = { disp: null, items: [], vistos: new Set(leer('vistos') || []), primeraCarga: true };
+
+function vista(id) { ['v-login','v-equipo','v-tablero'].forEach(v => $(v).classList.toggle('oculto', v !== id)); }
+function msg(id, t) { $(id).textContent = t || ''; }
+function textoError(e) { const m = (e && e.message) || String(e); return /fetch|network/i.test(m) ? 'Sin conexión a internet.' : /Invalid login/i.test(m) ? 'Correo o contraseña incorrectos.' : m; }
+
+$('f-login').addEventListener('submit', async ev => {
+  ev.preventDefault(); msg('l-error');
+  const { error } = await sb.auth.signInWithPassword({ email: $('l-email').value.trim(), password: $('l-pass').value });
+  if (error) return msg('l-error', textoError(error));
+  iniciar();
+});
+
+async function iniciar() {
+  const { data } = await sb.auth.getSession();
+  if (!data.session) return vista('v-login');
+  const id = leer('dispositivo');
+  if (!id) return configurar();
+  const { data: d, error } = await sb.from('dispositivos').select('*').eq('id', id).maybeSingle();
+  if (error && !leer('disp')) return configurar();
+  st.disp = d || leer('disp'); guardar('disp', st.disp);
+  arrancar();
+}
+async function configurar() {
+  vista('v-equipo');
+  const { data, error } = await sb.from('dispositivos').select('id,nombre').eq('rol', 'cocina').eq('activo', true).order('id');
+  if (error) return msg('e-error', textoError(error));
+  $('e-disp').innerHTML = data.map(d => `<option value="${d.id}">${esc(d.nombre)}</option>`).join('');
+}
+$('e-ok').onclick = () => { guardar('dispositivo', Number($('e-disp').value)); iniciar(); };
+
+// ===== TABLERO =====
+function arrancar() {
+  vista('v-tablero');
+  $('b-info').textContent = st.disp.nombre;
+  $('imprimir').checked = leer('imprimir') ?? !!st.disp.imprime_comanda;
+  cargar();
+  sb.channel('cocina')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'pedido_items' }, () => cargar())
+    .subscribe(s => estadoRed(s === 'SUBSCRIBED'));
+  setInterval(cargar, 15000);       // respaldo por si se corta el tiempo real
+  setInterval(dibujar, 30000);      // actualiza los minutos
+}
+$('imprimir').onchange = () => {
+  guardar('imprimir', $('imprimir').checked);
+  sb.from('dispositivos').update({ imprime_comanda: $('imprimir').checked }).eq('id', st.disp.id).then(() => {});
+};
+function estadoRed(ok) { $('b-red').className = 'chip ' + (ok ? 'ok' : 'off'); $('b-red').textContent = ok ? 'En vivo' : 'Sin conexión'; }
+window.addEventListener('offline', () => estadoRed(false));
+window.addEventListener('online', () => { estadoRed(true); cargar(); });
+
+let cargando = false;
+async function cargar() {
+  if (cargando) return; cargando = true;
+  const { data, error } = await sb.from('v_cocina').select('*').eq('sede_id', st.disp.sede_id).order('enviado_en');
+  cargando = false;
+  if (error) return estadoRed(false);
+  estadoRed(true);
+  // pedidos nuevos: sonido + comanda impresa
+  const nuevos = data.filter(i => !st.vistos.has(i.id));
+  if (nuevos.length && !st.primeraCarga) {
+    sonar();
+    if ($('imprimir').checked) imprimirComanda(nuevos);
+  }
+  nuevos.forEach(i => st.vistos.add(i.id));
+  guardar('vistos', [...st.vistos].slice(-500));
+  st.primeraCarga = false;
+  st.items = data; dibujar();
+}
+
+function agrupar() {
+  const g = new Map();
+  st.items.forEach(i => {
+    if (!g.has(i.pedido_id)) g.set(i.pedido_id, { id: i.pedido_id, tipo: i.tipo, mesa: i.mesa, mozo: i.mozo, desde: i.enviado_en, items: [] });
+    const p = g.get(i.pedido_id); p.items.push(i);
+    if (i.enviado_en < p.desde) p.desde = i.enviado_en;
+  });
+  return [...g.values()].sort((a, b) => a.desde.localeCompare(b.desde));
+}
+function titulo(p) { return p.tipo === 'mesa' ? esc(p.mesa) : p.tipo === 'llevar' ? 'Para llevar' : p.tipo === 'encargo' ? 'Encargo' : 'Mostrador'; }
+function dibujar() {
+  const pedidos = agrupar();
+  if (!pedidos.length) { $('tablero').innerHTML = '<div class="vacio">Sin pedidos pendientes 👌</div>'; return; }
+  $('tablero').innerHTML = pedidos.map(p => {
+    const min = Math.max(0, Math.floor((Date.now() - new Date(p.desde)) / 60000));
+    const todosListos = p.items.every(i => i.estado_cocina === 'listo');
+    const clase = todosListos ? 'listo' : min >= 20 ? 't2' : min >= 10 ? 't1' : '';
+    return `<div class="card ${clase}">
+      <div class="cab"><span class="titulo">${titulo(p)}</span><span class="tiempo">${min} min</span></div>
+      <div class="sub">#${p.id}${p.mozo ? ' · ' + esc(p.mozo) : ''} · ${new Date(p.desde).toLocaleTimeString('es-PE', { hour:'2-digit', minute:'2-digit' })}</div>
+      ${p.items.map(i => `<button class="item ${i.estado_cocina}" data-id="${i.id}" data-e="${i.estado_cocina}">
+          <span class="q">${Number(i.cantidad)}×</span>
+          <span><span class="n">${esc(i.producto)}</span>${i.nota ? `<br><span class="nota">${esc(i.nota)}</span>` : ''}</span>
+          <span class="est">${ESTADO[i.estado_cocina]}</span></button>`).join('')}
+      <div class="acciones">${todosListos
+        ? `<button class="b-entregar" data-entregar="${p.id}">Entregado ✓</button>`
+        : `<button class="b-listo" data-listo="${p.id}">Todo listo</button>`}</div>
+    </div>`;
+  }).join('');
+}
+
+$('tablero').onclick = async e => {
+  const it = e.target.closest('.item');
+  if (it) {
+    const nuevo = SIGUIENTE[it.dataset.e];
+    return cambiar([Number(it.dataset.id)], nuevo);
+  }
+  const listo = e.target.dataset.listo, entregar = e.target.dataset.entregar;
+  if (listo) return cambiar(st.items.filter(i => i.pedido_id == listo && i.estado_cocina !== 'listo').map(i => i.id), 'listo');
+  if (entregar) return cambiar(st.items.filter(i => i.pedido_id == entregar).map(i => i.id), 'entregado');
+};
+async function cambiar(ids, estado) {
+  if (!ids.length) return;
+  const ahora = new Date().toISOString();
+  const cambios = { estado_cocina: estado };
+  if (estado === 'listo') cambios.listo_en = ahora;
+  if (estado === 'entregado') cambios.entregado_en = ahora;
+  // se ve al instante; si falla, se recarga lo real
+  st.items = st.items.map(i => ids.includes(i.id) ? { ...i, ...cambios } : i).filter(i => i.estado_cocina !== 'entregado');
+  dibujar();
+  const { error } = await sb.from('pedido_items').update(cambios).in('id', ids);
+  if (error) { estadoRed(false); cargar(); }
+}
+
+// ===== SONIDO Y COMANDA =====
+function sonar() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.25].forEach(t => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = 880; o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0.3, ctx.currentTime + t); g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.2);
+      o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.2);
+    });
+  } catch (e) {}
+}
+document.addEventListener('click', () => { try { new (window.AudioContext || window.webkitAudioContext)().resume(); } catch (e) {} }, { once: true });
+
+function imprimirComanda(items) {
+  const g = new Map();
+  items.forEach(i => { if (!g.has(i.pedido_id)) g.set(i.pedido_id, { ...i, lista: [] }); g.get(i.pedido_id).lista.push(i); });
+  $('comanda').innerHTML = [...g.values()].map(p => `
+    <div class="c"><b>COMANDA</b><br><b style="font-size:18px">${titulo(p)}</b><br>#${p.pedido_id}${p.mozo ? ' · ' + esc(p.mozo) : ''}<br>${new Date().toLocaleTimeString('es-PE')}</div><hr>
+    ${p.lista.map(i => `<div><b>${Number(i.cantidad)} x ${esc(i.producto)}</b>${i.nota ? `<br>&nbsp;&nbsp;* ${esc(i.nota)}` : ''}</div>`).join('')}<hr>`).join('<br>');
+  window.print();
+}
+
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('pos-sw.js').catch(() => {});
+iniciar();
+</script>
+</body>
+</html>

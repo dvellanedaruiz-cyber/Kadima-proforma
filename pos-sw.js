@@ -1,7 +1,9 @@
 // Kadima Caja · guarda la app en el equipo para abrirla sin internet
-const CACHE = 'kadima-caja-v2';
+const CACHE = 'kadima-caja-v3';
 const APP = [
   'caja.html',
+  'cocina.html',
+  'cocina-manifest.webmanifest',
   'pos-manifest.webmanifest',
   'pos-icon-192.png',
   'pos-icon-512.png',
@@ -19,7 +21,7 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   const esApp = APP.some(a => url.href === new URL(a, self.registration.scope).href) ||
-                (url.origin === location.origin && url.pathname.endsWith('/caja.html'));
+                (url.origin === location.origin && (url.pathname.endsWith('/caja.html') || url.pathname.endsWith('/cocina.html')));
   if (e.request.method !== 'GET' || !esApp) return;
   // primero internet (para recibir actualizaciones); si no hay, la copia guardada
   e.respondWith(
