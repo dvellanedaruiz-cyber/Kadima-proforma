@@ -125,6 +125,10 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 .cuotas-tabla{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}
 .cuotas-tabla td{padding:4px}.cuotas-tabla input{width:100%;padding:8px;border:1px solid var(--borde);border-radius:8px;font:inherit}
 .ret-info{background:#fff8e6;color:#8a5a00;padding:8px 12px;border-radius:10px;font-size:13px;margin:6px 0}
+.mm-abiertas{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.mm-abiertas button{padding:8px 12px;border:2px solid var(--borde);background:#fff;border-radius:10px;font-weight:700}
+.mm-abiertas button:hover{border-color:var(--rojo);color:var(--rojo)}
+.mm-abiertas small{display:block;font-weight:400;color:var(--gris);font-size:11px}
 .vuelto{background:#e9f6ee;color:var(--ok);padding:10px 12px;border-radius:10px;font-weight:700;text-align:center}
 .fila{display:flex;gap:8px}
 .fila>*{flex:1}
@@ -260,7 +264,8 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
   <div class="caja">
     <h3>Enviar a mesa</h3>
     <p class="sub">Los productos de cocina aparecen al instante en la pantalla de cocina.</p>
-    <div class="campo"><label>Mesa (puedes escribir "3+4" si se juntaron)</label><input id="mm-mesa" placeholder="Ej. Mesa 3" autocomplete="off"></div>
+    <div id="mm-abiertas" class="mm-abiertas"></div>
+    <div class="campo"><label>Mesa (si ya está abierta, se suma a su cuenta · "3+4" si se juntaron)</label><input id="mm-mesa" placeholder="Ej. 3" autocomplete="off"></div>
     <div class="campo"><label>Mozo</label><select id="mm-mozo"></select></div>
     <div class="fila" style="margin-top:12px">
       <button class="btn-sec" id="mm-cancelar">Cancelar</button>
@@ -905,19 +910,21 @@ $('enviar-mesa').onclick = async () => {
   const { data } = await sb.from('usuarios').select('id,nombre').eq('rol', 'mozo').eq('activo', true).order('nombre');
   st.mozos = data || [];
   $('mm-mozo').innerHTML = '<option value="">— Sin mozo —</option>' + st.mozos.map(m => `<option value="${m.id}">${esc(m.nombre)}</option>`).join('');
+  const ab = await sb.from('v_mesas_abiertas').select('id,mesa,total').eq('sede_id', st.disp.sede_id).order('mesa');
+  $('mm-abiertas').innerHTML = (ab.data || []).length ? '<div style="width:100%;font-size:12px;color:var(--gris)">Mesas abiertas (toca para agregar):</div>' +
+    ab.data.map(m => `<button data-mesa="${esc(m.mesa)}">${esc(m.mesa)}<small>${S(m.total)}</small></button>`).join('') : '';
   $('m-mesa').classList.remove('oculto'); $('mm-mesa').focus();
 };
 $('mm-cancelar').onclick = () => $('m-mesa').classList.add('oculto');
 $('mm-mesa').onkeydown = e => { if (e.key === 'Enter') $('mm-ok').click(); };
+$('mm-abiertas').onclick = e => { const b = e.target.closest('[data-mesa]'); if (b) { $('mm-mesa').value = b.dataset.mesa; $('mm-ok').click(); } };
 $('mm-ok').onclick = async () => {
-  let mesa = $('mm-mesa').value.trim();
+  const mesa = $('mm-mesa').value.trim();
   if (!mesa) return msg('mm-error', 'Escribe la mesa.');
-  if (/^\d+(\s*\+\s*\d+)*$/.test(mesa)) mesa = 'Mesa ' + mesa.replace(/\s+/g, '');
   $('mm-ok').disabled = true;
-  const { data, error } = await sb.from('pedidos').insert({
-    sede_id: st.disp.sede_id, canal_id: st.canal.id, tipo: 'mesa', mesa,
-    mozo_id: Number($('mm-mozo').value) || null, creado_por: st.usuario.id
-  }).select().single();
+  // si la mesa ya está abierta, devuelve esa misma cuenta
+  const { data, error } = await sb.rpc('mesa_abierta', { p_sede: st.disp.sede_id, p_canal: st.canal.id, p_mesa: mesa,
+    p_mozo: Number($('mm-mozo').value) || null, p_usuario: st.usuario.id });
   $('mm-ok').disabled = false;
   if (error) return msg('mm-error', errorTexto(error));
   $('m-mesa').classList.add('oculto');
@@ -1007,12 +1014,12 @@ $('ms-lista').onclick = async e => {
       armarPrecuenta(m, items); window.print();
     }
     if (acc === 'mover') {
-      const nueva = prompt(`Nueva mesa para ${m.mesa}`, m.mesa);
+      const nueva = prompt(`Nueva mesa para ${m.mesa} (si ya está abierta, se juntan las cuentas)`, m.mesa);
       if (!nueva || !nueva.trim()) return;
-      const etiqueta = /^\d+(\s*\+\s*\d+)*$/.test(nueva.trim()) ? 'Mesa ' + nueva.trim().replace(/\s+/g, '') : nueva.trim();
-      const { error } = await sb.from('pedidos').update({ mesa: etiqueta }).eq('id', m.id);
+      const { data: r, error } = await sb.rpc('cambiar_mesa', { p_pedido: m.id, p_nueva: nueva });
       if (error) throw error;
-      abrirMesas();
+      await abrirMesas(); contarMesas();
+      if (r.unida) msg('ms-error', `✓ Se juntó con ${r.mesa}`);
     }
     if (acc === 'anular') {
       if (e.target.dataset.seguro !== '1') { e.target.dataset.seguro = '1'; e.target.textContent = '¿Seguro? Toca otra vez'; return; }
