@@ -217,6 +217,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
   <div class="tarjeta">
     <p class="marca">KADIMA</p>
     <p class="sub" id="t-sub">Abrir caja</p>
+    <div class="campo"><label>Turno</label><div class="formas" id="t-turnos"><button data-t="Turno mañana">☀️ Turno mañana</button><button data-t="Turno tarde">🌙 Turno tarde</button></div></div>
     <div class="campo"><label>Efectivo inicial en caja (S/)</label><input id="t-monto" type="number" step="0.10" min="0" value="0" inputmode="decimal"></div>
     <button class="btn" style="width:100%" id="t-abrir">Abrir caja</button>
     <div class="error" id="t-error"></div>
@@ -561,10 +562,14 @@ async function revisarTurno() {
   } catch (e) { return msg('pin-error', errorTexto(e)); }
   vista('v-turno'); msg('t-error');
   $('t-sub').textContent = `${st.caja.nombre} está cerrada. Ábrela para empezar a vender.`;
+  elegirTurno(new Date().getHours() < 14 ? 'Turno mañana' : 'Turno tarde');
 }
+let turnoNombre = 'Turno mañana';
+function elegirTurno(t) { turnoNombre = t; [...$('t-turnos').children].forEach(b => b.classList.toggle('activa', b.dataset.t === t)); }
+$('t-turnos').onclick = e => { const t = e.target.closest('[data-t]'); if (t) elegirTurno(t.dataset.t); };
 $('t-abrir').onclick = async () => {
   const { data, error } = await sb.from('turnos_caja').insert({
-    caja_id: st.caja.id, usuario_id: st.usuario.id, dispositivo_id: st.disp.id, monto_inicial: Number($('t-monto').value || 0)
+    caja_id: st.caja.id, usuario_id: st.usuario.id, dispositivo_id: st.disp.id, monto_inicial: Number($('t-monto').value || 0), nombre: turnoNombre
   }).select().single();
   if (error) return msg('t-error', errorTexto(error) + (esErrorDeRed(error) ? ' Abrir caja necesita internet.' : ''));
   st.turno = data; guardar('turno', data); abrirPos();
@@ -573,7 +578,7 @@ $('t-abrir').onclick = async () => {
 // ===== 5. POS =====
 async function abrirPos() {
   vista('v-pos'); pintarRed();
-  $('b-info').textContent = `${st.caja.nombre} · ${st.canal.nombre} · ${st.usuario.nombre} · Turno ${new Date(st.turno.abierto_en).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}`;
+  $('b-info').textContent = `${st.caja.nombre} · ${st.canal.nombre} · ${st.usuario.nombre} · ${st.turno.nombre || 'Turno'} desde ${new Date(st.turno.abierto_en).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}`;
   try {
     st.productos = await conCopia('productos', () => sb.from('productos').select('id,codigo,nombre,precio_venta,tipo_item,afecto_igv,categoria_id,area_preparacion').eq('vendible', true).eq('activo', true).order('nombre'));
     const cats = await conCopia('categorias', () => sb.from('categorias').select('id,nombre').order('nombre'));
@@ -1157,7 +1162,7 @@ $('b-cerrar').onclick = async () => {
   const retenido = r2(validas.reduce((a, v) => a + Number(v.retencion_monto || 0), 0));
   const totalVentas = r2(validas.reduce((a, v) => a + Number(v.total), 0));
   resumenCierre.efectivoEsperado = r2(Number(st.turno.monto_inicial) + (porMetodo.efectivo || 0));
-  $('ci-sub').textContent = `${st.caja.nombre} · ${validas.length} ventas · ${S(totalVentas)}`;
+  $('ci-sub').textContent = `${st.caja.nombre} · ${st.turno.nombre || 'Turno'} · ${validas.length} ventas · ${S(totalVentas)}`;
   $('ci-tabla').innerHTML =
     `<tr><td>Efectivo inicial</td><td>${S(st.turno.monto_inicial)}</td></tr>` +
     Object.keys(NOMBRES_METODO).filter(m => porMetodo[m]).map(m => `<tr><td>${NOMBRES_METODO[m]}</td><td>${S(porMetodo[m])}</td></tr>`).join('') +
