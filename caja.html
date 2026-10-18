@@ -97,6 +97,14 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 .cant span{min-width:22px;text-align:center;font-weight:600}
 .linea .imp{font-weight:700;min-width:64px;text-align:right}
 .pie{border-top:1px solid var(--borde);padding:12px 16px;display:flex;flex-direction:column;gap:10px}
+.canal-sel{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--gris);margin-bottom:6px}
+.canal-sel select{flex:1;padding:6px 8px;border:1px solid var(--borde);border-radius:8px;font:inherit;font-weight:600}
+.canal-sel select.digital{background:#eef6ff;border-color:#9cc3f0;color:#1f4f99}
+.tipos-cobro{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+.tipos-cobro button{padding:10px 4px;border:2px solid var(--borde);background:#fff;border-radius:10px;font-weight:700}
+.tipos-cobro button.activa{border-color:var(--rojo);color:var(--rojo);background:#fff5f5}
+.prev-pagos{background:var(--fondo);border-radius:10px;padding:8px 12px;font-size:13px;margin-bottom:10px}
+.prev-pagos div{display:flex;justify-content:space-between;padding:2px 0}
 .docs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .docs button{background:var(--fondo);padding:10px 4px;font-size:13px;font-weight:600}
 .docs button.activa{background:var(--rojo);color:#fff}
@@ -232,6 +240,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
       <span class="info" id="b-info"></span>
       <span class="red ok" id="b-red">En línea</span>
       <button id="b-mesas">Mesas <b id="b-nmesas"></b></button>
+      <button id="b-pedido">Cobro de pedido</button>
       <button id="b-ventas">Ventas</button>
       <button id="b-cerrar">Cerrar caja</button>
       <button id="b-salir">Cambiar usuario</button>
@@ -245,6 +254,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
     <div class="ctx oculto" id="ctx"><span id="ctx-txt"></span><button class="btn-link" id="ctx-cancelar">Cancelar</button></div>
     <div class="carrito" id="carrito"></div>
     <div class="pie">
+      <div class="canal-sel">Canal de la venta <select id="c-canal"></select></div>
       <div class="docs" id="docs">
         <button data-doc="boleta" class="activa">Boleta</button>
         <button data-doc="nota_venta">Nota de venta</button>
@@ -267,6 +277,27 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
     </div>
   </aside>
 </section>
+
+<!-- MODAL COBRO DE PEDIDO -->
+<div class="modal oculto" id="m-pedido">
+  <div class="caja">
+    <h3>Cobro de pedido</h3>
+    <p class="sub">Adelanto o saldo de un pedido registrado en Power Apps.</p>
+    <div class="campo"><label>Código del pedido</label><input id="pd-cod" placeholder="Ej. 61011122" autocomplete="off"></div>
+    <div id="pd-prev"></div>
+    <div class="tipos-cobro" id="pd-tipos"><button data-t="adelanto" class="activa">Adelanto</button><button data-t="saldo">Saldo</button><button data-t="total">Pago total</button></div>
+    <div class="campo"><label>Detalle (sale en el comprobante)</label><input id="pd-det" maxlength="150" placeholder="Ej. Torta tres leches 20 porciones"></div>
+    <div class="fila">
+      <div class="campo"><label>Monto a cobrar (S/)</label><input id="pd-monto" type="number" step="0.10" min="0" inputmode="decimal"></div>
+      <div class="campo"><label>Canal del pedido</label><select id="pd-canal"></select></div>
+    </div>
+    <div class="fila" style="margin-top:12px">
+      <button class="btn-sec" id="pd-cancelar">Cancelar</button>
+      <button class="btn" id="pd-ok">Agregar al cobro</button>
+    </div>
+    <div class="error" id="pd-error"></div>
+  </div>
+</div>
 
 <!-- MODAL ENVIAR A MESA -->
 <div class="modal oculto" id="m-mesa">
@@ -582,6 +613,9 @@ async function abrirPos() {
   try {
     st.productos = await conCopia('productos', () => sb.from('productos').select('id,codigo,nombre,precio_venta,tipo_item,afecto_igv,categoria_id,area_preparacion').eq('vendible', true).eq('activo', true).order('nombre'));
     const cats = await conCopia('categorias', () => sb.from('categorias').select('id,nombre').order('nombre'));
+    st.canales = await conCopia('canales', () => sb.from('canales').select('id,nombre').order('id'));
+    const ops = st.canales.map(c => `<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
+    $('c-canal').innerHTML = ops; $('pd-canal').innerHTML = ops; canalVenta(st.canal.id);
     const usadas = new Set(st.productos.map(x => x.categoria_id));
     st.categorias = cats.filter(x => usadas.has(x.id));
   } catch (e) { msg('v-error', errorTexto(e)); }
@@ -629,6 +663,7 @@ function dibujarGrilla() {
 $('grilla').onclick = e => { const b = e.target.closest('.prod'); if (b) agregar(Number(b.dataset.id)); };
 
 function agregar(id) {
+  if (st.ctx && st.ctx.tipo === 'pedido') return msg('v-error', 'Estás cobrando un pedido. Termina o cancela ese cobro primero.');
   const p = st.productos.find(x => x.id === id);
   const l = st.carrito.find(x => x.producto_id === id);
   if (l && !l.nota) l.cantidad++; else st.carrito.push({ producto_id: id, nombre: p.nombre, precio_unit: Number(p.precio_venta), cantidad: 1, afecto_igv: p.afecto_igv, area: p.area_preparacion, nota: null });
@@ -639,18 +674,23 @@ function totales() {
   st.carrito.forEach(l => { const imp = r2(l.cantidad * l.precio_unit); total += imp; gravada += l.afecto_igv ? r2(imp / 1.18) : imp; });
   return { total: r2(total), gravada: r2(gravada), igv: r2(total - gravada) };
 }
+function canalVenta(id) {
+  st.canalVenta = Number(id); $('c-canal').value = st.canalVenta;
+  $('c-canal').classList.toggle('digital', st.canalVenta !== st.canal.id);
+}
+$('c-canal').onchange = () => canalVenta($('c-canal').value);
 function dibujarCarrito() {
   $('carrito').innerHTML = st.carrito.length ? st.carrito.map((l, i) => `
     <div class="linea">
-      <div><div class="n">${esc(l.nombre)} <button data-nota="${i}" title="Agregar nota para cocina">nota</button></div>${l.nota ? `<div class="nota">→ ${esc(l.nota)}</div>` : ''}<div class="u">${S(l.precio_unit)} c/u</div></div>
-      <div class="cant"><button data-i="${i}" data-a="-">−</button><span>${l.cantidad}</span><button data-i="${i}" data-a="+">+</button></div>
+      <div><div class="n">${esc(l.nombre)} ${l.fijo ? '' : `<button data-nota="${i}" title="Agregar nota para cocina">nota</button>`}</div>${l.nota ? `<div class="nota">→ ${esc(l.nota)}</div>` : ''}<div class="u">${S(l.precio_unit)} c/u</div></div>
+      ${l.fijo ? '<div class="cant"></div>' : `<div class="cant"><button data-i="${i}" data-a="-">−</button><span>${l.cantidad}</span><button data-i="${i}" data-a="+">+</button></div>`}
       <div class="imp">${S(l.cantidad * l.precio_unit)}</div>
     </div>`).join('') : '<div class="vacio">Toca un producto para agregarlo.</div>';
   const t = totales();
   $('t-total').textContent = S(t.total);
   $('t-igv').textContent = `Op. gravada ${S(t.gravada)} · IGV ${S(t.igv)}`;
   $('cobrar').disabled = !st.carrito.length;
-  $('enviar-mesa').disabled = !st.carrito.length || (st.ctx && st.ctx.tipo === 'cobrar');
+  $('enviar-mesa').disabled = !st.carrito.length || (st.ctx && ['cobrar','pedido'].includes(st.ctx.tipo));
   $('enviar-mesa').textContent = st.ctx && st.ctx.tipo === 'agregar' ? `Enviar a ${st.ctx.pedido.mesa}` : 'Enviar a mesa';
   $('ctx').classList.toggle('oculto', !st.ctx);
   if (st.ctx) $('ctx-txt').textContent = st.ctx.tipo === 'agregar' ? `Agregando productos a ${st.ctx.pedido.mesa}` : `Cobrando ${st.ctx.pedido.mesa}`;
@@ -792,12 +832,13 @@ $('p-confirmar').onclick = async () => {
   }
   const payload = {
     id_local: uuid(), numero, emitida_en: new Date().toISOString(),
-    tipo_doc: st.doc, dispositivo_id: st.disp.id, caja_id: st.caja.id, canal_id: st.canal.id,
+    tipo_doc: st.doc, dispositivo_id: st.disp.id, caja_id: st.caja.id, canal_id: st.canalVenta || st.canal.id,
+    ...(st.ctx && st.ctx.tipo === 'pedido' ? { pedido_externo: st.ctx.codigo, tipo_cobro: st.ctx.cobro, es_anticipo: st.ctx.cobro === 'adelanto' } : {}),
     turno_id: st.turno.id, usuario_id: st.usuario.id,
     pedido_id: st.ctx && st.ctx.tipo === 'cobrar' ? st.ctx.pedido.id : null,
     cliente: { num_doc: $('c-doc').value.trim(), nombre: $('c-nombre').value.trim(),
                ...(st.doc === 'factura' ? { agente_retencion: $('c-ret').checked } : {}) },
-    items: st.carrito.map(l => ({ producto_id: l.producto_id, cantidad: l.cantidad, precio_unit: l.precio_unit })),
+    items: st.carrito.map(l => ({ producto_id: l.producto_id, cantidad: l.cantidad, precio_unit: l.precio_unit, ...(l.fijo ? { descripcion: l.nombre } : {}) })),
     contado_credito: credito ? 'credito' : 'contado',
     pagos: credito ? [] : st.pagos.map(p => ({ metodo: p.metodo, monto: p.monto, referencia: p.referencia })),
     ...(credito ? { cuotas: leerCuotas() } : {})
@@ -839,7 +880,7 @@ $('p-confirmar').onclick = async () => {
   pintarRed();
 };
 $('ok-nueva').onclick = () => {
-  st.carrito = []; st.pagos = []; st.ctx = null; contarMesas(); $('c-doc').value = ''; $('c-nombre').value = ''; $('c-ret').checked = false;
+  st.carrito = []; st.pagos = []; st.ctx = null; canalVenta(st.canal.id); contarMesas(); $('c-doc').value = ''; $('c-nombre').value = ''; $('c-ret').checked = false;
   $('m-ok').classList.add('oculto'); dibujarCarrito(); $('buscar').focus();
 };
 $('ok-imprimir').onclick = () => { armarTicket(st.ultimaVenta); window.print(); };
@@ -936,7 +977,46 @@ function armarTicket(v) {
 }
 
 // ===== MESAS =====
-$('ctx-cancelar').onclick = () => { st.ctx = null; st.carrito = []; dibujarCarrito(); };
+$('ctx-cancelar').onclick = () => { st.ctx = null; st.carrito = []; canalVenta(st.canal.id); dibujarCarrito(); };
+
+// ===== COBRO DE PEDIDO (adelanto / saldo de pedidos de Power Apps) =====
+let cobroTipo = 'adelanto', pagadoPedido = 0;
+function tipoCobro(t) { cobroTipo = t; [...$('pd-tipos').children].forEach(b => b.classList.toggle('activa', b.dataset.t === t)); }
+$('pd-tipos').onclick = e => { const b = e.target.closest('[data-t]'); if (b) tipoCobro(b.dataset.t); };
+$('b-pedido').onclick = () => {
+  msg('v-error'); msg('pd-error');
+  if (st.carrito.length) return msg('v-error', 'Primero termina o vacía la venta actual.');
+  $('pd-cod').value = ''; $('pd-det').value = ''; $('pd-monto').value = ''; $('pd-prev').innerHTML = ''; pagadoPedido = 0;
+  const digital = st.canales.find(c => c.nombre !== 'Tienda');
+  $('pd-canal').value = st.canal.nombre === 'Tienda' && digital ? digital.id : st.canal.id;
+  tipoCobro('adelanto');
+  $('m-pedido').classList.remove('oculto'); $('pd-cod').focus();
+};
+$('pd-cancelar').onclick = () => $('m-pedido').classList.add('oculto');
+// al escribir el código, muestra lo que ya se pagó de ese pedido
+$('pd-cod').onchange = async () => {
+  const cod = $('pd-cod').value.trim(); $('pd-prev').innerHTML = ''; pagadoPedido = 0;
+  if (!cod || !navigator.onLine) return;
+  const { data } = await sb.from('v_pagos_pedido').select('*').eq('pedido_externo', cod).order('emitida_en');
+  if (!data || !data.length) { $('pd-prev').innerHTML = '<div class="prev-pagos">Sin pagos anteriores para este pedido.</div>'; return; }
+  pagadoPedido = data.reduce((a, v) => a + Number(v.total), 0);
+  $('pd-prev').innerHTML = `<div class="prev-pagos"><b>Ya pagado: ${S(pagadoPedido)}</b>${data.map(v => `<div><span>${new Date(v.emitida_en).toLocaleDateString('es-PE')} · ${v.tipo_cobro || ''} · ${v.comprobante} · ${esc(v.caja)}</span><span>${S(v.total)}</span></div>`).join('')}</div>`;
+  tipoCobro('saldo');
+  const canal = data[0] && st.canales.find(c => c.nombre === data[0].canal); if (canal) $('pd-canal').value = canal.id;
+};
+$('pd-ok').onclick = () => {
+  msg('pd-error');
+  const cod = $('pd-cod').value.trim(), det = $('pd-det').value.trim(), monto = r2(Number($('pd-monto').value || 0));
+  if (!cod) return msg('pd-error', 'Escribe el código del pedido.');
+  if (!det) return msg('pd-error', 'Escribe el detalle del pedido (sale en el comprobante).');
+  if (!(monto > 0)) return msg('pd-error', 'Ingresa el monto a cobrar.');
+  const etiqueta = { adelanto: 'ADELANTO', saldo: 'SALDO', total: 'PEDIDO' }[cobroTipo];
+  const desc = `${etiqueta} PEDIDO N° ${cod} - ${det}`.slice(0, 250);
+  st.ctx = { tipo: 'pedido', codigo: cod, cobro: cobroTipo, pedido: { mesa: `${etiqueta.toLowerCase()} del pedido ${cod}` } };
+  st.carrito = [{ producto_id: null, nombre: desc, precio_unit: monto, cantidad: 1, afecto_igv: true, area: null, nota: null, fijo: true }];
+  canalVenta($('pd-canal').value);
+  $('m-pedido').classList.add('oculto'); dibujarCarrito();
+};
 $('enviar-mesa').onclick = async () => {
   msg('v-error');
   if (!navigator.onLine) return msg('v-error', 'Enviar a mesa necesita internet (la cocina lo recibe en línea).');
