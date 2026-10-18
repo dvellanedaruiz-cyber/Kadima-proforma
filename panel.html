@@ -91,7 +91,10 @@ table.t{width:100%;border-collapse:collapse;font-size:13px}
 <div class="cargando oculto" id="cargando">Cargando…</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.1/echarts.min.js"></script>
+<!-- gráficos: primero la copia en el mismo sitio, si falta usa los CDN -->
+<script src="echarts.min.js"></script>
+<script>if (!window.echarts) document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.1/echarts.min.js"><\/script>');</script>
+<script>if (!window.echarts) document.write('<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"><\/script>');</script>
 <script>
 const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
@@ -190,11 +193,15 @@ async function cargar() {
 function limpiar() { while (graficos.length) graficos.pop().dispose(); }
 function g(id, opt) {
   const el = $(id); if (!el) return;
-  const ch = echarts.init(el, null, { renderer: 'canvas' });
-  ch.setOption(Object.assign({ color: COL, textStyle: { fontFamily: 'system-ui,-apple-system,Segoe UI,Roboto,Arial' }, animationDuration: 500 }, opt));
-  graficos.push(ch);
+  if (!window.echarts) { el.innerHTML = '<div class="vacio">No se pudo cargar la librería de gráficos (revisa la conexión y que echarts.min.js esté subido junto al panel).</div>'; el.style.height = 'auto'; return; }
+  try {
+    const ch = echarts.init(el, null, { renderer: 'canvas' });
+    ch.setOption(Object.assign({ color: COL, textStyle: { fontFamily: 'system-ui,-apple-system,Segoe UI,Roboto,Arial' }, animationDuration: 500 }, opt));
+    graficos.push(ch);
+  } catch (e) { console.error(id, e); el.innerHTML = `<div class="vacio">Error en el gráfico: ${esc(e.message)}</div>`; el.style.height = 'auto'; }
 }
 window.addEventListener('resize', () => graficos.forEach(c => c.resize()));
+const grad = (...a) => window.echarts ? new echarts.graphic.LinearGradient(...a) : '#8B0000';
 const movil = () => window.innerWidth < 600;
 const tipS = { trigger: 'axis', valueFormatter: v => S(v) };
 const ejeS = { type: 'value', axisLabel: { formatter: v => v >= 1000 ? (v / 1000).toLocaleString('es-PE', { maximumFractionDigits: 1 }) + 'k' : v }, splitLine: { lineStyle: { color: '#eee' } } };
@@ -215,7 +222,7 @@ function barrasH(id, nombres, valores, fmt = S) {
     xAxis: { type: 'value', show: false },
     yAxis: { type: 'category', inverse: true, data: nombres, axisTick: { show: false }, axisLine: { show: false },
       axisLabel: { width: movil() ? 110 : 190, overflow: 'truncate', fontSize: 12 } },
-    series: [{ type: 'bar', data: valores, barMaxWidth: 18, itemStyle: { borderRadius: [0, 6, 6, 0], color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [{ offset: 0, color: '#d98c8c' }, { offset: 1, color: '#8B0000' }]) },
+    series: [{ type: 'bar', data: valores, barMaxWidth: 18, itemStyle: { borderRadius: [0, 6, 6, 0], color: grad(0, 0, 1, 0, [{ offset: 0, color: '#d98c8c' }, { offset: 1, color: '#8B0000' }]) },
       label: { show: true, position: 'right', formatter: p => fmt === S ? S0(p.value) : fmt(p.value), fontSize: 11, color: '#444' } }],
   });
 }
@@ -345,7 +352,7 @@ function ventas(d) {
     tooltip: tipS, grid: rejilla,
     xAxis: { type: 'category', data: dw.map(x => DIAS[x.dow]), axisTick: { show: false } }, yAxis: ejeS,
     series: [{ name: 'Promedio diario', type: 'bar', data: dw.map(x => +(num(x.total) / Math.max(1, x.dias)).toFixed(2)), barMaxWidth: 34,
-      itemStyle: { borderRadius: [5, 5, 0, 0], color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#8B0000' }, { offset: 1, color: '#d98c8c' }]) },
+      itemStyle: { borderRadius: [5, 5, 0, 0], color: grad(0, 0, 0, 1, [{ offset: 0, color: '#8B0000' }, { offset: 1, color: '#d98c8c' }]) },
       label: { show: !movil(), position: 'top', formatter: p => S0(p.value), fontSize: 11 } }],
   });
   dona('g-canal', (d.por_canal || []).map(x => ({ name: x.canal || 'Sin canal', value: num(x.total) })));
@@ -357,7 +364,7 @@ function ventas(d) {
     tooltip: tipS, grid: rejilla,
     xAxis: { type: 'category', data: vm.map(x => fMes(x.mes)), boundaryGap: false }, yAxis: ejeS,
     series: [{ name: 'Ventas', type: 'line', smooth: true, data: vm.map(x => num(x.total)), color: '#8B0000', symbolSize: 7,
-      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(139,0,0,.35)' }, { offset: 1, color: 'rgba(139,0,0,0)' }]) } }],
+      areaStyle: { color: grad(0, 0, 0, 1, [{ offset: 0, color: 'rgba(139,0,0,.35)' }, { offset: 1, color: 'rgba(139,0,0,0)' }]) } }],
   });
 }
 
