@@ -863,6 +863,24 @@ async function reenviarPendientes() {
 }
 setInterval(reenviarPendientes, 5 * 60000);
 
+// boletas ya enviadas: SUNAT las acepta con el resumen diario, así que se vuelve a consultar su estado
+let consultando = false;
+async function consultarPendientes() {
+  if (consultando || !navigator.onLine || !st.disp) return;
+  consultando = true;
+  try {
+    const hace30 = new Date(Date.now() - 30 * 60000).toISOString(), hace7d = new Date(Date.now() - 7 * 864e5).toISOString();
+    const { data } = await sb.from('ventas').select('id').eq('estado_sunat', 'pendiente').not('respuesta_nubefact', 'is', null)
+      .neq('tipo_doc', 'nota_venta').lt('emitida_en', hace30).gt('emitida_en', hace7d).order('id').limit(30);
+    for (const v of data || []) {
+      try { await sb.functions.invoke('nubefact', { body: { venta_id: v.id, accion: 'consultar' } }); } catch (e) {}
+    }
+  } catch (e) {}
+  consultando = false;
+}
+setTimeout(consultarPendientes, 20000);
+setInterval(consultarPendientes, 30 * 60000);
+
 // ===== COLA: envía las ventas hechas sin internet =====
 let enviando = false;
 async function enviarCola() {
