@@ -75,6 +75,7 @@ table.t{width:100%;border-collapse:collapse;background:#fff}
 .res{font-size:11px;font-weight:700;padding:2px 7px;border-radius:8px}
 .res.consumo{background:#e8f0fb;color:#1f4f99}.res.faltante{background:#fde2e2;color:var(--mal)}.res.sobrante{background:#fff4d6;color:#8a5a00}.res.cuadra{background:#e3f5e9;color:var(--ok)}
 @media (max-width:760px){.lineas .ln,.lineas.sin-precio .ln{grid-template-columns:1fr 1fr 32px}.ln .nom{grid-column:1/-1}.barra select{min-width:0;width:100%}.tabs{top:96px}}
+.embebido #b-salir,.embebido #b-usr,.embebido .barra>b{display:none!important}
 </style>
 </head>
 <body>
@@ -115,7 +116,10 @@ table.t{width:100%;border-collapse:collapse;background:#fff}
 <script>
 const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// dentro de "Kadima Gestión" usa la sesión de Gestión (no se mezcla con la caja)
+const EMBEBIDO = window.self !== window.top;
+if (EMBEBIDO) document.documentElement.classList.add('embebido');
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, EMBEBIDO ? { auth: { storageKey: 'kadima-gestion-auth' } } : undefined);
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 const S = n => n === null || n === undefined ? '—' : 'S/ ' + Number(n).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -147,7 +151,10 @@ async function iniciar() {
   pedirPin();
 }
 let pin = '';
-function pedirPin() { pin = ''; vista('v-pin'); $('pin-error').textContent = ''; dibujarPin(); }
+function pedirPin() {
+  // en Gestión el PIN se pide una sola vez en la pantalla principal
+  try { if (EMBEBIDO && window.parent.KADIMA_USUARIO) { st.usuario = window.parent.KADIMA_USUARIO; return abrirApp(); } } catch (e) {}
+  pin = ''; vista('v-pin'); $('pin-error').textContent = ''; dibujarPin(); }
 function dibujarPin() { $('pin-puntos').innerHTML = [0,1,2,3].map(i => `<span class="${i < pin.length ? 'lleno' : ''}"></span>`).join(''); }
 $('teclado').innerHTML = ['1','2','3','4','5','6','7','8','9','⌫','0','OK'].map(t => `<button data-t="${t}">${t}</button>`).join('');
 $('teclado').onclick = e => { const t = e.target.dataset.t; if (!t) return; if (t === '⌫') pin = pin.slice(0, -1); else if (t === 'OK') return validarPin(); else if (pin.length < 6) pin += t; dibujarPin(); if (pin.length === 4) validarPin(); };

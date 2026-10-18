@@ -61,6 +61,7 @@ table.t{width:100%;border-collapse:collapse;font-size:13px}
 .cargando{position:fixed;inset:0;background:rgba(246,244,242,.6);display:flex;align-items:center;justify-content:center;z-index:9;font-weight:700;color:var(--rojo)}
 .sync{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--gris)}
 .sync button{background:var(--fondo);color:var(--rojo);padding:7px 12px;font-weight:700;border:1.5px solid var(--rojo)}
+.embebido .barra{display:none!important}.embebido .filtros{top:0}
 </style>
 </head>
 <body>
@@ -99,7 +100,10 @@ table.t{width:100%;border-collapse:collapse;font-size:13px}
 const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
 // sesión propia del panel: no se mezcla con la de caja/almacén en el mismo navegador
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storageKey: 'kadima-panel-auth' } });
+// dentro de "Kadima Gestión" usa la sesión de Gestión (no se mezcla con la caja)
+const EMBEBIDO = window.self !== window.top;
+if (EMBEBIDO) document.documentElement.classList.add('embebido');
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storageKey: EMBEBIDO ? 'kadima-gestion-auth' : 'kadima-panel-auth' } });
 // correos que pueden entrar al panel
 const PERMITIDOS = ['admin@kadima.pe'];
 const $ = id => document.getElementById(id);
@@ -282,7 +286,7 @@ function resumen(d) {
     </div>
     <div class="grid">
       ${caja('c4', 'Food cost', '<div class="g bajo" id="g-fc"></div>', `Costo de receta / venta sin IGV · cubre el ${P(m.cobertura)} de la venta`)}
-      ${caja('c4', 'Egresos / ventas', '<div class="g bajo" id="g-eg"></div>', `Libro de Egresos ${S0(m.eg)} / venta sin IGV ${S0(m.vsi)}`)}
+      ${caja('c4', 'Egresos / ventas', '<div class="g bajo" id="g-eg"></div>', `Egresos sin IGV ${S0(m.eg)} / venta sin IGV ${S0(m.vsi)}`)}
       ${caja('c4', 'Ventas vs egresos (12 meses)', '<div class="g bajo" id="g-ve"></div>')}
     </div>`;
   const pd = d.por_dia || [];
@@ -486,8 +490,8 @@ function egresos(d) {
       <span id="sync-txt">${sy ? `Última copia: ${fh(sy.ultima)} · ${sy.elementos ?? 0} registros · ${esc(sy.resultado || '')}` : 'Aún no se ha sincronizado'}</span>
     </div></div></div>
     <div class="grid">
-      ${kpi('Egresos del periodo', S(e.total), `${pc.reduce((a, x) => a + num(x.n), 0)} registro(s)`)}
-      ${kpi('Pendiente de pago', S(e.pendiente), 'Estado "Pendiente"')}
+      ${kpi('Egresos sin IGV', S(e.total), `Pagado ${S0(e.total_con_igv)} · ${pc.reduce((a, x) => a + num(x.n), 0)} registro(s)`)}
+      ${kpi('IGV crédito fiscal', S(e.igv), 'IGV de facturas de compra')}
       ${kpi('Egresos / ventas', P(m.egp), `ventas sin IGV ${S0(m.vsi)}`)}
       ${kpi('Resultado', `<span class="${m.vsi - m.eg >= 0 ? 'pos' : 'neg'}">${S(m.vsi - m.eg)}</span>`, 'Venta sin IGV − egresos')}
     </div>
@@ -499,6 +503,10 @@ function egresos(d) {
       ${caja('c8', 'Ventas vs egresos (12 meses)', '<div class="g" id="g-ve"></div>')}
       ${caja('c4', 'Egresos / ventas', '<div class="g" id="g-eg"></div>', 'Verde ≤ 70% · ámbar ≤ 90% · rojo > 90%')}
     </div>
+    <div class="grid">${caja('c12', 'Por tipo de comprobante', (e.por_comprobante || []).length ? `<div class="scroll"><table class="t">
+      <tr><th>Comprobante</th><th class="n">Registros</th><th class="n">Sin IGV</th><th class="n">IGV</th><th class="n">Pagado</th></tr>
+      ${e.por_comprobante.map(x => `<tr><td>${esc(x.tipo)}</td><td class="n">${x.n}</td><td class="n">${S(x.total)}</td><td class="n">${S(x.igv)}</td><td class="n">${S(num(x.total) + num(x.igv))}</td></tr>`).join('')}
+      </table></div>` : vacio('Sin egresos'), `Pendiente de pago: <b>${S(e.pendiente)}</b>`)}</div>
     <div class="grid">${caja('c12', 'Detalle por subcategoría', ps.length ? `<div class="scroll"><table class="t">
       <tr><th>Categoría</th><th>Subcategoría</th><th class="n">Monto</th><th class="n">% del total</th></tr>
       ${ps.map(x => `<tr><td>${esc(x.categoria)}</td><td>${esc(x.subcategoria)}</td><td class="n">${S(x.total)}</td><td class="n">${P(num(x.total) / Math.max(1, num(e.total)) * 100)}</td></tr>`).join('')}</table></div>` : vacio('Sin egresos'))}</div>`;

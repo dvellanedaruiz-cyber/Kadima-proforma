@@ -66,6 +66,7 @@ table.t{width:100%;border-collapse:collapse}
 .check{display:flex;gap:8px;align-items:center;font-size:14px}.check input{width:auto}
 .prods td{font-size:13px}
 @media (max-width:900px){.cuerpo{grid-template-columns:1fr}.lista{position:static;max-height:40vh}.kpis{grid-template-columns:1fr 1fr}}
+.embebido #b-salir,.embebido #b-usr,.embebido .barra>b{display:none!important}
 </style>
 </head>
 <body>
@@ -120,7 +121,10 @@ table.t{width:100%;border-collapse:collapse}
 <script>
 const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// dentro de "Kadima Gestión" usa la sesión de Gestión (no se mezcla con la caja)
+const EMBEBIDO = window.self !== window.top;
+if (EMBEBIDO) document.documentElement.classList.add('embebido');
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, EMBEBIDO ? { auth: { storageKey: 'kadima-gestion-auth' } } : undefined);
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 const S = (n, d = 2) => n === null || n === undefined || isNaN(n) ? '—' : 'S/ ' + Number(n).toLocaleString('es-PE', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -145,7 +149,10 @@ $('f-login').addEventListener('submit', async ev => {
 });
 async function iniciar() { const { data } = await sb.auth.getSession(); if (!data.session) return vista('v-login'); pedirPin(); }
 let pin = '';
-function pedirPin() { pin = ''; vista('v-pin'); $('pin-error').textContent = ''; dibujarPin(); }
+function pedirPin() {
+  // en Gestión el PIN se pide una sola vez en la pantalla principal
+  try { if (EMBEBIDO && window.parent.KADIMA_USUARIO) { st.usuario = window.parent.KADIMA_USUARIO; return abrirApp(); } } catch (e) {}
+  pin = ''; vista('v-pin'); $('pin-error').textContent = ''; dibujarPin(); }
 function dibujarPin() { $('pin-puntos').innerHTML = [0,1,2,3].map(i => `<span class="${i < pin.length ? 'lleno' : ''}"></span>`).join(''); }
 $('teclado').innerHTML = ['1','2','3','4','5','6','7','8','9','⌫','0','OK'].map(t => `<button data-t="${t}">${t}</button>`).join('');
 $('teclado').onclick = e => { const t = e.target.dataset.t; if (!t) return; if (t === '⌫') pin = pin.slice(0, -1); else if (t === 'OK') return validarPin(); else if (pin.length < 6) pin += t; dibujarPin(); if (pin.length === 4) validarPin(); };

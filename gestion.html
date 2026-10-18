@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kadima Gestión</title>
+<meta name="theme-color" content="#8B0000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kadima">
+<link rel="manifest" href="gestion-manifest.webmanifest">
+<link rel="icon" href="pos-icon-192.png">
+<link rel="apple-touch-icon" href="pos-icon-192.png">
+<style>
+:root{--rojo:#8B0000;--fondo:#f6f4f2;--borde:#e8e3df;--gris:#6b6b6b;--mal:#b00020}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--fondo);color:#1f1f1f;font-size:14px}
+button{font:inherit;cursor:pointer;border:none;border-radius:8px}
+input{font:inherit;padding:10px;border:1px solid var(--borde);border-radius:8px;width:100%;margin-bottom:10px}
+.oculto{display:none!important}
+.centro{min-height:100%;display:flex;align-items:center;justify-content:center;padding:16px}
+.tarjeta{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);padding:24px;width:100%;max-width:360px}
+.marca{color:var(--rojo);font-weight:800;font-size:22px;margin:0}.sub{color:var(--gris);margin:4px 0 16px}
+.btn{background:var(--rojo);color:#fff;padding:11px 16px;font-weight:600;width:100%}
+.error{color:var(--mal);min-height:18px;margin-top:8px;text-align:center}
+.pin-puntos{display:flex;gap:10px;justify-content:center;margin:10px 0 16px}
+.pin-puntos span{width:14px;height:14px;border-radius:50%;border:2px solid var(--rojo)}.pin-puntos span.lleno{background:var(--rojo)}
+.teclado{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.teclado button{padding:16px;font-size:20px;background:var(--fondo);font-weight:600}
+
+/* app */
+#v-app{position:fixed;inset:0;display:flex;flex-direction:column}
+.cabecera{background:#5e0000;color:#fff;display:flex;align-items:center;gap:6px;padding:0 10px;height:46px;flex:none;padding-top:env(safe-area-inset-top)}
+.cabecera b{font-size:15px;letter-spacing:.5px;margin-right:10px;white-space:nowrap}
+.menu{display:flex;gap:2px;height:100%}
+.menu button{background:none;color:rgba(255,255,255,.75);padding:0 14px;font-weight:600;border-radius:0;height:100%;border-bottom:3px solid transparent;white-space:nowrap}
+.menu button.activa{color:#fff;border-bottom-color:#fff;background:rgba(255,255,255,.08)}
+.menu .ico{margin-right:6px}
+.cabecera .esp{flex:1}
+.cabecera .usr{font-size:12px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}
+.cabecera .acc{background:rgba(255,255,255,.15);color:#fff;padding:6px 10px;font-weight:600;font-size:12px}
+.marcos{flex:1;position:relative;background:var(--fondo)}
+.marcos iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--fondo)}
+/* celular: menú abajo */
+@media (max-width:700px){
+  .cabecera .menu{display:none}
+  .abajo{display:flex!important}
+}
+.abajo{display:none;flex:none;background:#fff;border-top:1px solid var(--borde);padding-bottom:env(safe-area-inset-bottom)}
+.abajo button{flex:1;background:none;padding:7px 2px 6px;color:var(--gris);font-size:11px;font-weight:600;border-radius:0;display:flex;flex-direction:column;align-items:center;gap:2px}
+.abajo button .ico{font-size:20px;line-height:1;filter:grayscale(1);opacity:.7}
+.abajo button.activa{color:var(--rojo)}
+.abajo button.activa .ico{filter:none;opacity:1}
+</style>
+</head>
+<body>
+
+<section id="v-login" class="centro oculto">
+  <form class="tarjeta" id="f-login">
+    <p class="marca">KADIMA</p><p class="sub">Gestión · iniciar sesión</p>
+    <input id="l-email" type="email" value="admin@kadima.pe" required>
+    <input id="l-pass" type="password" placeholder="Contraseña" required>
+    <button class="btn">Ingresar</button>
+    <div class="error" id="l-error"></div>
+  </form>
+</section>
+
+<section id="v-pin" class="centro oculto">
+  <div class="tarjeta" style="max-width:340px">
+    <p class="marca">KADIMA</p><p class="sub">Gestión · ingresa tu PIN</p>
+    <div class="pin-puntos" id="pin-puntos"></div>
+    <div class="teclado" id="teclado"></div>
+    <div class="error" id="pin-error"></div>
+  </div>
+</section>
+
+<section id="v-app" class="oculto">
+  <div class="cabecera">
+    <b>KADIMA</b>
+    <nav class="menu" id="menu"></nav>
+    <span class="esp"></span>
+    <span class="usr" id="usr"></span>
+    <button class="acc" id="b-recargar" title="Recargar esta sección">⟳</button>
+    <button class="acc" id="b-salir">Salir</button>
+  </div>
+  <div class="marcos" id="marcos"></div>
+  <nav class="abajo" id="abajo"></nav>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
+<script>
+const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
+// misma sesión que usan los módulos dentro de Gestión (separada de la caja)
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storageKey: 'kadima-gestion-auth' } });
+const PERMITIDOS = ['admin@kadima.pe'];
+const $ = id => document.getElementById(id);
+const MODULOS = [
+  { id: 'panel', nombre: 'Panel', ico: '📊', url: 'panel.html' },
+  { id: 'comprobantes', nombre: 'Comprobantes', ico: '🧾', url: 'comprobantes.html' },
+  { id: 'almacen', nombre: 'Almacén', ico: '📦', url: 'almacen.html' },
+  { id: 'recetas', nombre: 'Recetas', ico: '🍰', url: 'recetas.html' },
+];
+const leer = k => { try { return localStorage.getItem('kgestion_' + k); } catch (e) { return null; } };
+const guardar = (k, v) => { try { localStorage.setItem('kgestion_' + k, v); } catch (e) {} };
+let actual = null;
+
+function vista(id) { ['v-login', 'v-pin', 'v-app'].forEach(v => $(v).classList.toggle('oculto', v !== id)); }
+
+$('f-login').addEventListener('submit', async ev => {
+  ev.preventDefault(); $('l-error').textContent = '';
+  const { error } = await sb.auth.signInWithPassword({ email: $('l-email').value.trim(), password: $('l-pass').value });
+  if (error) return $('l-error').textContent = /Invalid login/i.test(error.message) ? 'Correo o contraseña incorrectos.' : /fetch/i.test(error.message) ? 'Sin conexión a internet.' : error.message;
+  iniciar();
+});
+
+async function iniciar() {
+  const { data } = await sb.auth.getSession();
+  if (!data.session) return vista('v-login');
+  if (!PERMITIDOS.includes((data.session.user?.email || '').toLowerCase())) {
+    await sb.auth.signOut(); vista('v-login');
+    return $('l-error').textContent = 'Este usuario no tiene acceso a Gestión.';
+  }
+  pedirPin();
+}
+
+// ===== PIN (una sola vez para todos los módulos) =====
+let pin = '';
+function pedirPin() { pin = ''; window.KADIMA_USUARIO = null; vista('v-pin'); $('pin-error').textContent = ''; dibujarPin(); }
+function dibujarPin() { $('pin-puntos').innerHTML = [0, 1, 2, 3].map(i => `<span class="${i < pin.length ? 'lleno' : ''}"></span>`).join(''); }
+$('teclado').innerHTML = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '⌫', '0', 'OK'].map(t => `<button data-t="${t}">${t}</button>`).join('');
+$('teclado').onclick = e => { const t = e.target.dataset.t; if (!t) return; if (t === '⌫') pin = pin.slice(0, -1); else if (t === 'OK') return validarPin(); else if (pin.length < 6) pin += t; dibujarPin(); if (pin.length === 4) validarPin(); };
+document.addEventListener('keydown', e => {
+  if ($('v-pin').classList.contains('oculto')) return;
+  if (/^[0-9]$/.test(e.key) && pin.length < 6) { pin += e.key; dibujarPin(); if (pin.length === 4) validarPin(); }
+  if (e.key === 'Backspace') { pin = pin.slice(0, -1); dibujarPin(); }
+});
+async function validarPin() {
+  const { data, error } = await sb.from('usuarios').select('id,nombre,rol,pin').eq('activo', true);
+  if (error) { $('pin-error').textContent = error.message; pin = ''; return dibujarPin(); }
+  const u = (data || []).find(x => x.pin === pin);
+  if (!u) { $('pin-error').textContent = 'PIN incorrecto'; pin = ''; return dibujarPin(); }
+  window.KADIMA_USUARIO = u;   // los módulos lo leen y ya no piden PIN
+  abrirApp();
+}
+
+// ===== Navegación =====
+function abrirApp() {
+  vista('v-app');
+  $('usr').textContent = window.KADIMA_USUARIO.nombre;
+  $('marcos').innerHTML = '';
+  const botones = m => `<button data-m="${m.id}"><span class="ico">${m.ico}</span><span>${m.nombre}</span></button>`;
+  $('menu').innerHTML = MODULOS.map(botones).join('');
+  $('abajo').innerHTML = MODULOS.map(botones).join('');
+  ir(leer('modulo') || 'panel');
+}
+function ir(id) {
+  const m = MODULOS.find(x => x.id === id) || MODULOS[0];
+  actual = m.id; guardar('modulo', m.id);
+  // cada módulo se carga una sola vez y se queda abierto: al volver sigue donde lo dejaste
+  let f = $('f-' + m.id);
+  if (!f) { f = document.createElement('iframe'); f.id = 'f-' + m.id; f.title = m.nombre; f.src = m.url; $('marcos').appendChild(f); }
+  [...$('marcos').children].forEach(x => x.classList.toggle('oculto', x !== f));
+  document.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('activa', b.dataset.m === m.id));
+  document.title = 'Kadima · ' + m.nombre;
+}
+$('menu').onclick = $('abajo').onclick = e => { const b = e.target.closest('[data-m]'); if (b) ir(b.dataset.m); };
+$('b-recargar').onclick = () => { const f = $('f-' + actual); if (f) f.contentWindow.location.reload(); };
+$('b-salir').onclick = async () => {
+  if (!confirm('¿Cerrar sesión de Gestión?')) return;
+  await sb.auth.signOut(); window.KADIMA_USUARIO = null; $('marcos').innerHTML = ''; vista('v-login');
+};
+$('usr').onclick = () => { if (confirm('¿Cambiar de usuario (PIN)?')) { $('marcos').innerHTML = ''; pedirPin(); } };
+
+iniciar();
+</script>
+</body>
+</html>
