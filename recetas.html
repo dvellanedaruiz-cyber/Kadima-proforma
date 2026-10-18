@@ -357,7 +357,10 @@ const mxTxt = v => { const t = v === null || v === undefined ? '' : String(v).tr
 $('p-bajar').onclick = async () => {
   const { data, error } = await sb.from('v_maestro_productos').select('*').order('codigo');
   if (error) return alert(errTxt(error));
-  const filas = data.map(p => [p.codigo, p.nombre, p.antiguos || '', p.ids_rpe || '', MX_TIPO_TXT[p.tipo_item] || p.tipo_item, p.categoria || '', p.categoria_principal || '',
+  // insumos y bases no se venden: sin precio, área ni descuento (se descuentan por receta o por conteo de producción)
+  const filas = data.map(p => ['insumo', 'intermedio'].includes(p.tipo_item)
+    ? [p.codigo, p.nombre, p.antiguos || '', p.ids_rpe || '', MX_TIPO_TXT[p.tipo_item], p.categoria || '', p.categoria_principal || '', p.unidad_medida, 'No', '', '', '', '', '', p.activo ? 'Sí' : 'No', '']
+    : [p.codigo, p.nombre, p.antiguos || '', p.ids_rpe || '', MX_TIPO_TXT[p.tipo_item] || p.tipo_item, p.categoria || '', p.categoria_principal || '',
     p.unidad_medida, p.vendible ? 'Sí' : 'No', p.precio_venta === null ? '' : Number(p.precio_venta), p.precio_libre ? 'Sí' : 'No', p.afecto_igv ? 'Sí' : 'No',
     p.area_preparacion === 'cocina' ? 'Cocina' : 'Vitrina', MX_MODO_TXT[p.modo_descuento] || p.modo_descuento, p.activo ? 'Sí' : 'No', '']);
   const ws = XLSX.utils.aoa_to_sheet([MX_H, ...filas]);
@@ -385,7 +388,7 @@ $('p-archivo').onchange = async e => {
         ids_rpe: String(r['ID restaurant.pe'] ?? '').split('|').map(x => x.trim()).filter(Boolean),
         tipo: MX_TIPO[tipoTxt] || tipoTxt, categoria: mxTxt(r['Categoría']), categoria_principal: mxTxt(r['Categoría principal']),
         unidad: ({ unidad: 'Unidad', kilo: 'Kilo', kg: 'Kilo', litro: 'Litro', l: 'Litro' })[String(r['Unidad'] ?? 'Unidad').trim().toLowerCase()] || 'Unidad',
-        vendible: siNo(r['Vendible en caja']) ?? false, precio: isNaN(precio) ? null : precio, precio_libre: siNo(r['Precio libre en caja']) ?? false,
+        vendible: ['insumo', 'intermedio'].includes(MX_TIPO[tipoTxt]) ? false : (siNo(r['Vendible en caja']) ?? false), precio: isNaN(precio) ? null : precio, precio_libre: siNo(r['Precio libre en caja']) ?? false,
         afecto_igv: siNo(r['Afecto IGV']) ?? true, area: /cocina/i.test(r['Área preparación'] || '') ? 'cocina' : 'vitrina',
         modo: MX_MODO[String(r['Descuento de stock'] ?? '').trim().toLowerCase()] || 'unidad', activo: siNo(r['Activo']) ?? true,
       });
