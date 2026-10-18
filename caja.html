@@ -282,15 +282,16 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 <div class="modal oculto" id="m-pedido">
   <div class="caja">
     <h3>Cobro de pedido</h3>
-    <p class="sub">Adelanto o saldo de un pedido registrado en Power Apps.</p>
+    <p class="sub">Adelanto, saldo o pago total de un pedido registrado en Power Apps.</p>
     <div class="campo"><label>Código del pedido</label><input id="pd-cod" placeholder="Ej. 61011122" autocomplete="off"></div>
     <div id="pd-prev"></div>
     <div class="tipos-cobro" id="pd-tipos"><button data-t="adelanto" class="activa">Adelanto</button><button data-t="saldo">Saldo</button><button data-t="total">Pago total</button></div>
-    <div class="campo"><label>Detalle (sale en el comprobante)</label><input id="pd-det" maxlength="150" placeholder="Ej. Torta tres leches 20 porciones"></div>
     <div class="fila">
-      <div class="campo"><label>Monto a cobrar (S/)</label><input id="pd-monto" type="number" step="0.10" min="0" inputmode="decimal"></div>
-      <div class="campo"><label>Canal del pedido</label><select id="pd-canal"></select></div>
+      <div class="campo"><label>Pedido (S/)</label><input id="pd-monto" type="number" step="0.10" min="0" inputmode="decimal"></div>
+      <div class="campo"><label>Delivery (S/) · opcional</label><input id="pd-delivery" type="number" step="0.10" min="0" inputmode="decimal" placeholder="0.00"></div>
     </div>
+    <div class="campo"><label>Canal del pedido</label><select id="pd-canal"></select></div>
+    <p class="sub" style="font-size:12px;margin:4px 0 0">El comprobante sale con los conceptos "Pedido" y "Delivery". El detalle de productos queda en Power Apps. Este cobro <b>no entra a tu cuadre de caja</b>: se entrega aparte.</p>
     <div class="fila" style="margin-top:12px">
       <button class="btn-sec" id="pd-cancelar">Cancelar</button>
       <button class="btn" id="pd-ok">Agregar al cobro</button>
@@ -614,6 +615,7 @@ async function abrirPos() {
     st.productos = await conCopia('productos', () => sb.from('productos').select('id,codigo,nombre,precio_venta,tipo_item,afecto_igv,categoria_id,area_preparacion').eq('vendible', true).eq('activo', true).order('nombre'));
     const cats = await conCopia('categorias', () => sb.from('categorias').select('id,nombre').order('nombre'));
     st.canales = await conCopia('canales', () => sb.from('canales').select('id,nombre').order('id'));
+    st.conceptos = await conCopia('conceptos', () => sb.from('productos').select('id,codigo,nombre').in('codigo', ['SV-900', 'SV-901'])).catch(() => []);
     const ops = st.canales.map(c => `<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
     $('c-canal').innerHTML = ops; $('pd-canal').innerHTML = ops; canalVenta(st.canal.id);
     const usadas = new Set(st.productos.map(x => x.categoria_id));
@@ -986,7 +988,7 @@ $('pd-tipos').onclick = e => { const b = e.target.closest('[data-t]'); if (b) ti
 $('b-pedido').onclick = () => {
   msg('v-error'); msg('pd-error');
   if (st.carrito.length) return msg('v-error', 'Primero termina o vacía la venta actual.');
-  $('pd-cod').value = ''; $('pd-det').value = ''; $('pd-monto').value = ''; $('pd-prev').innerHTML = ''; pagadoPedido = 0;
+  $('pd-cod').value = ''; $('pd-monto').value = ''; $('pd-delivery').value = ''; $('pd-prev').innerHTML = ''; pagadoPedido = 0;
   const digital = st.canales.find(c => c.nombre !== 'Tienda');
   $('pd-canal').value = st.canal.nombre === 'Tienda' && digital ? digital.id : st.canal.id;
   tipoCobro('adelanto');
@@ -1006,14 +1008,15 @@ $('pd-cod').onchange = async () => {
 };
 $('pd-ok').onclick = () => {
   msg('pd-error');
-  const cod = $('pd-cod').value.trim(), det = $('pd-det').value.trim(), monto = r2(Number($('pd-monto').value || 0));
+  const cod = $('pd-cod').value.trim(), monto = r2(Number($('pd-monto').value || 0)), deliv = r2(Number($('pd-delivery').value || 0));
   if (!cod) return msg('pd-error', 'Escribe el código del pedido.');
-  if (!det) return msg('pd-error', 'Escribe el detalle del pedido (sale en el comprobante).');
-  if (!(monto > 0)) return msg('pd-error', 'Ingresa el monto a cobrar.');
-  const etiqueta = { adelanto: 'ADELANTO', saldo: 'SALDO', total: 'PEDIDO' }[cobroTipo];
-  const desc = `${etiqueta} PEDIDO N° ${cod} - ${det}`.slice(0, 250);
+  if (!(monto > 0) && !(deliv > 0)) return msg('pd-error', 'Ingresa el monto del pedido y/o del delivery.');
+  const etiqueta = { adelanto: 'ADELANTO', saldo: 'SALDO', total: 'PAGO' }[cobroTipo];
+  const idDe = c => ((st.conceptos || []).find(x => x.codigo === c) || {}).id || null;
   st.ctx = { tipo: 'pedido', codigo: cod, cobro: cobroTipo, pedido: { mesa: `${etiqueta.toLowerCase()} del pedido ${cod}` } };
-  st.carrito = [{ producto_id: null, nombre: desc, precio_unit: monto, cantidad: 1, afecto_igv: true, area: null, nota: null, fijo: true }];
+  st.carrito = [];
+  if (monto > 0) st.carrito.push({ producto_id: idDe('SV-900'), nombre: `PEDIDO N° ${cod} (${etiqueta})`, precio_unit: monto, cantidad: 1, afecto_igv: true, area: null, nota: null, fijo: true });
+  if (deliv > 0) st.carrito.push({ producto_id: idDe('SV-901'), nombre: `DELIVERY PEDIDO N° ${cod}`, precio_unit: deliv, cantidad: 1, afecto_igv: true, area: null, nota: null, fijo: true });
   canalVenta($('pd-canal').value);
   $('m-pedido').classList.add('oculto'); dibujarCarrito();
 };
@@ -1232,9 +1235,13 @@ $('b-cerrar').onclick = async () => {
   await enviarCola();
   if (cola().length) return msg('v-error', 'Aún hay ventas sin enviar. Espera a que se envíen para cerrar la caja.');
   msg('ci-error'); $('ci-contado').value = ''; $('ci-dif').textContent = '—';
-  const { data, error } = await sb.from('ventas').select('total,estado,contado_credito,retencion_monto,venta_pagos(metodo,monto)').eq('turno_id', st.turno.id);
+  const { data, error } = await sb.from('ventas').select('total,estado,contado_credito,retencion_monto,tipo_cobro,venta_pagos(metodo,monto)').eq('turno_id', st.turno.id);
   if (error) return msg('v-error', errorTexto(error));
-  const validas = data.filter(v => v.estado === 'emitida');
+  // los cobros de pedidos (Power Apps) se cuadran aparte
+  const pedidos = data.filter(v => v.estado === 'emitida' && v.tipo_cobro);
+  const validas = data.filter(v => v.estado === 'emitida' && !v.tipo_cobro);
+  const pedMetodo = {};
+  pedidos.forEach(v => v.venta_pagos.forEach(p => pedMetodo[p.metodo] = r2((pedMetodo[p.metodo] || 0) + Number(p.monto))));
   const anuladas = data.filter(v => v.estado === 'anulada');
   const porMetodo = {};
   validas.forEach(v => v.venta_pagos.forEach(p => porMetodo[p.metodo] = r2((porMetodo[p.metodo] || 0) + Number(p.monto))));
@@ -1249,6 +1256,9 @@ $('b-cerrar').onclick = async () => {
     `<tr><td><b>Efectivo que debería haber</b></td><td>${S(resumenCierre.efectivoEsperado)}</td></tr>` +
     (credito.length ? `<tr><td>Facturas al crédito (por cobrar)</td><td>${credito.length} · ${S(credito.reduce((a, v) => a + Number(v.total) - Number(v.retencion_monto), 0))}</td></tr>` : '') +
     (retenido > 0 ? `<tr><td>Retenciones 3% (las paga el cliente a SUNAT)</td><td>${S(retenido)}</td></tr>` : '') +
+    (pedidos.length ? `<tr><td colspan="2" style="padding-top:12px"><b>Cobros de pedidos · se entregan aparte (no entran a tu cuadre)</b></td></tr>` +
+      Object.keys(NOMBRES_METODO).filter(m => pedMetodo[m]).map(m => `<tr><td>&nbsp;&nbsp;${NOMBRES_METODO[m]}</td><td>${S(pedMetodo[m])}</td></tr>`).join('') +
+      `<tr><td>&nbsp;&nbsp;${pedidos.length} cobro(s) de pedido</td><td>${S(pedidos.reduce((a, v) => a + Number(v.total), 0))}</td></tr>` : '') +
     (anuladas.length ? `<tr><td>Ventas anuladas (no suman)</td><td>${anuladas.length} · ${S(anuladas.reduce((a, v) => a + Number(v.total), 0))}</td></tr>` : '');
   $('m-cierre').classList.remove('oculto');
 };
