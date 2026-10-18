@@ -95,6 +95,7 @@ table.lista{width:100%;border-collapse:collapse;background:#fff;border-radius:12
     <label>Tipo<select id="f-tipo"><option value="">Todos</option><option value="boleta">Boleta</option><option value="factura">Factura</option><option value="nota_venta">Nota de venta</option></select></label>
     <label style="flex:1;min-width:200px">Buscar<input id="f-q" placeholder="Número (ej. 420), cliente o DNI/RUC"></label>
     <button class="btn" id="f-buscar">Buscar</button>
+    <button class="btn-sec" id="f-excel" style="padding:9px 14px" title="Mismo formato que el reporte de restaurant.pe">📥 Excel de ventas</button>
   </div>
   <div class="resumen" id="resumen"></div>
   <div class="tabla-wrap"><table class="lista"><thead><tr>
@@ -143,6 +144,7 @@ table.lista{width:100%;border-collapse:collapse;background:#fff;border-radius:12
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
@@ -295,6 +297,32 @@ async function descargar(id) {
     .from($('lienzo').firstElementChild).save();
   $('lienzo').innerHTML = '';
 }
+
+// ===== Excel de ventas (formato restaurant.pe "Ventas Mensual") =====
+$('f-excel').onclick = async () => {
+  const d = $('f-desde').value, h = $('f-hasta').value, b = $('f-excel');
+  if (!d || !h) return $('a-error').textContent = 'Elige el rango de fechas.';
+  $('a-error').textContent = ''; b.disabled = true; b.textContent = 'Preparando…';
+  try {
+    const filas = [];
+    for (let desde = 0; ; desde += 1000) {     // Supabase entrega de 1000 en 1000
+      const { data, error } = await sb.from('v_reporte_ventas').select('*')
+        .gte('emitida_en', d + 'T00:00:00-05:00').lte('emitida_en', h + 'T23:59:59-05:00')
+        .order('emitida_en').order('venta_id').range(desde, desde + 999);
+      if (error) throw error;
+      filas.push(...data);
+      if (data.length < 1000) break;
+    }
+    if (!filas.length) throw new Error('No hay ventas en ese rango.');
+    const limpio = filas.map(({ venta_id, emitida_en, sede_id, ...r }) => r);
+    const ws = XLSX.utils.json_to_sheet(limpio);
+    ws['!cols'] = Object.keys(limpio[0]).map(k => ({ wch: Math.min(Math.max(k.length, 10), 40) }));
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+    const nombre = d.slice(0, 7) === h.slice(0, 7) && d.endsWith('-01') ? `${d.slice(0, 7)}_Ventas_Mensual.xlsx` : `Ventas_${d}_a_${h}.xlsx`;
+    XLSX.writeFile(wb, nombre);
+  } catch (e) { $('a-error').textContent = e.message || String(e); }
+  b.disabled = false; b.textContent = '📥 Excel de ventas';
+};
 
 // ===== Pestañas =====
 $('tabs').onclick = e => {
