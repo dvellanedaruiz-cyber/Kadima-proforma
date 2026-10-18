@@ -91,6 +91,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 .carrito{flex:1;overflow-y:auto;padding:4px 0}
 .linea{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:10px 16px;border-bottom:1px solid #f1eeeb}
 .linea .n{font-size:14px;font-weight:600}
+.linea .u button{background:none;border:none;padding:0;color:var(--rojo);font:inherit;text-decoration:underline;cursor:pointer}
 .linea .u{font-size:12px;color:var(--gris)}
 .cant{display:flex;align-items:center;gap:6px}
 .cant button{width:30px;height:30px;background:var(--fondo);font-weight:700;font-size:16px}
@@ -279,6 +280,19 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 </section>
 
 <!-- MODAL COBRO DE PEDIDO -->
+<div class="modal oculto" id="m-precio">
+  <div class="caja" style="max-width:360px">
+    <h3 id="pl-titulo">Precio</h3>
+    <p class="sub">Este producto no tiene precio fijo. Escribe el monto a cobrar.</p>
+    <div class="campo"><label>Precio (S/)</label><input id="pl-monto" type="number" step="0.10" min="0" inputmode="decimal" placeholder="0.00"></div>
+    <div class="fila" style="margin-top:12px">
+      <button class="btn-sec" id="pl-cancelar">Cancelar</button>
+      <button class="btn" id="pl-ok">Agregar</button>
+    </div>
+    <div class="error" id="pl-error"></div>
+  </div>
+</div>
+
 <div class="modal oculto" id="m-pedido">
   <div class="caja">
     <h3>Cobro de pedido</h3>
@@ -612,7 +626,7 @@ async function abrirPos() {
   vista('v-pos'); pintarRed();
   $('b-info').textContent = `${st.caja.nombre} · ${st.canal.nombre} · ${st.usuario.nombre} · ${st.turno.nombre || 'Turno'} desde ${new Date(st.turno.abierto_en).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}`;
   try {
-    st.productos = await conCopia('productos', () => sb.from('productos').select('id,codigo,nombre,precio_venta,tipo_item,afecto_igv,categoria_id,area_preparacion').eq('vendible', true).eq('activo', true).order('nombre'));
+    st.productos = await conCopia('productos', () => sb.from('productos').select('id,codigo,nombre,precio_venta,precio_libre,tipo_item,afecto_igv,categoria_id,area_preparacion').eq('vendible', true).eq('activo', true).order('nombre'));
     const cats = await conCopia('categorias', () => sb.from('categorias').select('id,nombre').order('nombre'));
     st.canales = await conCopia('canales', () => sb.from('canales').select('id,nombre').order('id'));
     st.conceptos = await conCopia('conceptos', () => sb.from('productos').select('id,codigo,nombre').in('codigo', ['SV-900', 'SV-901'])).catch(() => []);
@@ -659,7 +673,7 @@ function dibujarGrilla() {
   $('grilla').innerHTML = lista.length ? lista.map(p => `
     <button class="prod" data-id="${p.id}">
       <span><span class="n">${p.nombre}</span><br><span class="t">${p.codigo}</span></span>
-      <span class="p">${S(p.precio_venta)}</span>
+      <span class="p">${p.precio_libre ? 'Precio libre' : S(p.precio_venta)}</span>
     </button>`).join('') : '<div class="vacio">No hay productos con ese filtro.</div>';
 }
 $('grilla').onclick = e => { const b = e.target.closest('.prod'); if (b) agregar(Number(b.dataset.id)); };
@@ -667,10 +681,28 @@ $('grilla').onclick = e => { const b = e.target.closest('.prod'); if (b) agregar
 function agregar(id) {
   if (st.ctx && st.ctx.tipo === 'pedido') return msg('v-error', 'Estás cobrando un pedido. Termina o cancela ese cobro primero.');
   const p = st.productos.find(x => x.id === id);
-  const l = st.carrito.find(x => x.producto_id === id);
+  if (p.precio_libre) return pedirPrecio(p);
+  const l = st.carrito.find(x => x.producto_id === id && !x.libre);
   if (l && !l.nota) l.cantidad++; else st.carrito.push({ producto_id: id, nombre: p.nombre, precio_unit: Number(p.precio_venta), cantidad: 1, afecto_igv: p.afecto_igv, area: p.area_preparacion, nota: null });
   dibujarCarrito();
 }
+// productos con precio libre (delivery, dedicatoria, empaque…): la cajera escribe el monto
+let precioDe = null;   // { p } producto nuevo, o { i } línea del carrito a corregir
+function pedirPrecio(p, i) {
+  precioDe = i === undefined ? { p } : { i };
+  $('pl-titulo').textContent = p.nombre; msg('pl-error');
+  $('pl-monto').value = i === undefined ? (p.precio_venta ? Number(p.precio_venta).toFixed(2) : '') : st.carrito[i].precio_unit.toFixed(2);
+  $('m-precio').classList.remove('oculto'); setTimeout(() => { $('pl-monto').focus(); $('pl-monto').select(); }, 50);
+}
+$('pl-cancelar').onclick = () => $('m-precio').classList.add('oculto');
+$('pl-monto').onkeydown = e => { if (e.key === 'Enter') $('pl-ok').click(); };
+$('pl-ok').onclick = () => {
+  const v = r2(Number($('pl-monto').value));
+  if (!(v > 0)) return msg('pl-error', 'Escribe un monto mayor a 0');
+  if (precioDe.i !== undefined) st.carrito[precioDe.i].precio_unit = v;
+  else { const p = precioDe.p; st.carrito.push({ producto_id: p.id, nombre: p.nombre, precio_unit: v, cantidad: 1, afecto_igv: p.afecto_igv, area: p.area_preparacion, nota: null, libre: true }); }
+  $('m-precio').classList.add('oculto'); dibujarCarrito();
+};
 function totales() {
   let total = 0, gravada = 0;
   st.carrito.forEach(l => { const imp = r2(l.cantidad * l.precio_unit); total += imp; gravada += l.afecto_igv ? r2(imp / 1.18) : imp; });
@@ -684,7 +716,7 @@ $('c-canal').onchange = () => canalVenta($('c-canal').value);
 function dibujarCarrito() {
   $('carrito').innerHTML = st.carrito.length ? st.carrito.map((l, i) => `
     <div class="linea">
-      <div><div class="n">${esc(l.nombre)} ${l.fijo ? '' : `<button data-nota="${i}" title="Agregar nota para cocina">nota</button>`}</div>${l.nota ? `<div class="nota">→ ${esc(l.nota)}</div>` : ''}<div class="u">${S(l.precio_unit)} c/u</div></div>
+      <div><div class="n">${esc(l.nombre)} ${l.fijo ? '' : `<button data-nota="${i}" title="Agregar nota para cocina">nota</button>`}</div>${l.nota ? `<div class="nota">→ ${esc(l.nota)}</div>` : ''}<div class="u">${l.libre ? `<button data-precio="${i}" title="Cambiar precio">${S(l.precio_unit)} c/u ✎</button>` : `${S(l.precio_unit)} c/u`}</div></div>
       ${l.fijo ? '<div class="cant"></div>' : `<div class="cant"><button data-i="${i}" data-a="-">−</button><span>${l.cantidad}</span><button data-i="${i}" data-a="+">+</button></div>`}
       <div class="imp">${S(l.cantidad * l.precio_unit)}</div>
     </div>`).join('') : '<div class="vacio">Toca un producto para agregarlo.</div>';
@@ -699,6 +731,8 @@ function dibujarCarrito() {
   $('t-carrito').textContent = st.ctx && st.ctx.tipo === 'cobrar' ? `Cuenta de ${st.ctx.pedido.mesa}` : 'Venta actual';
 }
 $('carrito').onclick = e => {
+  const pr = e.target.closest('[data-precio]');
+  if (pr) { const i = Number(pr.dataset.precio); return pedirPrecio(st.productos.find(x => x.id === st.carrito[i].producto_id) || { nombre: st.carrito[i].nombre }, i); }
   const n = e.target.dataset.nota;
   if (n !== undefined) {
     const l = st.carrito[n];
