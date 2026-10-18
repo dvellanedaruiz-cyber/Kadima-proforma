@@ -68,7 +68,7 @@ table.t{width:100%;border-collapse:collapse;font-size:13px}
 <section id="v-login" class="centro oculto">
   <form class="login" id="f-login">
     <p class="marca">KADIMA</p><p class="sub">Panel de indicadores · iniciar sesión</p>
-    <input id="l-email" type="email" placeholder="Correo" required>
+    <input id="l-email" type="email" placeholder="Correo" value="admin@kadima.pe" required>
     <input id="l-pass" type="password" placeholder="Contraseña" required>
     <button class="btn" style="width:100%">Ingresar</button>
     <div class="error" id="l-error"></div>
@@ -95,7 +95,10 @@ table.t{width:100%;border-collapse:collapse;font-size:13px}
 <script>
 const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// sesión propia del panel: no se mezcla con la de caja/almacén en el mismo navegador
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storageKey: 'kadima-panel-auth' } });
+// correos que pueden entrar al panel
+const PERMITIDOS = ['admin@kadima.pe'];
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 const num = n => Number(n || 0);
@@ -131,6 +134,10 @@ $('b-recargar').onclick = () => cargar();
 async function iniciar() {
   const { data } = await sb.auth.getSession();
   if (!data.session) return vista('v-login');
+  if (!PERMITIDOS.includes((data.session.user?.email || '').toLowerCase())) {
+    await sb.auth.signOut(); vista('v-login');
+    return $('l-error').textContent = 'Este usuario no tiene acceso al panel.';
+  }
   vista('v-app'); dibujarFiltros(); dibujarTabs(); aplicarRango(st.rango);
 }
 
