@@ -108,8 +108,12 @@ table.t{width:100%;border-collapse:collapse}
         <div class="chips" id="p-tipos"></div>
         <div class="campo" style="max-width:300px"><input id="p-q" placeholder="Buscar nombre o código"></div>
         <label class="check" style="font-size:13px;color:var(--gris)"><input type="checkbox" id="p-inact"> Ver inactivos</label>
-        <button class="btn" id="p-nuevo" style="margin-left:auto">+ Nuevo producto</button>
+        <button class="btn-sec" id="p-bajar" style="margin-left:auto" title="Descarga el maestro actual en el formato de la plantilla">📤 Descargar Excel</button>
+        <button class="btn-sec" id="p-subir" title="Crea o actualiza productos desde la plantilla">📥 Subir Excel</button>
+        <input type="file" id="p-archivo" accept=".xlsx,.xls" class="oculto">
+        <button class="btn" id="p-nuevo">+ Nuevo producto</button>
       </div>
+      <div id="p-resultado" class="oculto" style="background:#faf8f6;border-radius:10px;padding:12px;margin-bottom:12px;font-size:13px"></div>
       <div style="overflow:auto;max-height:75vh"><table class="t prods"><thead><tr><th>Código</th><th>Nombre</th><th>Tipo</th><th>Unidad</th><th>Categoría</th><th class="n">Precio venta</th><th>Se descuenta</th><th>Receta</th><th></th></tr></thead><tbody id="p-filas"></tbody></table></div>
     </div>
   </div>
@@ -118,6 +122,7 @@ table.t{width:100%;border-collapse:collapse}
 <div class="modal oculto" id="modal"><div class="tarjeta" id="modal-c"></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
@@ -339,6 +344,67 @@ $('p-tipos').innerHTML = TIPOS_P.map(([k, n]) => `<button data-k="${k}" class="$
 $('p-tipos').onclick = e => { const k = e.target.dataset.k; if (k === undefined) return; st.ptipo = k; [...$('p-tipos').children].forEach(b => b.classList.toggle('activa', b.dataset.k === k)); pintarProductos(); };
 $('p-q').oninput = () => pintarProductos(); $('p-inact').onchange = () => pintarProductos();
 $('p-nuevo').onclick = () => formProducto(null, () => pintarProductos());
+
+// ===== Maestro de productos por Excel =====
+const MX_H = ['Código','Nombre (nuevo)','Nombres antiguos restaurant.pe','Tipo','Categoría','Categoría principal','Unidad','Vendible en caja','Precio venta S/','Afecto IGV','Área preparación','Descuento de stock','Activo','Notas'];
+const MX_TIPO = { 'producto terminado': 'producto_terminado', 'plato': 'plato', 'insumo': 'insumo', 'base / intermedio': 'intermedio', 'base': 'intermedio', 'intermedio': 'intermedio', 'paquetería': 'paqueteria', 'paqueteria': 'paqueteria', 'mercadería': 'mercaderia', 'mercaderia': 'mercaderia', 'servicio': 'servicio' };
+const MX_TIPO_TXT = { producto_terminado: 'Producto terminado', plato: 'Plato', insumo: 'Insumo', intermedio: 'Base / intermedio', paqueteria: 'Paquetería', mercaderia: 'Mercadería', servicio: 'Servicio' };
+const MX_MODO = { 'por unidad': 'unidad', 'por receta': 'receta', 'por porción': 'porcion', 'por porcion': 'porcion', 'no descuenta': 'ninguno' };
+const MX_MODO_TXT = { unidad: 'Por unidad', receta: 'Por receta', porcion: 'Por porción', ninguno: 'No descuenta' };
+const siNo = v => { const t = String(v ?? '').trim().toLowerCase(); return t === '' ? null : ['sí', 'si', 's', 'x', 'true', '1', 'yes'].includes(t); };
+const mxTxt = v => { const t = v === null || v === undefined ? '' : String(v).trim(); return t || null; };
+
+$('p-bajar').onclick = async () => {
+  const { data, error } = await sb.from('v_maestro_productos').select('*').order('codigo');
+  if (error) return alert(errTxt(error));
+  const filas = data.map(p => [p.codigo, p.nombre, p.antiguos || '', MX_TIPO_TXT[p.tipo_item] || p.tipo_item, p.categoria || '', p.categoria_principal || '',
+    p.unidad_medida, p.vendible ? 'Sí' : 'No', p.precio_venta === null ? '' : Number(p.precio_venta), p.afecto_igv ? 'Sí' : 'No',
+    p.area_preparacion === 'cocina' ? 'Cocina' : 'Vitrina', MX_MODO_TXT[p.modo_descuento] || p.modo_descuento, p.activo ? 'Sí' : 'No', '']);
+  const ws = XLSX.utils.aoa_to_sheet([MX_H, ...filas]);
+  ws['!cols'] = [11, 40, 40, 19, 24, 22, 9, 10, 11, 9, 12, 15, 8, 30].map(w => ({ wch: w }));
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Productos');
+  XLSX.writeFile(wb, `Maestro_Productos_${new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' })}.xlsx`);
+};
+$('p-subir').onclick = () => $('p-archivo').click();
+$('p-archivo').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  const box = $('p-resultado'); box.classList.remove('oculto'); box.innerHTML = 'Leyendo archivo…';
+  try {
+    const wb = XLSX.read(await f.arrayBuffer(), { type: 'array' });
+    const hoja = wb.Sheets['Productos'] || wb.Sheets[wb.SheetNames.find(n => (XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1 })[0] || []).includes('Código'))];
+    if (!hoja) throw new Error('No encontré la hoja "Productos" con la columna "Código". Usa la plantilla.');
+    const rows = XLSX.utils.sheet_to_json(hoja, { defval: null, raw: true });
+    const filas = [];
+    rows.forEach((r, i) => {
+      const nombre = mxTxt(r['Nombre (nuevo)']); if (!nombre && !mxTxt(r['Código'])) return;
+      const tipoTxt = String(r['Tipo'] ?? '').trim().toLowerCase();
+      const precio = r['Precio venta S/'] === null || r['Precio venta S/'] === '' ? null : Number(String(r['Precio venta S/']).replace(/[^\d.,-]/g, '').replace(',', '.'));
+      filas.push({
+        fila: i + 2, codigo: mxTxt(r['Código']), nombre,
+        antiguos: String(r['Nombres antiguos restaurant.pe'] ?? '').split('|').map(x => x.trim()).filter(Boolean),
+        tipo: MX_TIPO[tipoTxt] || tipoTxt, categoria: mxTxt(r['Categoría']), categoria_principal: mxTxt(r['Categoría principal']),
+        unidad: ({ unidad: 'Unidad', kilo: 'Kilo', kg: 'Kilo', litro: 'Litro', l: 'Litro' })[String(r['Unidad'] ?? 'Unidad').trim().toLowerCase()] || 'Unidad',
+        vendible: siNo(r['Vendible en caja']) ?? false, precio: isNaN(precio) ? null : precio,
+        afecto_igv: siNo(r['Afecto IGV']) ?? true, area: /cocina/i.test(r['Área preparación'] || '') ? 'cocina' : 'vitrina',
+        modo: MX_MODO[String(r['Descuento de stock'] ?? '').trim().toLowerCase()] || 'unidad', activo: siNo(r['Activo']) ?? true,
+      });
+    });
+    if (!filas.length) throw new Error('La hoja no tiene productos.');
+    let res = { nuevos: 0, actualizados: 0, avisos: [], errores: [], historico: null };
+    for (let i = 0; i < filas.length; i += 150) {
+      box.innerHTML = `Cargando… ${Math.min(i + 150, filas.length)} de ${filas.length} productos`;
+      const { data, error } = await sb.rpc('importar_maestro', { p: { filas: filas.slice(i, i + 150) } });
+      if (error) throw error;
+      res.nuevos += data.nuevos; res.actualizados += data.actualizados; res.avisos.push(...data.avisos); res.errores.push(...data.errores); res.historico = data.historico;
+    }
+    const lista = (arr, campo, color) => arr.length ? `<details style="margin-top:6px"><summary style="cursor:pointer;color:${color};font-weight:700">${arr.length} ${campo === 'error' ? 'fila(s) con error (no se cargaron)' : 'aviso(s)'}</summary>
+      <table class="t" style="margin-top:6px"><tr><th>Fila</th><th>Código</th><th>Producto</th><th>Detalle</th></tr>${arr.map(x => `<tr><td>${x.fila}</td><td>${esc(x.codigo || '')}</td><td>${esc(x.nombre || '')}</td><td>${esc(x[campo])}</td></tr>`).join('')}</table></details>` : '';
+    box.innerHTML = `<b style="color:var(--ok)">✓ Maestro cargado:</b> ${res.nuevos} producto(s) nuevo(s) · ${res.actualizados} actualizado(s)` +
+      (res.historico ? ` · Histórico: ${res.historico.vinculados} productos vinculados, <b>${res.historico.sin_vincular}</b> sin vincular` : '') +
+      lista(res.avisos, 'aviso', 'var(--aviso)') + lista(res.errores, 'error', 'var(--mal)');
+    await cargarMaestros(); pintarProductos();
+  } catch (err) { box.innerHTML = `<span style="color:var(--mal)">${esc(errTxt(err))}</span>`; }
+};
 function pintarProductos() {
   const q = $('p-q').value.trim().toLowerCase(), inact = $('p-inact').checked;
   const cat = id => (st.categorias.find(c => c.id === id) || {}).nombre || '';
