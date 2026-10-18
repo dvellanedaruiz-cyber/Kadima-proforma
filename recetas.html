@@ -346,7 +346,7 @@ $('p-q').oninput = () => pintarProductos(); $('p-inact').onchange = () => pintar
 $('p-nuevo').onclick = () => formProducto(null, () => pintarProductos());
 
 // ===== Maestro de productos por Excel =====
-const MX_H = ['Código','Nombre (nuevo)','Nombres antiguos restaurant.pe','Tipo','Categoría','Categoría principal','Unidad','Vendible en caja','Precio venta S/','Precio libre en caja','Afecto IGV','Área preparación','Descuento de stock','Activo','Notas'];
+const MX_H = ['Código','Nombre (nuevo)','Nombres antiguos restaurant.pe','ID restaurant.pe','Tipo','Categoría','Categoría principal','Unidad','Vendible en caja','Precio venta S/','Precio libre en caja','Afecto IGV','Área preparación','Descuento de stock','Activo','Notas'];
 const MX_TIPO = { 'producto terminado': 'producto_terminado', 'plato': 'plato', 'insumo': 'insumo', 'base / intermedio': 'intermedio', 'base': 'intermedio', 'intermedio': 'intermedio', 'paquetería': 'paqueteria', 'paqueteria': 'paqueteria', 'mercadería': 'mercaderia', 'mercaderia': 'mercaderia', 'servicio': 'servicio' };
 const MX_TIPO_TXT = { producto_terminado: 'Producto terminado', plato: 'Plato', insumo: 'Insumo', intermedio: 'Base / intermedio', paqueteria: 'Paquetería', mercaderia: 'Mercadería', servicio: 'Servicio' };
 const MX_MODO = { 'por unidad': 'unidad', 'por receta': 'receta', 'por porción': 'porcion', 'por porcion': 'porcion', 'no descuenta': 'ninguno' };
@@ -357,11 +357,11 @@ const mxTxt = v => { const t = v === null || v === undefined ? '' : String(v).tr
 $('p-bajar').onclick = async () => {
   const { data, error } = await sb.from('v_maestro_productos').select('*').order('codigo');
   if (error) return alert(errTxt(error));
-  const filas = data.map(p => [p.codigo, p.nombre, p.antiguos || '', MX_TIPO_TXT[p.tipo_item] || p.tipo_item, p.categoria || '', p.categoria_principal || '',
+  const filas = data.map(p => [p.codigo, p.nombre, p.antiguos || '', p.ids_rpe || '', MX_TIPO_TXT[p.tipo_item] || p.tipo_item, p.categoria || '', p.categoria_principal || '',
     p.unidad_medida, p.vendible ? 'Sí' : 'No', p.precio_venta === null ? '' : Number(p.precio_venta), p.precio_libre ? 'Sí' : 'No', p.afecto_igv ? 'Sí' : 'No',
     p.area_preparacion === 'cocina' ? 'Cocina' : 'Vitrina', MX_MODO_TXT[p.modo_descuento] || p.modo_descuento, p.activo ? 'Sí' : 'No', '']);
   const ws = XLSX.utils.aoa_to_sheet([MX_H, ...filas]);
-  ws['!cols'] = [11, 40, 40, 19, 24, 22, 9, 10, 11, 11, 9, 12, 15, 8, 30].map(w => ({ wch: w }));
+  ws['!cols'] = [11, 40, 40, 12, 19, 24, 22, 9, 10, 11, 11, 9, 12, 15, 8, 30].map(w => ({ wch: w }));
   const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Productos');
   XLSX.writeFile(wb, `Maestro_Productos_${new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' })}.xlsx`);
 };
@@ -382,6 +382,7 @@ $('p-archivo').onchange = async e => {
       filas.push({
         fila: i + 2, codigo: mxTxt(r['Código']), nombre,
         antiguos: String(r['Nombres antiguos restaurant.pe'] ?? '').split('|').map(x => x.trim()).filter(Boolean),
+        ids_rpe: String(r['ID restaurant.pe'] ?? '').split('|').map(x => x.trim()).filter(Boolean),
         tipo: MX_TIPO[tipoTxt] || tipoTxt, categoria: mxTxt(r['Categoría']), categoria_principal: mxTxt(r['Categoría principal']),
         unidad: ({ unidad: 'Unidad', kilo: 'Kilo', kg: 'Kilo', litro: 'Litro', l: 'Litro' })[String(r['Unidad'] ?? 'Unidad').trim().toLowerCase()] || 'Unidad',
         vendible: siNo(r['Vendible en caja']) ?? false, precio: isNaN(precio) ? null : precio, precio_libre: siNo(r['Precio libre en caja']) ?? false,
