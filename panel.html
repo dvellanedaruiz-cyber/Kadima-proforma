@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel Kadima</title>
+<meta name="theme-color" content="#8B0000">
+<link rel="manifest" href="panel-manifest.webmanifest">
+<link rel="icon" href="pos-icon-192.png">
+<link rel="apple-touch-icon" href="pos-icon-192.png">
+<style>
+:root{--rojo:#8B0000;--rojo2:#b23a3a;--fondo:#f6f4f2;--borde:#e8e3df;--gris:#6b6b6b;--texto:#1f1f1f;--ok:#1e7d3a;--aviso:#b26a00;--mal:#b00020;--tarjeta:#fff}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--fondo);color:var(--texto);font-size:14px}
+button{font:inherit;cursor:pointer;border:none;border-radius:8px}
+input,select{font:inherit;padding:8px 10px;border:1px solid var(--borde);border-radius:8px;background:#fff}
+.oculto{display:none!important}
+.btn{background:var(--rojo);color:#fff;padding:10px 16px;font-weight:600}
+.error{color:var(--mal);min-height:18px;margin-top:8px}
+.centro{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.login{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);padding:24px;width:100%;max-width:360px}
+.login input{width:100%;margin-bottom:10px}
+.marca{color:var(--rojo);font-weight:800;font-size:22px;margin:0}.sub{color:var(--gris);margin:4px 0 16px}
+
+.barra{background:var(--rojo);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:6}
+.barra b{font-size:17px;letter-spacing:.5px}.barra .esp{flex:1}
+.barra button{background:rgba(255,255,255,.16);color:#fff;padding:7px 11px;font-weight:600;font-size:13px}
+.filtros{background:#fff;border-bottom:1px solid var(--borde);padding:8px 16px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;position:sticky;top:48px;z-index:5}
+.chip{background:var(--fondo);color:var(--gris);padding:6px 11px;font-size:13px;font-weight:600;border-radius:16px}
+.chip.activa{background:var(--rojo);color:#fff}
+.rango{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--gris)}
+.rango input{padding:5px 7px;font-size:13px}
+.tabs{display:flex;gap:2px;padding:0 12px;background:#fff;border-bottom:1px solid var(--borde);overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{background:none;padding:11px 13px;font-weight:600;color:var(--gris);border-bottom:3px solid transparent;border-radius:0;white-space:nowrap}
+.tabs button.activa{color:var(--rojo);border-bottom-color:var(--rojo)}
+main{padding:14px;max-width:1300px;margin:0 auto}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(12,1fr);margin-bottom:12px}
+.c3{grid-column:span 3}.c4{grid-column:span 4}.c5{grid-column:span 5}.c6{grid-column:span 6}.c7{grid-column:span 7}.c8{grid-column:span 8}.c12{grid-column:span 12}
+@media (max-width:900px){.c3{grid-column:span 6}.c4,.c5,.c6,.c7,.c8{grid-column:span 12}}
+@media (max-width:420px){main{padding:10px}.grid{gap:9px}}
+.kpi{background:var(--tarjeta);border-radius:14px;padding:13px 14px;box-shadow:0 1px 4px rgba(0,0,0,.04);min-width:0}
+.kpi .t{font-size:12px;color:var(--gris);font-weight:600}
+.kpi .v{font-size:22px;font-weight:800;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .d{font-size:12px;margin-top:3px;color:var(--gris)}
+.kpi .d .sube{color:var(--ok);font-weight:700}.kpi .d .baja{color:var(--mal);font-weight:700}
+@media (max-width:420px){.kpi .v{font-size:18px}}
+.caja{background:var(--tarjeta);border-radius:14px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.04);min-width:0}
+.caja h3{margin:0 0 6px;font-size:14px;color:var(--rojo)}
+.caja .nota{font-size:12px;color:var(--gris);margin:-2px 0 6px}
+.g{width:100%;height:300px}.g.alto{height:380px}.g.bajo{height:230px}
+table.t{width:100%;border-collapse:collapse;font-size:13px}
+.t th{text-align:left;font-size:12px;color:var(--gris);padding:7px 6px;border-bottom:1px solid var(--borde)}
+.t td{padding:7px 6px;border-bottom:1px solid #f3f0ed}
+.t .n{text-align:right;white-space:nowrap}
+.scroll{overflow:auto;max-height:420px}
+.neg{color:var(--mal);font-weight:700}.pos{color:var(--ok);font-weight:700}
+.tag{font-size:11px;font-weight:700;padding:2px 7px;border-radius:8px;background:#eee;color:#555;white-space:nowrap}
+.tag.ok{background:#e6f4ea;color:var(--ok)}.tag.av{background:#fff3e0;color:var(--aviso)}.tag.mal{background:#fdeaea;color:var(--mal)}
+.vacio{color:var(--gris);text-align:center;padding:30px 10px;font-size:13px}
+.cargando{position:fixed;inset:0;background:rgba(246,244,242,.6);display:flex;align-items:center;justify-content:center;z-index:9;font-weight:700;color:var(--rojo)}
+.sync{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--gris)}
+.sync button{background:var(--fondo);color:var(--rojo);padding:7px 12px;font-weight:700;border:1.5px solid var(--rojo)}
+</style>
+</head>
+<body>
+
+<section id="v-login" class="centro oculto">
+  <form class="login" id="f-login">
+    <p class="marca">KADIMA</p><p class="sub">Panel de indicadores · iniciar sesión</p>
+    <input id="l-email" type="email" placeholder="Correo" required>
+    <input id="l-pass" type="password" placeholder="Contraseña" required>
+    <button class="btn" style="width:100%">Ingresar</button>
+    <div class="error" id="l-error"></div>
+  </form>
+</section>
+
+<section id="v-app" class="oculto">
+  <div class="barra">
+    <b>KADIMA · Panel</b><span class="esp"></span>
+    <button id="b-recargar" title="Actualizar">⟳ Actualizar</button>
+    <button id="b-salir">Salir</button>
+  </div>
+  <div class="filtros">
+    <div id="chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+    <div class="rango"><input type="date" id="f-desde"> a <input type="date" id="f-hasta"></div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <main id="main"></main>
+</section>
+<div class="cargando oculto" id="cargando">Cargando…</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.1/echarts.min.js"></script>
+<script>
+const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const num = n => Number(n || 0);
+const S = n => 'S/ ' + num(n).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const S0 = n => 'S/ ' + num(n).toLocaleString('es-PE', { maximumFractionDigits: 0 });
+const P = n => (n === null || n === undefined || !isFinite(n)) ? '—' : num(n).toLocaleString('es-PE', { maximumFractionDigits: 1 }) + '%';
+const LIMA = { timeZone: 'America/Lima' };
+const iso = d => d.toLocaleDateString('en-CA', LIMA);
+const hoy = () => iso(new Date());
+const masDias = (s, n) => { const d = new Date(s + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+const fh = t => t ? new Date(t).toLocaleString('es-PE', { ...LIMA, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+const fCorta = s => { const [y, m, d] = s.split('-'); return `${d}/${m}`; };
+const MES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const fMes = s => { const [y, m] = s.split('-'); return `${MES[+m - 1]} ${y.slice(2)}`; };
+const DIAS = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+const COL = ['#8B0000', '#d2691e', '#e0a458', '#5b8e7d', '#3d6b99', '#8e6bb0', '#c45a7a', '#7a7a7a', '#b8a24a', '#4aa3a3'];
+const guardar = (k, v) => { try { localStorage.setItem('kpanel_' + k, JSON.stringify(v)); } catch (e) {} };
+const leer = k => { try { return JSON.parse(localStorage.getItem('kpanel_' + k)); } catch (e) { return null; } };
+
+const st = { tab: leer('tab') || 'resumen', rango: leer('rango') || 'mes', desde: null, hasta: null, d: null };
+const graficos = [];
+
+function vista(id) { ['v-login', 'v-app'].forEach(v => $(v).classList.toggle('oculto', v !== id)); }
+$('f-login').addEventListener('submit', async ev => {
+  ev.preventDefault(); $('l-error').textContent = '';
+  const { error } = await sb.auth.signInWithPassword({ email: $('l-email').value.trim(), password: $('l-pass').value });
+  if (error) return $('l-error').textContent = /Invalid login/i.test(error.message) ? 'Correo o contraseña incorrectos.' : error.message;
+  iniciar();
+});
+$('b-salir').onclick = async () => { await sb.auth.signOut(); vista('v-login'); };
+$('b-recargar').onclick = () => cargar();
+
+async function iniciar() {
+  const { data } = await sb.auth.getSession();
+  if (!data.session) return vista('v-login');
+  vista('v-app'); dibujarFiltros(); dibujarTabs(); aplicarRango(st.rango);
+}
+
+// ===== Filtros de fecha =====
+const RANGOS = { hoy: 'Hoy', ayer: 'Ayer', '7d': '7 días', mes: 'Este mes', mes_ant: 'Mes anterior', '30d': '30 días', anio: 'Este año' };
+function dibujarFiltros() {
+  $('chips').innerHTML = Object.entries(RANGOS).map(([k, t]) => `<button class="chip ${st.rango === k ? 'activa' : ''}" data-r="${k}">${t}</button>`).join('');
+  $('chips').onclick = e => { const r = e.target.dataset.r; if (r) aplicarRango(r); };
+  $('f-desde').onchange = $('f-hasta').onchange = () => {
+    if (!$('f-desde').value || !$('f-hasta').value) return;
+    st.rango = 'libre'; st.desde = $('f-desde').value; st.hasta = $('f-hasta').value;
+    if (st.desde > st.hasta) [st.desde, st.hasta] = [st.hasta, st.desde];
+    dibujarFiltros(); cargar();
+  };
+}
+function aplicarRango(r) {
+  const h = hoy(), [y, m] = h.split('-');
+  const R = {
+    hoy: [h, h], ayer: [masDias(h, -1), masDias(h, -1)], '7d': [masDias(h, -6), h], '30d': [masDias(h, -29), h],
+    mes: [`${y}-${m}-01`, h], anio: [`${y}-01-01`, h],
+    mes_ant: (() => { const ini = new Date(+y, +m - 2, 1), fin = new Date(+y, +m - 1, 0); const f = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; return [f(ini), f(fin)]; })(),
+  };
+  if (!R[r]) r = 'mes';
+  st.rango = r; [st.desde, st.hasta] = R[r]; guardar('rango', r);
+  $('f-desde').value = st.desde; $('f-hasta').value = st.hasta;
+  dibujarFiltros(); cargar();
+}
+
+// ===== Pestañas =====
+const TABS = { resumen: 'Resumen', ventas: 'Ventas', productos: 'Productos', caja: 'Caja', almacen: 'Almacén', costos: 'Costos', egresos: 'Egresos' };
+function dibujarTabs() {
+  $('tabs').innerHTML = Object.entries(TABS).map(([k, t]) => `<button class="${st.tab === k ? 'activa' : ''}" data-t="${k}">${t}</button>`).join('');
+  $('tabs').onclick = e => { const t = e.target.dataset.t; if (!t) return; st.tab = t; guardar('tab', t); dibujarTabs(); pintar(); window.scrollTo({ top: 0 }); };
+}
+
+// ===== Datos =====
+let pidiendo = 0;
+async function cargar() {
+  const yo = ++pidiendo;
+  $('cargando').classList.remove('oculto');
+  const { data, error } = await sb.rpc('panel_datos', { p_desde: st.desde, p_hasta: st.hasta });
+  if (yo !== pidiendo) return;
+  $('cargando').classList.add('oculto');
+  if (error) { $('main').innerHTML = `<div class="caja"><div class="error">No se pudo cargar: ${esc(error.message)}</div></div>`; return; }
+  st.d = data; pintar();
+  revisarSync();
+}
+
+// ===== Ayudantes de gráficos =====
+function limpiar() { while (graficos.length) graficos.pop().dispose(); }
+function g(id, opt) {
+  const el = $(id); if (!el) return;
+  const ch = echarts.init(el, null, { renderer: 'canvas' });
+  ch.setOption(Object.assign({ color: COL, textStyle: { fontFamily: 'system-ui,-apple-system,Segoe UI,Roboto,Arial' }, animationDuration: 500 }, opt));
+  graficos.push(ch);
+}
+window.addEventListener('resize', () => graficos.forEach(c => c.resize()));
+const movil = () => window.innerWidth < 600;
+const tipS = { trigger: 'axis', valueFormatter: v => S(v) };
+const ejeS = { type: 'value', axisLabel: { formatter: v => v >= 1000 ? (v / 1000).toLocaleString('es-PE', { maximumFractionDigits: 1 }) + 'k' : v }, splitLine: { lineStyle: { color: '#eee' } } };
+const rejilla = { left: 8, right: 12, top: 30, bottom: 8, containLabel: true };
+function dona(id, items, centro) {
+  g(id, {
+    tooltip: { trigger: 'item', formatter: p => `${esc(p.name)}<br><b>${S(p.value)}</b> · ${p.percent}%` },
+    legend: { bottom: 0, type: 'scroll', textStyle: { fontSize: 11 } },
+    title: centro ? { text: centro, left: 'center', top: '38%', textStyle: { fontSize: 14, fontWeight: 800, color: '#333' } } : undefined,
+    series: [{ type: 'pie', radius: ['48%', '72%'], center: ['50%', '44%'], itemStyle: { borderColor: '#fff', borderWidth: 2, borderRadius: 4 },
+      label: { show: !movil(), formatter: '{d}%', fontSize: 11 }, data: items.filter(i => num(i.value) > 0) }],
+  });
+}
+function barrasH(id, nombres, valores, fmt = S) {
+  g(id, {
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: fmt },
+    grid: { left: 8, right: 60, top: 6, bottom: 6, containLabel: true },
+    xAxis: { type: 'value', show: false },
+    yAxis: { type: 'category', inverse: true, data: nombres, axisTick: { show: false }, axisLine: { show: false },
+      axisLabel: { width: movil() ? 110 : 190, overflow: 'truncate', fontSize: 12 } },
+    series: [{ type: 'bar', data: valores, barMaxWidth: 18, itemStyle: { borderRadius: [0, 6, 6, 0], color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [{ offset: 0, color: '#d98c8c' }, { offset: 1, color: '#8B0000' }]) },
+      label: { show: true, position: 'right', formatter: p => fmt === S ? S0(p.value) : fmt(p.value), fontSize: 11, color: '#444' } }],
+  });
+}
+// termómetro: valor contra rangos de referencia
+function termometro(id, valor, titulo, tramos, max) {
+  g(id, {
+    series: [{ type: 'gauge', min: 0, max, startAngle: 200, endAngle: -20, radius: '95%', center: ['50%', '60%'],
+      axisLine: { lineStyle: { width: 16, color: tramos.map(([h, c]) => [h / max, c]) } },
+      pointer: { width: 5, length: '62%', itemStyle: { color: '#333' } }, axisTick: { show: false },
+      splitLine: { length: 10, lineStyle: { color: '#fff', width: 2 } }, axisLabel: { distance: 20, fontSize: 10, color: '#888', formatter: v => v + '%' },
+      title: { offsetCenter: [0, '38%'], fontSize: 12, color: '#666' },
+      detail: { valueAnimation: true, offsetCenter: [0, '10%'], fontSize: 24, fontWeight: 800, formatter: v => isFinite(v) ? v.toFixed(1) + '%' : '—', color: '#222' },
+      data: [{ value: isFinite(valor) ? Math.min(valor, max) : 0, name: titulo }] }],
+  });
+}
+const kpi = (t, v, d = '') => `<div class="kpi c3"><div class="t">${t}</div><div class="v">${v}</div><div class="d">${d}</div></div>`;
+function vs(act, ant) {
+  if (!num(ant)) return 'sin datos del periodo anterior';
+  const p = (num(act) - num(ant)) / num(ant) * 100;
+  return `<span class="${p >= 0 ? 'sube' : 'baja'}">${p >= 0 ? '▲' : '▼'} ${Math.abs(p).toFixed(1)}%</span> vs periodo anterior`;
+}
+const caja = (cls, titulo, cuerpo, nota = '') => `<div class="caja ${cls}"><h3>${titulo}</h3>${nota ? `<div class="nota">${nota}</div>` : ''}${cuerpo}</div>`;
+const vacio = t => `<div class="vacio">${t}</div>`;
+const etiquetaTipoDoc = { boleta: 'Boleta', factura: 'Factura', nota_venta: 'Nota de venta' };
+const etiquetaMetodo = m => ({ efectivo: 'Efectivo', visa: 'Visa', mastercard: 'Mastercard', yape: 'Yape', plin: 'Plin', transferencia: 'Transferencia', otro: 'Otro', credito: 'Crédito' }[m] || m);
+
+// food cost y gasto
+function margenes(d) {
+  const m = d.margen || {};
+  const fc = num(m.venta_con_costo) ? num(m.costo) / num(m.venta_con_costo) * 100 : NaN;
+  const cobertura = num(m.venta_sin_igv) ? num(m.venta_con_costo) / num(m.venta_sin_igv) * 100 : 0;
+  const eg = num(d.egresos?.total), vsi = num(d.kpis?.ventas_sin_igv);
+  const egp = vsi ? eg / vsi * 100 : NaN;
+  return { fc, cobertura, eg, egp, vsi };
+}
+
+// ===== Pintar =====
+function pintar() {
+  limpiar();
+  const d = st.d; if (!d) return;
+  const f = { resumen, ventas, productos, caja: pCaja, almacen, costos, egresos }[st.tab] || resumen;
+  f(d);
+}
+
+function resumen(d) {
+  const k = d.kpis, m = margenes(d);
+  $('main').innerHTML = `
+    <div class="grid">
+      ${kpi('Ventas', S(k.ventas), vs(k.ventas, k.ventas_ant))}
+      ${kpi('Tickets', num(k.tickets).toLocaleString('es-PE'), vs(k.tickets, k.tickets_ant))}
+      ${kpi('Ticket promedio', S(k.ticket_prom), vs(k.ticket_prom, k.ticket_prom_ant))}
+      ${kpi('Venta diaria promedio', S(num(k.ventas) / Math.max(1, num(k.dias))), `${k.dias} día(s) · sin IGV ${S0(k.ventas_sin_igv)}`)}
+    </div>
+    <div class="grid">
+      ${caja('c8', 'Ventas por día', '<div class="g" id="g-dia"></div>', 'Turno mañana y tarde apilados')}
+      ${caja('c4', 'Por turno', '<div class="g" id="g-turno"></div>')}
+    </div>
+    <div class="grid">
+      ${caja('c4', 'Food cost', '<div class="g bajo" id="g-fc"></div>', `Costo de receta / venta sin IGV · cubre el ${P(m.cobertura)} de la venta`)}
+      ${caja('c4', 'Egresos / ventas', '<div class="g bajo" id="g-eg"></div>', `Libro de Egresos ${S0(m.eg)} / venta sin IGV ${S0(m.vsi)}`)}
+      ${caja('c4', 'Ventas vs egresos (12 meses)', '<div class="g bajo" id="g-ve"></div>')}
+    </div>`;
+  const pd = d.por_dia || [];
+  g('g-dia', {
+    tooltip: tipS, legend: { top: 0, right: 0, textStyle: { fontSize: 11 } }, grid: rejilla,
+    xAxis: { type: 'category', data: pd.map(x => fCorta(x.fecha)), axisTick: { show: false } }, yAxis: ejeS,
+    series: [
+      { name: 'Mañana', type: 'bar', stack: 't', data: pd.map(x => num(x.manana)), color: '#e0a458', barMaxWidth: 28 },
+      { name: 'Tarde', type: 'bar', stack: 't', data: pd.map(x => num(x.tarde)), color: '#8B0000', barMaxWidth: 28, itemStyle: { borderRadius: [4, 4, 0, 0] } },
+      { name: 'Otro', type: 'bar', stack: 't', data: pd.map(x => Math.max(0, num(x.total) - num(x.manana) - num(x.tarde))), color: '#bbb', barMaxWidth: 28 },
+    ],
+  });
+  dona('g-turno', (d.por_turno || []).map(x => ({ name: x.turno || 'Sin turno', value: num(x.total) })), S0(k.ventas));
+  termometro('g-fc', m.fc, 'Food cost', [[28, '#5b9e6b'], [35, '#e0b84a'], [60, '#c0392b']], 60);
+  termometro('g-eg', m.egp, 'Egresos', [[70, '#5b9e6b'], [90, '#e0b84a'], [150, '#c0392b']], 150);
+  ventasVsEgresos('g-ve', d);
+}
+
+function ventasVsEgresos(id, d) {
+  const meses = [...new Set([...(d.ventas_mes || []).map(x => x.mes), ...(d.egresos?.por_mes || []).map(x => x.mes)])].sort();
+  const v = Object.fromEntries((d.ventas_mes || []).map(x => [x.mes, num(x.sin_igv)]));
+  const e = Object.fromEntries((d.egresos?.por_mes || []).map(x => [x.mes, num(x.total)]));
+  g(id, {
+    tooltip: tipS, legend: { top: 0, right: 0, textStyle: { fontSize: 11 } }, grid: rejilla,
+    xAxis: { type: 'category', data: meses.map(fMes), axisTick: { show: false } }, yAxis: ejeS,
+    series: [
+      { name: 'Ventas sin IGV', type: 'bar', data: meses.map(x => v[x] || 0), color: '#8B0000', barMaxWidth: 16, itemStyle: { borderRadius: [3, 3, 0, 0] } },
+      { name: 'Egresos', type: 'bar', data: meses.map(x => e[x] || 0), color: '#e0a458', barMaxWidth: 16, itemStyle: { borderRadius: [3, 3, 0, 0] } },
+    ],
+  });
+}
+
+function ventas(d) {
+  const k = d.kpis;
+  $('main').innerHTML = `
+    <div class="grid">
+      ${kpi('Ventas', S(k.ventas), vs(k.ventas, k.ventas_ant))}
+      ${kpi('Cobros de pedidos', S(k.pedidos), 'Adelantos y saldos de Power Apps')}
+      ${kpi('Ventas al crédito', S(k.credito), 'Facturas por cobrar')}
+      ${kpi('Venta sin IGV', S(k.ventas_sin_igv), 'Base para food cost y gastos')}
+    </div>
+    <div class="grid">
+      ${caja('c6', 'Ventas por hora', '<div class="g" id="g-hora"></div>', 'Suma del periodo · línea = tickets')}
+      ${caja('c6', 'Promedio por día de la semana', '<div class="g" id="g-dow"></div>')}
+    </div>
+    <div class="grid">
+      ${caja('c4', 'Por canal', '<div class="g" id="g-canal"></div>')}
+      ${caja('c4', 'Por tipo de venta', '<div class="g" id="g-tipo"></div>')}
+      ${caja('c4', 'Medios de pago', '<div class="g" id="g-metodo"></div>')}
+    </div>
+    <div class="grid">
+      ${caja('c4', 'Comprobantes', '<div class="g bajo" id="g-comp"></div>')}
+      ${caja('c8', 'Tendencia de ventas (12 meses)', '<div class="g bajo" id="g-mes"></div>')}
+    </div>`;
+  const ph = d.por_hora || [];
+  g('g-hora', {
+    tooltip: { trigger: 'axis' }, grid: rejilla,
+    xAxis: { type: 'category', data: ph.map(x => x.hora + 'h'), axisTick: { show: false } },
+    yAxis: [ejeS, { type: 'value', show: false }],
+    series: [
+      { name: 'Ventas', type: 'bar', data: ph.map(x => num(x.total)), barMaxWidth: 22, itemStyle: { borderRadius: [4, 4, 0, 0], color: '#8B0000' }, tooltip: { valueFormatter: S } },
+      { name: 'Tickets', type: 'line', yAxisIndex: 1, smooth: true, data: ph.map(x => x.tickets), color: '#e0a458', symbolSize: 5 },
+    ],
+  });
+  const dw = d.por_dia_semana || [];
+  g('g-dow', {
+    tooltip: tipS, grid: rejilla,
+    xAxis: { type: 'category', data: dw.map(x => DIAS[x.dow]), axisTick: { show: false } }, yAxis: ejeS,
+    series: [{ name: 'Promedio diario', type: 'bar', data: dw.map(x => +(num(x.total) / Math.max(1, x.dias)).toFixed(2)), barMaxWidth: 34,
+      itemStyle: { borderRadius: [5, 5, 0, 0], color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#8B0000' }, { offset: 1, color: '#d98c8c' }]) },
+      label: { show: !movil(), position: 'top', formatter: p => S0(p.value), fontSize: 11 } }],
+  });
+  dona('g-canal', (d.por_canal || []).map(x => ({ name: x.canal || 'Sin canal', value: num(x.total) })));
+  dona('g-tipo', (d.por_tipo || []).map(x => ({ name: x.tipo, value: num(x.total) })));
+  dona('g-metodo', (d.por_metodo || []).map(x => ({ name: etiquetaMetodo(x.metodo), value: num(x.total) })));
+  dona('g-comp', (d.por_comprobante || []).map(x => ({ name: etiquetaTipoDoc[x.tipo] || x.tipo, value: num(x.total) })));
+  const vm = d.ventas_mes || [];
+  g('g-mes', {
+    tooltip: tipS, grid: rejilla,
+    xAxis: { type: 'category', data: vm.map(x => fMes(x.mes)), boundaryGap: false }, yAxis: ejeS,
+    series: [{ name: 'Ventas', type: 'line', smooth: true, data: vm.map(x => num(x.total)), color: '#8B0000', symbolSize: 7,
+      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(139,0,0,.35)' }, { offset: 1, color: 'rgba(139,0,0,0)' }]) } }],
+  });
+}
+
+function productos(d) {
+  const tp = d.top_productos || [];
+  $('main').innerHTML = `
+    <div class="grid">
+      ${caja('c7', 'Top 15 productos (S/)', tp.length ? '<div class="g alto" id="g-top"></div>' : vacio('Sin ventas'))}
+      ${caja('c5', 'Ventas por categoría', '<div class="g alto" id="g-cat"></div>')}
+    </div>
+    <div class="grid">${caja('c12', 'Detalle top productos', tp.length ? `<div class="scroll"><table class="t">
+      <tr><th>#</th><th>Producto</th><th class="n">Cantidad</th><th class="n">Venta</th><th class="n">Precio prom.</th></tr>
+      ${tp.map((x, i) => `<tr><td>${i + 1}</td><td>${esc(x.producto)}</td><td class="n">${num(x.cantidad).toLocaleString('es-PE')}</td><td class="n">${S(x.total)}</td><td class="n">${S(num(x.total) / Math.max(1, num(x.cantidad)))}</td></tr>`).join('')}
+    </table></div>` : vacio('Sin ventas'))}</div>`;
+  if (tp.length) barrasH('g-top', tp.map(x => x.producto), tp.map(x => num(x.total)));
+  const pc = d.por_categoria || [];
+  g('g-cat', {
+    tooltip: { formatter: p => `${esc(p.name)}<br><b>${S(p.value)}</b>` },
+    series: [{ type: 'treemap', roam: false, nodeClick: false, breadcrumb: { show: false }, width: '100%', height: '100%',
+      label: { formatter: p => `${p.name}\n${S0(p.value)}`, fontSize: 12 }, itemStyle: { borderColor: '#fff', borderWidth: 2, gapWidth: 2 },
+      data: pc.map((x, i) => ({ name: x.categoria, value: num(x.total), itemStyle: { color: COL[i % COL.length] } })) }],
+  });
+}
+
+function pCaja(d) {
+  const t = d.turnos || [], an = d.anuladas || [];
+  const fila = x => {
+    const esperado = num(x.inicial) + num(x.efectivo);
+    const dif = x.contado === null || x.contado === undefined ? null : num(x.contado) - esperado;
+    const tag = x.estado !== 'cerrado' ? '<span class="tag av">Abierto</span>' : dif === null ? '<span class="tag">Sin conteo</span>' : Math.abs(dif) < 0.5 ? '<span class="tag ok">Cuadra</span>' : `<span class="tag mal">${dif > 0 ? 'Sobra' : 'Falta'}</span>`;
+    return `<tr><td>${fh(x.abierto_en)}</td><td>${esc(x.turno || '—')}</td><td>${esc(x.caja)}</td><td>${esc(x.cajero || '—')}</td>
+      <td class="n">${S(x.ventas)}</td><td class="n">${S(x.efectivo)}</td><td class="n">${S(x.pedidos)}</td>
+      <td class="n">${dif === null ? '—' : `<span class="${Math.abs(dif) < 0.5 ? '' : dif > 0 ? 'pos' : 'neg'}">${S(dif)}</span>`}</td><td>${tag}</td><td class="n">${x.anuladas || 0}</td></tr>`;
+  };
+  const difs = t.filter(x => x.estado === 'cerrado' && x.contado !== null).map(x => num(x.contado) - num(x.inicial) - num(x.efectivo));
+  $('main').innerHTML = `
+    <div class="grid">
+      ${kpi('Turnos', t.length, `${t.filter(x => x.estado !== 'cerrado').length} abierto(s)`)}
+      ${kpi('Faltantes', S(difs.filter(x => x < -0.5).reduce((a, b) => a + b, 0)), `${difs.filter(x => x < -0.5).length} turno(s)`)}
+      ${kpi('Sobrantes', S(difs.filter(x => x > 0.5).reduce((a, b) => a + b, 0)), `${difs.filter(x => x > 0.5).length} turno(s)`)}
+      ${kpi('Anulaciones', an.length, S(an.reduce((a, x) => a + num(x.total), 0)))}
+    </div>
+    <div class="grid">${caja('c12', 'Cuadre por turno', t.length ? `<div class="scroll"><table class="t">
+      <tr><th>Apertura</th><th>Turno</th><th>Caja</th><th>Cajero</th><th class="n">Ventas</th><th class="n">Efectivo</th><th class="n">Pedidos</th><th class="n">Diferencia</th><th></th><th class="n">Anul.</th></tr>
+      ${t.map(fila).join('')}</table></div>` : vacio('No hay turnos en este periodo'), 'Diferencia = efectivo contado − (fondo inicial + ventas en efectivo). Los cobros de pedidos van aparte.')}</div>
+    <div class="grid">${caja('c12', 'Comprobantes anulados', an.length ? `<div class="scroll"><table class="t">
+      <tr><th>Fecha</th><th>Comprobante</th><th class="n">Total</th><th>Motivo</th></tr>
+      ${an.map(x => `<tr><td>${fh(x.fecha)}</td><td>${esc(x.comprobante)}</td><td class="n">${S(x.total)}</td><td>${esc(x.justificacion || x.motivo || '')}</td></tr>`).join('')}</table></div>` : vacio('Sin anulaciones'))}</div>`;
+}
+
+function almacen(d) {
+  const sk = d.stock || [], mv = d.movimientos || [], tm = d.top_mermas || [], pr = d.produccion || [];
+  const suma = t => mv.filter(x => x.tipo === t).reduce((a, x) => a + num(x.valor), 0);
+  const tipos = ['compra', 'produccion', 'consumo', 'merma', 'ajuste'], almacenes = [...new Set(mv.map(x => x.almacen))];
+  $('main').innerHTML = `
+    <div class="grid">
+      ${kpi('Stock valorizado', S(sk.reduce((a, x) => a + num(x.valor), 0)), `${sk.reduce((a, x) => a + num(x.negativos), 0)} producto(s) en negativo`)}
+      ${kpi('Compras', S(suma('compra')), 'Ingresos del periodo')}
+      ${kpi('Mermas', S(suma('merma')), num(d.kpis.ventas_sin_igv) ? P(suma('merma') / num(d.kpis.ventas_sin_igv) * 100) + ' de la venta sin IGV' : '')}
+      ${kpi('Consumo producción', S(suma('consumo')), 'Diferencia de conteos')}
+    </div>
+    <div class="grid">
+      ${caja('c5', 'Stock valorizado por almacén', sk.some(x => num(x.valor) > 0) ? '<div class="g" id="g-stock"></div>' : vacio('Sin stock'))}
+      ${caja('c7', 'Movimientos por almacén (S/)', almacenes.length ? '<div class="g" id="g-mov"></div>' : vacio('Sin movimientos en el periodo'))}
+    </div>
+    <div class="grid">
+      ${caja('c6', 'Top mermas', tm.length ? '<div class="g" id="g-merma"></div>' : vacio('Sin mermas en el periodo'))}
+      ${caja('c6', 'Producción del periodo', pr.length ? `<div class="scroll"><table class="t"><tr><th>Producto</th><th class="n">Cantidad</th></tr>
+        ${pr.map(x => `<tr><td>${esc(x.producto)}</td><td class="n">${num(x.cantidad).toLocaleString('es-PE', { maximumFractionDigits: 2 })} ${esc(x.unidad || '')}</td></tr>`).join('')}</table></div>` : vacio('Sin lotes de producción'))}
+    </div>`;
+  if (sk.some(x => num(x.valor) > 0)) dona('g-stock', sk.map(x => ({ name: x.almacen, value: num(x.valor) })));
+  if (almacenes.length) {
+    const ET = { compra: 'Compras', produccion: 'Producción', consumo: 'Consumo', merma: 'Merma', ajuste: 'Ajuste' };
+    g('g-mov', {
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: S }, legend: { top: 0, textStyle: { fontSize: 11 } }, grid: { ...rejilla, top: 36 },
+      xAxis: { type: 'category', data: almacenes, axisLabel: { interval: 0, fontSize: 11 } }, yAxis: ejeS,
+      series: tipos.map(t => ({ name: ET[t], type: 'bar', barMaxWidth: 16, data: almacenes.map(a => num(mv.find(x => x.tipo === t && x.almacen === a)?.valor)) })),
+    });
+  }
+  if (tm.length) barrasH('g-merma', tm.map(x => x.producto), tm.map(x => num(x.valor)));
+}
+
+function costos(d) {
+  const rc = d.recetas || [], m = margenes(d), mg = d.margen || {};
+  const estado = fc => fc <= 28 ? '<span class="tag ok">Bien</span>' : fc <= 35 ? '<span class="tag av">Vigilar</span>' : '<span class="tag mal">Alto</span>';
+  $('main').innerHTML = `
+    <div class="grid">
+      ${kpi('Food cost real', P(m.fc), 'Costo receta / venta sin IGV')}
+      ${kpi('Costo de lo vendido', S(mg.costo), `sobre ${S0(mg.venta_con_costo)} de venta con receta`)}
+      ${kpi('Margen bruto', S(num(mg.venta_con_costo) - num(mg.costo)), P(100 - m.fc))}
+      ${kpi('Recetas con costo', rc.length, `${rc.filter(x => num(x.fc) > 35).length} con food cost alto`)}
+    </div>
+    <div class="grid">
+      ${caja('c4', 'Food cost del periodo', '<div class="g" id="g-fc"></div>', 'Verde ≤ 28% · ámbar ≤ 35% · rojo > 35%')}
+      ${caja('c8', 'Food cost por receta (los más altos)', rc.length ? '<div class="g" id="g-rec"></div>' : vacio('Aún no hay recetas con precio'))}
+    </div>
+    <div class="grid">${caja('c12', 'Recetas', rc.length ? `<div class="scroll"><table class="t">
+      <tr><th>Producto</th><th class="n">Costo</th><th class="n">Precio</th><th class="n">Food cost</th><th></th></tr>
+      ${rc.map(x => `<tr><td>${esc(x.producto)}</td><td class="n">${S(x.costo)}</td><td class="n">${S(x.precio)}</td><td class="n">${P(x.fc)}</td><td>${estado(num(x.fc))}</td></tr>`).join('')}</table></div>` : vacio('Sin recetas'))}</div>`;
+  termometro('g-fc', m.fc, 'Food cost', [[28, '#5b9e6b'], [35, '#e0b84a'], [60, '#c0392b']], 60);
+  if (rc.length) {
+    const top = rc.slice(0, 15);
+    g('g-rec', {
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: v => P(v) },
+      grid: { left: 8, right: 50, top: 6, bottom: 6, containLabel: true }, xAxis: { type: 'value', show: false },
+      yAxis: { type: 'category', inverse: true, data: top.map(x => x.producto), axisTick: { show: false }, axisLine: { show: false }, axisLabel: { width: movil() ? 110 : 200, overflow: 'truncate' } },
+      series: [{ type: 'bar', barMaxWidth: 16, data: top.map(x => ({ value: +num(x.fc).toFixed(1), itemStyle: { color: num(x.fc) <= 28 ? '#5b9e6b' : num(x.fc) <= 35 ? '#e0b84a' : '#c0392b', borderRadius: [0, 6, 6, 0] } })),
+        label: { show: true, position: 'right', formatter: p => p.value + '%', fontSize: 11 } }],
+    });
+  }
+}
+
+function egresos(d) {
+  const e = d.egresos || {}, m = margenes(d), sy = e.sincronizado;
+  const pc = e.por_categoria || [], ps = e.por_subcategoria || [];
+  $('main').innerHTML = `
+    <div class="grid"><div class="caja c12"><div class="sync">
+      <button id="b-sync">⟳ Sincronizar Libro de Egresos</button>
+      <span id="sync-txt">${sy ? `Última copia: ${fh(sy.ultima)} · ${sy.elementos ?? 0} registros · ${esc(sy.resultado || '')}` : 'Aún no se ha sincronizado'}</span>
+    </div></div></div>
+    <div class="grid">
+      ${kpi('Egresos del periodo', S(e.total), `${pc.reduce((a, x) => a + num(x.n), 0)} registro(s)`)}
+      ${kpi('Pendiente de pago', S(e.pendiente), 'Estado "Pendiente"')}
+      ${kpi('Egresos / ventas', P(m.egp), `ventas sin IGV ${S0(m.vsi)}`)}
+      ${kpi('Resultado', `<span class="${m.vsi - m.eg >= 0 ? 'pos' : 'neg'}">${S(m.vsi - m.eg)}</span>`, 'Venta sin IGV − egresos')}
+    </div>
+    <div class="grid">
+      ${caja('c5', 'Por categoría', pc.length ? '<div class="g" id="g-ecat"></div>' : vacio('Sin egresos en el periodo'))}
+      ${caja('c7', 'Categoría y subcategoría', ps.length ? '<div class="g" id="g-esub"></div>' : vacio('Sin egresos en el periodo'))}
+    </div>
+    <div class="grid">
+      ${caja('c8', 'Ventas vs egresos (12 meses)', '<div class="g" id="g-ve"></div>')}
+      ${caja('c4', 'Egresos / ventas', '<div class="g" id="g-eg"></div>', 'Verde ≤ 70% · ámbar ≤ 90% · rojo > 90%')}
+    </div>
+    <div class="grid">${caja('c12', 'Detalle por subcategoría', ps.length ? `<div class="scroll"><table class="t">
+      <tr><th>Categoría</th><th>Subcategoría</th><th class="n">Monto</th><th class="n">% del total</th></tr>
+      ${ps.map(x => `<tr><td>${esc(x.categoria)}</td><td>${esc(x.subcategoria)}</td><td class="n">${S(x.total)}</td><td class="n">${P(num(x.total) / Math.max(1, num(e.total)) * 100)}</td></tr>`).join('')}</table></div>` : vacio('Sin egresos'))}</div>`;
+  $('b-sync').onclick = () => sincronizar(true);
+  if (pc.length) dona('g-ecat', pc.map(x => ({ name: x.categoria, value: num(x.total) })), S0(e.total));
+  if (ps.length) {
+    const arbol = pc.map((c, i) => ({ name: c.categoria, itemStyle: { color: COL[i % COL.length] },
+      children: ps.filter(s => s.categoria === c.categoria).map(s => ({ name: s.subcategoria, value: num(s.total) })) }));
+    g('g-esub', {
+      tooltip: { formatter: p => `${esc(p.treePathInfo.slice(1).map(x => x.name).join(' › '))}<br><b>${S(p.value)}</b>` },
+      series: [{ type: 'sunburst', data: arbol, radius: ['12%', '92%'], sort: null, itemStyle: { borderColor: '#fff', borderWidth: 2 },
+        levels: [{}, { r0: '12%', r: '50%', label: { rotate: 0, fontSize: 11, fontWeight: 700 } }, { r0: '50%', r: '92%', label: { fontSize: 10, show: !movil() } }] }],
+    });
+  }
+  ventasVsEgresos('g-ve', d);
+  termometro('g-eg', m.egp, 'Egresos', [[70, '#5b9e6b'], [90, '#e0b84a'], [150, '#c0392b']], 150);
+}
+
+// ===== Sincronización con Microsoft Lists =====
+let sincronizando = false;
+function revisarSync() {
+  const u = st.d?.egresos?.sincronizado?.ultima;
+  if (!u || Date.now() - new Date(u).getTime() > 3600e3) sincronizar(false);
+}
+async function sincronizar(manual) {
+  if (sincronizando) return; sincronizando = true;
+  const b = $('b-sync'), t = $('sync-txt');
+  if (b) { b.disabled = true; b.textContent = '⟳ Sincronizando…'; }
+  try {
+    const { data, error } = await sb.functions.invoke('sync-egresos', { body: {} });
+    if (error || !data?.ok) {
+      let msg = data?.error || error?.message || 'Error';
+      try { const j = await error?.context?.json?.(); if (j?.error) msg = j.error; } catch (e) {}
+      throw new Error(msg);
+    }
+    sincronizando = false;
+    if (manual || st.tab === 'egresos') return cargar();
+  } catch (e) {
+    if (t && manual) t.innerHTML = `<span class="neg">No se pudo sincronizar: ${esc(e.message)}</span>`;
+  } finally {
+    sincronizando = false;
+    if (b) { b.disabled = false; b.textContent = '⟳ Sincronizar Libro de Egresos'; }
+  }
+}
+
+sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_OUT') vista('v-login'); });
+iniciar();
+</script>
+</body>
+</html>
