@@ -78,11 +78,12 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 .cats{display:flex;gap:8px;overflow-x:auto;padding:10px 16px;scrollbar-width:thin}
 .cats button{background:#fff;border:1px solid var(--borde);padding:8px 14px;white-space:nowrap;font-size:14px}
 .cats button.activa{background:var(--rojo);color:#fff;border-color:var(--rojo)}
-.grilla{flex:1;overflow-y:auto;padding:4px 16px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;align-content:start}
-.prod{background:#fff;border:1px solid var(--borde);border-radius:var(--radio);padding:12px;text-align:left;min-height:92px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:var(--sombra)}
+.grilla{flex:1;overflow-y:auto;padding:4px 16px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;align-content:start;grid-auto-rows:max-content}
+.prod{background:#fff;border:1px solid var(--borde);border-radius:var(--radio);padding:12px;text-align:left;min-height:92px;min-width:0;display:flex;flex-direction:column;justify-content:space-between;box-shadow:var(--sombra)}
 .prod:active{transform:scale(.98);background:var(--rojo-suave)}
-.prod .n{font-weight:600;font-size:14px;line-height:1.25}
-.prod .p{color:var(--rojo);font-weight:700;margin-top:6px}
+.prod .n{font-weight:600;font-size:14px;line-height:1.25;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.prod > *{flex-shrink:0;min-width:0}
+.prod .p{color:var(--rojo);font-weight:700;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .prod .t{font-size:11px;color:var(--gris)}
 .vacio{color:var(--gris);padding:24px;text-align:center;grid-column:1/-1}
 
@@ -687,8 +688,8 @@ function filtrados() {
 function dibujarGrilla() {
   const lista = filtrados();
   $('grilla').innerHTML = lista.length ? lista.map(p => `
-    <button class="prod" data-id="${p.id}">
-      <span><span class="n">${p.nombre}</span><br><span class="t">${p.codigo}</span></span>
+    <button class="prod" data-id="${p.id}" title="${esc(p.nombre)}">
+      <span><span class="n">${esc(p.nombre)}</span><br><span class="t">${p.codigo}</span></span>
       <span class="p">${p.precio_libre ? 'Precio libre' : (GRANEL[p.unidad_medida] ? S(p.precio_venta / 10) + ' /100 ' + GRANEL[p.unidad_medida].sub : S(p.precio_venta))}</span>
     </button>`).join('') : '<div class="vacio">No hay productos con ese filtro.</div>';
 }
