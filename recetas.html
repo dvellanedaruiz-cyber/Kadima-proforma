@@ -394,13 +394,40 @@ $('p-archivo').onchange = async e => {
       });
     });
     if (!filas.length) throw new Error('La hoja no tiene productos.');
-    let res = { nuevos: 0, actualizados: 0, avisos: [], errores: [], historico: null };
-    for (let i = 0; i < filas.length; i += 150) {
-      box.innerHTML = `Cargando… ${Math.min(i + 150, filas.length)} de ${filas.length} productos`;
-      const { data, error } = await sb.rpc('importar_maestro', { p: { filas: filas.slice(i, i + 150) } });
-      if (error) throw error;
-      res.nuevos += data.nuevos; res.actualizados += data.actualizados; res.avisos.push(...data.avisos); res.errores.push(...data.errores); res.historico = data.historico;
+    // cada nombre antiguo e ID debe estar en UNA sola fila (si se repite, gana la última)
+    const normTxt = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+    const dueno = {}, repetidos = [];
+    filas.forEach(f => {
+      [...f.antiguos.map(a => ['Nombre antiguo', a, normTxt(a)]), ...f.ids_rpe.map(i => ['ID', i, 'id:' + i])].forEach(([tipo, valor, k]) => {
+        if (dueno[k] && dueno[k].fila !== f.fila) repetidos.push(`${tipo} "${valor}" está en la fila ${dueno[k].fila} (${dueno[k].nombre}) y en la fila ${f.fila} (${f.nombre})`);
+        dueno[k] = f;
+      });
+    });
+    if (repetidos.length && !confirm(`Hay ${repetidos.length} nombre(s) antiguo(s) o ID repetidos en más de una fila. Se quedará la ÚLTIMA fila de cada uno:\n\n• ${repetidos.slice(0, 15).join('\n• ')}${repetidos.length > 15 ? `\n… y ${repetidos.length - 15} más` : ''}\n\n¿Cargar igual? (Cancelar para corregir el Excel)`)) {
+      box.innerHTML = `<b style="color:var(--aviso)">No se cargó.</b> Corrige estos repetidos en el Excel y vuelve a subirlo:<ul style="margin:6px 0 0 18px">${repetidos.map(r => `<li>${esc(r)}</li>`).join('')}</ul>`;
+      return;
     }
+    let res = { nuevos: 0, actualizados: 0, avisos: [], errores: [], historico: null };
+    const LOTE = 60;
+    for (let i = 0; i < filas.length; i += LOTE) {
+      box.innerHTML = `Cargando productos… ${Math.min(i + LOTE, filas.length)} de ${filas.length}`;
+      const { data, error } = await sb.rpc('importar_maestro', { p: { filas: filas.slice(i, i + LOTE) } });
+      if (error) throw new Error(`Filas ${filas[i].fila} a ${filas[Math.min(i + LOTE, filas.length) - 1].fila}: ${error.message}`);
+      res.nuevos += data.nuevos; res.actualizados += data.actualizados; res.avisos.push(...data.avisos); res.errores.push(...data.errores);
+    }
+    // volver a enlazar la venta histórica, por partes
+    box.innerHTML = 'Productos cargados. Enlazando la venta histórica…';
+    const prep = await sb.rpc('revincular_preparar');
+    if (prep.error) throw new Error('Histórico: ' + prep.error.message);
+    let desde = prep.data.desde, n = 0;
+    while (desde !== null && desde !== undefined) {
+      const { data, error } = await sb.rpc('revincular_lote', { p_desde: desde, p_cant: 20000 });
+      if (error) throw new Error('Histórico: ' + error.message);
+      n += data.actualizadas; desde = data.siguiente;
+      if (desde) box.innerHTML = `Productos cargados. Enlazando la venta histórica… ${Math.round((desde - prep.data.desde) / Math.max(1, prep.data.hasta - prep.data.desde) * 100)}%`;
+    }
+    const resu = await sb.rpc('revincular_resumen');
+    res.historico = resu.data;
     const lista = (arr, campo, color) => arr.length ? `<details style="margin-top:6px"><summary style="cursor:pointer;color:${color};font-weight:700">${arr.length} ${campo === 'error' ? 'fila(s) con error (no se cargaron)' : 'aviso(s)'}</summary>
       <table class="t" style="margin-top:6px"><tr><th>Fila</th><th>Código</th><th>Producto</th><th>Detalle</th></tr>${arr.map(x => `<tr><td>${x.fila}</td><td>${esc(x.codigo || '')}</td><td>${esc(x.nombre || '')}</td><td>${esc(x[campo])}</td></tr>`).join('')}</table></details>` : '';
     box.innerHTML = `<b style="color:var(--ok)">✓ Maestro cargado:</b> ${res.nuevos} producto(s) nuevo(s) · ${res.actualizados} actualizado(s)` +
