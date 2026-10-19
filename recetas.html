@@ -403,11 +403,12 @@ $('p-archivo').onchange = async e => {
         dueno[k] = f;
       });
     });
-    // una categoría solo puede tener UNA categoría principal (si en el Excel tiene varias, gana la última fila)
-    const priDe = {};
-    filas.forEach(f => { if (!f.categoria) return; const k = normTxt(f.categoria); (priDe[k] = priDe[k] || { nombre: f.categoria, pris: {} }).pris[f.categoria_principal || '(vacía)'] = (priDe[k].pris[f.categoria_principal || '(vacía)'] || []).concat(f.fila); });
-    Object.values(priDe).forEach(c => { const ps = Object.entries(c.pris); if (ps.length > 1) repetidos.push(`Categoría "${c.nombre}" tiene distintas categorías principales: ${ps.map(([p, fs]) => `"${p}" (fila${fs.length > 1 ? 's' : ''} ${fs.slice(0, 5).join(', ')}${fs.length > 5 ? '…' : ''})`).join(' y ')}`); });
-    if (repetidos.length && !confirm(`Hay ${repetidos.length} problema(s) en el Excel (nombres antiguos/ID repetidos, o categorías con varias principales). En cada caso se quedará la ÚLTIMA fila:\n\n• ${repetidos.slice(0, 15).join('\n• ')}${repetidos.length > 15 ? `\n… y ${repetidos.length - 15} más` : ''}\n\n¿Cargar igual? (Cancelar para corregir el Excel)`)) {
+    // solo categorías de la lista oficial (la principal sale sola de la categoría)
+    const oficiales = new Set(st.categorias.map(c => normTxt(c.nombre)));
+    const fuera = {};
+    filas.forEach(f => { if (f.categoria && !oficiales.has(normTxt(f.categoria))) (fuera[f.categoria] = fuera[f.categoria] || []).push(f.fila); });
+    Object.entries(fuera).forEach(([c, fs]) => repetidos.push(`Categoría "${c}" no está en la lista oficial (fila${fs.length > 1 ? 's' : ''} ${fs.slice(0, 6).join(', ')}${fs.length > 6 ? '…' : ''}): esas filas no se cargarán`));
+    if (repetidos.length && !confirm(`Hay ${repetidos.length} problema(s) en el Excel (nombres antiguos/ID repetidos, o categorías que no están en la lista oficial):\n\n• ${repetidos.slice(0, 15).join('\n• ')}${repetidos.length > 15 ? `\n… y ${repetidos.length - 15} más` : ''}\n\n¿Cargar igual? (Cancelar para corregir el Excel)`)) {
       box.innerHTML = `<b style="color:var(--aviso)">No se cargó.</b> Corrige estos repetidos en el Excel y vuelve a subirlo:<ul style="margin:6px 0 0 18px">${repetidos.map(r => `<li>${esc(r)}</li>`).join('')}</ul>`;
       return;
     }
@@ -461,8 +462,7 @@ function formProducto(p, alGuardar) {
   p = p || { tipo_item: 'insumo', unidad_medida: 'Kilo', modo_descuento: 'unidad', vendible: false, afecto_igv: true, area_preparacion: 'vitrina', activo: true };
   const catAct = st.categorias.find(c => c.id === p.categoria_id);
   // solo las categorías que usa algún producto (las del maestro) + la actual de este producto
-  const enUso = new Set(st.productos.map(x => x.categoria_id));
-  const catsMaestro = st.categorias.filter(c => enUso.has(c.id) || c.id === p.categoria_id);
+  const catsMaestro = st.categorias;   // lista oficial (script 33)
   const principales = [...new Set(catsMaestro.map(c => c.categoria_principal).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
   $('modal-c').innerHTML = `<h3 style="margin-top:0">${n ? 'Nuevo producto' : 'Editar ' + esc(p.codigo)}</h3>
     <div class="grid2">
@@ -472,11 +472,9 @@ function formProducto(p, alGuardar) {
     <div class="campo" style="margin-top:10px"><label>Nombre (el que sale en caja y comprobantes)</label><input id="f-nom" value="${esc(p.nombre || '')}"></div>
     <div class="grid2" style="margin-top:10px">
       <div class="campo"><label>Categoría principal</label>
-        <select id="f-catp"><option value="">— sin principal —</option>${principales.map(x => `<option ${catAct && catAct.categoria_principal === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}<option value="__nueva">+ Nueva categoría principal…</option></select>
-        <input id="f-catp-n" class="oculto" placeholder="Nombre de la nueva categoría principal" style="margin-top:6px"></div>
+        <select id="f-catp"><option value="">— todas —</option>${principales.map(x => `<option ${catAct && catAct.categoria_principal === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></div>
       <div class="campo"><label>Categoría</label>
-        <select id="f-cat"></select>
-        <input id="f-cat-n" class="oculto" placeholder="Nombre de la nueva categoría" style="margin-top:6px"></div>
+        <select id="f-cat"></select></div>
     </div>
     <p class="ayuda" id="f-cat-aviso" style="margin:4px 0 0"></p>
     <div class="grid2" style="margin-top:10px">
@@ -517,22 +515,18 @@ function formProducto(p, alGuardar) {
   // categorías: la lista se filtra por la principal elegida
   const pintarCats = (sel) => {
     const pri = $('f-catp').value;
-    const lista = catsMaestro.filter(c => pri === '__nueva' ? false : !pri ? true : c.categoria_principal === pri);
-    $('f-cat').innerHTML = `<option value="">—</option>` + lista.map(c => `<option value="${c.id}" ${c.id === sel ? 'selected' : ''}>${esc(c.nombre)}${!pri && c.categoria_principal ? ' · ' + esc(c.categoria_principal) : ''}</option>`).join('') + `<option value="__nueva">+ Nueva categoría…</option>`;
-    if (pri === '__nueva') $('f-cat').value = '__nueva';
+    const lista = catsMaestro.filter(c => !pri || c.categoria_principal === pri);
+    $('f-cat').innerHTML = `<option value="">— sin categoría —</option>` + lista.map(c => `<option value="${c.id}" ${c.id === sel ? 'selected' : ''}>${esc(c.nombre)}${!pri && c.categoria_principal ? ' · ' + esc(c.categoria_principal) : ''}</option>`).join('');
     avisoCat();
   };
   const avisoCat = () => {
-    $('f-catp-n').classList.toggle('oculto', $('f-catp').value !== '__nueva');
-    $('f-cat-n').classList.toggle('oculto', $('f-cat').value !== '__nueva');
+    // la principal sale de la categoría
     const c = st.categorias.find(x => String(x.id) === $('f-cat').value);
-    const pri = $('f-catp').value === '__nueva' ? $('f-catp-n').value.trim() : $('f-catp').value;
-    const otros = c ? st.productos.filter(x => x.categoria_id === c.id && x.id !== p.id).length : 0;
-    $('f-cat-aviso').textContent = c && (c.categoria_principal || '') !== pri && otros
-      ? `Ojo: la categoría "${c.nombre}" pasará a la principal "${pri || 'sin principal'}" junto con sus otros ${otros} producto(s).` : '';
+    $('f-cat-aviso').textContent = c ? `Categoría principal: ${c.categoria_principal || '—'}` : '';
+    if (c && c.categoria_principal && $('f-catp').value !== c.categoria_principal) $('f-catp').value = c.categoria_principal;
   };
   $('f-catp').onchange = () => pintarCats(null);
-  $('f-cat').onchange = avisoCat; $('f-catp-n').oninput = avisoCat;
+  $('f-cat').onchange = avisoCat;
   pintarCats(p.categoria_id);
   const sinc = () => {
     const t = $('f-tipo').value, insumo = ['insumo', 'intermedio'].includes(t);
@@ -559,20 +553,7 @@ function formProducto(p, alGuardar) {
     $('f-err').textContent = '';
     const nombre = $('f-nom').value.trim(); if (!nombre) return $('f-err').textContent = 'Escribe el nombre.';
     const codigoNuevo = $('f-cod').value.trim().toUpperCase(); if (!codigoNuevo) return $('f-err').textContent = 'Falta el código.';
-    // categoría principal y categoría (se crean si son nuevas)
-    const pri = $('f-catp').value === '__nueva' ? $('f-catp-n').value.trim() : $('f-catp').value;
-    if ($('f-catp').value === '__nueva' && !pri) return $('f-err').textContent = 'Escribe el nombre de la nueva categoría principal.';
-    let catId = null;
-    if ($('f-cat').value === '__nueva') {
-      const nom = $('f-cat-n').value.trim(); if (!nom) return $('f-err').textContent = 'Escribe el nombre de la nueva categoría.';
-      const ex = st.categorias.find(c => c.nombre.toLowerCase() === nom.toLowerCase());
-      if (ex) catId = ex.id;
-      else { const r = await sb.from('categorias').insert({ nombre: nom, categoria_principal: pri || null }).select().single(); if (r.error) return $('f-err').textContent = errTxt(r.error); catId = r.data.id; }
-    } else if ($('f-cat').value) catId = Number($('f-cat').value);
-    if (catId) {
-      const c = st.categorias.find(x => x.id === catId);
-      if (c && (c.categoria_principal || '') !== (pri || '')) { const r = await sb.from('categorias').update({ categoria_principal: pri || null }).eq('id', catId); if (r.error) return $('f-err').textContent = errTxt(r.error); }
-    }
+    const catId = $('f-cat').value ? Number($('f-cat').value) : null;   // la principal viene con la categoría
     const tipo = $('f-tipo').value, vend = !['insumo', 'intermedio'].includes(tipo) && $('f-vend').checked;
     const modo = vend ? $('f-modo').value : (tipo === 'servicio' ? 'ninguno' : 'unidad');
     const reg = {
