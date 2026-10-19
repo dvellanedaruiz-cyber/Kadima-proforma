@@ -178,7 +178,7 @@ $('b-salir').onclick = pedirPin;
 async function cargarMaestros() {
   const [p, c, k, r] = await Promise.all([
     sb.from('productos').select('*').order('nombre'),
-    sb.from('categorias').select('id,nombre').order('nombre'),
+    sb.from('categorias').select('id,nombre,categoria_principal').order('nombre'),
     sb.from('v_costos').select('*'),
     sb.from('v_recetas').select('*').order('producto')
   ]);
@@ -403,7 +403,11 @@ $('p-archivo').onchange = async e => {
         dueno[k] = f;
       });
     });
-    if (repetidos.length && !confirm(`Hay ${repetidos.length} nombre(s) antiguo(s) o ID repetidos en más de una fila. Se quedará la ÚLTIMA fila de cada uno:\n\n• ${repetidos.slice(0, 15).join('\n• ')}${repetidos.length > 15 ? `\n… y ${repetidos.length - 15} más` : ''}\n\n¿Cargar igual? (Cancelar para corregir el Excel)`)) {
+    // una categoría solo puede tener UNA categoría principal (si en el Excel tiene varias, gana la última fila)
+    const priDe = {};
+    filas.forEach(f => { if (!f.categoria) return; const k = normTxt(f.categoria); (priDe[k] = priDe[k] || { nombre: f.categoria, pris: {} }).pris[f.categoria_principal || '(vacía)'] = (priDe[k].pris[f.categoria_principal || '(vacía)'] || []).concat(f.fila); });
+    Object.values(priDe).forEach(c => { const ps = Object.entries(c.pris); if (ps.length > 1) repetidos.push(`Categoría "${c.nombre}" tiene distintas categorías principales: ${ps.map(([p, fs]) => `"${p}" (fila${fs.length > 1 ? 's' : ''} ${fs.slice(0, 5).join(', ')}${fs.length > 5 ? '…' : ''})`).join(' y ')}`); });
+    if (repetidos.length && !confirm(`Hay ${repetidos.length} problema(s) en el Excel (nombres antiguos/ID repetidos, o categorías con varias principales). En cada caso se quedará la ÚLTIMA fila:\n\n• ${repetidos.slice(0, 15).join('\n• ')}${repetidos.length > 15 ? `\n… y ${repetidos.length - 15} más` : ''}\n\n¿Cargar igual? (Cancelar para corregir el Excel)`)) {
       box.innerHTML = `<b style="color:var(--aviso)">No se cargó.</b> Corrige estos repetidos en el Excel y vuelve a subirlo:<ul style="margin:6px 0 0 18px">${repetidos.map(r => `<li>${esc(r)}</li>`).join('')}</ul>`;
       return;
     }
@@ -438,10 +442,10 @@ $('p-archivo').onchange = async e => {
 };
 function pintarProductos() {
   const q = $('p-q').value.trim().toLowerCase(), inact = $('p-inact').checked;
-  const cat = id => (st.categorias.find(c => c.id === id) || {}).nombre || '';
-  const l = st.productos.filter(p => (inact || p.activo) && (!st.ptipo || p.tipo_item === st.ptipo) && (!q || p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q)));
-  $('p-filas').innerHTML = l.map(p => `<tr style="${p.activo ? '' : 'color:#aaa'}"><td>${p.codigo}</td><td>${esc(p.nombre)}</td><td>${tipoTag(p.tipo_item)}</td><td>${UNI[p.unidad_medida]}</td><td>${esc(cat(p.categoria_id))}</td>
-    <td class="n">${p.vendible ? S(p.precio_venta) : ''}</td><td>${DESCUENTO[p.modo_descuento]}${p.modo_descuento === 'porcion' ? ` (${p.porciones_por_unidad})` : ''}</td>
+  const cat = id => { const c = st.categorias.find(c => c.id === id); return c ? esc(c.nombre) + (c.categoria_principal ? `<br><small style="color:var(--gris)">${esc(c.categoria_principal)}</small>` : '') : ''; };
+  const l = st.productos.filter(p => (inact || p.activo) && (!st.ptipo || p.tipo_item === st.ptipo) && (!q || p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q) || cat(p.categoria_id).toLowerCase().includes(q)));
+  $('p-filas').innerHTML = l.map(p => `<tr style="${p.activo ? '' : 'color:#aaa'}"><td>${p.codigo}</td><td>${esc(p.nombre)}</td><td>${tipoTag(p.tipo_item)}</td><td>${UNI[p.unidad_medida]}</td><td>${cat(p.categoria_id)}</td>
+    <td class="n">${p.favorito ? '⭐ ' : ''}${p.vendible ? (p.precio_libre ? 'Libre' : S(p.precio_venta) + (p.unidad_medida !== 'Unidad' ? '/' + UNI[p.unidad_medida] : '')) : ''}</td><td>${DESCUENTO[p.modo_descuento]}${p.modo_descuento === 'porcion' ? ` (${p.porciones_por_unidad})` : ''}</td>
     <td>${tieneReceta(p.id) ? `<button class="btn-mini" data-rec="${p.id}">Ver receta</button>` : ''}</td><td><button class="btn-mini" data-ed="${p.id}">Editar</button></td></tr>`).join('') || '<tr><td colspan="9" class="vacio">Sin productos.</td></tr>';
   $('p-filas').onclick = e => {
     if (e.target.dataset.ed) formProducto(prodDe(Number(e.target.dataset.ed)), () => pintarProductos());
@@ -455,23 +459,38 @@ $('modal').onclick = e => { if (e.target === $('modal')) cerrarModal(); };
 function formProducto(p, alGuardar) {
   const n = !p;
   p = p || { tipo_item: 'insumo', unidad_medida: 'Kilo', modo_descuento: 'unidad', vendible: false, afecto_igv: true, area_preparacion: 'vitrina', activo: true };
+  const catAct = st.categorias.find(c => c.id === p.categoria_id);
+  // solo las categorías que usa algún producto (las del maestro) + la actual de este producto
+  const enUso = new Set(st.productos.map(x => x.categoria_id));
+  const catsMaestro = st.categorias.filter(c => enUso.has(c.id) || c.id === p.categoria_id);
+  const principales = [...new Set(catsMaestro.map(c => c.categoria_principal).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
   $('modal-c').innerHTML = `<h3 style="margin-top:0">${n ? 'Nuevo producto' : 'Editar ' + esc(p.codigo)}</h3>
     <div class="grid2">
-      <div class="campo"><label>Tipo de ítem</label><select id="f-tipo" ${n ? '' : 'disabled'}>${Object.entries(TIPO).map(([k, v]) => `<option value="${k}" ${k === p.tipo_item ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
-      <div class="campo"><label>Código</label><input id="f-cod" value="${esc(p.codigo || '')}" ${n ? '' : 'disabled'} placeholder="se genera solo"></div>
+      <div class="campo"><label>Tipo de ítem</label><select id="f-tipo">${Object.entries(TIPO).map(([k, v]) => `<option value="${k}" ${k === p.tipo_item ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+      <div class="campo"><label>Código</label><input id="f-cod" value="${esc(p.codigo || '')}" placeholder="se genera solo"></div>
     </div>
-    <div class="campo" style="margin-top:10px"><label>Nombre</label><input id="f-nom" value="${esc(p.nombre || '')}"></div>
+    <div class="campo" style="margin-top:10px"><label>Nombre (el que sale en caja y comprobantes)</label><input id="f-nom" value="${esc(p.nombre || '')}"></div>
+    <div class="grid2" style="margin-top:10px">
+      <div class="campo"><label>Categoría principal</label>
+        <select id="f-catp"><option value="">— sin principal —</option>${principales.map(x => `<option ${catAct && catAct.categoria_principal === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}<option value="__nueva">+ Nueva categoría principal…</option></select>
+        <input id="f-catp-n" class="oculto" placeholder="Nombre de la nueva categoría principal" style="margin-top:6px"></div>
+      <div class="campo"><label>Categoría</label>
+        <select id="f-cat"></select>
+        <input id="f-cat-n" class="oculto" placeholder="Nombre de la nueva categoría" style="margin-top:6px"></div>
+    </div>
+    <p class="ayuda" id="f-cat-aviso" style="margin:4px 0 0"></p>
     <div class="grid2" style="margin-top:10px">
       <div class="campo"><label>Unidad base de inventario</label><select id="f-uni">${['Kilo','Litro','Unidad'].map(u => `<option ${u === p.unidad_medida ? 'selected' : ''}>${u}</option>`).join('')}</select></div>
-      <div class="campo"><label>Categoría</label><select id="f-cat"><option value="">—</option>${st.categorias.map(c => `<option value="${c.id}" ${c.id === p.categoria_id ? 'selected' : ''}>${esc(c.nombre)}</option>`).join('')}</select></div>
+      <div></div>
     </div>
     <div style="margin-top:12px;display:flex;gap:18px;flex-wrap:wrap">
       <label class="check"><input type="checkbox" id="f-vend" ${p.vendible ? 'checked' : ''}> Se vende en caja</label>
       <label class="check"><input type="checkbox" id="f-igv" ${p.afecto_igv ? 'checked' : ''}> Afecto a IGV</label>
       <label class="check"><input type="checkbox" id="f-act" ${p.activo ? 'checked' : ''}> Activo</label>
+      <label class="check" id="f-fav-box"><input type="checkbox" id="f-fav" ${p.favorito ? 'checked' : ''}> ⭐ Favorito en caja</label>
     </div>
     <div id="f-venta" class="grid2" style="margin-top:10px">
-      <div class="campo"><label>Precio de venta (con IGV)</label><input id="f-precio" type="number" step="0.10" min="0" value="${p.precio_venta ?? ''}">
+      <div class="campo"><label>Precio de venta (con IGV)<span id="f-precio-u"></span></label><input id="f-precio" type="number" step="0.10" min="0" value="${p.precio_venta ?? ''}">
         <label class="check" style="margin-top:6px;font-size:13px"><input type="checkbox" id="f-libre" ${p.precio_libre ? 'checked' : ''}> Precio libre: la cajera lo escribe al cobrar</label></div>
       <div class="campo"><label>Se prepara en</label><select id="f-area"><option value="vitrina" ${p.area_preparacion === 'vitrina' ? 'selected' : ''}>Vitrina (sale directo)</option><option value="cocina" ${p.area_preparacion === 'cocina' ? 'selected' : ''}>Cocina (va a la pantalla)</option></select></div>
       <div class="campo"><label>Al venderse descuenta</label><select id="f-modo">${Object.entries(DESCUENTO).map(([k, v]) => `<option value="${k}" ${k === p.modo_descuento ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
@@ -479,31 +498,86 @@ function formProducto(p, alGuardar) {
       <div class="campo" id="f-padre-box"><label>Producto entero del que sale</label><select id="f-padre"><option value="">—</option>${st.productos.filter(x => x.tipo_item === 'producto_terminado' && x.id !== p.id).map(x => `<option value="${x.id}" ${x.id === p.producto_padre_id ? 'selected' : ''}>${esc(x.nombre)}</option>`).join('')}</select></div>
       <div class="campo" id="f-porc-box"><label>Porciones por entero</label><input id="f-porc" type="number" min="1" step="1" value="${p.porciones_por_unidad ?? ''}"></div>
     </div>
-    <p class="ayuda" style="margin-top:10px">Unidad base: la que usas para contar el stock y en las recetas (no la presentación de compra). Ej. azúcar en Kilo aunque la compres en sacos.</p>
+    <details style="margin-top:12px" id="f-rpe-box"><summary style="cursor:pointer;font-weight:600;color:var(--rojo)">Enlace con restaurant.pe (venta histórica)</summary>
+      <div class="campo" style="margin-top:8px"><label>Nombres antiguos (sepáralos con |)</label><input id="f-ant" placeholder="Ej. Torta Moka : ENTERA GRANDE | Moka grande"></div>
+      <div class="campo" style="margin-top:8px"><label>ID restaurant.pe (sepáralos con |)</label><input id="f-ids" placeholder="Ej. 312 | 415"></div>
+    </details>
+    <p class="ayuda" style="margin-top:10px">Unidad base: la que usas para contar el stock y en las recetas. Si vendes al granel (Kilo/Litro), el precio es por kilo/litro y la caja pide los gramos.</p>
     <div class="fila" style="justify-content:flex-end;margin-top:12px"><button class="btn-sec" onclick="cerrarModal()">Cancelar</button><button class="btn" id="f-ok">Guardar</button></div>
     <div class="error" id="f-err"></div>`;
   $('modal').classList.remove('oculto');
-  const sinc = () => {
-    const vend = $('f-vend').checked; $('f-venta').classList.toggle('oculto', !vend);
-    const porc = $('f-modo').value === 'porcion'; $('f-padre-box').classList.toggle('oculto', !porc); $('f-porc-box').classList.toggle('oculto', !porc);
+  // vínculos actuales con restaurant.pe
+  if (!n) Promise.all([
+    sb.from('productos_alias').select('nombre').eq('producto_id', p.id),
+    sb.from('productos_equivalencias').select('clave').eq('producto_id', p.id).eq('origen', 'restaurantpe')
+  ]).then(([a, e]) => {
+    $('f-ant').value = (a.data || []).map(x => x.nombre).join(' | ');
+    $('f-ids').value = (e.data || []).map(x => x.clave).filter(c => !c.startsWith('N:')).join(' | ');
+  });
+  // categorías: la lista se filtra por la principal elegida
+  const pintarCats = (sel) => {
+    const pri = $('f-catp').value;
+    const lista = catsMaestro.filter(c => pri === '__nueva' ? false : !pri ? true : c.categoria_principal === pri);
+    $('f-cat').innerHTML = `<option value="">—</option>` + lista.map(c => `<option value="${c.id}" ${c.id === sel ? 'selected' : ''}>${esc(c.nombre)}${!pri && c.categoria_principal ? ' · ' + esc(c.categoria_principal) : ''}</option>`).join('') + `<option value="__nueva">+ Nueva categoría…</option>`;
+    if (pri === '__nueva') $('f-cat').value = '__nueva';
+    avisoCat();
   };
-  const codigo = async () => { if (!n) return; const { data } = await sb.rpc('siguiente_codigo', { p_tipo: $('f-tipo').value }); $('f-cod').value = data || ''; };
+  const avisoCat = () => {
+    $('f-catp-n').classList.toggle('oculto', $('f-catp').value !== '__nueva');
+    $('f-cat-n').classList.toggle('oculto', $('f-cat').value !== '__nueva');
+    const c = st.categorias.find(x => String(x.id) === $('f-cat').value);
+    const pri = $('f-catp').value === '__nueva' ? $('f-catp-n').value.trim() : $('f-catp').value;
+    const otros = c ? st.productos.filter(x => x.categoria_id === c.id && x.id !== p.id).length : 0;
+    $('f-cat-aviso').textContent = c && (c.categoria_principal || '') !== pri && otros
+      ? `Ojo: la categoría "${c.nombre}" pasará a la principal "${pri || 'sin principal'}" junto con sus otros ${otros} producto(s).` : '';
+  };
+  $('f-catp').onchange = () => pintarCats(null);
+  $('f-cat').onchange = avisoCat; $('f-catp-n').oninput = avisoCat;
+  pintarCats(p.categoria_id);
+  const sinc = () => {
+    const t = $('f-tipo').value, insumo = ['insumo', 'intermedio'].includes(t);
+    if (insumo) $('f-vend').checked = false;
+    $('f-vend').disabled = insumo;
+    const vend = $('f-vend').checked; $('f-venta').classList.toggle('oculto', !vend); $('f-fav-box').classList.toggle('oculto', !vend);
+    $('f-rpe-box').classList.toggle('oculto', insumo);
+    const porc = $('f-modo').value === 'porcion'; $('f-padre-box').classList.toggle('oculto', !porc); $('f-porc-box').classList.toggle('oculto', !porc);
+    $('f-precio-u').textContent = $('f-uni').value === 'Kilo' ? ' · por kilo' : $('f-uni').value === 'Litro' ? ' · por litro' : '';
+  };
+  const codigo = async () => { const { data } = await sb.rpc('siguiente_codigo', { p_tipo: $('f-tipo').value }); $('f-cod').value = data || ''; };
   $('f-tipo').onchange = () => {
     const t = $('f-tipo').value;
     $('f-modo').value = t === 'plato' ? 'receta' : t === 'servicio' ? 'ninguno' : 'unidad';
     $('f-vend').checked = ['producto_terminado','plato','mercaderia','servicio'].includes(t);
     if (t === 'plato') $('f-area').value = 'cocina';
-    sinc(); codigo();
+    sinc();
+    if (n) codigo();
+    else if (confirm('Cambiaste el tipo. ¿Le asigno un código nuevo según el tipo? (Cancelar = mantener ' + p.codigo + ')')) codigo();
   };
-  $('f-vend').onchange = sinc; $('f-modo').onchange = sinc;
-  sinc(); codigo();
+  $('f-vend').onchange = sinc; $('f-modo').onchange = sinc; $('f-uni').onchange = sinc;
+  sinc(); if (n) codigo();
   $('f-ok').onclick = async () => {
     $('f-err').textContent = '';
     const nombre = $('f-nom').value.trim(); if (!nombre) return $('f-err').textContent = 'Escribe el nombre.';
-    const vend = $('f-vend').checked, modo = vend ? $('f-modo').value : ($('f-tipo').value === 'servicio' ? 'ninguno' : 'unidad');
+    const codigoNuevo = $('f-cod').value.trim().toUpperCase(); if (!codigoNuevo) return $('f-err').textContent = 'Falta el código.';
+    // categoría principal y categoría (se crean si son nuevas)
+    const pri = $('f-catp').value === '__nueva' ? $('f-catp-n').value.trim() : $('f-catp').value;
+    if ($('f-catp').value === '__nueva' && !pri) return $('f-err').textContent = 'Escribe el nombre de la nueva categoría principal.';
+    let catId = null;
+    if ($('f-cat').value === '__nueva') {
+      const nom = $('f-cat-n').value.trim(); if (!nom) return $('f-err').textContent = 'Escribe el nombre de la nueva categoría.';
+      const ex = st.categorias.find(c => c.nombre.toLowerCase() === nom.toLowerCase());
+      if (ex) catId = ex.id;
+      else { const r = await sb.from('categorias').insert({ nombre: nom, categoria_principal: pri || null }).select().single(); if (r.error) return $('f-err').textContent = errTxt(r.error); catId = r.data.id; }
+    } else if ($('f-cat').value) catId = Number($('f-cat').value);
+    if (catId) {
+      const c = st.categorias.find(x => x.id === catId);
+      if (c && (c.categoria_principal || '') !== (pri || '')) { const r = await sb.from('categorias').update({ categoria_principal: pri || null }).eq('id', catId); if (r.error) return $('f-err').textContent = errTxt(r.error); }
+    }
+    const tipo = $('f-tipo').value, vend = !['insumo', 'intermedio'].includes(tipo) && $('f-vend').checked;
+    const modo = vend ? $('f-modo').value : (tipo === 'servicio' ? 'ninguno' : 'unidad');
     const reg = {
-      nombre, unidad_medida: $('f-uni').value, categoria_id: $('f-cat').value ? Number($('f-cat').value) : null,
-      vendible: vend, afecto_igv: $('f-igv').checked, activo: $('f-act').checked,
+      codigo: codigoNuevo, tipo_item: tipo, nombre, unidad_medida: $('f-uni').value, categoria_id: catId,
+      vendible: vend, afecto_igv: $('f-igv').checked, activo: $('f-act').checked, favorito: vend && $('f-fav').checked,
       precio_venta: vend && $('f-precio').value !== '' ? Number($('f-precio').value) : null, precio_libre: vend && $('f-libre').checked, area_preparacion: vend ? $('f-area').value : 'vitrina',
       modo_descuento: modo,
       producto_padre_id: modo === 'porcion' && $('f-padre').value ? Number($('f-padre').value) : null,
@@ -512,9 +586,15 @@ function formProducto(p, alGuardar) {
     if (vend && !reg.precio_libre && !(reg.precio_venta > 0)) return $('f-err').textContent = 'Indica el precio de venta o marca Precio libre.';
     if (modo === 'porcion' && (!reg.producto_padre_id || !reg.porciones_por_unidad)) return $('f-err').textContent = 'Para porción indica el producto entero y cuántas porciones salen.';
     let res;
-    if (n) { reg.tipo_item = $('f-tipo').value; reg.codigo = $('f-cod').value.trim().toUpperCase(); res = await sb.from('productos').insert(reg).select().single(); }
+    if (n) res = await sb.from('productos').insert(reg).select().single();
     else res = await sb.from('productos').update(reg).eq('id', p.id).select().single();
     if (res.error) return $('f-err').textContent = /duplicate|unique/i.test(res.error.message) ? 'Ese código ya existe.' : errTxt(res.error);
+    // enlace con restaurant.pe
+    if (!['insumo', 'intermedio'].includes(tipo)) {
+      const sep = v => v.split('|').map(x => x.trim()).filter(Boolean);
+      const r = await sb.rpc('guardar_vinculos_producto', { p_producto: res.data.id, p_antiguos: sep($('f-ant').value), p_ids: sep($('f-ids').value) });
+      if (r.error) return $('f-err').textContent = 'Producto guardado, pero no se pudo guardar el enlace con restaurant.pe: ' + errTxt(r.error);
+    }
     cerrarModal(); await cargarMaestros(); pintarLista(); alGuardar && alGuardar(res.data);
   };
 }
