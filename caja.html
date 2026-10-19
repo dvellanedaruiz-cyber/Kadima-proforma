@@ -78,6 +78,18 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 .cats{display:flex;gap:8px;overflow-x:auto;padding:10px 16px;scrollbar-width:thin}
 .cats button{background:#fff;border:1px solid var(--borde);padding:8px 14px;white-space:nowrap;font-size:14px}
 .cats button.activa{background:var(--rojo);color:#fff;border-color:var(--rojo)}
+.cats.sub{padding-top:0}
+.cats.sub button{font-size:13px;padding:6px 12px;background:var(--fondo)}
+.cats.sub button.activa{background:#fff;color:var(--rojo);border-color:var(--rojo);font-weight:700}
+.cats .fav{font-weight:700}
+.cats .editar{background:#fff!important;border:1px dashed var(--gris)!important;color:var(--gris)}
+.aviso-fav{margin:0 16px 8px;padding:8px 12px;background:#fff8e1;border:1px solid #f3d27a;border-radius:10px;font-size:13px;display:flex;align-items:center;gap:10px}
+.aviso-fav button{margin-left:auto;background:var(--rojo);color:#fff;padding:6px 14px;font-weight:600}
+.prod .estrella{position:absolute;top:6px;right:8px;font-size:15px}
+.prod{position:relative}
+.prod.es-fav .n{padding-right:16px}
+.prod.editando{border-style:dashed}
+.prod.editando.es-fav{border-color:#e0a800;background:#fffbea}
 .grilla{flex:1;overflow-y:auto;padding:4px 16px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;align-content:start;grid-auto-rows:max-content}
 .prod{background:#fff;border:1px solid var(--borde);border-radius:var(--radio);padding:12px;text-align:left;min-height:92px;min-width:0;display:flex;flex-direction:column;justify-content:space-between;box-shadow:var(--sombra)}
 .prod:active{transform:scale(.98);background:var(--rojo-suave)}
@@ -250,6 +262,8 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
     </div>
     <div class="buscador"><input id="buscar" type="search" placeholder="Buscar producto o código…" autocomplete="off"></div>
     <div class="cats" id="cats"></div>
+    <div class="cats sub oculto" id="subcats"></div>
+    <div class="aviso-fav oculto" id="aviso-fav">⭐ Toca los productos para marcarlos o quitarlos de Favoritos. <button id="fav-listo">Listo</button></div>
     <div class="grilla" id="grilla"></div>
   </div>
   <aside class="der">
@@ -497,7 +511,7 @@ const uuid = () => (crypto.randomUUID ? crypto.randomUUID() :
 
 const st = {
   disp: null, caja: null, canal: null, usuario: null, turno: null,
-  productos: [], categorias: [], cat: 'todas', carrito: [], doc: 'boleta',
+  productos: [], categorias: [], cat: null, sub: null, editFav: false, carrito: [], doc: 'boleta',
   pagos: [], metodo: 'efectivo', forma: 'contado', ultimaVenta: null, ult: {}, ctx: null, mozos: []
 };
 
@@ -643,14 +657,15 @@ async function abrirPos() {
   vista('v-pos'); pintarRed();
   $('b-info').textContent = `${st.caja.nombre} · ${st.canal.nombre} · ${st.usuario.nombre} · ${st.turno.nombre || 'Turno'} desde ${new Date(st.turno.abierto_en).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}`;
   try {
-    st.productos = await conCopia('productos', () => sb.from('productos').select('id,codigo,nombre,precio_venta,precio_libre,unidad_medida,tipo_item,afecto_igv,categoria_id,area_preparacion').eq('vendible', true).eq('activo', true).order('nombre'));
-    const cats = await conCopia('categorias', () => sb.from('categorias').select('id,nombre').order('nombre'));
+    st.productos = await conCopia('productos', () => sb.from('productos').select('id,codigo,nombre,precio_venta,precio_libre,unidad_medida,tipo_item,afecto_igv,categoria_id,area_preparacion,favorito').eq('vendible', true).eq('activo', true).order('nombre'));
+    const cats = await conCopia('categorias', () => sb.from('categorias').select('id,nombre,categoria_principal').order('nombre'));
     st.canales = await conCopia('canales', () => sb.from('canales').select('id,nombre').order('id'));
     st.conceptos = await conCopia('conceptos', () => sb.from('productos').select('id,codigo,nombre').in('codigo', ['SV-900', 'SV-901'])).catch(() => []);
     const ops = st.canales.map(c => `<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
     $('c-canal').innerHTML = ops; $('pd-canal').innerHTML = ops; canalVenta(st.canal.id);
     const usadas = new Set(st.productos.map(x => x.categoria_id));
     st.categorias = cats.filter(x => usadas.has(x.id));
+    if (!st.cat) st.cat = st.productos.some(x => x.favorito) ? 'fav' : 'todas';
   } catch (e) { msg('v-error', errorTexto(e)); }
   await actualizarNumeros();
   dibujarCats(); dibujarGrilla(); dibujarCarrito();
@@ -669,11 +684,37 @@ async function actualizarNumeros() {
 }
 function serieDe(doc) { return { boleta: st.disp.serie_boleta, factura: st.disp.serie_factura, nota_venta: st.disp.serie_nota_venta }[doc]; }
 
-function dibujarCats() {
-  $('cats').innerHTML = [{ id:'todas', nombre:'Todas' }, ...st.categorias]
-    .map(c => `<button data-c="${c.id}" class="${String(st.cat) === String(c.id) ? 'activa' : ''}">${c.nombre}</button>`).join('');
+// categorías: fila 1 = Favoritos · Todas · categorías principales; fila 2 = categorías de la principal elegida
+const principalDe = c => (c && (c.categoria_principal || c.nombre)) || 'Otros';
+const catDe = id => st.categorias.find(c => c.id === id);
+function principales() {
+  const set = new Set(st.productos.map(p => principalDe(catDe(p.categoria_id))));
+  return [...set].sort((a, b) => a.localeCompare(b, 'es'));
 }
-$('cats').onclick = e => { const c = e.target.dataset.c; if (!c) return; st.cat = c; dibujarCats(); dibujarGrilla(); };
+function dibujarCats() {
+  const b = (k, t, cls = '') => `<button data-c="${esc(k)}" class="${cls} ${st.cat === k ? 'activa' : ''}">${esc(t)}</button>`;
+  $('cats').innerHTML = b('fav', '⭐ Favoritos', 'fav') + b('todas', 'Todas') + principales().map(p => b('p:' + p, p)).join('');
+  const pri = st.cat && st.cat.startsWith('p:') ? st.cat.slice(2) : null;
+  const subs = pri ? st.categorias.filter(c => principalDe(c) === pri && st.productos.some(p => p.categoria_id === c.id)) : [];
+  const conSinCat = pri === 'Otros' && st.productos.some(p => !catDe(p.categoria_id));
+  if (st.cat === 'fav') {
+    $('subcats').classList.toggle('oculto', st.editFav);
+    $('subcats').innerHTML = `<button class="editar" id="b-edit-fav">✎ Editar favoritos</button>`;
+    $('aviso-fav').classList.toggle('oculto', !st.editFav); return;
+  }
+  $('subcats').classList.toggle('oculto', !pri || (subs.length + (conSinCat ? 1 : 0)) < 2);
+  $('subcats').innerHTML = pri ? `<button data-s="" class="${!st.sub ? 'activa' : ''}">Todo ${esc(pri)}</button>` +
+    subs.map(c => `<button data-s="${c.id}" class="${String(st.sub) === String(c.id) ? 'activa' : ''}">${esc(c.nombre)}</button>`).join('') : '';
+  $('aviso-fav').classList.toggle('oculto', !st.editFav);
+}
+$('cats').onclick = e => {
+  const c = e.target.dataset.c; if (c === undefined) return;
+  st.cat = c; st.sub = null; st.editFav = false; $('buscar').value = ''; dibujarCats(); dibujarGrilla();
+};
+$('subcats').onclick = e => {
+  if (e.target.id === 'b-edit-fav') { st.editFav = true; dibujarCats(); return dibujarGrilla(); }
+  const s = e.target.dataset.s; if (s === undefined) return; st.sub = s ? Number(s) : null; dibujarCats(); dibujarGrilla(); };
+$('fav-listo').onclick = () => { st.editFav = false; dibujarCats(); dibujarGrilla(); };
 $('buscar').oninput = dibujarGrilla;
 $('buscar').onkeydown = e => {
   if (e.key !== 'Enter') return;
@@ -681,19 +722,28 @@ $('buscar').onkeydown = e => {
 };
 function filtrados() {
   const q = $('buscar').value.trim().toLowerCase();
-  return st.productos.filter(p =>
-    (st.cat === 'todas' || String(p.categoria_id) === String(st.cat)) &&
-    (!q || p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q)));
+  // al buscar se busca en TODOS los productos; al editar favoritos se muestran todos
+  if (q) return st.productos.filter(p => p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q));
+  if (st.editFav || st.cat === 'todas' || !st.cat) return st.productos;
+  if (st.cat === 'fav') return st.productos.filter(p => p.favorito);
+  const pri = st.cat.slice(2);
+  return st.productos.filter(p => principalDe(catDe(p.categoria_id)) === pri && (!st.sub || p.categoria_id === st.sub));
 }
 function dibujarGrilla() {
   const lista = filtrados();
   $('grilla').innerHTML = lista.length ? lista.map(p => `
-    <button class="prod" data-id="${p.id}" title="${esc(p.nombre)}">
+    <button class="prod ${st.editFav ? 'editando' : ''} ${p.favorito ? 'es-fav' : ''}" data-id="${p.id}" title="${esc(p.nombre)}">${p.favorito ? '<span class="estrella">⭐</span>' : ''}
       <span><span class="n">${esc(p.nombre)}</span><br><span class="t">${p.codigo}</span></span>
       <span class="p">${p.precio_libre ? 'Precio libre' : (GRANEL[p.unidad_medida] ? S(p.precio_venta / 10) + ' /100 ' + GRANEL[p.unidad_medida].sub : S(p.precio_venta))}</span>
-    </button>`).join('') : '<div class="vacio">No hay productos con ese filtro.</div>';
+    </button>`).join('') : (st.cat === 'fav' && !$('buscar').value.trim() ? '<div class="vacio">Aún no hay favoritos. Toca <b>✎ Editar favoritos</b> y elige los productos que más vendes.</div>' : '<div class="vacio">No hay productos con ese filtro.</div>');
 }
-$('grilla').onclick = e => { const b = e.target.closest('.prod'); if (b) agregar(Number(b.dataset.id)); };
+$('grilla').onclick = e => { const b = e.target.closest('.prod'); if (!b) return; if (st.editFav) return marcarFavorito(Number(b.dataset.id)); agregar(Number(b.dataset.id)); };
+async function marcarFavorito(id) {
+  const p = st.productos.find(x => x.id === id); const nuevo = !p.favorito;
+  const { error } = await sb.from('productos').update({ favorito: nuevo }).eq('id', id);
+  if (error) return msg('v-error', 'No se pudo guardar el favorito: ' + errorTexto(error));
+  p.favorito = nuevo; guardar('productos', st.productos); dibujarGrilla();
+}
 
 function agregar(id) {
   if (st.ctx && st.ctx.tipo === 'pedido') return msg('v-error', 'Estás cobrando un pedido. Termina o cancela ese cobro primero.');
