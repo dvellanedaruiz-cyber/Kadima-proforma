@@ -45,6 +45,19 @@ input,select{font:inherit;padding:8px 10px;border:1px solid var(--borde);border-
 .switch .sl::after{content:'';position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.3)}
 .switch input:checked + .sl{background:var(--rojo)}
 .switch input:checked + .sl::after{left:18px}
+.sync .chip{border:none;background:var(--fondo);color:var(--gris);padding:6px 11px}.sync .chip.activa{background:var(--rojo);color:#fff}
+.fc-badge{position:absolute;top:12px;right:14px;text-align:right;background:#e6f4ea;border-radius:12px;padding:8px 12px;line-height:1.25}
+.fc-badge span{display:block;font-size:11px;font-weight:700;color:var(--gris)}.fc-badge b{display:block;font-size:20px;color:var(--ok)}.fc-badge small{font-size:11px;color:var(--gris)}
+.fc-badge.mal{background:#fdeaea}.fc-badge.mal b{color:var(--mal)}
+@media (max-width:600px){.fc-badge{position:static;margin:6px 0;text-align:left}}
+.modal-fondo{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:20;display:flex;align-items:flex-start;justify-content:center;padding:40px 10px;overflow:auto}
+.modal{background:#fff;border-radius:16px;padding:16px;width:100%;max-width:720px;box-shadow:0 10px 40px rgba(0,0,0,.2)}
+.modal h3{margin:0 0 4px;color:var(--rojo)}
+.modal select{padding:5px 6px;font-size:13px;max-width:170px}
+.btn2{background:var(--fondo);color:var(--rojo);padding:7px 12px;font-weight:700;border:1.5px solid var(--rojo);font-size:13px}
+.er td{padding:6px}.er .tot td{font-weight:800;border-top:2px solid #ddd}.er .sub td:first-child{padding-left:18px;color:var(--gris)}
+.quad{font-size:11px;font-weight:700;padding:2px 7px;border-radius:8px;white-space:nowrap}
+.q-estrella{background:#e6f4ea;color:#1e7d3a}.q-caballo{background:#fff3e0;color:#b26a00}.q-incognita{background:#e8eff7;color:#3d6b99}.q-perro{background:#fdeaea;color:#b00020}
 .aviso{background:#fff3e0;color:var(--aviso);border-radius:10px;padding:9px 12px;font-size:13px;margin-bottom:12px;font-weight:600}
 /* calendario de rango */
 .cal-fondo{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:20;display:flex;align-items:flex-start;justify-content:center;padding:60px 10px 10px;overflow:auto}
@@ -291,7 +304,7 @@ function calendario({ titulo, desde, hasta, comp, alElegir }) {
 }
 
 // ===== Pestañas =====
-const TABS = { resumen: 'Resumen', ventas: 'Ventas', productos: 'Productos', caja: 'Caja', almacen: 'Almacén', costos: 'Costos', egresos: 'Egresos' };
+const TABS = { resumen: 'Resumen', ventas: 'Ventas', productos: 'Productos', rentabilidad: 'Rentabilidad', flujo: 'Flujo de caja', caja: 'Caja', almacen: 'Almacén', costos: 'Costos', egresos: 'Egresos', clima: 'Clima' };
 function dibujarTabs() {
   $('tabs').innerHTML = Object.entries(TABS).map(([k, t]) => `<button class="${st.tab === k ? 'activa' : ''}" data-t="${k}">${t}</button>`).join('');
   $('tabs').onclick = e => { const t = e.target.dataset.t; if (!t) return; st.tab = t; guardar('tab', t); dibujarTabs(); pintar(); window.scrollTo({ top: 0 }); };
@@ -310,7 +323,7 @@ async function cargar() {
   $('cargando').classList.add('oculto');
   const error = r1.error || r2.error;
   if (error) { $('main').innerHTML = `<div class="caja"><div class="error">No se pudo cargar: ${esc(error.message)}</div></div>`; return; }
-  st.d = r1.data; st.c = rc ? r2.data : null; st.rc = rc;
+  st.d = r1.data; st.c = rc ? r2.data : null; st.rc = rc; st.rKey = null; st.fKey = null; st.kKey = null;
   pintar();
   revisarSync();
 }
@@ -340,7 +353,7 @@ const movil = () => window.innerWidth < 600;
 const tipS = { trigger: 'axis', valueFormatter: v => S(v) };
 const ejeS = { type: 'value', axisLabel: { formatter: v => v >= 1000 ? (v / 1000).toLocaleString('es-PE', { maximumFractionDigits: 1 }) + 'k' : v }, splitLine: { lineStyle: { color: '#eee' } } };
 const rejilla = { left: 8, right: 12, top: 30, bottom: 8, containLabel: true };
-const leyenda = { top: 0, right: 0, textStyle: { fontSize: 11 } };
+const leyenda = { top: 0, right: 0, type: 'scroll', textStyle: { fontSize: 11 } };
 // serie de comparación: línea azul punteada encima de las barras
 const serieComp = (datos, extra = {}) => ({ name: 'Comparación', type: 'line', data: datos, color: AZUL, symbolSize: 5, smooth: true,
   lineStyle: { type: 'dashed', width: 2 }, z: 5, ...extra });
@@ -386,13 +399,15 @@ function barrasH(id, nombres, valores, fmt = S, valoresC) {
 }
 // termómetro: valor contra rangos de referencia
 function termometro(id, valor, titulo, tramos, max) {
+  const real = valor;
+  const chico = ($(id)?.clientWidth || 300) <= 230;
   g(id, {
     series: [{ type: 'gauge', min: 0, max, startAngle: 200, endAngle: -20, radius: '95%', center: ['50%', '60%'],
       axisLine: { lineStyle: { width: 16, color: tramos.map(([h, c]) => [h / max, c]) } },
-      pointer: { width: 5, length: '62%', itemStyle: { color: '#333' } }, axisTick: { show: false },
-      splitLine: { length: 10, lineStyle: { color: '#fff', width: 2 } }, axisLabel: { distance: 20, fontSize: 10, color: '#888', formatter: v => v + '%' },
-      title: { offsetCenter: [0, '38%'], fontSize: 12, color: '#666' },
-      detail: { valueAnimation: true, offsetCenter: [0, '10%'], fontSize: 24, fontWeight: 800, formatter: v => isFinite(v) ? v.toFixed(1) + '%' : '—', color: '#222' },
+      pointer: { width: chico ? 4 : 5, length: chico ? '40%' : '62%', itemStyle: { color: '#333' } }, axisTick: { show: false },
+      splitLine: { length: 10, lineStyle: { color: '#fff', width: 2 } }, axisLabel: { show: ($(id)?.clientWidth || 300) > 230, distance: 20, fontSize: 10, color: '#888', formatter: v => v + '%' },
+      title: { offsetCenter: [0, chico ? '48%' : '38%'], fontSize: chico ? 11 : 12, color: '#666' },
+      detail: { valueAnimation: true, offsetCenter: [0, chico ? '22%' : '10%'], fontSize: chico ? 18 : 24, fontWeight: 800, formatter: v => !isFinite(real) ? '—' : (real > max ? real : v).toFixed(1) + '%', color: '#222' },
       data: [{ value: isFinite(valor) ? Math.min(valor, max) : 0, name: titulo }] }],
   });
 }
@@ -400,7 +415,7 @@ const kpi = (t, v, d = '') => `<div class="kpi c3"><div class="t">${t}</div><div
 // variación contra la comparación elegida (o contra el periodo anterior si no hay comparación)
 function vs(act, ant, comp) {
   const ref = st.c ? comp : ant, txt = st.c ? `vs ${lblC()}` : 'vs periodo anterior';
-  if (!num(ref)) return st.c ? `sin ventas en ${lblC()}` : 'sin datos del periodo anterior';
+  if (!num(ref)) return st.c ? `sin datos en ${lblC()}` : 'sin datos del periodo anterior';
   const p = (num(act) - num(ref)) / num(ref) * 100;
   return `<span class="${p >= 0 ? 'sube' : 'baja'}">${p >= 0 ? '▲' : '▼'} ${Math.abs(p).toFixed(1)}%</span> ${txt}`;
 }
@@ -426,11 +441,14 @@ function margenes(d) {
 function pintar() {
   limpiar();
   const d = st.d; if (!d) return;
-  const f = { resumen, ventas, productos, caja: pCaja, almacen, costos, egresos }[st.tab] || resumen;
+  if (st.tab === 'rentabilidad' && st.rKey !== claveRent()) return cargarRent();
+  if (st.tab === 'flujo' && st.fKey !== claveFlujo()) return cargarFlujo();
+  if (st.tab === 'clima' && st.kKey !== claveClima()) return cargarClima();
+  const f = { resumen, ventas, productos, rentabilidad, flujo, caja: pCaja, almacen, costos, egresos, clima }[st.tab] || resumen;
   f(d, st.c);
   if (d.kpis && d.kpis.neto === undefined)
     $('main').insertAdjacentHTML('afterbegin', '<div class="aviso">Falta correr el script 35_panel_neto.sql en Supabase: por ahora los montos salen con IGV.</div>');
-  if (st.c && ['caja', 'almacen', 'costos'].includes(st.tab))
+  if (st.c && ['caja', 'almacen', 'costos', 'clima'].includes(st.tab))
     $('main').insertAdjacentHTML('afterbegin', '<div class="aviso" style="background:#e8eff7;color:#3d6b99">Esta pestaña no se compara: muestra solo el periodo elegido.</div>');
 }
 
@@ -575,6 +593,570 @@ function productos(d, c) {
     series: [{ type: 'treemap', roam: false, nodeClick: false, breadcrumb: { show: false }, width: '100%', height: '100%',
       label: { formatter: p => `${p.name}\n${S0(p.value)}`, fontSize: 12 }, itemStyle: { borderColor: '#fff', borderWidth: 2, gapWidth: 2 },
       data: pc.map((x, i) => ({ name: x.categoria, value: +V(x).toFixed(2), itemStyle: { color: COL[i % COL.length] } })) }],
+  });
+}
+
+// ===== Rentabilidad =====
+const claveRent = () => `${st.desde}|${st.hasta}|${(st.rc || []).join('|')}`;
+async function cargarRent() {
+  const k = claveRent();
+  $('cargando').classList.remove('oculto');
+  const [a, b] = await Promise.all([
+    sb.rpc('rentabilidad_datos', { p_desde: st.desde, p_hasta: st.hasta }),
+    st.rc ? sb.rpc('rentabilidad_datos', { p_desde: st.rc[0], p_hasta: st.rc[1] }) : Promise.resolve({ data: null }),
+  ]);
+  $('cargando').classList.add('oculto');
+  if (k !== claveRent() || st.tab !== 'rentabilidad') return;
+  const err = a.error || b.error;
+  if (err) {
+    $('main').innerHTML = `<div class="caja"><div class="error">No se pudo cargar: ${esc(err.message)}${/rentabilidad_datos/.test(err.message) ? '<br>Falta correr el script 36_rentabilidad.sql en Supabase.' : ''}</div></div>`;
+    st.rKey = null; return;
+  }
+  st.r = a.data; st.rcomp = b.data; st.rKey = k;
+  pintar();
+}
+const FIJOS = ['planilla', 'arrendamiento', 'servicios', 'otros_fijos'];
+const CLASES = { planilla: 'Planilla (labor)', arrendamiento: 'Arrendamiento', servicios: 'Servicios', otros_fijos: 'Otros fijos', insumos: 'Compras de insumos', otros_variables: 'Otros variables', no_operativo: 'No operativo (no cuenta)' };
+// costo y ganancia de cada producto: receta / costo de compra; si no tiene, food cost por defecto
+function calcProd(p, fc) {
+  const neto = V(p), real = p.costo !== null && p.costo !== undefined;
+  const costo = real ? num(p.costo) : neto * fc;
+  return { ...p, vn: neto, cst: costo, gan: neto - costo, fcp: neto ? costo / neto * 100 : NaN, real,
+           gu: num(p.cantidad) ? (neto - costo) / num(p.cantidad) : 0, fuente: p.con_receta ? 'Receta' : real ? 'Costo compra' : 'Promedio' };
+}
+// ===== costos fijos ingresados (monto mensual): por mes y por día (mensual ÷ días del mes) =====
+const diasMes = ym => { const [y, m] = ym.split('-').map(Number); return new Date(y, m, 0).getDate(); };
+const activo = (x, ym) => (!x.desde || ym >= x.desde.slice(0, 7)) && (!x.hasta || ym <= x.hasta.slice(0, 7));
+function fijosMes(r, ym) { const o = {}; (r.costos_fijos || []).filter(x => activo(x, ym)).forEach(x => o[x.clase] = (o[x.clase] || 0) + num(x.monto)); return o; }
+const sumaF = o => FIJOS.reduce((a, k) => a + num(o[k]), 0);
+const fijoDia = (r, f) => sumaF(fijosMes(r, f.slice(0, 7))) / diasMes(f.slice(0, 7));
+function fijosRango(r, a, b) {
+  const o = {};
+  for (let f = a; f <= b; f = masDias(f, 1)) { const ym = f.slice(0, 7), m = fijosMes(r, ym), n = diasMes(ym); FIJOS.forEach(k => o[k] = (o[k] || 0) + num(m[k]) / n); }
+  return o;
+}
+const usaManual = r => (r?.costos_fijos || []).length > 0;
+
+// estado de resultados de un periodo
+function calcRent(r, d, a, b) {
+  if (!r || !d) return null;
+  const fc = num(r.food_cost_defecto) / 100;
+  const prods = (r.productos || []).map(p => calcProd(p, fc)).filter(p => p.vn > 0);
+  const ventas = KV(d.kpis, 'ventas', 'neto');
+  const netoProd = prods.reduce((a, p) => a + p.vn, 0);
+  // lo que no es producto (cobros de pedidos, delivery) también lleva el food cost por defecto
+  const costoVentas = prods.reduce((a, p) => a + p.cst, 0) + Math.max(0, ventas - netoProd) * fc;
+  // fijos: los que ingresaste (prorrateados por día); si aún no hay, los del Libro de Egresos
+  const e = { ...(r.egresos_rango || {}), ...(usaManual(r) ? fijosRango(r, a, b) : {}) }, eg = k => num(e[k]);
+  const otrosVar = eg('otros_variables'), variables = costoVentas + otrosVar;
+  const fijos = FIJOS.reduce((a, k) => a + eg(k), 0);
+  const mc = ventas - variables, mcp = ventas ? mc / ventas : 0;
+  const pe = mcp > 0 ? fijos / mcp : NaN, util = mc - fijos;
+  const pct = x => ventas ? x / ventas * 100 : NaN;
+  return { fc, prods, ventas, costoVentas, otrosVar, variables, fijos, mc, mcp, pe, util, e, eg,
+           fcp: pct(costoVentas), labor: pct(eg('planilla')), arriendo: pct(eg('arrendamiento')), prime: pct(costoVentas + eg('planilla')),
+           compras: pct(eg('insumos')), seguridad: ventas && isFinite(pe) ? (ventas - pe) / ventas * 100 : NaN, cobertura: ventas ? ventas / pe * 100 : NaN,
+           dias: num(d.kpis?.dias) || 1, conReceta: prods.filter(p => p.real).length };
+}
+// matriz de ingeniería de menú: popularidad vs ganancia por unidad
+function cuadrantes(prods) {
+  const n = prods.length; if (!n) return { prods: [], umbralQ: 0, umbralG: 0 };
+  const totQ = prods.reduce((a, p) => a + num(p.cantidad), 0);
+  const umbralQ = totQ / n * 0.7;                                            // 70% de la popularidad promedio
+  const umbralG = prods.reduce((a, p) => a + p.gan, 0) / Math.max(1, totQ);  // ganancia unitaria promedio ponderada
+  return { umbralQ, umbralG, prods: prods.map(p => ({ ...p, q: num(p.cantidad) >= umbralQ ? (p.gu >= umbralG ? 'estrella' : 'caballo') : (p.gu >= umbralG ? 'incognita' : 'perro') })) };
+}
+const QN = { estrella: '⭐ Estrella', caballo: '🐴 Caballo de batalla', incognita: '❓ Incógnita', perro: '🐶 Perro' };
+const QC = { estrella: '#1e7d3a', caballo: '#e0a458', incognita: '#3d6b99', perro: '#c0392b' };
+const QA = { estrella: 'Cuidar: no tocar receta ni precio, siempre en vitrina', caballo: 'Se vende mucho pero deja poco: subir un poco el precio o bajar el costo', incognita: 'Deja buen margen pero se vende poco: promocionar, mejor ubicación', perro: 'Se vende poco y deja poco: rediseñar o sacar de la carta' };
+
+function rentabilidad(d, c) {
+  const r = st.r, R = calcRent(r, d, st.desde, st.hasta), RC = st.rcomp ? calcRent(st.rcomp, c, st.rc[0], st.rc[1]) : null;
+  if (!R) return;
+  const vsC = (a, b) => RC ? vs(a, 0, b) : '';
+  const fcDef = num(r.food_cost_defecto);
+  const sinClasif = (r.clasificacion || []).length === 0;
+  const pctTxt = x => isFinite(x) ? P(x) : '—';
+  $('main').innerHTML = `
+    ${R.conReceta < R.prods.length ? `<div class="aviso" style="background:#e8eff7;color:#3d6b99">${R.conReceta} de ${R.prods.length} productos vendidos tienen costo real (receta). El resto usa el food cost promedio de ${P(fcDef)} — se actualiza solo al cargar recetas.</div>` : ''}
+    ${usaManual(r) ? '' : '<div class="aviso">Aún no ingresas tus costos fijos: por ahora se toman del Libro de Egresos. Usa <b>＋ Gastos fijos</b> en el gráfico de punto de equilibrio.</div>'}
+    <div class="grid"><div class="caja c12"><div class="sync">
+      <button class="btn2" id="b-fijos">＋ Gastos fijos</button>
+      <button class="btn2" id="b-cfg">⚙ Food cost y egresos</button>
+      <span>Costos fijos: <b>${S0(sumaF(fijosMes(r, st.hasta.slice(0, 7))))}</b> al mes · food cost por defecto <b>${P(fcDef)}</b></span>
+    </div></div></div>
+    <div class="grid">
+      ${kpi('Ventas netas', S(R.ventas), vsC(R.ventas, RC?.ventas) || `${R.dias} día(s)`)}
+      ${kpi('Utilidad operativa', `<span class="${R.util >= 0 ? 'pos' : 'neg'}">${S(R.util)}</span>`, RC ? vsC(R.util, RC.util) : `${pctTxt(R.util / R.ventas * 100)} de la venta`)}
+      ${kpi('Punto de equilibrio', isFinite(R.pe) ? S(R.pe) : '—', isFinite(R.pe) ? `del periodo · ${S0(R.mcp > 0 && usaManual(r) ? sumaF(fijosMes(r, st.hasta.slice(0, 7))) / R.mcp : R.pe / R.dias * 30)} al mes` : 'Margen de contribución negativo')}
+      ${kpi('Margen de seguridad', pctTxt(R.seguridad), isFinite(R.seguridad) ? (R.seguridad >= 0 ? `Puedes caer ${S0(R.ventas - R.pe)} y aún no pierdes` : `Faltan ${S0(R.pe - R.ventas)} para no perder`) : '')}
+    </div>
+    <div class="grid">
+      ${caja('c3', 'Ventas / punto de equilibrio', '<div class="g bajo" id="g-pe"></div>', `100% = no ganas ni pierdes${RC ? ` · comp.: <b>${pctTxt(RC.cobertura)}</b>` : ''}`)}
+      ${caja('c3', 'Labor cost / ventas', '<div class="g bajo" id="g-lab"></div>', `Planilla ${S0(R.eg('planilla'))}${RC ? ` · comp.: <b>${pctTxt(RC.labor)}</b>` : ' · ideal ≤ 30%'}`)}
+      ${caja('c3', 'Arrendamiento / ventas', '<div class="g bajo" id="g-arr"></div>', `Alquiler ${S0(R.eg('arrendamiento'))}${RC ? ` · comp.: <b>${pctTxt(RC.arriendo)}</b>` : ' · ideal ≤ 8%'}`)}
+      ${caja('c3', 'Prime cost / ventas', '<div class="g bajo" id="g-prime"></div>', `Food cost + labor${RC ? ` · comp.: <b>${pctTxt(RC.prime)}</b>` : ' · ideal ≤ 60%'}`)}
+    </div>
+    <div class="grid">
+      ${caja('c5', 'Estado de resultados', erTabla(R, RC), `Food cost estimado ${pctTxt(R.fcp)} · compras de insumos del periodo: ${S0(R.eg('insumos'))} (${pctTxt(R.compras)} de la venta)`)}
+      ${caja('c7', 'Evolutivo de indicadores (% de la venta neta)', '<div class="g" id="g-evo"></div>', '12 meses que terminan en el periodo elegido')}
+    </div>
+    <div class="grid">${caja('c12', 'Punto de equilibrio en el tiempo', `<div class="sync" style="margin-bottom:6px"><div class="fila" id="pe-vista">${Object.entries({ diario: 'Diario', mensual: 'Mes a mes', ytd: 'Acumulado del año (YTD)' }).map(([k, t]) => `<button class="chip ${(st.peVista || 'diario') === k ? 'activa' : ''}" data-v="${k}">${t}</button>`).join('')}</div><button class="btn2" id="b-fijos2">＋ Gastos fijos</button></div>
+      <div class="g" id="g-evo2"></div><div class="nota" id="pe-txt" style="margin-top:6px"></div>`, 'Línea roja: venta neta · línea punteada: lo que necesitas vender para cubrir costos fijos y variables')}</div>
+    <div class="grid">
+      ${caja('c6', '🟢 Mejor food cost', '<div class="g alto" id="g-fcbien"></div>', 'Solo productos con costo real (receta o costo de compra)')}
+      ${caja('c6', '🔴 Peor food cost', '<div class="g alto" id="g-fcmal"></div>', 'Solo productos con costo real (receta o costo de compra)')}
+    </div>
+    <div class="grid">${caja('c12', 'Pareto de ganancia: qué productos dejan el 80% de la utilidad', '<div class="g alto" id="g-pareto"></div><div id="t-pareto"></div>', 'Ganancia = (precio neto − costo) × cantidad vendida. Rojo: el grupo A, que suma el 80% de la ganancia.')}</div>
+    <div class="grid">${caja('c12', 'Matriz de productos (ingeniería de menú)', `<div class="sync" style="margin-bottom:6px"><span>Categoría principal:</span><select id="m-cat"><option value="">Todas</option>${[...new Set(R.prods.map(p => p.principal))].sort().map(x => `<option ${st.mcat === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></div>
+      <div class="g alto" id="g-matriz"></div><div id="t-matriz"></div>`, 'Eje horizontal: unidades vendidas (popularidad) · eje vertical: ganancia por unidad · tamaño: ganancia total. Compara productos de la misma categoría para que sea justo.')}</div>`;
+  $('b-cfg').onclick = () => configRent(r);
+  $('b-fijos').onclick = $('b-fijos2').onclick = () => editarFijos(r);
+
+  const gaugePE = isFinite(R.cobertura) ? R.cobertura : 0;
+  termometro('g-pe', gaugePE, 'Cobertura', [[100, '#c0392b'], [115, '#e0b84a'], [200, '#5b9e6b']], 200);
+  termometro('g-lab', R.labor, 'Labor cost', [[30, '#5b9e6b'], [35, '#e0b84a'], [60, '#c0392b']], 60);
+  termometro('g-arr', R.arriendo, 'Arrendamiento', [[8, '#5b9e6b'], [12, '#e0b84a'], [25, '#c0392b']], 25);
+  termometro('g-prime', R.prime, 'Prime cost', [[60, '#5b9e6b'], [65, '#e0b84a'], [100, '#c0392b']], 100);
+
+  // evolutivo mensual
+  const fc = R.fc, vmes = d.ventas_mes || [], cm = Object.fromEntries((r.meses_venta || []).map(x => [x.mes, x]));
+  const egm = {}; (r.egresos_meses || []).forEach(x => { (egm[x.mes] = egm[x.mes] || {})[x.clase] = num(x.total); });
+  const meses = vmes.map(x => {
+    const ven = V(x), m = cm[x.mes] || {}, e = egm[x.mes] || {};
+    const netoSinCosto = st.igv18 ? num(m.total_sin_costo) / 1.18 : num(m.neto_sin_costo);
+    const netoConCosto = V(m) - netoSinCosto;
+    const cv = num(m.costo_conocido) + Math.max(0, ven - netoConCosto) * fc;
+    // mes en curso (incompleto): los fijos se prorratean por los días ya transcurridos
+    const fac = x.mes === st.hasta.slice(0, 7) ? Math.min(1, +st.hasta.slice(8) / diasMes(x.mes)) : 1;
+    const fm = Object.fromEntries(Object.entries(usaManual(r) ? fijosMes(r, x.mes) : e).map(([k, v]) => [k, FIJOS.includes(k) ? num(v) * fac : v]));
+    const fij = sumaF(fm), vari = cv + num(e.otros_variables);
+    const mcp = ven ? (ven - vari) / ven : 0;
+    const p = v => ven ? +(v / ven * 100).toFixed(1) : null;
+    return { mes: x.mes, ven, fcp: p(cv), lab: p(num(fm.planilla)), arr: p(num(fm.arrendamiento)), prime: p(cv + num(fm.planilla)),
+             pe: mcp > 0 ? fij / mcp : null, mcp, util: ven - vari - fij };
+  });
+  g('g-evo', {
+    tooltip: { trigger: 'axis', valueFormatter: v => v === null ? '—' : v + '%' }, legend: leyenda, grid: rejilla,
+    xAxis: { type: 'category', data: meses.map(x => fMes(x.mes)), boundaryGap: false },
+    yAxis: { type: 'value', axisLabel: { formatter: '{value}%' }, splitLine: { lineStyle: { color: '#eee' } } },
+    series: [
+      { name: 'Food cost', type: 'line', smooth: true, data: meses.map(x => x.fcp), color: '#8B0000', symbolSize: 6 },
+      { name: 'Labor cost', type: 'line', smooth: true, data: meses.map(x => x.lab), color: '#e0a458', symbolSize: 6 },
+      { name: 'Arrendamiento', type: 'line', smooth: true, data: meses.map(x => x.arr), color: AZUL, symbolSize: 6 },
+      { name: 'Prime cost', type: 'line', smooth: true, data: meses.map(x => x.prime), color: '#7a7a7a', symbolSize: 5, lineStyle: { type: 'dashed' } },
+    ],
+  });
+  graficoPE(r, R, meses);
+  $('pe-vista').onclick = e => { const v = e.target.dataset.v; if (!v) return; st.peVista = v; guardar('pevista', v);
+    $('pe-vista').querySelectorAll('[data-v]').forEach(b => b.classList.toggle('activa', b.dataset.v === v));
+    const gi = graficos.findIndex(c => c.getDom().id === 'g-evo2'); if (gi >= 0) graficos.splice(gi, 1)[0].dispose(); graficoPE(r, R, meses); };
+
+  // ranking de food cost
+  const conCosto = R.prods.filter(p => p.real && isFinite(p.fcp));
+  const colFc = v => v <= 28 ? '#5b9e6b' : v <= 35 ? '#e0b84a' : '#c0392b';
+  const rankFc = (id, lista) => {
+    if (!lista.length) { $(id).innerHTML = vacio('Aún no hay productos vendidos con receta. Cárgalas en Recetas y aparecerán aquí.'); $(id).style.height = 'auto'; return; }
+    g(id, { tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: ps => { const p = lista[ps[0].dataIndex]; return `${esc(p.producto)}<br>Food cost: <b>${P(p.fcp)}</b><br>Costo ${S(p.cst / Math.max(1, num(p.cantidad)))} · precio neto ${S(p.vn / Math.max(1, num(p.cantidad)))}<br>${num(p.cantidad).toLocaleString('es-PE')} vendidos`; } },
+      grid: { left: 8, right: 50, top: 6, bottom: 6, containLabel: true }, xAxis: { type: 'value', show: false },
+      yAxis: { type: 'category', inverse: true, data: lista.map(p => p.producto), axisTick: { show: false }, axisLine: { show: false }, axisLabel: { width: movil() ? 110 : 190, overflow: 'truncate' } },
+      series: [{ type: 'bar', barMaxWidth: 16, data: lista.map(p => ({ value: +p.fcp.toFixed(1), itemStyle: { color: colFc(p.fcp), borderRadius: [0, 6, 6, 0] } })), label: { show: true, position: 'right', formatter: p => p.value + '%', fontSize: 11 } }] });
+  };
+  const ordFc = [...conCosto].sort((a, b) => a.fcp - b.fcp);
+  rankFc('g-fcbien', ordFc.slice(0, 12));
+  rankFc('g-fcmal', ordFc.slice(-12).reverse());
+
+  // Pareto de ganancia
+  const par = [...R.prods].sort((a, b) => b.gan - a.gan), totG = par.reduce((a, p) => a + Math.max(0, p.gan), 0);
+  let acum = 0; par.forEach(p => { acum += Math.max(0, p.gan); p.acum = totG ? acum / totG * 100 : 0; p.abc = p.acum - Math.max(0, p.gan) / (totG || 1) * 100 < 80 ? 'A' : p.acum <= 95 ? 'B' : 'C'; });
+  const nA = par.filter(p => p.abc === 'A').length;
+  const verP = par.slice(0, movil() ? 20 : 40);
+  const gC = RC ? Object.fromEntries(RC.prods.map(p => [p.producto, p])) : {};
+  g('g-pareto', {
+    tooltip: { trigger: 'axis', formatter: ps => { const p = verP[ps[0].dataIndex]; return `<b>${esc(p.producto)}</b> (${p.abc})<br>Ganancia: <b>${S(p.gan)}</b><br>Venta neta ${S(p.vn)} · food cost ${P(p.fcp)} (${p.fuente})<br>${num(p.cantidad).toLocaleString('es-PE')} vendidos<br>Acumulado: <b>${P(p.acum)}</b>`; } },
+    legend: leyenda, grid: { ...rejilla, bottom: 8 },
+    xAxis: { type: 'category', data: verP.map(p => p.producto), axisLabel: { rotate: 50, fontSize: 10, width: 110, overflow: 'truncate', interval: 0 }, axisTick: { show: false } },
+    yAxis: [ejeS, { type: 'value', max: 100, axisLabel: { formatter: '{value}%' }, splitLine: { show: false } }],
+    series: [
+      { name: 'Ganancia', type: 'bar', data: verP.map(p => ({ value: +p.gan.toFixed(2), itemStyle: { color: p.abc === 'A' ? '#8B0000' : p.abc === 'B' ? '#e0a458' : '#bbb', borderRadius: [3, 3, 0, 0] } })), color: '#8B0000', barMaxWidth: 26 },
+      { name: '% acumulado', type: 'line', yAxisIndex: 1, data: verP.map(p => +p.acum.toFixed(1)), color: AZUL, symbolSize: 4, smooth: true,
+        markLine: { silent: true, symbol: 'none', lineStyle: { color: '#c0392b', type: 'dashed' }, label: { formatter: '80%' }, data: [{ yAxis: 80 }] } },
+    ],
+  });
+  $('t-pareto').innerHTML = `<p class="nota" style="margin:8px 0"><b>${nA}</b> de ${par.length} productos (${P(nA / Math.max(1, par.length) * 100)}) generan el 80% de la ganancia.</p>
+    <div class="scroll"><table class="t"><tr><th>#</th><th>Producto</th><th>Grupo</th><th class="n">Cantidad</th><th class="n">Venta neta</th><th class="n">Food cost</th><th class="n">Ganancia</th><th class="n">% acum.</th>${RC ? '<th class="n">Ganancia comp.</th><th class="n">Var.</th>' : ''}</tr>
+    ${par.map((p, i) => { const y = gC[p.producto]; return `<tr><td>${i + 1}</td><td>${esc(p.producto)}</td><td><span class="tag ${p.abc === 'A' ? 'mal' : p.abc === 'B' ? 'av' : ''}">${p.abc}</span></td><td class="n">${num(p.cantidad).toLocaleString('es-PE')}</td><td class="n">${S(p.vn)}</td><td class="n">${P(p.fcp)}${p.real ? '' : ' *'}</td><td class="n">${S(p.gan)}</td><td class="n">${P(p.acum)}</td>${RC ? `<td class="n">${y ? S(y.gan) : '—'}</td><td class="n">${y ? `<span class="${p.gan >= y.gan ? 'pos' : 'neg'}">${varTxt(p.gan, y.gan)}</span>` : 'nuevo'}</td>` : ''}</tr>`; }).join('')}
+    </table></div><p class="nota" style="margin-top:6px">* food cost promedio (sin receta)</p>`;
+
+  // matriz
+  const pintarMatriz = () => {
+    const base = R.prods.filter(p => !st.mcat || p.principal === st.mcat);
+    const M = cuadrantes(base), MC = RC ? cuadrantes(RC.prods.filter(p => !st.mcat || p.principal === st.mcat)) : null;
+    const qC = MC ? Object.fromEntries(MC.prods.map(p => [p.producto, p.q])) : {};
+    const maxG = Math.max(1, ...M.prods.map(p => Math.max(0, p.gan)));
+    g('g-matriz', {
+      tooltip: { formatter: x => { const p = x.data.p; return p ? `<b>${esc(p.producto)}</b><br>${QN[p.q]}<br>${num(p.cantidad).toLocaleString('es-PE')} vendidos · gana ${S(p.gu)} c/u<br>Ganancia total ${S(p.gan)} · food cost ${P(p.fcp)}` : ''; } },
+      grid: { left: 8, right: 20, top: 48, bottom: 24, containLabel: true },
+      xAxis: { type: 'log', name: 'Unidades vendidas', nameLocation: 'middle', nameGap: 26, splitLine: { lineStyle: { color: '#f0f0f0' } } },
+      yAxis: { type: 'value', name: 'Ganancia por unidad', nameTextStyle: { align: 'left' }, axisLabel: { formatter: v => 'S/ ' + v }, splitLine: { lineStyle: { color: '#f0f0f0' } } },
+      series: Object.keys(QN).map(q => ({ name: QN[q], type: 'scatter', color: QC[q],
+        data: M.prods.filter(p => p.q === q && num(p.cantidad) > 0).map(p => ({ value: [num(p.cantidad), +p.gu.toFixed(2)], p, symbolSize: 8 + Math.sqrt(Math.max(0, p.gan) / maxG) * 38 })),
+        itemStyle: { opacity: .75, borderColor: '#fff', borderWidth: 1 },
+        markLine: q === 'estrella' ? { silent: true, symbol: 'none', lineStyle: { color: '#999', type: 'dashed' }, label: { show: false }, data: [{ xAxis: Math.max(1, M.umbralQ) }, { yAxis: +M.umbralG.toFixed(2) }] } : undefined })),
+      legend: { top: 0, textStyle: { fontSize: 11 } },
+    });
+    const filas = q => M.prods.filter(p => p.q === q).sort((a, b) => b.gan - a.gan);
+    $('t-matriz').innerHTML = `<div class="grid" style="margin-top:10px">${Object.keys(QN).map(q => `<div class="c6" style="min-width:0">
+      <div style="font-weight:800;color:${QC[q]}">${QN[q]} · ${filas(q).length}</div><div class="nota" style="margin:2px 0 6px">${QA[q]}</div>
+      <div class="scroll" style="max-height:220px"><table class="t"><tr><th>Producto</th><th class="n">Vendidos</th><th class="n">Gana c/u</th>${MC ? '<th>Antes</th>' : ''}</tr>
+      ${filas(q).map(p => `<tr><td>${esc(p.producto)}</td><td class="n">${num(p.cantidad).toLocaleString('es-PE')}</td><td class="n">${S(p.gu)}</td>${MC ? `<td>${qC[p.producto] ? `<span class="quad q-${qC[p.producto]}">${QN[qC[p.producto]].split(' ')[0]}</span>` : '—'}</td>` : ''}</tr>`).join('') || `<tr><td colspan="4" class="vacio">—</td></tr>`}
+      </table></div></div>`).join('')}</div>`;
+  };
+  $('m-cat').onchange = () => { st.mcat = $('m-cat').value; const gm = graficos.findIndex(c => c.getDom().id === 'g-matriz'); if (gm >= 0) graficos.splice(gm, 1)[0].dispose(); pintarMatriz(); };
+  pintarMatriz();
+}
+// dos líneas en el tiempo: venta neta vs punto de equilibrio
+function graficoPE(r, R, meses) {
+  const vista = st.peVista || leer('pevista') || 'diario';
+  const dv = Object.fromEntries((r.dias_venta || []).map(x => [x.fecha, V(x)]));
+  let x = [], ven = [], pe = [], txt = '', cruce = null;
+  if (vista === 'diario') {
+    // del inicio del rango al fin del rango; si el rango termina en el mes actual, se alarga hasta fin de mes
+    const h = hoy(), finMes = `${st.hasta.slice(0, 7)}-${String(diasMes(st.hasta.slice(0, 7))).padStart(2, '0')}`;
+    const fin = st.hasta >= h.slice(0, 7) + '-01' && st.hasta.slice(0, 7) === h.slice(0, 7) ? finMes : st.hasta;
+    let av = 0, ap = 0;
+    for (let f = st.desde; f <= fin; f = masDias(f, 1)) {
+      ap += R.mcp > 0 ? fijoDia(r, f) / R.mcp : 0;
+      if (f <= st.hasta && f <= h) av += num(dv[f]);
+      x.push(fCorta(f)); pe.push(+ap.toFixed(2)); ven.push(f <= st.hasta && f <= h ? +av.toFixed(2) : null);
+      if (cruce === null && f <= st.hasta && av >= ap && ap > 0) cruce = x.length - 1;
+    }
+    const hastaReal = st.hasta < h ? st.hasta : h, i = x.length - 1;
+    const meta = pe[i], llev = av, faltan = Math.max(0, meta - llev);
+    const diasRest = fin > hastaReal ? dias(masDias(hastaReal, 1), fin) : 0;
+    txt = !(R.mcp > 0) ? 'El margen de contribución es negativo: con estos costos variables no hay punto de equilibrio.'
+      : `Llevas <b>${S0(llev)}</b> de <b>${S0(meta)}</b> necesarios al ${fCorta(fin)} (${P(meta ? llev / meta * 100 : 0)}).` +
+        (cruce !== null ? ` ✅ Alcanzaste el equilibrio el <b>${x[cruce]}</b>.` : '') +
+        (faltan > 0 && diasRest > 0 ? ` Para llegar necesitas vender <b>${S0(faltan / diasRest)}</b> netos por día los ${diasRest} días que quedan.` : '') +
+        ` Costo fijo diario: ${S0(fijoDia(r, hastaReal))} · margen de contribución ${P(R.mcp * 100)}.`;
+  } else if (vista === 'mensual') {
+    x = meses.map(m => fMes(m.mes)); ven = meses.map(m => +m.ven.toFixed(2)); pe = meses.map(m => m.pe === null ? null : +m.pe.toFixed(2));
+    const ok = meses.filter(m => m.pe !== null && m.ven >= m.pe).length;
+    txt = `En <b>${ok}</b> de ${meses.length} meses la venta neta superó el punto de equilibrio.`;
+  } else {
+    const anio = st.hasta.slice(0, 4), ms = meses.filter(m => m.mes.startsWith(anio));
+    let av = 0, ap = 0;
+    ms.forEach((m, k) => { av += m.ven; ap += m.pe || 0; x.push(fMes(m.mes)); ven.push(+av.toFixed(2)); pe.push(+ap.toFixed(2)); if (cruce === null && av >= ap && ap > 0) cruce = k; });
+    txt = ms.length ? `Acumulado ${anio}: venta neta <b>${S0(av)}</b> vs punto de equilibrio <b>${S0(ap)}</b> → ${av >= ap ? `<span class="pos">sobre el equilibrio por ${S0(av - ap)}</span>` : `<span class="neg">faltan ${S0(ap - av)}</span>`}.` : '';
+  }
+  g('g-evo2', {
+    tooltip: { trigger: 'axis', valueFormatter: v => v === null || v === undefined ? '—' : S(v) }, legend: leyenda, grid: rejilla,
+    xAxis: { type: 'category', data: x, boundaryGap: false }, yAxis: ejeS,
+    series: [
+      { name: movil() ? 'Venta neta' : vista === 'mensual' ? 'Venta neta del mes' : 'Venta neta acumulada', type: 'line', data: ven, color: '#8B0000', symbolSize: 5, lineStyle: { width: 3 },
+        areaStyle: { color: grad(0, 0, 0, 1, [{ offset: 0, color: 'rgba(139,0,0,.18)' }, { offset: 1, color: 'rgba(139,0,0,0)' }]) },
+        markPoint: cruce !== null ? { symbol: 'pin', symbolSize: 46, itemStyle: { color: '#1e7d3a' }, label: { formatter: '✓', fontSize: 16 }, data: [{ coord: [cruce, ven[cruce]] }] } : undefined },
+      { name: movil() ? 'Equilibrio' : vista === 'mensual' ? 'Punto de equilibrio del mes' : 'Punto de equilibrio acumulado', type: 'line', data: pe, color: '#333', symbolSize: 4, lineStyle: { type: 'dashed', width: 2 } },
+    ],
+  });
+  $('pe-txt').innerHTML = txt;
+}
+// ＋ Gastos fijos: lista editable (monto mensual sin IGV)
+const SUGERIDOS = [['Alquiler del local', 'arrendamiento'], ['Sueldos (con EsSalud, CTS, gratificación, vacaciones)', 'planilla'], ['Luz', 'servicios'], ['Agua', 'servicios'],
+  ['Internet', 'servicios'], ['Celular', 'servicios'], ['Gas', 'servicios'], ['Contador / asesorías', 'otros_fijos'], ['Software (Nubefact, Supabase, Microsoft 365)', 'otros_fijos'],
+  ['Arbitrios, licencias, ITSE', 'otros_fijos'], ['Fumigación y mantenimiento', 'otros_fijos'], ['Cuota de préstamo / leasing (intereses)', 'otros_fijos']];
+function editarFijos(r) {
+  let lista = (r.costos_fijos || []).map(x => ({ ...x, desde: x.desde ? x.desde.slice(0, 7) : '', hasta: x.hasta ? x.hasta.slice(0, 7) : '' }));
+  const fondo = document.createElement('div'); fondo.className = 'modal-fondo';
+  const opc = c => FIJOS.map(k => `<option value="${k}" ${c === k ? 'selected' : ''}>${CLASES[k]}</option>`).join('');
+  const dibujar = () => {
+    const tot = lista.filter(x => activo({ desde: x.desde, hasta: x.hasta }, hoy().slice(0, 7))).reduce((a, x) => a + num(x.monto), 0);
+    fondo.innerHTML = `<div class="modal" style="max-width:860px"><h3>Gastos fijos mensuales</h3>
+      <p class="nota">Monto <b>mensual sin IGV</b>. En el diario se reparte entre los días del mes. "Desde/Hasta" solo si el monto cambió (ej. aumento de sueldos): cierra el anterior con <i>Hasta</i> y crea otro con <i>Desde</i>. Vacío = siempre.</p>
+      <div class="scroll" style="max-height:55vh"><table class="t"><tr><th>Concepto</th><th>Tipo</th><th class="n">S/ al mes</th><th>Desde</th><th>Hasta</th><th></th></tr>
+      ${lista.map((x, i) => `<tr><td><input data-i="${i}" data-k="concepto" value="${esc(x.concepto)}" style="width:100%;min-width:150px"></td>
+        <td><select data-i="${i}" data-k="clase">${opc(x.clase)}</select></td>
+        <td><input data-i="${i}" data-k="monto" type="number" min="0" step="0.01" value="${x.monto ?? ''}" style="width:100px;text-align:right"></td>
+        <td><input data-i="${i}" data-k="desde" type="month" value="${x.desde}" style="width:130px"></td>
+        <td><input data-i="${i}" data-k="hasta" type="month" value="${x.hasta}" style="width:130px"></td>
+        <td><button data-del="${i}" style="background:none;color:var(--mal);font-size:16px">✕</button></td></tr>`).join('') || '<tr><td colspan="6" class="vacio">Sin gastos fijos</td></tr>'}
+      </table></div>
+      <div class="sync" style="margin-top:10px"><button class="btn2" id="f-add">＋ Agregar</button>${lista.length ? '' : '<button class="btn2" id="f-sug">Usar lista sugerida</button>'}
+        <span>Total vigente este mes: <b>${S(tot)}</b> · por día: <b>${S(tot / diasMes(hoy().slice(0, 7)))}</b></span></div>
+      <div class="error" id="f-err"></div>
+      <div class="cal-pie"><button class="no">Cancelar</button><button class="si" id="f-ok">Guardar</button></div></div>`;
+  };
+  dibujar(); document.body.appendChild(fondo);
+  fondo.oninput = fondo.onchange = e => { const t = e.target; if (t.dataset.k) { lista[t.dataset.i][t.dataset.k] = t.value; if (t.dataset.k === 'monto') { const s = fondo.querySelector('.sync span'); const tot = lista.filter(x => activo(x, hoy().slice(0, 7))).reduce((a, x) => a + num(x.monto), 0); s.innerHTML = `Total vigente este mes: <b>${S(tot)}</b> · por día: <b>${S(tot / diasMes(hoy().slice(0, 7)))}</b>`; } } };
+  fondo.onclick = async e => {
+    const t = e.target;
+    if (t === fondo || t.classList.contains('no')) return fondo.remove();
+    if (t.dataset.del !== undefined) { lista.splice(+t.dataset.del, 1); return dibujar(); }
+    if (t.id === 'f-add') { lista.push({ concepto: '', clase: 'otros_fijos', monto: '', desde: '', hasta: '' }); dibujar(); return fondo.querySelector(`[data-i="${lista.length - 1}"][data-k="concepto"]`)?.focus(); }
+    if (t.id === 'f-sug') { lista = SUGERIDOS.map(([c, k]) => ({ concepto: c, clase: k, monto: '', desde: '', hasta: '' })); return dibujar(); }
+    if (t.id === 'f-ok') {
+      const malo = lista.find(x => x.concepto.trim() && x.desde && x.hasta && x.hasta < x.desde);
+      if (malo) return fondo.querySelector('#f-err').textContent = `"${malo.concepto}": Hasta no puede ser antes de Desde`;
+      t.disabled = true;
+      const { error } = await sb.rpc('guardar_costos_fijos', { p: lista.filter(x => x.concepto.trim()).map(x => ({ concepto: x.concepto, clase: x.clase, monto: x.monto, desde: x.desde ? x.desde + '-01' : '', hasta: x.hasta ? x.hasta + '-01' : '' })) });
+      if (error) { t.disabled = false; return fondo.querySelector('#f-err').textContent = error.message; }
+      fondo.remove(); st.rKey = null; pintar();
+    }
+  };
+}
+function erTabla(R, RC) {
+  const fila = (t, v, vc, cls = '') => `<tr class="${cls}"><td>${t}</td><td class="n">${S(v)}</td><td class="n">${P(R.ventas ? v / R.ventas * 100 : NaN)}</td>${RC ? `<td class="n">${S(vc)}</td><td class="n">${P(RC.ventas ? vc / RC.ventas * 100 : NaN)}</td>` : ''}</tr>`;
+  return `<div class="scroll"><table class="t er"><tr><th></th><th class="n">${RC ? lblA() : 'S/'}</th><th class="n">%</th>${RC ? `<th class="n">${lblC()}</th><th class="n">%</th>` : ''}</tr>
+    ${fila('Ventas netas', R.ventas, RC?.ventas, 'tot')}
+    ${fila('Costo de ventas (food cost)', -R.costoVentas, -RC?.costoVentas, 'sub')}
+    ${fila('Otros variables (empaques, comisiones)', -R.otrosVar, -RC?.otrosVar, 'sub')}
+    ${fila('Margen de contribución', R.mc, RC?.mc, 'tot')}
+    ${fila('Planilla', -R.eg('planilla'), -RC?.eg('planilla'), 'sub')}
+    ${fila('Arrendamiento', -R.eg('arrendamiento'), -RC?.eg('arrendamiento'), 'sub')}
+    ${fila('Servicios', -R.eg('servicios'), -RC?.eg('servicios'), 'sub')}
+    ${fila('Otros fijos', -R.eg('otros_fijos'), -RC?.eg('otros_fijos'), 'sub')}
+    ${fila('Utilidad operativa', R.util, RC?.util, 'tot')}
+  </table></div>`;
+}
+// ⚙ food cost por defecto y clasificación de egresos
+function configRent(r) {
+  const cl = r.clasificacion || [];
+  const fondo = document.createElement('div'); fondo.className = 'modal-fondo';
+  fondo.innerHTML = `<div class="modal"><h3>Configurar rentabilidad</h3>
+    <p class="nota">El food cost por defecto se usa en los productos que aún no tienen receta.</p>
+    <div class="sync" style="margin:8px 0 14px"><b>Food cost por defecto</b><input id="c-fc" type="number" min="1" max="90" step="0.5" value="${num(r.food_cost_defecto)}" style="width:90px"> %</div>
+    <b>Clasificación del Libro de Egresos</b>
+    <p class="nota">Los tipos fijos (planilla, arrendamiento, servicios, otros fijos) solo se usan mientras no ingreses tus <b>＋ Gastos fijos</b>. Variables: otros variables (empaques, comisiones). Las compras de insumos se muestran como referencia (el food cost sale de las recetas). "No operativo" no cuenta (impuestos, préstamos, retiros).</p>
+    <div class="scroll" style="max-height:50vh"><table class="t"><tr><th>Categoría</th><th>Subcategoría</th><th class="n">Prom. mes</th><th>Clase</th></tr>
+    ${cl.map((x, i) => `<tr><td>${esc(x.categoria)}</td><td>${esc(x.subcategoria)}</td><td class="n">${S0(x.promedio)}</td><td><select data-i="${i}">${Object.entries(CLASES).map(([k, t]) => `<option value="${k}" ${x.clase === k ? 'selected' : ''}>${t}</option>`).join('')}</select></td></tr>`).join('') || '<tr><td colspan="4" class="vacio">Aún no hay egresos sincronizados</td></tr>'}
+    </table></div>
+    <div class="error" id="c-err"></div>
+    <div class="cal-pie"><button class="no">Cancelar</button><button class="si" id="c-ok">Guardar</button></div></div>`;
+  document.body.appendChild(fondo);
+  fondo.onclick = e => { if (e.target === fondo || e.target.classList.contains('no')) fondo.remove(); };
+  fondo.querySelector('#c-ok').onclick = async () => {
+    const fc = Number(fondo.querySelector('#c-fc').value);
+    if (!(fc > 0 && fc < 100)) return fondo.querySelector('#c-err').textContent = 'El food cost debe estar entre 1 y 99%';
+    const clases = [...fondo.querySelectorAll('select[data-i]')].map(s => ({ categoria: cl[s.dataset.i].categoria, subcategoria: cl[s.dataset.i].subcategoria, clase: s.value }));
+    fondo.querySelector('#c-ok').disabled = true;
+    const { error } = await sb.rpc('guardar_rentabilidad_config', { p: { food_cost_defecto: fc, clases } });
+    if (error) { fondo.querySelector('#c-ok').disabled = false; return fondo.querySelector('#c-err').textContent = error.message; }
+    fondo.remove(); st.rKey = null; pintar();
+  };
+}
+
+// ===== Flujo de caja =====
+const claveFlujo = () => `${st.desde}|${st.hasta}|${(st.rc || []).join('|')}`;
+async function cargarFlujo() {
+  const k = claveFlujo();
+  $('cargando').classList.remove('oculto');
+  const [a, b] = await Promise.all([
+    sb.rpc('flujo_caja', { p_desde: st.desde, p_hasta: st.hasta }),
+    st.rc ? sb.rpc('flujo_caja', { p_desde: st.rc[0], p_hasta: st.rc[1] }) : Promise.resolve({ data: null }),
+  ]);
+  $('cargando').classList.add('oculto');
+  if (k !== claveFlujo() || st.tab !== 'flujo') return;
+  const err = a.error || b.error;
+  if (err) { $('main').innerHTML = `<div class="caja"><div class="error">No se pudo cargar: ${esc(err.message)}${/flujo_caja/.test(err.message) ? '<br>Falta correr el script 37_flujo_caja.sql en Supabase.' : ''}</div></div>`; st.fKey = null; return; }
+  st.fl = a.data; st.flc = b.data; st.fKey = k;
+  pintar();
+}
+// agrupa los días en día / semana (lunes) / mes
+function agruparFlujo(dias, modo) {
+  const g = new Map();
+  dias.forEach(x => {
+    let k = x.fecha;
+    if (modo === 'semana') { const d = new Date(x.fecha + 'T12:00:00'); k = masDias(x.fecha, -((d.getDay() + 6) % 7)); }
+    if (modo === 'mes') k = x.fecha.slice(0, 7);
+    const o = g.get(k) || { k, ing: 0, egr: 0, det: {} };
+    o.ing += num(x.ingresos); o.egr += num(x.egresos);
+    Object.entries(x.egresos_det || {}).forEach(([c, v]) => o.det[c] = (o.det[c] || 0) + num(v));
+    g.set(k, o);
+  });
+  let ac = 0;
+  return [...g.values()].map(o => { ac += o.ing - o.egr; return { ...o, neto: o.ing - o.egr, acum: ac }; });
+}
+const etqFlujo = (k, modo) => modo === 'mes' ? fMes(k) : modo === 'semana' ? 'Sem ' + fCorta(k) : fCorta(k);
+function flujo(d, c) {
+  const F = st.fl, FC = st.flc; if (!F) return;
+  const modo = st.flModo || (dias(st.desde, st.hasta) <= 45 ? 'dia' : dias(st.desde, st.hasta) <= 120 ? 'semana' : 'mes');
+  const G = agruparFlujo(F.dias || [], modo), GC = FC ? agruparFlujo(FC.dias || [], modo) : null;
+  const tot = x => x.reduce((a, o) => ({ ing: a.ing + o.ing, egr: a.egr + o.egr }), { ing: 0, egr: 0 });
+  const T = tot(G), TC = GC ? tot(GC) : null, neto = T.ing - T.egr;
+  const vsC = (a, b) => TC ? vs(a, 0, b) : '';
+  // egresos por categoría
+  const cats = {}; G.forEach(o => Object.entries(o.det).forEach(([k, v]) => cats[k] = (cats[k] || 0) + v));
+  const catsC = {}; (GC || []).forEach(o => Object.entries(o.det).forEach(([k, v]) => catsC[k] = (catsC[k] || 0) + v));
+  const lc = Object.entries(cats).sort((a, b) => b[1] - a[1]);
+  $('main').innerHTML = `
+    <div class="grid">
+      ${kpi('Ingresos', `<span class="pos">${S(T.ing)}</span>`, vsC(T.ing, TC?.ing) || 'Ventas al contado + cobros de crédito')}
+      ${kpi('Egresos', `<span class="neg">${S(T.egr)}</span>`, vsC(T.egr, TC?.egr) || 'Libro de Egresos pagado')}
+      ${kpi('Flujo neto', `<span class="${neto >= 0 ? 'pos' : 'neg'}">${S(neto)}</span>`, TC ? vsC(neto, TC.ing - TC.egr) : `${P(T.ing ? neto / T.ing * 100 : NaN)} de lo que entró`)}
+      ${kpi('Pendientes', S(F.pendiente), `egresos por pagar · por cobrar ${S0(F.por_cobrar)}`)}
+    </div>
+    <div class="grid"><div class="caja c12" style="position:relative">
+      <h3>Flujo de caja</h3><div class="nota">Montos con IGV, como entran y salen de caja · ingresos arriba, egresos abajo${GC ? ` · línea azul: flujo neto ${lblC()}` : ''}</div>
+      <div class="fc-badge ${neto >= 0 ? 'ok' : 'mal'}"><span>Flujo neto a la fecha</span><b>${S(neto)}</b><small>${fRango(st.desde, st.hasta)}</small></div>
+      <div class="fila" id="fl-modo" style="margin:4px 0 6px">${Object.entries({ dia: 'Diario', semana: 'Semanal', mes: 'Mensual' }).map(([k, t]) => `<button class="chip ${modo === k ? 'activa' : ''}" data-m="${k}">${t}</button>`).join('')}</div>
+      <div class="g alto" id="g-flujo"></div>
+    </div></div>
+    <div class="grid">
+      ${caja('c6', 'Egresos por categoría (salida de caja)', lc.length ? '<div class="g" id="g-flcat"></div>' : vacio('Sin egresos pagados en el periodo'))}
+      ${caja('c6', 'Detalle por periodo', `<div class="scroll"><table class="t"><tr><th>Periodo</th><th class="n">Ingresos</th><th class="n">Egresos</th><th class="n">Neto</th><th class="n">Acumulado</th></tr>
+        ${G.map(o => `<tr><td>${etqFlujo(o.k, modo)}</td><td class="n">${S(o.ing)}</td><td class="n">${S(o.egr)}</td><td class="n ${o.neto >= 0 ? 'pos' : 'neg'}">${S(o.neto)}</td><td class="n">${S(o.acum)}</td></tr>`).join('')}</table></div>`)}
+    </div>`;
+  $('fl-modo').onclick = e => { const m = e.target.dataset.m; if (!m) return; st.flModo = m; pintar(); };
+  const serie = [
+    { name: 'Ingresos', type: 'bar', stack: 'f', data: G.map(o => +o.ing.toFixed(2)), color: '#5b9e6b', barMaxWidth: 30, itemStyle: { borderRadius: [4, 4, 0, 0] } },
+    { name: 'Egresos', type: 'bar', stack: 'f', data: G.map(o => -(+o.egr.toFixed(2))), color: '#c0392b', barMaxWidth: 30, itemStyle: { borderRadius: [0, 0, 4, 4] } },
+    { name: 'Flujo neto', type: 'line', data: G.map(o => +o.neto.toFixed(2)), color: '#222', symbolSize: 6, lineStyle: { width: 2.5 }, z: 5 },
+    { name: 'Neto acumulado', type: 'line', data: G.map(o => +o.acum.toFixed(2)), color: '#e0a458', symbolSize: 4, lineStyle: { width: 2, type: 'dashed' }, z: 4 },
+  ];
+  if (GC) serie.push({ name: 'Flujo neto comp.', type: 'line', data: G.map((_, i) => GC[i] ? +GC[i].neto.toFixed(2) : null), color: AZUL, symbolSize: 4, lineStyle: { width: 2, type: 'dashed' }, z: 4 });
+  g('g-flujo', {
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: ps => {
+      const o = G[ps[0].dataIndex], top = Object.entries(o.det).sort((a, b) => b[1] - a[1]).slice(0, 4);
+      let h = `<b>${etqFlujo(o.k, modo)}</b><br><span style="color:#5b9e6b">● Ingresos: <b>${S(o.ing)}</b></span><br><span style="color:#c0392b">● Egresos: <b>${S(o.egr)}</b></span>` +
+        top.map(([c, v]) => `<br>&nbsp;&nbsp;&nbsp;${esc(c)}: ${S(v)}`).join('') + `<br>Neto: <b>${S(o.neto)}</b><br>Acumulado: <b>${S(o.acum)}</b>`;
+      const x = GC?.[ps[0].dataIndex]; if (x) h += `<br><span style="color:${AZUL}">● Neto ${etqFlujo(x.k, modo)}: <b>${S(x.neto)}</b></span>`;
+      return h; } },
+    legend: { ...leyenda, left: 0, right: 'auto', selected: { 'Neto acumulado': false } }, grid: { ...rejilla, top: 34 },
+    xAxis: { type: 'category', data: G.map(o => etqFlujo(o.k, modo)), axisTick: { show: false }, axisLine: { onZero: true } },
+    yAxis: { ...ejeS, axisLabel: { formatter: v => (v < 0 ? '−' : '') + (Math.abs(v) >= 1000 ? (Math.abs(v) / 1000).toLocaleString('es-PE', { maximumFractionDigits: 1 }) + 'k' : Math.abs(v)) } },
+    series: serie,
+  });
+  if (lc.length) {
+    const nombres = lc.slice(0, 12).map(x => x[0]);
+    barrasH('g-flcat', nombres, nombres.map(n => +cats[n].toFixed(2)), S, GC ? nombres.map(n => +(catsC[n] || 0).toFixed(2)) : null);
+  }
+}
+
+// ===== Clima vs ventas =====
+const claveClima = () => `${st.desde}|${st.hasta}`;
+async function cargarClima() {
+  const k = claveClima();
+  $('cargando').classList.remove('oculto');
+  const { data, error } = await sb.rpc('clima_datos', { p_desde: st.desde, p_hasta: st.hasta });
+  $('cargando').classList.add('oculto');
+  if (k !== claveClima() || st.tab !== 'clima') return;
+  if (error) {
+    $('main').innerHTML = `<div class="caja"><div class="error">No se pudo cargar: ${esc(error.message)}${/clima_datos|clima_horario/.test(error.message) ? '<br>Falta correr el script 38_clima_ventas.sql en Supabase.' : ''}</div></div>`;
+    st.kKey = null; return;
+  }
+  st.k = data; st.kKey = k;
+  pintar();
+}
+const idxP = i => i === null || i === undefined ? null : +((num(i) - 1) * 100).toFixed(1);
+const sg = v => v === null || v === undefined || !isFinite(v) ? '—' : (v >= 0 ? '+' : '') + num(v).toFixed(1) + '%';
+const grados = v => v === null || v === undefined ? '—' : num(v).toFixed(1) + '°';
+const rgS = x => `${x.desde}–${x.desde + 2}°`;
+const ejeC = { type: 'value', scale: true, axisLabel: { formatter: '{value}°' }, splitLine: { show: false } };
+function relTxt(r) {
+  if (r === null || r === undefined || !isFinite(r)) return 'Sin datos suficientes';
+  const a = Math.abs(r), f = a < 0.1 ? 'Sin relación' : a < 0.3 ? 'Relación débil' : a < 0.5 ? 'Relación moderada' : 'Relación fuerte';
+  return a < 0.1 ? f : `${f}: ${r > 0 ? 'más calor → más venta' : 'más calor → menos venta'}`;
+}
+function barrasRango(id, lista, campo, unidad, minimo) {
+  g(id, {
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: ps => { const x = lista[ps[0].dataIndex];
+      return `Sensación térmica <b>${rgS(x)}</b><br><b>${sg(idxP(x.idx))}</b> vs lo normal<br>${x[campo]} ${unidad}${x.venta !== undefined ? `<br>Venta prom. del día: ${S(x.venta)}` : ''}${x[campo] < minimo ? '<br><i>Pocos datos: tómalo con cuidado</i>' : ''}`; } },
+    grid: rejilla,
+    xAxis: { type: 'category', data: lista.map(rgS), axisTick: { show: false }, axisLabel: { fontSize: 11 } },
+    yAxis: { type: 'value', axisLabel: { formatter: v => (v > 0 ? '+' : '') + v + '%' }, splitLine: { lineStyle: { color: '#eee' } } },
+    series: [{ type: 'bar', barMaxWidth: 36, data: lista.map(x => { const v = idxP(x.idx);
+      return { value: v, itemStyle: { color: x[campo] < minimo ? '#ccc' : v >= 0 ? '#5b9e6b' : '#c0392b', borderRadius: v >= 0 ? [4, 4, 0, 0] : [0, 0, 4, 4] },
+               label: { show: !movil(), position: v >= 0 ? 'top' : 'bottom', fontSize: 10, formatter: () => sg(v) } }; }) }],
+  });
+}
+function clima() {
+  const K = st.k; if (!K) return;
+  const ph = K.por_hora || [], pd = K.por_dia || [], pm = K.por_mes || [], rd = K.rangos_dia || [], rh = K.rangos_hora || [], pf = K.pronostico || [], co = K.correlacion || {};
+  if (!pd.length) {
+    $('main').innerHTML = `<div class="grid">${caja('c12', 'Clima vs ventas', vacio('No hay ventas con datos de clima en este periodo. Si recién corriste el script 38, revisa que la tabla clima_horario tenga datos.'))}</div>`;
+    return;
+  }
+  const ok = rd.filter(x => x.dias >= 3);
+  const mejor = ok.length ? ok.reduce((a, b) => num(b.idx) > num(a.idx) ? b : a) : null;
+  const peor = ok.length ? ok.reduce((a, b) => num(b.idx) < num(a.idx) ? b : a) : null;
+  const prom = c => pd.reduce((a, x) => a + num(x[c]), 0) / pd.length;
+  const conVenta = ph.filter(x => x.venta !== null && x.venta !== undefined);
+  const h0 = conVenta.length ? Math.min(...conVenta.map(x => x.hora)) : 0, h1 = conVenta.length ? Math.max(...conVenta.map(x => x.hora)) : 23;
+  const vis = ph.filter(x => x.hora >= Math.max(0, h0 - 2) && x.hora <= Math.min(23, h1 + 1));
+  const pico = conVenta.length ? conVenta.reduce((a, b) => num(b.venta) > num(a.venta) ? b : a) : null;
+  const calor = ph.length ? ph.reduce((a, b) => num(b.sens) > num(a.sens) ? b : a) : null;
+  const frase = mejor && peor && mejor !== peor
+    ? `Con sensación de <b>${rgS(mejor)}</b> se vende <b>${sg(idxP(mejor.idx))}</b> frente a un día normal del mismo día de la semana; con <b>${rgS(peor)}</b>, <b>${sg(idxP(peor.idx))}</b>.`
+    : 'Aún no hay suficientes días por rango para sacar una conclusión.';
+  $('main').innerHTML = `
+    ${pd.length < 60 ? '<div class="aviso" style="background:#e8eff7;color:#3d6b99">Para ver patrones confiables elige <b>Este año</b>: con pocos días el clima casi no varía y el efecto se confunde con otros factores.</div>' : ''}
+    <div class="grid">
+      ${kpi('Venta vs sensación térmica', co.dia === null || co.dia === undefined ? '—' : 'r = ' + num(co.dia).toFixed(2), relTxt(co.dia))}
+      ${kpi('Mejor rango de sensación', mejor ? rgS(mejor) : '—', mejor ? `<span class="sube">${sg(idxP(mejor.idx))}</span> vs lo normal · ${mejor.dias} días` : 'Faltan días')}
+      ${kpi('Peor rango de sensación', peor ? rgS(peor) : '—', peor ? `<span class="baja">${sg(idxP(peor.idx))}</span> vs lo normal · ${peor.dias} días` : 'Faltan días')}
+      ${kpi('Clima del periodo', `${grados(prom('temp'))} · ${grados(prom('sens'))}`, `temperatura · sensación (horas de atención) · humedad ${Math.round(prom('hum'))}%`)}
+    </div>
+    <div class="grid">${caja('c12', 'Curva del día: venta vs temperatura', '<div class="g" id="g-kh"></div>',
+      `Promedio por hora del periodo · barras: venta (con IGV) · líneas: temperatura y sensación térmica${pico ? ` · pico de venta a las <b>${pico.hora}:00</b>` : ''}${calor ? `, pico de calor a las <b>${calor.hora}:00</b>` : ''}`)}</div>
+    <div class="grid">${caja('c12', 'Día a día', '<div class="g" id="g-kd"></div>', 'Venta del día (con IGV) vs sensación térmica promedio y temperatura máxima en horas de atención')}</div>
+    <div class="grid">
+      ${caja('c6', 'Venta del día según sensación térmica', '<div class="g" id="g-krd"></div>', `${frase}<br>Compara cada día con el promedio de su mismo día de la semana. Gris = menos de 3 días.`)}
+      ${caja('c6', 'Venta por hora según sensación térmica', '<div class="g" id="g-krh"></div>', `Compara cada hora con el promedio de esa misma hora y día de la semana · r = ${co.hora === null || co.hora === undefined ? '—' : num(co.hora).toFixed(2)} (${relTxt(co.hora).toLowerCase()}). Gris = menos de 10 horas.`)}
+    </div>
+    <div class="grid">
+      ${caja('c6', 'Mes a mes', pm.length ? '<div class="g" id="g-km"></div>' : vacio('Sin meses'), 'Venta diaria promedio vs clima promedio del mes')}
+      ${caja('c6', 'Pronóstico próximos 7 días', pf.length ? `<div class="scroll"><table class="t">
+        <tr><th>Día</th><th class="n">Temp. máx</th><th class="n">Sensación</th><th class="n">Lluvia</th><th class="n">Venta estimada</th><th class="n">Efecto clima</th></tr>
+        ${pf.map(x => `<tr><td>${DIAS[x.dow]} ${fCorta(x.fecha)}</td><td class="n">${grados(x.temp_max)}</td><td class="n">${grados(x.sens)}</td><td class="n">${num(x.lluvia) > 0 ? num(x.lluvia).toFixed(1) + ' mm' : '—'}</td><td class="n">${x.estimado === null || x.estimado === undefined ? '—' : S0(x.estimado)}</td><td class="n"><span class="${idxP(x.factor) >= 0 ? 'pos' : 'neg'}">${num(x.factor) === 1 ? '—' : sg(idxP(x.factor))}</span></td></tr>`).join('')}
+        </table></div>` : vacio('Aún no hay pronóstico cargado'),
+        `Venta estimada = venta promedio de ese día de la semana en el periodo × efecto del rango de sensación térmica. Es una estimación simple: mejora con más meses de datos.${K.clima_ultima ? ` · Clima actualizado: ${fh(K.clima_ultima)}` : ''}`)}
+    </div>`;
+
+  // 1. curva del día
+  g('g-kh', {
+    tooltip: { trigger: 'axis', formatter: ps => { const x = vis[ps[0].dataIndex];
+      return `<b>${x.hora}:00</b><br>Venta prom.: <b>${x.venta === null || x.venta === undefined ? '—' : S(x.venta)}</b>${x.venta === null || x.venta === undefined ? '' : ` · ${num(x.tickets).toFixed(1)} tickets`}<br>Temperatura: <b>${grados(x.temp)}</b><br>Sensación térmica: <b>${grados(x.sens)}</b><br>Humedad: ${Math.round(num(x.hum))}%`; } },
+    legend: leyenda, grid: rejilla,
+    xAxis: { type: 'category', data: vis.map(x => x.hora + 'h'), axisTick: { show: false } },
+    yAxis: [ejeS, ejeC],
+    series: [
+      { name: 'Venta promedio', type: 'bar', data: vis.map(x => x.venta), color: '#8B0000', barMaxWidth: 22, itemStyle: { borderRadius: [4, 4, 0, 0] } },
+      { name: 'Temperatura', type: 'line', yAxisIndex: 1, smooth: true, data: vis.map(x => x.temp), color: '#e0a458', symbolSize: 5, lineStyle: { width: 2.5 } },
+      { name: 'Sensación térmica', type: 'line', yAxisIndex: 1, smooth: true, data: vis.map(x => x.sens), color: '#c45a7a', symbolSize: 5, lineStyle: { width: 2.5, type: 'dashed' } },
+    ],
+  });
+
+  // 2. día a día
+  const zoom = pd.length > 45 ? [{ type: 'inside', startValue: pd.length - 45 }, { type: 'slider', height: 16, bottom: 4, startValue: pd.length - 45 }] : undefined;
+  g('g-kd', {
+    tooltip: { trigger: 'axis', formatter: ps => { const x = pd[ps[0].dataIndex];
+      return `<b>${DIAS[x.dow]} ${fLarga(x.fecha)}</b><br>Venta: <b>${S(x.venta)}</b> (${sg(idxP(x.idx))} vs un ${DIAS[x.dow]} normal)<br>Sensación prom.: <b>${grados(x.sens)}</b> · máx ${grados(x.sens_max)}<br>Temp. máx: ${grados(x.temp_max)} · humedad ${Math.round(num(x.hum))}%${num(x.lluvia) > 0 ? `<br>Lluvia: ${num(x.lluvia).toFixed(1)} mm` : ''}`; } },
+    legend: leyenda, grid: { ...rejilla, bottom: zoom ? 34 : 8 }, dataZoom: zoom,
+    xAxis: { type: 'category', data: pd.map(x => fCorta(x.fecha)), axisTick: { show: false } },
+    yAxis: [ejeS, ejeC],
+    series: [
+      { name: 'Venta del día', type: 'bar', data: pd.map(x => x.venta), color: '#8B0000', barMaxWidth: 18, itemStyle: { borderRadius: [3, 3, 0, 0] } },
+      { name: 'Sensación prom.', type: 'line', yAxisIndex: 1, smooth: true, data: pd.map(x => x.sens), color: '#c45a7a', symbolSize: 4, lineStyle: { width: 2.5 } },
+      { name: 'Temp. máxima', type: 'line', yAxisIndex: 1, smooth: true, data: pd.map(x => x.temp_max), color: '#e0a458', symbolSize: 3, lineStyle: { type: 'dashed' } },
+    ],
+  });
+
+  // 3 y 4. efecto por rango de sensación térmica
+  if (rd.length) barrasRango('g-krd', rd, 'dias', 'día(s)', 3); else $('g-krd').innerHTML = vacio('Sin datos');
+  if (rh.length) barrasRango('g-krh', rh, 'horas', 'hora(s)', 10); else $('g-krh').innerHTML = vacio('Sin datos');
+
+  // 5. mes a mes
+  if (pm.length) g('g-km', {
+    tooltip: { trigger: 'axis', formatter: ps => { const x = pm[ps[0].dataIndex];
+      return `<b>${fMes(x.mes)}</b><br>Venta diaria prom.: <b>${S(x.venta_dia)}</b> (${x.dias} días)<br>Temperatura prom.: ${grados(x.temp)}<br>Sensación prom.: ${grados(x.sens)}`; } },
+    legend: leyenda, grid: rejilla,
+    xAxis: { type: 'category', data: pm.map(x => fMes(x.mes)), axisTick: { show: false } },
+    yAxis: [ejeS, ejeC],
+    series: [
+      { name: 'Venta diaria prom.', type: 'bar', data: pm.map(x => x.venta_dia), color: '#8B0000', barMaxWidth: 26, itemStyle: { borderRadius: [4, 4, 0, 0] } },
+      { name: 'Sensación prom.', type: 'line', yAxisIndex: 1, smooth: true, data: pm.map(x => x.sens), color: '#c45a7a', symbolSize: 6, lineStyle: { width: 2.5 } },
+      { name: 'Temperatura prom.', type: 'line', yAxisIndex: 1, smooth: true, data: pm.map(x => x.temp), color: '#e0a458', symbolSize: 5, lineStyle: { type: 'dashed' } },
+    ],
   });
 }
 
