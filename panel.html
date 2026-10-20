@@ -702,7 +702,7 @@ function rentabilidad(d, c) {
       ${caja('c7', 'Evolutivo de indicadores (% de la venta neta)', '<div class="g" id="g-evo"></div>', '12 meses que terminan en el periodo elegido')}
     </div>
     <div class="grid">${caja('c12', 'Punto de equilibrio en el tiempo', `<div class="sync" style="margin-bottom:6px"><div class="fila" id="pe-vista">${Object.entries({ diario: 'Diario', mensual: 'Mes a mes', ytd: 'Acumulado del año (YTD)' }).map(([k, t]) => `<button class="chip ${(st.peVista || 'diario') === k ? 'activa' : ''}" data-v="${k}">${t}</button>`).join('')}</div><button class="btn2" id="b-fijos2">＋ Gastos fijos</button></div>
-      <div class="g" id="g-evo2"></div><div class="nota" id="pe-txt" style="margin-top:6px"></div>`, 'Línea roja: venta neta · línea punteada: lo que necesitas vender para cubrir costos fijos y variables')}</div>
+      <div class="g" id="g-evo2"></div><div class="nota" id="pe-txt" style="margin-top:6px"></div>`, 'Línea roja: venta neta · línea punteada: lo que necesitas vender para cubrir costos fijos y variables · <b>toca un día o un mes para ver su detalle</b>')}</div>
     <div class="grid">
       ${caja('c6', '🟢 Mejor food cost', '<div class="g alto" id="g-fcbien"></div>', 'Solo productos con costo real (receta o costo de compra)')}
       ${caja('c6', '🔴 Peor food cost', '<div class="g alto" id="g-fcmal"></div>', 'Solo productos con costo real (receta o costo de compra)')}
@@ -734,7 +734,7 @@ function rentabilidad(d, c) {
     const mcp = ven ? (ven - vari) / ven : 0;
     const p = v => ven ? +(v / ven * 100).toFixed(1) : null;
     return { mes: x.mes, ven, fcp: p(cv), lab: p(num(fm.planilla)), arr: p(num(fm.arrendamiento)), prime: p(cv + num(fm.planilla)),
-             pe: mcp > 0 ? fij / mcp : null, mcp, util: ven - vari - fij };
+             pe: mcp > 0 ? fij / mcp : null, peFull: mcp > 0 ? sumaF(usaManual(r) ? fijosMes(r, x.mes) : e) / mcp : null, mcp, util: ven - vari - fij };
   });
   g('g-evo', {
     tooltip: { trigger: 'axis', valueFormatter: v => v === null ? '—' : v + '%' }, legend: leyenda, grid: rejilla,
@@ -819,7 +819,8 @@ function rentabilidad(d, c) {
 function graficoPE(r, R, meses) {
   const vista = st.peVista || leer('pevista') || 'diario';
   const dv = Object.fromEntries((r.dias_venta || []).map(x => [x.fecha, V(x)]));
-  let x = [], ven = [], pe = [], txt = '', cruce = null;
+  let x = [], ven = [], pe = [], txt = '', cruce = null, mesesVis = meses;
+  const fechas = [];
   if (vista === 'diario') {
     // del inicio del rango al fin del rango; si el rango termina en el mes actual, se alarga hasta fin de mes
     const h = hoy(), finMes = `${st.hasta.slice(0, 7)}-${String(diasMes(st.hasta.slice(0, 7))).padStart(2, '0')}`;
@@ -828,15 +829,18 @@ function graficoPE(r, R, meses) {
     for (let f = st.desde; f <= fin; f = masDias(f, 1)) {
       ap += R.mcp > 0 ? fijoDia(r, f) / R.mcp : 0;
       if (f <= st.hasta && f <= h) av += num(dv[f]);
-      x.push(fCorta(f)); pe.push(+ap.toFixed(2)); ven.push(f <= st.hasta && f <= h ? +av.toFixed(2) : null);
-      if (cruce === null && f <= st.hasta && av >= ap && ap > 0) cruce = x.length - 1;
+      x.push(fCorta(f)); fechas.push(f); pe.push(+ap.toFixed(2)); ven.push(f <= st.hasta && f <= h ? +av.toFixed(2) : null);
     }
+    // día en que la venta acumulada cubrió el equilibrio de TODO el periodo (meta fija)
+    const metaT = pe[pe.length - 1];
+    cruce = metaT > 0 ? ven.findIndex(v => v !== null && v >= metaT) : -1;
+    if (cruce < 0) cruce = null;
     const hastaReal = st.hasta < h ? st.hasta : h, i = x.length - 1;
     const meta = pe[i], llev = av, faltan = Math.max(0, meta - llev);
     const diasRest = fin > hastaReal ? dias(masDias(hastaReal, 1), fin) : 0;
     txt = !(R.mcp > 0) ? 'El margen de contribución es negativo: con estos costos variables no hay punto de equilibrio.'
       : `Llevas <b>${S0(llev)}</b> de <b>${S0(meta)}</b> necesarios al ${fCorta(fin)} (${P(meta ? llev / meta * 100 : 0)}).` +
-        (cruce !== null ? ` ✅ Alcanzaste el equilibrio el <b>${x[cruce]}</b>.` : '') +
+        (cruce !== null ? ` ✅ Cubriste el equilibrio de todo el periodo el <b>${x[cruce]}</b>: desde ahí es ganancia.` : '') +
         (faltan > 0 && diasRest > 0 ? ` Para llegar necesitas vender <b>${S0(faltan / diasRest)}</b> netos por día los ${diasRest} días que quedan.` : '') +
         ` Costo fijo diario: ${S0(fijoDia(r, hastaReal))} · margen de contribución ${P(R.mcp * 100)}.`;
   } else if (vista === 'mensual') {
@@ -845,6 +849,7 @@ function graficoPE(r, R, meses) {
     txt = `En <b>${ok}</b> de ${meses.length} meses la venta neta superó el punto de equilibrio.`;
   } else {
     const anio = st.hasta.slice(0, 4), ms = meses.filter(m => m.mes.startsWith(anio));
+    mesesVis = ms;
     let av = 0, ap = 0;
     ms.forEach((m, k) => { av += m.ven; ap += m.pe || 0; x.push(fMes(m.mes)); ven.push(+av.toFixed(2)); pe.push(+ap.toFixed(2)); if (cruce === null && av >= ap && ap > 0) cruce = k; });
     txt = ms.length ? `Acumulado ${anio}: venta neta <b>${S0(av)}</b> vs punto de equilibrio <b>${S0(ap)}</b> → ${av >= ap ? `<span class="pos">sobre el equilibrio por ${S0(av - ap)}</span>` : `<span class="neg">faltan ${S0(ap - av)}</span>`}.` : '';
@@ -859,7 +864,15 @@ function graficoPE(r, R, meses) {
       { name: movil() ? 'Equilibrio' : vista === 'mensual' ? 'Punto de equilibrio del mes' : 'Punto de equilibrio acumulado', type: 'line', data: pe, color: '#333', symbolSize: 4, lineStyle: { type: 'dashed', width: 2 } },
     ],
   });
-  $('pe-txt').innerHTML = txt;
+  $('pe-txt').innerHTML = txt + (vista === 'diario' ? ' <b>Toca un día para ver su avance hora por hora.</b>' : ' <b>Toca un mes para ver su avance día por día.</b>');
+  // clic en cualquier parte del gráfico: abre el detalle de ese día / mes
+  const ch = graficos.find(c => c.getDom().id === 'g-evo2');
+  if (ch) ch.getZr().on('click', e => {
+    const pt = [e.offsetX, e.offsetY]; if (!ch.containPixel('grid', pt)) return;
+    const i = Math.round(ch.convertFromPixel({ seriesIndex: 0 }, pt)[0]);
+    if (vista === 'diario') { if (fechas[i] && fechas[i] <= hoy()) detalleDia(r, R, fechas[i], meses); }
+    else if (mesesVis[i]) detalleMes(r, mesesVis[i]);
+  });
 }
 // ＋ Gastos fijos: lista editable (monto mensual sin IGV)
 const SUGERIDOS = [['Alquiler del local', 'arrendamiento'], ['Sueldos (con EsSalud, CTS, gratificación, vacaciones)', 'planilla'], ['Luz', 'servicios'], ['Agua', 'servicios'],
@@ -1030,6 +1043,84 @@ function flujo(d, c) {
     const nombres = lc.slice(0, 12).map(x => x[0]);
     barrasH('g-flcat', nombres, nombres.map(n => +cats[n].toFixed(2)), S, GC ? nombres.map(n => +(catsC[n] || 0).toFixed(2)) : null);
   }
+}
+
+// ===== Detalle del punto de equilibrio: un día (por hora) o un mes (por día) con meta fija =====
+function modalDetalle(titulo) {
+  const fondo = document.createElement('div'); fondo.className = 'modal-fondo';
+  fondo.innerHTML = `<div class="modal" style="max-width:960px"><h3>${titulo}</h3><div class="nota" id="dt-sub"></div>
+    <div class="g alto" id="g-det"><div class="vacio">Cargando…</div></div><div class="nota" id="dt-txt" style="margin-top:8px;font-size:13px"></div>
+    <div class="cal-pie"><button class="no">Cerrar</button></div></div>`;
+  document.body.appendChild(fondo);
+  const cerrar = () => { const i = graficos.findIndex(c => c.getDom().id === 'g-det'); if (i >= 0) graficos.splice(i, 1)[0].dispose(); fondo.remove(); };
+  fondo.onclick = e => { if (e.target === fondo || e.target.classList.contains('no')) cerrar(); };
+  return fondo;
+}
+function graficoDetalle({ etqs, barras, acum, meta, mcp, cruce, etqBarra }) {
+  const el = $('g-det'); if (!el) return; el.innerHTML = '';
+  g('g-det', {
+    tooltip: { trigger: 'axis', formatter: ps => { const i = ps[0].dataIndex, a = acum[i];
+      return `<b>${etqs[i]}</b><br>${etqBarra}: <b>${barras[i] === null ? '—' : S(barras[i])}</b>` +
+        (a === null ? '' : `<br>Venta neta acumulada: <b>${S(a)}</b><br>Margen acumulado: ${S(a * mcp)}` +
+          (meta ? `<br>Avance: <b>${P(a / meta * 100)}</b> del equilibrio` : '')) +
+        (meta ? `<br>Equilibrio: ${S(meta)}` : ''); } },
+    legend: leyenda, grid: { ...rejilla, right: 16 },
+    xAxis: { type: 'category', data: etqs, axisTick: { show: false } },
+    yAxis: [ejeS, { ...ejeS, splitLine: { show: false } }],
+    series: [
+      { name: etqBarra, type: 'bar', yAxisIndex: 1, data: barras, color: '#e0a458', barMaxWidth: 22, itemStyle: { borderRadius: [3, 3, 0, 0], opacity: .8 } },
+      { name: 'Venta neta acumulada', type: 'line', data: acum, color: '#8B0000', symbolSize: 6, lineStyle: { width: 3 }, z: 5,
+        areaStyle: { color: grad(0, 0, 0, 1, [{ offset: 0, color: 'rgba(139,0,0,.18)' }, { offset: 1, color: 'rgba(139,0,0,0)' }]) },
+        markPoint: cruce !== null ? { symbol: 'pin', symbolSize: 46, itemStyle: { color: '#1e7d3a' }, label: { formatter: '✓', fontSize: 16 }, data: [{ coord: [cruce, acum[cruce]] }] } : undefined },
+      ...(meta ? [{ name: 'Punto de equilibrio', type: 'line', data: etqs.map(() => +meta.toFixed(2)), color: '#333', symbol: 'none', lineStyle: { type: 'dashed', width: 2 }, z: 4 }] : []),
+    ],
+  });
+}
+async function detalleDia(r, R, f, meses) {
+  const m = (meses || []).find(x => x.mes === f.slice(0, 7));
+  const mcp = m && m.mcp > 0 ? m.mcp : R.mcp;
+  const fijo = fijoDia(r, f), meta = mcp > 0 ? fijo / mcp : null;
+  const dw = DIAS[((new Date(f + 'T12:00:00').getDay() + 6) % 7) + 1];
+  modalDetalle(`${dw} ${fLarga(f)} · avance hora por hora`);
+  $('dt-sub').innerHTML = `Meta fija del día: <b>${meta ? S(meta) : '—'}</b> de venta neta (costo fijo del día ${S(fijo)} ÷ margen de contribución ${P(mcp * 100)}). Barras: venta de cada hora (eje derecho).`;
+  const { data, error } = await sb.rpc('panel_datos', { p_desde: f, p_hasta: f });
+  if (!$('g-det')) return;
+  if (error) { $('g-det').innerHTML = `<div class="error">No se pudo cargar: ${esc(error.message)}</div>`; return; }
+  const ph = (data?.por_hora || []).filter(x => V(x) > 0);
+  if (!ph.length) { $('g-det').innerHTML = vacio('Sin ventas ese día'); $('g-det').style.height = 'auto'; return; }
+  const h0 = Math.min(...ph.map(x => x.hora)), h1 = Math.max(...ph.map(x => x.hora));
+  const etqs = [], barras = [], acum = []; let a = 0;
+  for (let h = h0; h <= h1; h++) { const v = V(ph.find(x => x.hora === h)); a += v; etqs.push(h + ':00'); barras.push(+v.toFixed(2)); acum.push(+a.toFixed(2)); }
+  let cruce = meta ? acum.findIndex(v => v >= meta) : -1; if (cruce < 0) cruce = null;
+  graficoDetalle({ etqs, barras, acum, meta, mcp, cruce, etqBarra: 'Venta de la hora' });
+  const fin = acum[acum.length - 1];
+  $('dt-txt').innerHTML = !meta ? 'Con estos costos variables no hay punto de equilibrio (margen de contribución negativo).'
+    : cruce !== null ? `✅ A las <b>${etqs[cruce]}</b> cubriste el costo fijo del día. Cerraste con <b>${S0(fin)}</b> netos: <b>${S0(fin - meta)}</b> sobre el equilibrio, que dejan unos <b>${S0((fin - meta) * mcp)}</b> de ganancia.`
+    : `Vendiste <b>${S0(fin)}</b> netos, el ${P(fin / meta * 100)} de la meta. ${f === hoy() ? `Te faltan <b>${S0(meta - fin)}</b> para cubrir el día.` : `Faltaron <b>${S0(meta - fin)}</b>: ese día no se cubrió el costo fijo.`}`;
+}
+async function detalleMes(r, m) {
+  const ym = m.mes, n = diasMes(ym), ini = ym + '-01', fin = `${ym}-${String(n).padStart(2, '0')}`, h = hoy();
+  const meta = m.peFull, mcp = m.mcp;
+  const fijos = sumaF(fijosMes(r, ym));
+  modalDetalle(`${MESES[+ym.slice(5) - 1]} ${ym.slice(0, 4)} · avance día por día`);
+  $('dt-sub').innerHTML = `Meta fija del mes: <b>${meta ? S(meta) : '—'}</b> de venta neta${usaManual(r) ? ` (costos fijos ${S(fijos)} ÷ margen de contribución ${P(mcp * 100)})` : ''}. Barras: venta de cada día (eje derecho).`;
+  const { data, error } = await sb.rpc('panel_datos', { p_desde: ini, p_hasta: fin < h ? fin : h });
+  if (!$('g-det')) return;
+  if (error) { $('g-det').innerHTML = `<div class="error">No se pudo cargar: ${esc(error.message)}</div>`; return; }
+  const pd = data?.por_dia || [];
+  const etqs = [], barras = [], acum = []; let a = 0;
+  for (let d = 1; d <= n; d++) {
+    const f = `${ym}-${String(d).padStart(2, '0')}`, pasado = f <= h, v = pasado ? V(pd.find(x => x.fecha === f)) : null;
+    if (pasado) a += v;
+    etqs.push(fCorta(f)); barras.push(v === null ? null : +v.toFixed(2)); acum.push(pasado ? +a.toFixed(2) : null);
+  }
+  let cruce = meta ? acum.findIndex(v => v !== null && v >= meta) : -1; if (cruce < 0) cruce = null;
+  graficoDetalle({ etqs, barras, acum, meta, mcp, cruce, etqBarra: 'Venta del día' });
+  const quedan = fin > h ? dias(h, fin) - 1 : 0;
+  $('dt-txt').innerHTML = !meta ? 'Con estos costos variables no hay punto de equilibrio (margen de contribución negativo).'
+    : cruce !== null ? `✅ El <b>${etqs[cruce]}</b> cubriste los costos fijos del mes: desde ese día, lo que vendes es ganancia (unos ${P(mcp * 100)} de cada sol neto). Llevas <b>${S0(a)}</b>, ${S0(a - meta)} sobre el equilibrio.`
+    : quedan > 0 ? `Llevas <b>${S0(a)}</b> de <b>${S0(meta)}</b> (${P(a / meta * 100)}). Te faltan <b>${S0(meta - a)}</b>: <b>${S0((meta - a) / quedan)}</b> netos por día los ${quedan} días que quedan.`
+    : `El mes cerró en <b>${S0(a)}</b>: faltaron <b>${S0(meta - a)}</b> para el equilibrio.`;
 }
 
 // ===== Clima vs ventas =====
