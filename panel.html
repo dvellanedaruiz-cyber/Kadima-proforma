@@ -648,10 +648,10 @@ function calcRent(r, d, a, b) {
   const costoVentas = prods.reduce((a, p) => a + p.cst, 0) + Math.max(0, ventas - netoProd) * fc;
   // fijos: los que ingresaste (prorrateados por día); si aún no hay, los del Libro de Egresos
   const e = { ...(r.egresos_rango || {}), ...(usaManual(r) ? fijosRango(r, a, b) : {}) }, eg = k => num(e[k]);
-  const otrosVar = eg('otros_variables'), variables = costoVentas + otrosVar;
+  const otrosVar = eg('otros_variables'), variables = costoVentas;   // margen de contribución = venta − food cost
   const fijos = FIJOS.reduce((a, k) => a + eg(k), 0);
   const mc = ventas - variables, mcp = ventas ? mc / ventas : 0;
-  const pe = mcp > 0 ? fijos / mcp : NaN, util = mc - fijos;
+  const pe = mcp > 0 ? fijos / mcp : NaN, util = mc - otrosVar - fijos;
   const pct = x => ventas ? x / ventas * 100 : NaN;
   return { fc, prods, ventas, costoVentas, otrosVar, variables, fijos, mc, mcp, pe, util, e, eg,
            fcp: pct(costoVentas), labor: pct(eg('planilla')), arriendo: pct(eg('arrendamiento')), prime: pct(costoVentas + eg('planilla')),
@@ -730,11 +730,11 @@ function rentabilidad(d, c) {
     // mes en curso (incompleto): los fijos se prorratean por los días ya transcurridos
     const fac = x.mes === st.hasta.slice(0, 7) ? Math.min(1, +st.hasta.slice(8) / diasMes(x.mes)) : 1;
     const fm = Object.fromEntries(Object.entries(usaManual(r) ? fijosMes(r, x.mes) : e).map(([k, v]) => [k, FIJOS.includes(k) ? num(v) * fac : v]));
-    const fij = sumaF(fm), vari = cv + num(e.otros_variables);
+    const fij = sumaF(fm), vari = cv;   // solo food cost
     const mcp = ven ? (ven - vari) / ven : 0;
     const p = v => ven ? +(v / ven * 100).toFixed(1) : null;
     return { mes: x.mes, ven, fcp: p(cv), lab: p(num(fm.planilla)), arr: p(num(fm.arrendamiento)), prime: p(cv + num(fm.planilla)),
-             pe: mcp > 0 ? fij / mcp : null, peFull: mcp > 0 ? sumaF(usaManual(r) ? fijosMes(r, x.mes) : e) / mcp : null, mcp, util: ven - vari - fij };
+             pe: mcp > 0 ? fij / mcp : null, peFull: mcp > 0 ? sumaF(usaManual(r) ? fijosMes(r, x.mes) : e) / mcp : null, mcp, util: ven - vari - num(e.otros_variables) - fij };
   });
   g('g-evo', {
     tooltip: { trigger: 'axis', valueFormatter: v => v === null ? '—' : v + '%' }, legend: leyenda, grid: rejilla,
@@ -922,8 +922,8 @@ function erTabla(R, RC) {
   return `<div class="scroll"><table class="t er"><tr><th></th><th class="n">${RC ? lblA() : 'S/'}</th><th class="n">%</th>${RC ? `<th class="n">${lblC()}</th><th class="n">%</th>` : ''}</tr>
     ${fila('Ventas netas', R.ventas, RC?.ventas, 'tot')}
     ${fila('Costo de ventas (food cost)', -R.costoVentas, -RC?.costoVentas, 'sub')}
-    ${fila('Otros variables (empaques, comisiones)', -R.otrosVar, -RC?.otrosVar, 'sub')}
     ${fila('Margen de contribución', R.mc, RC?.mc, 'tot')}
+    ${fila('Otros variables (empaques, comisiones)', -R.otrosVar, -RC?.otrosVar, 'sub')}
     ${fila('Planilla', -R.eg('planilla'), -RC?.eg('planilla'), 'sub')}
     ${fila('Arrendamiento', -R.eg('arrendamiento'), -RC?.eg('arrendamiento'), 'sub')}
     ${fila('Servicios', -R.eg('servicios'), -RC?.eg('servicios'), 'sub')}
@@ -939,7 +939,7 @@ function configRent(r) {
     <p class="nota">El food cost por defecto se usa en los productos que aún no tienen receta.</p>
     <div class="sync" style="margin:8px 0 14px"><b>Food cost por defecto</b><input id="c-fc" type="number" min="1" max="90" step="0.5" value="${num(r.food_cost_defecto)}" style="width:90px"> %</div>
     <b>Clasificación del Libro de Egresos</b>
-    <p class="nota">Los tipos fijos (planilla, arrendamiento, servicios, otros fijos) solo se usan mientras no ingreses tus <b>＋ Gastos fijos</b>. Variables: otros variables (empaques, comisiones). Las compras de insumos se muestran como referencia (el food cost sale de las recetas). "No operativo" no cuenta (impuestos, préstamos, retiros).</p>
+    <p class="nota">Los tipos fijos (planilla, arrendamiento, servicios, otros fijos) solo se usan mientras no ingreses tus <b>＋ Gastos fijos</b>. Otros variables (empaques, comisiones): se restan después del margen de contribución y no mueven el punto de equilibrio. Las compras de insumos se muestran como referencia (el food cost sale de las recetas). "No operativo" no cuenta (impuestos, préstamos, retiros).</p>
     <div class="scroll" style="max-height:50vh"><table class="t"><tr><th>Categoría</th><th>Subcategoría</th><th class="n">Prom. mes</th><th>Clase</th></tr>
     ${cl.map((x, i) => `<tr><td>${esc(x.categoria)}</td><td>${esc(x.subcategoria)}</td><td class="n">${S0(x.promedio)}</td><td><select data-i="${i}">${Object.entries(CLASES).map(([k, t]) => `<option value="${k}" ${x.clase === k ? 'selected' : ''}>${t}</option>`).join('')}</select></td></tr>`).join('') || '<tr><td colspan="4" class="vacio">Aún no hay egresos sincronizados</td></tr>'}
     </table></div>
