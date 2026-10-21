@@ -54,6 +54,7 @@ input,select{font:inherit;padding:8px 10px;border:1px solid var(--borde);border-
 .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;margin:6px 12px 0;background:#eef3fb;color:var(--azul)}
 .tag.delivery{background:#fff1e0;color:#9a5300}
 .dir{padding:4px 12px 0;font-size:13px}
+.dir .maps{display:inline-block;margin-top:6px;background:#e8f0fb;color:var(--azul);font-weight:700;font-size:13px;padding:5px 10px;border-radius:8px;text-decoration:none}
 .its{padding:6px 12px;margin:0;list-style:none}
 .its li{padding:4px 0;border-top:1px dashed #eee;font-size:15px}
 .its li b{display:inline-block;min-width:30px}
@@ -215,7 +216,7 @@ function tarjeta(p, hoy, ahoraMin, nuevo) {
     <div class="c1"><span class="cod">${esc(p.codigo)}</span><span class="cuando ${tarde ? 'tarde' : ''}">${esc(cuando)}</span></div>
     <div class="cli">${esc(p.cliente_nombre)} · <a href="https://wa.me/51${esc(tel)}" target="_blank" rel="noopener">${esc(tel)}</a></div>
     <span class="tag ${p.tipo_entrega}">${p.tipo_entrega === 'delivery' ? '🛵 Delivery' : '🏬 Recojo'}</span>
-    ${p.tipo_entrega === 'delivery' ? `<div class="dir">📍 ${esc(p.direccion)}${p.distrito ? ', ' + esc(p.distrito) : ''}${p.referencia ? `<br><small>${esc(p.referencia)}</small>` : ''}</div>` : ''}
+    ${p.tipo_entrega === 'delivery' ? `<div class="dir">📍 ${esc(p.direccion)}${p.distrito ? ', ' + esc(p.distrito) : ''}${p.referencia ? `<br><small>${esc(p.referencia)}</small>` : ''}${p.ubicacion_lat != null ? `<br><a class="maps" href="https://www.google.com/maps?q=${p.ubicacion_lat},${p.ubicacion_lng}" target="_blank" rel="noopener">🗺️ Abrir en Google Maps</a>` : ''}</div>` : ''}
     <ul class="its">${items}</ul>
     ${p.notas ? `<div class="nota">📝 ${esc(p.notas)}</div>` : ''}
     <div class="pie">

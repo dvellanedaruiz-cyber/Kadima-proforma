@@ -97,6 +97,12 @@
   .field input, .field select, .field textarea { font-family: inherit; font-size: 15px; padding: 11px 13px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--espresso); width: 100%; }
   .field textarea { resize: vertical; min-height: 70px; }
   .field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid var(--wine); outline-offset: 1px; }
+  .ubic-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: #fff; color: var(--wine); border: 1.5px dashed var(--wine); border-radius: 8px; padding: 14px; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 16px; }
+  .ubic-btn:disabled { opacity: .6; cursor: wait; }
+  .ubic-ok { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: #eef8f1; border: 1px solid #b9e0c6; color: #1e6b3a; border-radius: 8px; padding: 12px 14px; font-size: 14px; margin-top: 16px; }
+  .ubic-ok a { color: #1e6b3a; font-weight: 600; }
+  .ubic-ok button { margin-left: auto; background: none; border: none; color: var(--muted); text-decoration: underline; cursor: pointer; font-family: inherit; font-size: 13px; }
+  .ubic-err { color: #b3261e; font-size: 13px; margin-top: 6px; }
   .aviso { background: #fff8ea; border: 1px solid #e8cf9a; color: #6b4c15; border-radius: 8px; padding: 12px 14px; font-size: 13.5px; margin: 8px 0 4px; }
 
   /* ---------- YAPE ---------- */
@@ -208,6 +214,9 @@
     </div>
 
     <div id="bloque-delivery" class="oculto">
+      <button type="button" class="ubic-btn" id="btn-ubicacion">📍 Usar mi ubicación actual</button>
+      <div class="ubic-ok oculto" id="ubic-ok">✓ Ubicación guardada <a id="ubic-link" target="_blank" rel="noopener">Ver en Google Maps</a><button type="button" id="btn-quitar-ubic">Quitar</button></div>
+      <div class="ubic-err" id="ubic-err"></div>
       <div class="field-row">
         <div class="field">
           <label for="distrito">Distrito</label>
@@ -338,6 +347,7 @@
   let categoria = 'Todos';
   let busqueda = '';
   let tipoEntrega = 'recojo';
+  let ubicacion = null;         // { lat, lng }
 
   // ---------- Catálogo ----------
   async function cargarProductos() {
@@ -466,6 +476,47 @@
     refrescar();
   }
 
+  // ---------- Ubicación (GPS del celular) ----------
+  const mapsUrl = (lat, lng) => `https://www.google.com/maps?q=${lat},${lng}`;
+
+  function pintarUbicacion() {
+    $('ubic-ok').classList.toggle('oculto', !ubicacion);
+    $('btn-ubicacion').classList.toggle('oculto', !!ubicacion);
+    if (ubicacion) $('ubic-link').href = mapsUrl(ubicacion.lat, ubicacion.lng);
+  }
+
+  async function completarDireccion(lat, lng) {
+    // Convierte las coordenadas en una dirección escrita (OpenStreetMap, gratis). Si falla, queda solo el pin.
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=es&zoom=18&addressdetails=1`);
+      if (!r.ok) return;
+      const a = (await r.json()).address || {};
+      const calle = [a.road || a.pedestrian || a.footway, a.house_number].filter(Boolean).join(' ');
+      const zona = a.neighbourhood || a.suburb || a.residential || a.quarter || '';
+      const distrito = a.city_district || a.suburb || a.town || a.city || '';
+      if (!$('direccion').value.trim() && (calle || zona)) $('direccion').value = [calle, zona].filter(Boolean).join(', ');
+      if (!$('distrito').value.trim() && distrito) $('distrito').value = distrito;
+    } catch (e) {}
+  }
+
+  function usarUbicacion() {
+    $('ubic-err').textContent = '';
+    if (!navigator.geolocation) { $('ubic-err').textContent = 'Tu navegador no permite compartir ubicación. Escribe tu dirección abajo.'; return; }
+    const b = $('btn-ubicacion'); b.disabled = true; b.textContent = 'Buscando tu ubicación…';
+    navigator.geolocation.getCurrentPosition(async pos => {
+      ubicacion = { lat: Number(pos.coords.latitude.toFixed(6)), lng: Number(pos.coords.longitude.toFixed(6)) };
+      b.disabled = false; b.textContent = '📍 Usar mi ubicación actual';
+      pintarUbicacion();
+      await completarDireccion(ubicacion.lat, ubicacion.lng);
+      $('referencia').focus();
+    }, err => {
+      b.disabled = false; b.textContent = '📍 Usar mi ubicación actual';
+      $('ubic-err').textContent = err.code === 1
+        ? 'No diste permiso de ubicación. Actívalo en tu navegador o escribe tu dirección abajo.'
+        : 'No pudimos obtener tu ubicación. Intenta de nuevo o escribe tu dirección abajo.';
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+  }
+
   // ---------- Confirmar ----------
   async function confirmar() {
     const err = msg => { $('error').textContent = msg; };
@@ -480,6 +531,8 @@
       distrito: $('distrito').value.trim(),
       direccion: $('direccion').value.trim(),
       referencia: $('referencia').value.trim(),
+      lat: tipoEntrega === 'delivery' && ubicacion ? ubicacion.lat : null,
+      lng: tipoEntrega === 'delivery' && ubicacion ? ubicacion.lng : null,
       notas: $('notas').value.trim(),
       yape_operacion: $('operacion').value.trim(),
       items: items().map(i => ({ producto_id: i.id, cantidad: i.qty })),
@@ -525,6 +578,7 @@
     if (datos.tipo_entrega === 'delivery') {
       lineas.push(`*Dirección:* ${datos.direccion}${datos.distrito ? ', ' + datos.distrito : ''}`);
       if (datos.referencia) lineas.push(`*Referencia:* ${datos.referencia}`);
+      if (datos.lat != null) lineas.push(`*Ubicación:* ${mapsUrl(datos.lat, datos.lng)}`);
       lineas.push(`Quedo atento al costo del delivery.`);
     }
     if (datos.notas) lineas.push(`*Indicaciones:* ${datos.notas}`);
@@ -549,6 +603,8 @@
   $('buscador').addEventListener('input', e => { busqueda = e.target.value.trim().toLowerCase(); pintarGrid(); });
   $('btn-ver-pedido').onclick = verPedido;
   $('btn-confirmar').onclick = confirmar;
+  $('btn-ubicacion').onclick = usarUbicacion;
+  $('btn-quitar-ubic').onclick = () => { ubicacion = null; pintarUbicacion(); };
   $('btn-copiar').onclick = async () => {
     try { await navigator.clipboard.writeText(CONFIG.YAPE_NUMERO.replace(/\s/g, '')); $('btn-copiar').textContent = '¡Copiado!'; }
     catch (e) { $('btn-copiar').textContent = 'Cópialo a mano'; }
