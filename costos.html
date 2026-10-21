@@ -429,9 +429,9 @@ function tabCargar() {
     <h3>Registrar uno</h3>
     <div class="form">
       <label>Insumo<input id="m-prod" list="m-lista" placeholder="Escribe nombre o código"></label>
-      <datalist id="m-lista">${st.prods.map(p => `<option value="${esc(p.codigo)} · ${esc(p.nombre)}"></option>`).join('')}</datalist>
+      <datalist id="m-lista">${st.prods.map(p => `<option value="${esc(p.codigo)} · ${esc(p.nombre)}">por ${UNI(p.unidad_medida) || '?'}</option>`).join('')}</datalist>
       <label>Fecha (o 1.º del mes)<input id="m-fecha" type="date" max="${iso(hoy)}"></label>
-      <label>Costo unitario S/<input id="m-costo" type="number" step="0.0001" min="0" inputmode="decimal"></label>
+      <label><span>Costo unitario S/ <b id="m-uni" style="color:var(--vino)"></b></span><input id="m-costo" type="number" step="0.0001" min="0" inputmode="decimal"></label>
       <label class="chk"><input type="checkbox" id="m-igv"> Incluye IGV</label>
       <label>Proveedor (opcional)<input id="m-prov"></label>
       <label class="full">Nota (opcional)<input id="m-nota" placeholder="Ej.: precio de lista, factura antigua…"></label>
@@ -445,6 +445,7 @@ function tabCargar() {
   $('x-plantilla').onclick = descargarPlantilla;
   $('x-file').onchange = leerExcel;
   $('m-ok').onclick = guardarUno;
+  $('m-prod').oninput = () => { const p = buscarProd($('m-prod').value.trim()); $('m-uni').textContent = p ? 'por ' + (UNI(p.unidad_medida) || 'unidad (sin unidad en el maestro)') : ''; };
   listarHistoricos();
 }
 
@@ -555,9 +556,13 @@ function pintarPrevia() {
   };
 }
 
+function buscarProd(txt) {
+  const t = txt.toUpperCase();
+  return st.prods.find(x => t.startsWith(String(x.codigo).toUpperCase() + ' ')) || st.prods.find(x => String(x.codigo).toUpperCase() === t);
+}
 async function guardarUno() {
   const txt = $('m-prod').value.trim(); $('m-msg').textContent = '';
-  const p = st.prods.find(x => txt.toUpperCase().startsWith(String(x.codigo).toUpperCase() + ' ')) || st.prods.find(x => x.codigo.toUpperCase() === txt.toUpperCase());
+  const p = buscarProd(txt);
   if (!p) return $('m-msg').innerHTML = '<span class="error">Elige un insumo de la lista.</span>';
   const fecha = $('m-fecha').value, costo = parseCosto($('m-costo').value);
   if (!fecha) return $('m-msg').innerHTML = '<span class="error">Pon la fecha.</span>';
@@ -568,7 +573,7 @@ async function guardarUno() {
   if (error) return $('m-msg').innerHTML = `<span class="error">${esc(errTxt(error))}</span>`;
   if (data.errores && data.errores.length) return $('m-msg').innerHTML = `<span class="error">${esc(data.errores[0].error)}</span>`;
   $('m-msg').innerHTML = `<span class="okmsg">✓ Guardado: ${esc(p.nombre)} ${fechaTxt(fecha)}</span>`;
-  $('m-costo').value = ''; $('m-nota').value = '';
+  $('m-costo').value = ''; $('m-nota').value = ''; $('m-costo').focus();
   listarHistoricos();
 }
 
