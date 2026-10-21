@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kadima · Costos de insumos</title>
+<meta name="theme-color" content="#8B0000">
+<style>
+:root{--vino:#8B0000;--vino2:#b23a3a;--fondo:#f6f4f2;--card:#fff;--txt:#222;--muted:#777;--borde:#e6e1dc;--sube:#c62828;--baja:#2e7d32;--suave:#faf7f5}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--fondo);color:var(--txt);font-size:14px}
+.oculto{display:none!important}
+header{background:var(--vino);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:5}
+header h1{font-size:16px;margin:0;flex:1}
+.tabs{display:flex;gap:4px}
+.tabs button{background:transparent;border:1px solid rgba(255,255,255,.4);color:#fff;padding:6px 12px;border-radius:16px;cursor:pointer;font-size:13px}
+.tabs button.activa{background:#fff;color:var(--vino);font-weight:600}
+main{max-width:1200px;margin:0 auto;padding:14px 16px 40px}
+.bloque{background:var(--card);border:1px solid var(--borde);border-radius:12px;padding:14px;margin-bottom:14px}
+.bloque h3{margin:0 0 10px;font-size:15px}
+.ayuda{color:var(--muted);font-size:12.5px;margin:0 0 10px;line-height:1.45}
+.filtros{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.filtros label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+input,select{font:inherit;padding:7px 9px;border:1px solid var(--borde);border-radius:8px;background:#fff;color:var(--txt)}
+.chips{display:flex;gap:4px;flex-wrap:wrap}
+.chips button{border:1px solid var(--borde);background:#fff;border-radius:14px;padding:5px 10px;font-size:12.5px;cursor:pointer;color:var(--txt)}
+.chips button.activa{background:var(--vino);border-color:var(--vino);color:#fff}
+.btn{background:var(--vino);color:#fff;border:0;border-radius:8px;padding:8px 14px;font:inherit;font-weight:600;cursor:pointer}
+.btn.sec{background:#fff;color:var(--vino);border:1px solid var(--vino)}
+.btn:disabled{opacity:.5;cursor:default}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--borde);border-radius:12px;padding:12px}
+.kpi .t{font-size:12px;color:var(--muted)}
+.kpi .v{font-size:22px;font-weight:700;margin-top:4px}
+.kpi .s{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sube{color:var(--sube)}.baja{color:var(--baja)}
+.grafico{width:100%;height:320px}
+.tablawrap{overflow-x:auto}
+table.t{width:100%;border-collapse:collapse;font-size:13px}
+table.t th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:7px 6px;border-bottom:1px solid var(--borde);white-space:nowrap;cursor:default}
+table.t th.ord{cursor:pointer}
+table.t td{padding:7px 6px;border-bottom:1px solid #f0ece8;vertical-align:middle}
+table.t tr.clic{cursor:pointer}
+table.t tr.clic:hover{background:var(--suave)}
+table.t tr.sel{background:#fbeeee}
+.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.cod{color:var(--muted);font-size:12px}
+.tag{display:inline-block;font-size:11px;padding:2px 7px;border-radius:10px;background:#eee;color:#555;white-space:nowrap}
+.tag.compra{background:#e8f1fb;color:#1f5d99}.tag.hist{background:#f3eadf;color:#8a5a12}.tag.ini{background:#ece8f6;color:#5b3d99}
+.vacio{color:var(--muted);text-align:center;padding:20px}
+.error{color:var(--sube);font-size:13px}
+.okmsg{color:var(--baja);font-size:13px}
+.det-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px}
+.det-cab h3{margin:0}
+.cerrar{background:none;border:0;font-size:22px;color:var(--muted);cursor:pointer;line-height:1}
+.grid2{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+.form{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;align-items:end}
+.form label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.form .full{grid-column:1/-1}
+.chk{flex-direction:row!important;align-items:center;gap:6px!important;color:var(--txt)!important;font-size:13px!important}
+.cargando{color:var(--muted);padding:30px;text-align:center}
+#login{max-width:340px;margin:60px auto}
+#login form{display:flex;flex-direction:column;gap:10px}
+@media (max-width:760px){
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .grid2,.form{grid-template-columns:1fr}
+  .m-ocultar{display:none}
+  .grafico{height:260px}
+  header h1{font-size:15px}
+}
+</style>
+</head>
+<body>
+
+<section id="login" class="oculto">
+  <div class="bloque">
+    <h3>Kadima · Costos de insumos</h3>
+    <form id="f-login">
+      <input id="l-email" type="email" placeholder="Correo" value="admin@kadima.pe" required>
+      <input id="l-pass" type="password" placeholder="Contraseña" required>
+      <button class="btn">Entrar</button>
+      <div id="l-error" class="error"></div>
+    </form>
+  </div>
+</section>
+
+<section id="app" class="oculto">
+  <header>
+    <h1>📈 Costos de insumos</h1>
+    <div class="tabs" id="tabs">
+      <button data-tab="evolucion" class="activa">Evolución</button>
+      <button data-tab="cargar">Cargar históricos</button>
+    </div>
+  </header>
+  <main id="main"></main>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
+// misma sesión que Kadima Gestión
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storageKey: 'kadima-gestion-auth' } });
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = n => String(n).padStart(2, '0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const S = (v, dec = 2) => v == null || isNaN(v) ? '—' : 'S/ ' + Number(v).toLocaleString('es-PE', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+const P = v => v == null || isNaN(v) ? '—' : (v > 0 ? '+' : '') + (v * 100).toFixed(1) + '%';
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'dic'];
+const fechaTxt = f => { const [y, m, d] = f.split('-'); return `${d}/${m}/${y}`; };
+const UNI = u => ({ Kilo: 'kg', Litro: 'L', Unidad: 'und' }[u] || u || '');
+const TIPOS = [['insumo', 'Insumos'], ['paqueteria', 'Paquetería'], ['mercaderia', 'Mercadería'], ['', 'Todos']];
+const usuarioId = () => { try { return (window.parent && window.parent.KADIMA_USUARIO && window.parent.KADIMA_USUARIO.id) || (window.KADIMA_USUARIO && window.KADIMA_USUARIO.id) || null; } catch (e) { return null; } };
+const leer = k => { try { return localStorage.getItem('kcostos_' + k); } catch (e) { return null; } };
+const guardar = (k, v) => { try { localStorage.setItem('kcostos_' + k, v); } catch (e) {} };
+const errTxt = e => /fetch/i.test(e?.message || '') ? 'Sin conexión a internet.' : (e?.message || String(e));
+
+const hoy = new Date();
+const st = {
+  tab: 'evolucion', prods: [], datos: [], rango: leer('rango') || '12m', desde: '', hasta: iso(hoy),
+  tipo: leer('tipo') ?? 'insumo', base: leer('base') || 'neto', agr: leer('agr') || 'mes', q: '',
+  orden: 'var', ordenDir: -1, sel: null, comparar: new Set(), charts: {}
+};
+
+// ===== SESIÓN =====
+$('f-login').addEventListener('submit', async ev => {
+  ev.preventDefault(); $('l-error').textContent = '';
+  const { error } = await sb.auth.signInWithPassword({ email: $('l-email').value.trim(), password: $('l-pass').value });
+  if (error) return $('l-error').textContent = /Invalid login/i.test(error.message) ? 'Correo o contraseña incorrectos.' : errTxt(error);
+  iniciar();
+});
+async function iniciar() {
+  const { data } = await sb.auth.getSession();
+  if (!data.session) { $('login').classList.remove('oculto'); $('app').classList.add('oculto'); return; }
+  $('login').classList.add('oculto'); $('app').classList.remove('oculto');
+  await cargarProductos();
+  abrirTab(st.tab);
+}
+$('tabs').onclick = e => { const t = e.target.dataset.tab; if (!t) return; st.tab = t; [...$('tabs').children].forEach(b => b.classList.toggle('activa', b.dataset.tab === t)); abrirTab(t); };
+function abrirTab(t) { Object.values(st.charts).forEach(c => c && c.dispose()); st.charts = {}; t === 'cargar' ? tabCargar() : tabEvolucion(); }
+window.addEventListener('resize', () => Object.values(st.charts).forEach(c => c && c.resize()));
+
+async function traerTodo(armar) {
+  let out = [], i = 0;
+  for (;;) {
+    const { data, error } = await armar().range(i, i + 999);
+    if (error) throw error;
+    out = out.concat(data);
+    if (data.length < 1000) break;
+    i += 1000;
+  }
+  return out;
+}
+async function cargarProductos() {
+  try {
+    st.prods = await traerTodo(() => sb.from('productos').select('id,codigo,nombre,tipo_item,unidad_medida,afecto_igv').in('tipo_item', ['insumo', 'paqueteria', 'mercaderia']).order('nombre'));
+  } catch (e) { st.prods = []; }
+}
+
+// ===== RANGO / PERIODOS =====
+function calcDesde() {
+  const d = new Date(hoy);
+  if (st.rango === '3m') d.setMonth(d.getMonth() - 3);
+  else if (st.rango === '6m') d.setMonth(d.getMonth() - 6);
+  else if (st.rango === '12m') d.setMonth(d.getMonth() - 12);
+  else if (st.rango === 'anio') { d.setMonth(0); d.setDate(1); }
+  else if (st.rango === 'todo') return '2000-01-01';
+  else return st.desde || '2000-01-01';
+  return iso(d);
+}
+function periodo(f) {
+  if (st.agr === 'mes') return f.slice(0, 7) + '-01';
+  const d = new Date(f + 'T12:00:00'); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return iso(d);
+}
+function periodoTxt(k) {
+  const [y, m, d] = k.split('-');
+  return st.agr === 'mes' ? `${MESES[+m - 1]} ${y.slice(2)}` : `${d}/${m}`;
+}
+const precio = r => Number(st.base === 'neto' ? r.costo_neto : r.costo_bruto);
+
+// ===== EVOLUCIÓN =====
+async function tabEvolucion() {
+  $('main').innerHTML = `
+  <div class="bloque">
+    <div class="filtros">
+      <div class="chips" id="f-rango">${[['3m', '3 meses'], ['6m', '6 meses'], ['12m', '12 meses'], ['anio', 'Este año'], ['todo', 'Todo']].map(([k, t]) => `<button data-k="${k}" class="${st.rango === k ? 'activa' : ''}">${t}</button>`).join('')}</div>
+      <div class="chips" id="f-tipo">${TIPOS.map(([k, t]) => `<button data-k="${k}" class="${st.tipo === k ? 'activa' : ''}">${t}</button>`).join('')}</div>
+      <div class="chips" id="f-base"><button data-k="neto" class="${st.base === 'neto' ? 'activa' : ''}">Sin IGV</button><button data-k="bruto" class="${st.base === 'bruto' ? 'activa' : ''}">Con IGV</button></div>
+      <div class="chips" id="f-agr"><button data-k="mes" class="${st.agr === 'mes' ? 'activa' : ''}">Por mes</button><button data-k="semana" class="${st.agr === 'semana' ? 'activa' : ''}">Por semana</button></div>
+      <input id="f-q" placeholder="Buscar insumo o código" value="${esc(st.q)}" style="flex:1;min-width:160px">
+    </div>
+  </div>
+  <div id="contenido"><div class="cargando">Cargando costos…</div></div>`;
+  const chips = (id, key, recargar) => $(id).onclick = e => {
+    const k = e.target.dataset.k; if (k === undefined) return;
+    st[key] = k; guardar(key, k);
+    [...$(id).children].forEach(b => b.classList.toggle('activa', b.dataset.k === k));
+    recargar ? cargarDatos() : pintar();
+  };
+  chips('f-rango', 'rango', true); chips('f-tipo', 'tipo'); chips('f-base', 'base'); chips('f-agr', 'agr');
+  $('f-q').oninput = () => { st.q = $('f-q').value.trim().toLowerCase(); pintar(); };
+  cargarDatos();
+}
+async function cargarDatos() {
+  $('contenido').innerHTML = '<div class="cargando">Cargando costos…</div>';
+  const desde = calcDesde();
+  try {
+    st.datos = await traerTodo(() => sb.from('v_costos_evolucion').select('*').gte('fecha', desde).lte('fecha', iso(hoy)).order('fecha').order('producto_id'));
+  } catch (e) {
+    return $('contenido').innerHTML = `<div class="bloque error">${esc(errTxt(e))}<br><small>¿Ya corriste el script 39_costos_historicos.sql?</small></div>`;
+  }
+  pintar();
+}
+
+function resumen() {
+  const por = new Map();
+  for (const r of st.datos) {
+    if (st.tipo && r.tipo_item !== st.tipo) continue;
+    if (st.q && !(r.nombre || '').toLowerCase().includes(st.q) && !(r.codigo || '').toLowerCase().includes(st.q)) continue;
+    if (!(precio(r) >= 0)) continue;
+    if (!por.has(r.producto_id)) por.set(r.producto_id, { id: r.producto_id, codigo: r.codigo, nombre: r.nombre, unidad: r.unidad_medida, tipo: r.tipo_item, filas: [] });
+    por.get(r.producto_id).filas.push(r);
+  }
+  const items = [];
+  for (const it of por.values()) {
+    const per = new Map(); let min = Infinity, max = -Infinity, gasto = 0;
+    for (const r of it.filas) {
+      const p = precio(r), w = Number(r.cantidad) > 0 ? Number(r.cantidad) : 1, k = periodo(r.fecha);
+      if (!per.has(k)) per.set(k, { s: 0, w: 0 });
+      const a = per.get(k); a.s += p * w; a.w += w;
+      min = Math.min(min, p); max = Math.max(max, p);
+      if (r.fuente === 'compra') gasto += p * (Number(r.cantidad) || 0);
+    }
+    it.serie = [...per.keys()].sort().map(k => ({ k, v: per.get(k).s / per.get(k).w }));
+    it.ini = it.serie[0].v; it.ult = it.serie[it.serie.length - 1].v;
+    it.var = it.serie.length > 1 && it.ini > 0 ? it.ult / it.ini - 1 : null;
+    it.min = min; it.max = max; it.gasto = gasto; it.n = it.filas.length;
+    it.ultFecha = it.filas[it.filas.length - 1].fecha;
+    items.push(it);
+  }
+  return items;
+}
+
+function indiceGeneral(items) {
+  const conVar = items.filter(i => i.var != null);
+  const keys = [...new Set(items.flatMap(i => i.serie.map(s => s.k)))].sort();
+  if (!conVar.length) return { keys, vals: keys.map(() => null), porGasto: false };
+  const conGasto = conVar.filter(i => i.gasto > 0);
+  const porGasto = conGasto.length > 0;
+  const gProm = porGasto ? conGasto.reduce((a, i) => a + i.gasto, 0) / conGasto.length : 1;
+  const vals = keys.map(k => {
+    let s = 0, w = 0;
+    for (const i of conVar) {
+      let v = null;
+      for (const p of i.serie) { if (p.k <= k) v = p.v; else break; }
+      if (v == null) continue;
+      const peso = porGasto ? (i.gasto || gProm) : 1;
+      s += (v / i.ini * 100) * peso; w += peso;
+    }
+    return w ? Math.round(s / w * 10) / 10 : null;
+  });
+  return { keys, vals, porGasto };
+}
+function serieBase100(it, keys) {
+  return keys.map(k => { let v = null; for (const p of it.serie) { if (p.k <= k) v = p.v; else break; } return v == null ? null : Math.round(v / it.ini * 1000) / 10; });
+}
+function spark(serie) {
+  if (serie.length < 2) return '<span class="cod">—</span>';
+  const vs = serie.map(s => s.v), mn = Math.min(...vs), mx = Math.max(...vs), W = 80, H = 22;
+  const pts = vs.map((v, i) => `${(i / (vs.length - 1) * W).toFixed(1)},${(mx === mn ? H / 2 : H - 2 - (v - mn) / (mx - mn) * (H - 4)).toFixed(1)}`).join(' ');
+  const color = vs[vs.length - 1] > vs[0] ? 'var(--sube)' : vs[vs.length - 1] < vs[0] ? 'var(--baja)' : '#999';
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6"/></svg>`;
+}
+
+function pintar() {
+  if (!$('contenido')) return;
+  const items = resumen();
+  Object.values(st.charts).forEach(c => c && c.dispose()); st.charts = {};
+  if (!items.length) {
+    return $('contenido').innerHTML = `<div class="bloque vacio">No hay costos en este rango.<br>Registra compras o carga costos de periodos anteriores en <b>Cargar históricos</b>.</div>`;
+  }
+  const ind = indiceGeneral(items);
+  const ultIdx = [...ind.vals].reverse().find(v => v != null);
+  const conVar = items.filter(i => i.var != null);
+  const suben = conVar.filter(i => i.var > 0.005), bajan = conVar.filter(i => i.var < -0.005);
+  const mayor = conVar.slice().sort((a, b) => b.var - a.var)[0], menor = conVar.slice().sort((a, b) => a.var - b.var)[0];
+  const dir = st.ordenDir;
+  const ord = {
+    var: (a, b) => ((a.var ?? -Infinity) - (b.var ?? -Infinity)) * dir,
+    nombre: (a, b) => a.nombre.localeCompare(b.nombre) * dir,
+    ult: (a, b) => (a.ult - b.ult) * dir,
+    gasto: (a, b) => (a.gasto - b.gasto) * dir,
+  }[st.orden];
+  items.sort(ord);
+  const flecha = k => st.orden === k ? (dir < 0 ? ' ▼' : ' ▲') : '';
+
+  $('contenido').innerHTML = `
+  <div class="kpis">
+    <div class="kpi"><div class="t">Variación general</div><div class="v ${ultIdx > 100 ? 'sube' : ultIdx < 100 ? 'baja' : ''}">${ultIdx == null ? '—' : P(ultIdx / 100 - 1)}</div><div class="s">${ind.porGasto ? 'ponderada por monto comprado' : 'promedio simple'}</div></div>
+    <div class="kpi"><div class="t">Insumos que subieron</div><div class="v sube">${suben.length}</div><div class="s">de ${conVar.length} con 2+ periodos · bajaron ${bajan.length}</div></div>
+    <div class="kpi"><div class="t">Mayor alza</div><div class="v sube">${mayor && mayor.var > 0 ? P(mayor.var) : '—'}</div><div class="s">${mayor && mayor.var > 0 ? esc(mayor.nombre) : 'sin alzas'}</div></div>
+    <div class="kpi"><div class="t">Mayor baja</div><div class="v baja">${menor && menor.var < 0 ? P(menor.var) : '—'}</div><div class="s">${menor && menor.var < 0 ? esc(menor.nombre) : 'sin bajas'}</div></div>
+  </div>
+  <div class="bloque">
+    <h3>Índice de costo (base 100 = primer periodo)</h3>
+    <p class="ayuda">110 = 10% más caro que al inicio del rango. Marca insumos en la tabla para compararlos aquí.</p>
+    <div id="g-indice" class="grafico"></div>
+  </div>
+  <div id="detalle"></div>
+  <div class="bloque">
+    <h3>Por insumo · ${items.length}</h3>
+    <div class="tablawrap"><table class="t">
+      <tr><th></th><th class="ord" data-o="nombre">Insumo${flecha('nombre')}</th><th class="n m-ocultar">Primer</th><th class="n ord" data-o="ult">Último${flecha('ult')}</th>
+      <th class="n ord" data-o="var">Var.${flecha('var')}</th><th class="m-ocultar">Tendencia</th><th class="n m-ocultar">Mín – Máx</th><th class="n ord m-ocultar" data-o="gasto">Comprado${flecha('gasto')}</th><th class="n m-ocultar">Últ. registro</th></tr>
+      ${items.map(i => `<tr class="clic ${st.sel === i.id ? 'sel' : ''}" data-p="${i.id}">
+        <td><input type="checkbox" data-c="${i.id}" ${st.comparar.has(i.id) ? 'checked' : ''} title="Comparar en el gráfico"></td>
+        <td>${esc(i.nombre)}<br><span class="cod">${esc(i.codigo)} · por ${UNI(i.unidad)}</span></td>
+        <td class="n m-ocultar">${S(i.ini, 3)}</td><td class="n"><b>${S(i.ult, 3)}</b></td>
+        <td class="n ${i.var > 0.005 ? 'sube' : i.var < -0.005 ? 'baja' : ''}">${P(i.var)}</td>
+        <td class="m-ocultar">${spark(i.serie)}</td>
+        <td class="n m-ocultar">${S(i.min, 2)} – ${S(i.max, 2)}</td>
+        <td class="n m-ocultar">${i.gasto ? S(i.gasto, 0) : '—'}</td>
+        <td class="n m-ocultar">${fechaTxt(i.ultFecha)}</td></tr>`).join('')}
+    </table></div>
+  </div>`;
+
+  // gráfico índice
+  const series = [{ name: 'General', type: 'line', data: ind.vals, smooth: true, symbolSize: 6, lineStyle: { width: 3, color: '#8B0000' }, itemStyle: { color: '#8B0000' }, connectNulls: true,
+    markLine: { silent: true, symbol: 'none', lineStyle: { type: 'dashed', color: '#999' }, data: [{ yAxis: 100 }], label: { formatter: '100' } } }];
+  for (const id of st.comparar) {
+    const it = items.find(i => i.id === id); if (!it) continue;
+    series.push({ name: it.nombre, type: 'line', data: serieBase100(it, ind.keys), smooth: true, symbolSize: 5 });
+  }
+  const g = echarts.init($('g-indice'));
+  g.setOption({
+    grid: { left: 40, right: 16, top: 30, bottom: 30 },
+    tooltip: { trigger: 'axis', valueFormatter: v => v == null ? '—' : v.toFixed(1) },
+    legend: { top: 0, type: 'scroll' },
+    xAxis: { type: 'category', data: ind.keys.map(periodoTxt) },
+    yAxis: { type: 'value', scale: true },
+    series
+  });
+  st.charts.indice = g;
+
+  // eventos tabla
+  $('contenido').querySelectorAll('th[data-o]').forEach(th => th.onclick = () => {
+    const o = th.dataset.o; if (st.orden === o) st.ordenDir *= -1; else { st.orden = o; st.ordenDir = o === 'nombre' ? 1 : -1; } pintar();
+  });
+  $('contenido').querySelectorAll('tr[data-p]').forEach(tr => tr.onclick = e => {
+    const id = Number(tr.dataset.p);
+    if (e.target.dataset.c) { e.target.checked ? st.comparar.add(id) : st.comparar.delete(id); return pintar(); }
+    st.sel = st.sel === id ? null : id; pintar();
+    if (st.sel) $('detalle').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  if (st.sel) pintarDetalle(items.find(i => i.id === st.sel));
+}
+
+function pintarDetalle(it) {
+  if (!it) { st.sel = null; return; }
+  const tagF = f => f === 'compra' ? '<span class="tag compra">Compra</span>' : f === 'histórico' ? '<span class="tag hist">Histórico</span>' : '<span class="tag ini">Inv. inicial</span>';
+  const provs = new Map();
+  for (const r of it.filas) {
+    const k = r.proveedor || '(sin proveedor)';
+    if (!provs.has(k)) provs.set(k, { s: 0, w: 0, n: 0, ult: null, ultP: null });
+    const a = provs.get(k), w = Number(r.cantidad) > 0 ? Number(r.cantidad) : 1;
+    a.s += precio(r) * w; a.w += w; a.n++; a.ult = r.fecha; a.ultP = precio(r);
+  }
+  const listaProv = [...provs.entries()].map(([k, a]) => ({ k, prom: a.s / a.w, n: a.n, ult: a.ult, ultP: a.ultP })).sort((a, b) => a.prom - b.prom);
+  $('detalle').innerHTML = `
+  <div class="bloque">
+    <div class="det-cab"><div><h3>${esc(it.nombre)}</h3><span class="cod">${esc(it.codigo)} · costo ${st.base === 'neto' ? 'sin IGV' : 'con IGV'} por ${UNI(it.unidad)} · ${it.n} registros</span></div><button class="cerrar" id="d-cerrar">×</button></div>
+    <div id="g-det" class="grafico"></div>
+    <div class="grid2" style="margin-top:10px">
+      <div class="tablawrap"><table class="t">
+        <tr><th>Fecha</th><th>Origen</th><th class="n">Costo</th><th class="n m-ocultar">Cant.</th><th>Proveedor / ref.</th><th></th></tr>
+        ${it.filas.slice().reverse().map(r => `<tr><td>${fechaTxt(r.fecha)}</td><td>${tagF(r.fuente)}</td><td class="n">${S(precio(r), 3)}</td>
+          <td class="n m-ocultar">${r.cantidad ? Number(r.cantidad).toLocaleString('es-PE') : '—'}</td>
+          <td>${esc(r.proveedor || '')}<br><span class="cod">${esc(r.referencia || '')}</span></td>
+          <td>${r.hist_id ? `<button class="cerrar" style="font-size:16px" title="Borrar registro histórico" data-borrar="${r.hist_id}">🗑</button>` : ''}</td></tr>`).join('')}
+      </table></div>
+      <div class="tablawrap"><table class="t">
+        <tr><th>Proveedor</th><th class="n">Prom.</th><th class="n">Último</th></tr>
+        ${listaProv.map((p, i) => `<tr><td>${esc(p.k)}${i === 0 && listaProv.length > 1 ? ' <span class="tag compra">más barato</span>' : ''}<br><span class="cod">${p.n} registros · ${fechaTxt(p.ult)}</span></td><td class="n">${S(p.prom, 3)}</td><td class="n">${S(p.ultP, 3)}</td></tr>`).join('')}
+      </table></div>
+    </div>
+  </div>`;
+  $('d-cerrar').onclick = () => { st.sel = null; pintar(); };
+  $('detalle').querySelectorAll('[data-borrar]').forEach(b => b.onclick = async () => {
+    if (!confirm('¿Borrar este costo histórico? No afecta stock ni compras.')) return;
+    const { error } = await sb.from('costos_historicos').delete().eq('id', Number(b.dataset.borrar));
+    if (error) return alert(errTxt(error));
+    cargarDatos();
+  });
+  const fuentes = [['compra', 'Compras', '#1f5d99'], ['histórico', 'Históricos', '#c2861a'], ['inventario inicial', 'Inv. inicial', '#5b3d99']];
+  const g = echarts.init($('g-det'));
+  g.setOption({
+    grid: { left: 50, right: 16, top: 30, bottom: 30 },
+    legend: { top: 0 },
+    tooltip: { trigger: 'item', formatter: p => p.seriesType === 'line'
+      ? `${periodoTxt(p.value[0])}<br>Promedio: <b>${S(p.value[1], 3)}</b>`
+      : `${fechaTxt(p.value[0])} · ${p.seriesName}<br><b>${S(p.value[1], 3)}</b>${p.value[2] ? '<br>' + esc(p.value[2]) : ''}` },
+    xAxis: { type: 'time' },
+    yAxis: { type: 'value', scale: true, axisLabel: { formatter: v => 'S/ ' + v.toFixed(2) } },
+    series: [{ name: st.agr === 'mes' ? 'Promedio mensual' : 'Promedio semanal', type: 'line', step: 'end', data: it.serie.map(s => [s.k, Math.round(s.v * 10000) / 10000]), lineStyle: { color: '#8B0000', width: 2 }, itemStyle: { color: '#8B0000' }, symbolSize: 4 }]
+      .concat(fuentes.map(([f, n, c]) => ({ name: n, type: 'scatter', symbolSize: 8, itemStyle: { color: c },
+        data: it.filas.filter(r => r.fuente === f).map(r => [r.fecha, precio(r), r.proveedor || ''] ) })).filter(s => s.data.length))
+  });
+  st.charts.det = g;
+}
+
+// ===== CARGAR HISTÓRICOS =====
+let filasExcel = [];
+function tabCargar() {
+  $('main').innerHTML = `
+  <div class="bloque">
+    <h3>Cargar costos de periodos anteriores</h3>
+    <p class="ayuda">Estos costos son <b>solo registro</b>: no mueven stock, no cambian el costo promedio y no afectan recetas. Sirven para ver cómo evolucionó el precio de cada insumo antes de usar el sistema.<br>
+    El costo va <b>por unidad base</b> (kg, L o unidad, igual que en el maestro). Si un insumo ya tiene costo para esa fecha y proveedor, se reemplaza.</p>
+    <div class="filtros">
+      <button class="btn sec" id="x-plantilla">⬇ Descargar plantilla</button>
+      <label class="btn" style="flex-direction:row;color:#fff">⬆ Subir Excel<input type="file" id="x-file" accept=".xlsx,.xls,.csv" class="oculto"></label>
+    </div>
+    <div id="x-prev" style="margin-top:12px"></div>
+  </div>
+  <div class="bloque">
+    <h3>Registrar uno</h3>
+    <div class="form">
+      <label>Insumo<input id="m-prod" list="m-lista" placeholder="Escribe nombre o código"></label>
+      <datalist id="m-lista">${st.prods.map(p => `<option value="${esc(p.codigo)} · ${esc(p.nombre)}"></option>`).join('')}</datalist>
+      <label>Fecha (o 1.º del mes)<input id="m-fecha" type="date" max="${iso(hoy)}"></label>
+      <label>Costo unitario S/<input id="m-costo" type="number" step="0.0001" min="0" inputmode="decimal"></label>
+      <label class="chk"><input type="checkbox" id="m-igv"> Incluye IGV</label>
+      <label>Proveedor (opcional)<input id="m-prov"></label>
+      <label class="full">Nota (opcional)<input id="m-nota" placeholder="Ej.: precio de lista, factura antigua…"></label>
+      <div class="full"><button class="btn" id="m-ok">Guardar</button> <span id="m-msg"></span></div>
+    </div>
+  </div>
+  <div class="bloque">
+    <h3>Últimos históricos cargados</h3>
+    <div id="h-lista" class="cargando">Cargando…</div>
+  </div>`;
+  $('x-plantilla').onclick = descargarPlantilla;
+  $('x-file').onchange = leerExcel;
+  $('m-ok').onclick = guardarUno;
+  listarHistoricos();
+}
+
+function descargarPlantilla() {
+  const filas = [['Código', 'Producto', 'Unidad', 'Fecha', 'Costo unitario S/', 'Incluye IGV', 'Proveedor', 'Nota']];
+  st.prods.forEach(p => filas.push([p.codigo, p.nombre, p.unidad_medida || '', '', '', 'No', '', '']));
+  const ws = XLSX.utils.aoa_to_sheet(filas);
+  ws['!cols'] = [{ wch: 10 }, { wch: 34 }, { wch: 8 }, { wch: 12 }, { wch: 16 }, { wch: 11 }, { wch: 22 }, { wch: 28 }];
+  const ins = XLSX.utils.aoa_to_sheet([
+    ['Cómo llenar'],
+    ['1. Una fila por insumo y fecha. Si tienes varios meses del mismo insumo, copia la fila y cambia la fecha.'],
+    ['2. Fecha: dd/mm/aaaa, o solo el mes (03/2026, mar-2026). Si pones solo el mes, se toma el día 1.'],
+    ['3. Costo unitario por unidad base (kg, L o unidad, la columna Unidad).'],
+    ['4. Incluye IGV: Sí si el precio es con IGV; No si es sin IGV. El sistema calcula el otro.'],
+    ['5. Las filas sin costo se ignoran. No borres la columna Código.'],
+  ]);
+  ins['!cols'] = [{ wch: 100 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Costos');
+  XLSX.utils.book_append_sheet(wb, ins, 'Instrucciones');
+  XLSX.writeFile(wb, 'plantilla_costos_historicos.xlsx');
+}
+
+function parseFecha(v) {
+  if (v == null || v === '') return null;
+  let y, m, d;
+  if (typeof v === 'number') {
+    const f = new Date(Math.round((v - 25569) * 86400000));
+    y = f.getUTCFullYear(); m = f.getUTCMonth() + 1; d = f.getUTCDate();
+  } else {
+    const s = String(v).trim().toLowerCase(); let x;
+    if ((x = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) [y, m, d] = [+x[1], +x[2], +x[3]];
+    else if ((x = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/))) [d, m, y] = [+x[1], +x[2], +x[3]];
+    else if ((x = s.match(/^(\d{4})[\/\-](\d{1,2})$/))) [y, m, d] = [+x[1], +x[2], 1];
+    else if ((x = s.match(/^(\d{1,2})[\/\-](\d{4})$/))) [m, y, d] = [+x[1], +x[2], 1];
+    else if ((x = s.match(/^([a-záéíóú]+)\.?[\s\-\/]*(?:de\s+|del\s+)?(\d{2,4})$/))) {
+      const t = x[1].normalize('NFD').replace(/[\u0300-\u036f]/g, '').slice(0, 3);
+      const i = MESES.indexOf(t === 'sep' ? 'set' : t);
+      if (i < 0) return null;
+      [y, m, d] = [+x[2], i + 1, 1];
+    } else return null;
+    if (y < 100) y += 2000;
+  }
+  const f = new Date(y, m - 1, d);
+  if (f.getFullYear() !== y || f.getMonth() !== m - 1 || f.getDate() !== d) return null;
+  return iso(f);
+}
+function parseCosto(v) {
+  if (typeof v === 'number') return v;
+  let s = String(v ?? '').replace(/s\/|\s/gi, '');
+  if (!s) return null;
+  if (s.includes(',') && !s.includes('.')) s = s.replace(',', '.'); else s = s.replace(/,/g, '');
+  const n = parseFloat(s); return isNaN(n) ? null : n;
+}
+
+async function leerExcel(ev) {
+  const file = ev.target.files[0]; if (!file) return;
+  const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+  const ws = wb.Sheets['Costos'] || wb.Sheets[wb.SheetNames[0]];
+  const filas = XLSX.utils.sheet_to_json(ws, { defval: '', raw: true });
+  const porCod = new Map(st.prods.map(p => [String(p.codigo).toUpperCase(), p]));
+  const col = (r, ...ns) => { for (const k of Object.keys(r)) { const kk = k.toLowerCase(); if (ns.some(n => kk.startsWith(n))) return r[k]; } return ''; };
+  const hoyIso = iso(hoy);
+  filasExcel = [];
+  filas.forEach((r, i) => {
+    const costoRaw = col(r, 'costo');
+    if (costoRaw === '' || costoRaw == null) return;
+    const codigo = String(col(r, 'código', 'codigo')).trim();
+    const fecha = parseFecha(col(r, 'fecha'));
+    const costo = parseCosto(costoRaw);
+    const igvTxt = String(col(r, 'incluye')).trim().toLowerCase();
+    const p = porCod.get(codigo.toUpperCase());
+    let err = '';
+    if (!p) err = 'Código no existe';
+    else if (!fecha) err = 'Fecha no válida';
+    else if (fecha > hoyIso) err = 'Fecha futura';
+    else if (costo == null || costo < 0) err = 'Costo no válido';
+    filasExcel.push({ fila: i + 2, codigo, nombre: p ? p.nombre : String(col(r, 'producto')), fecha, costo,
+      incluye_igv: /^s/.test(igvTxt), proveedor: String(col(r, 'proveedor')).trim(), nota: String(col(r, 'nota')).trim(), err });
+  });
+  ev.target.value = '';
+  pintarPrevia();
+}
+function pintarPrevia() {
+  const ok = filasExcel.filter(f => !f.err), mal = filasExcel.filter(f => f.err);
+  if (!filasExcel.length) return $('x-prev').innerHTML = '<p class="error">No encontré filas con costo. Revisa que la columna "Costo unitario S/" tenga valores.</p>';
+  $('x-prev').innerHTML = `
+    <p><b>${ok.length}</b> filas listas${mal.length ? ` · <span class="error">${mal.length} con error (no se cargan)</span>` : ''}</p>
+    <div class="tablawrap" style="max-height:340px;overflow:auto"><table class="t">
+      <tr><th>Fila</th><th>Insumo</th><th>Fecha</th><th class="n">Costo</th><th>IGV</th><th class="m-ocultar">Proveedor</th><th>Estado</th></tr>
+      ${filasExcel.map(f => `<tr><td>${f.fila}</td><td>${esc(f.nombre)}<br><span class="cod">${esc(f.codigo)}</span></td><td>${f.fecha ? fechaTxt(f.fecha) : '—'}</td>
+        <td class="n">${S(f.costo, 3)}</td><td>${f.incluye_igv ? 'Con' : 'Sin'}</td><td class="m-ocultar">${esc(f.proveedor)}</td>
+        <td>${f.err ? `<span class="error">${esc(f.err)}</span>` : '<span class="okmsg">✓</span>'}</td></tr>`).join('')}
+    </table></div>
+    <div style="margin-top:10px"><button class="btn" id="x-cargar" ${ok.length ? '' : 'disabled'}>Cargar ${ok.length} filas</button> <span id="x-msg"></span></div>`;
+  $('x-cargar').onclick = async () => {
+    $('x-cargar').disabled = true; $('x-msg').textContent = 'Cargando…';
+    let cargados = 0, errores = [];
+    for (let i = 0; i < ok.length; i += 400) {
+      const lote = ok.slice(i, i + 400).map(({ fila, codigo, fecha, costo, incluye_igv, proveedor, nota }) => ({ fila, codigo, fecha, costo, incluye_igv, proveedor, nota }));
+      const { data, error } = await sb.rpc('cargar_costos_historicos', { p_filas: lote, p_usuario: usuarioId() });
+      if (error) { $('x-msg').innerHTML = `<span class="error">${esc(errTxt(error))}</span>`; $('x-cargar').disabled = false; return; }
+      cargados += data.cargados; errores = errores.concat(data.errores || []);
+    }
+    $('x-msg').innerHTML = `<span class="okmsg">✓ ${cargados} costos cargados.</span>` + (errores.length ? `<br><span class="error">${errores.length} con error: ${errores.slice(0, 8).map(e => `fila ${e.fila}: ${esc(e.error)}`).join(' · ')}</span>` : '');
+    filasExcel = [];
+    listarHistoricos();
+  };
+}
+
+async function guardarUno() {
+  const txt = $('m-prod').value.trim(); $('m-msg').textContent = '';
+  const p = st.prods.find(x => txt.toUpperCase().startsWith(String(x.codigo).toUpperCase() + ' ')) || st.prods.find(x => x.codigo.toUpperCase() === txt.toUpperCase());
+  if (!p) return $('m-msg').innerHTML = '<span class="error">Elige un insumo de la lista.</span>';
+  const fecha = $('m-fecha').value, costo = parseCosto($('m-costo').value);
+  if (!fecha) return $('m-msg').innerHTML = '<span class="error">Pon la fecha.</span>';
+  if (costo == null || costo < 0) return $('m-msg').innerHTML = '<span class="error">Pon el costo.</span>';
+  $('m-ok').disabled = true;
+  const { data, error } = await sb.rpc('cargar_costos_historicos', { p_filas: [{ fila: 1, codigo: p.codigo, fecha, costo, incluye_igv: $('m-igv').checked, proveedor: $('m-prov').value, nota: $('m-nota').value }], p_usuario: usuarioId() });
+  $('m-ok').disabled = false;
+  if (error) return $('m-msg').innerHTML = `<span class="error">${esc(errTxt(error))}</span>`;
+  if (data.errores && data.errores.length) return $('m-msg').innerHTML = `<span class="error">${esc(data.errores[0].error)}</span>`;
+  $('m-msg').innerHTML = `<span class="okmsg">✓ Guardado: ${esc(p.nombre)} ${fechaTxt(fecha)}</span>`;
+  $('m-costo').value = ''; $('m-nota').value = '';
+  listarHistoricos();
+}
+
+async function listarHistoricos() {
+  const { data, error } = await sb.from('v_costos_evolucion').select('*').eq('fuente', 'histórico').order('fecha', { ascending: false }).order('nombre').limit(200);
+  if (!$('h-lista')) return;
+  if (error) return $('h-lista').innerHTML = `<span class="error">${esc(errTxt(error))}<br><small>¿Ya corriste el script 39_costos_historicos.sql?</small></span>`;
+  $('h-lista').className = '';
+  $('h-lista').innerHTML = data.length ? `<div class="tablawrap"><table class="t">
+    <tr><th>Fecha</th><th>Insumo</th><th class="n">Sin IGV</th><th class="n m-ocultar">Con IGV</th><th class="m-ocultar">Proveedor</th><th class="m-ocultar">Nota</th><th></th></tr>
+    ${data.map(r => `<tr><td>${fechaTxt(r.fecha)}</td><td>${esc(r.nombre)}<br><span class="cod">${esc(r.codigo)} · por ${UNI(r.unidad_medida)}</span></td>
+      <td class="n">${S(r.costo_neto, 3)}</td><td class="n m-ocultar">${S(r.costo_bruto, 3)}</td><td class="m-ocultar">${esc(r.proveedor || '')}</td>
+      <td class="m-ocultar cod">${esc(r.referencia === 'Registro histórico' ? '' : r.referencia)}</td>
+      <td><button class="cerrar" style="font-size:16px" data-borrar="${r.hist_id}" title="Borrar">🗑</button></td></tr>`).join('')}
+  </table></div>${data.length === 200 ? '<p class="ayuda">Mostrando los últimos 200.</p>' : ''}` : '<div class="vacio">Aún no hay costos históricos.</div>';
+  $('h-lista').querySelectorAll('[data-borrar]').forEach(b => b.onclick = async () => {
+    if (!confirm('¿Borrar este costo histórico? No afecta stock ni compras.')) return;
+    const { error } = await sb.from('costos_historicos').delete().eq('id', Number(b.dataset.borrar));
+    if (error) return alert(errTxt(error));
+    listarHistoricos();
+  });
+}
+
+iniciar();
+</script>
+</body>
+</html>
