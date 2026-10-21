@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kadima Pedidos web</title>
+<meta name="theme-color" content="#8B0000">
+<link rel="icon" href="pos-icon-192.png">
+<style>
+:root{--rojo:#8B0000;--fondo:#f6f4f2;--borde:#e3dfdb;--gris:#6b6b6b;--texto:#1f1f1f;--ok:#1e7d3a;--aviso:#b26a00;--mal:#b00020;--azul:#1f5fbf;--yape:#742284}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--fondo);color:var(--texto);font-size:14px}
+button{font:inherit;cursor:pointer;border:none;border-radius:8px}
+input,select{font:inherit;padding:8px 10px;border:1px solid var(--borde);border-radius:8px;background:#fff;color:inherit}
+.oculto{display:none!important}
+.btn{background:var(--rojo);color:#fff;padding:10px 16px;font-weight:600}
+.error{color:var(--mal);min-height:18px;margin-top:8px}
+.centro{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.tarjeta{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);padding:24px;width:100%;max-width:380px}
+.tarjeta input{width:100%}
+.marca{color:var(--rojo);font-weight:800;font-size:22px;margin:0}.sub{color:var(--gris);margin:4px 0 16px}
+.pin-puntos{display:flex;gap:10px;justify-content:center;margin:10px 0 16px}
+.pin-puntos span{width:14px;height:14px;border-radius:50%;border:2px solid var(--rojo)}.pin-puntos span.lleno{background:var(--rojo)}
+.teclado{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.teclado button{padding:16px;font-size:20px;background:var(--fondo);font-weight:600}
+
+.barra{background:var(--rojo);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:5;flex-wrap:wrap}
+.barra b{font-size:18px}
+.barra .usr{margin-left:auto;font-size:13px;opacity:.9}
+.barra .vivo{font-size:12px;font-weight:700;padding:3px 9px;border-radius:12px;background:rgba(255,255,255,.18)}
+.embebido .barra>b,.embebido .barra .usr{display:none}
+.embebido .barra{background:#fff;color:var(--texto);border-bottom:1px solid var(--borde)}
+.embebido .barra .vivo{background:var(--fondo)}
+.barra select{color:var(--texto);padding:6px 8px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button{background:rgba(255,255,255,.15);color:inherit;padding:7px 12px;font-weight:600;font-size:13px}
+.tabs button.activa{background:#fff;color:var(--rojo)}
+.embebido .tabs button{background:var(--fondo)}.embebido .tabs button.activa{background:var(--rojo);color:#fff}
+.tabs .n{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--mal);color:#fff;font-size:11px;margin-left:4px}
+
+.tablero{display:grid;grid-template-columns:repeat(4,minmax(260px,1fr));gap:12px;padding:14px;align-items:start;overflow-x:auto}
+.col h3{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--gris);display:flex;justify-content:space-between}
+.col h3 span{background:#fff;border-radius:10px;padding:0 8px;color:var(--texto)}
+.ped{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:10px;border-left:6px solid #bbb;overflow:hidden}
+.ped.por_validar{border-left-color:var(--yape)}.ped.confirmado{border-left-color:var(--azul)}
+.ped.en_produccion{border-left-color:var(--aviso)}.ped.listo{border-left-color:var(--ok)}
+.ped.nuevo{animation:brillo 1.2s ease 3}
+@keyframes brillo{50%{box-shadow:0 0 0 4px #f3c8d0}}
+.ped .c1{display:flex;justify-content:space-between;align-items:baseline;padding:10px 12px 2px}
+.ped .cod{font-weight:800;font-size:17px}
+.ped .cuando{font-weight:800;font-size:15px}
+.ped .cuando.tarde{color:var(--mal)}
+.ped .cli{padding:0 12px;color:var(--gris);font-size:13px}
+.ped .cli a{color:var(--ok);font-weight:600;text-decoration:none}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;margin:6px 12px 0;background:#eef3fb;color:var(--azul)}
+.tag.delivery{background:#fff1e0;color:#9a5300}
+.dir{padding:4px 12px 0;font-size:13px}
+.its{padding:6px 12px;margin:0;list-style:none}
+.its li{padding:4px 0;border-top:1px dashed #eee;font-size:15px}
+.its li b{display:inline-block;min-width:30px}
+.nota{margin:4px 12px 6px;background:#fff3c4;font-weight:600;padding:6px 8px;border-radius:6px;font-size:13px}
+.pie{padding:6px 12px 8px;font-size:12.5px;color:var(--gris);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pie .tot{margin-left:auto;font-weight:800;color:var(--texto);font-size:14px}
+.envio{display:flex;align-items:center;gap:6px;padding:0 12px 8px;font-size:12.5px;color:var(--gris)}
+.envio input{width:80px;padding:5px 8px}
+.acc{display:flex;gap:6px;padding:8px 12px 12px}
+.acc button{flex:1;padding:10px;font-weight:700}
+.b-sig{background:var(--rojo);color:#fff}.b-yape{background:var(--yape);color:#fff}
+.b-sec{background:var(--fondo);color:var(--texto);flex:0 0 auto!important;padding:10px 12px!important}
+.vacio{color:var(--gris);font-size:13px;text-align:center;padding:16px;border:1px dashed var(--borde);border-radius:12px}
+.entregados{padding:0 14px 20px;color:var(--gris);font-size:13px}
+@media (max-width:760px){.tablero{grid-template-columns:repeat(4,85vw)}}
+</style>
+</head>
+<body>
+
+<section id="v-login" class="centro oculto">
+  <form class="tarjeta" id="f-login">
+    <p class="marca">KADIMA</p><p class="sub">Pedidos web · iniciar sesión</p>
+    <input id="l-email" type="email" placeholder="Correo" required style="margin-bottom:10px">
+    <input id="l-pass" type="password" placeholder="Contraseña" required style="margin-bottom:10px">
+    <button class="btn" style="width:100%">Ingresar</button><div class="error" id="l-error"></div>
+  </form>
+</section>
+<section id="v-pin" class="centro oculto">
+  <div class="tarjeta" style="max-width:340px">
+    <p class="marca">KADIMA</p><p class="sub">Pedidos web · Ingresa tu PIN</p>
+    <div class="pin-puntos" id="pin-puntos"></div><div class="teclado" id="teclado"></div>
+    <div class="error" id="pin-error" style="text-align:center"></div>
+  </div>
+</section>
+
+<section id="v-app" class="oculto">
+  <div class="barra">
+    <b>Pedidos web</b>
+    <div class="tabs" id="tabs">
+      <button data-r="hoy" class="activa">Hoy</button>
+      <button data-r="manana">Mañana</button>
+      <button data-r="semana">Próx. 7 días</button>
+      <button data-r="pend">Todos pendientes</button>
+    </div>
+    <select id="f-tipo"><option value="">Recojo y delivery</option><option value="recojo">Solo recojo</option><option value="delivery">Solo delivery</option></select>
+    <span class="vivo" id="vivo">● conectando</span>
+    <span class="usr" id="usr" title="Cambiar de usuario" style="cursor:pointer"></span>
+  </div>
+  <div class="tablero" id="tablero"></div>
+  <div class="entregados" id="entregados"></div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
+<script>
+const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
+const EMBEBIDO = window.self !== window.top;
+if (EMBEBIDO) document.documentElement.classList.add('embebido');
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, EMBEBIDO ? { auth: { storageKey: 'kadima-gestion-auth' } } : undefined);
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const errTxt = e => { const m = (e && (e.message || e.error_description)) || String(e); return /fetch|network/i.test(m) ? 'Sin conexión a internet.' : /Invalid login/i.test(m) ? 'Correo o contraseña incorrectos.' : m; };
+
+const COLS = [
+  { id: 'por_validar',   titulo: '💜 Validar Yape' },
+  { id: 'confirmado',    titulo: '📋 Confirmados' },
+  { id: 'en_produccion', titulo: '👩‍🍳 En producción' },
+  { id: 'listo',         titulo: '✅ Listos' },
+];
+const SIGUIENTE = { por_validar: 'confirmado', confirmado: 'en_produccion', en_produccion: 'listo', listo: 'entregado' };
+const ANTERIOR  = { confirmado: 'por_validar', en_produccion: 'confirmado', listo: 'en_produccion' };
+const st = { usuario: null, rango: 'hoy', tipo: '', pedidos: [], inicio: new Date(), avisados: new Set() };
+
+// ===== Sesión y PIN =====
+function vista(id) { ['v-login', 'v-pin', 'v-app'].forEach(v => $(v).classList.toggle('oculto', v !== id)); }
+$('f-login').addEventListener('submit', async ev => {
+  ev.preventDefault(); $('l-error').textContent = '';
+  const { error } = await sb.auth.signInWithPassword({ email: $('l-email').value.trim(), password: $('l-pass').value });
+  if (error) return $('l-error').textContent = errTxt(error);
+  iniciar();
+});
+async function iniciar() { const { data } = await sb.auth.getSession(); if (!data.session) return vista('v-login'); pedirPin(); }
+let pin = '';
+function pedirPin() {
+  try { if (EMBEBIDO && window.parent.KADIMA_USUARIO) { st.usuario = window.parent.KADIMA_USUARIO; return abrirApp(); } } catch (e) {}
+  pin = ''; vista('v-pin'); $('pin-error').textContent = ''; dibujarPin();
+}
+function dibujarPin() { $('pin-puntos').innerHTML = [0, 1, 2, 3].map(i => `<span class="${i < pin.length ? 'lleno' : ''}"></span>`).join(''); }
+$('teclado').innerHTML = ['1','2','3','4','5','6','7','8','9','⌫','0','OK'].map(t => `<button data-t="${t}">${t}</button>`).join('');
+$('teclado').onclick = e => { const t = e.target.dataset.t; if (!t) return; if (t === '⌫') pin = pin.slice(0, -1); else if (t === 'OK') return validarPin(); else if (pin.length < 6) pin += t; dibujarPin(); if (pin.length === 4) validarPin(); };
+document.addEventListener('keydown', e => {
+  if ($('v-pin').classList.contains('oculto')) return;
+  if (/^[0-9]$/.test(e.key) && pin.length < 6) { pin += e.key; dibujarPin(); if (pin.length === 4) validarPin(); }
+  if (e.key === 'Backspace') { pin = pin.slice(0, -1); dibujarPin(); }
+});
+async function validarPin() {
+  const { data, error } = await sb.from('usuarios').select('id,nombre,rol,pin').eq('activo', true);
+  if (error) { $('pin-error').textContent = errTxt(error); pin = ''; return dibujarPin(); }
+  const u = (data || []).find(x => x.pin === pin);
+  if (!u) { $('pin-error').textContent = 'PIN incorrecto'; pin = ''; return dibujarPin(); }
+  st.usuario = u; abrirApp();
+}
+$('usr').onclick = () => { if (!EMBEBIDO && confirm('¿Cambiar de usuario?')) pedirPin(); };
+
+// ===== Fechas =====
+const pad2 = n => String(n).padStart(2, '0');
+const fstr = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const dias = n => { const d = new Date(); d.setDate(d.getDate() + n); return fstr(d); };
+const hora12 = t => { if (!t) return ''; const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${pad2(m)} ${h >= 12 ? 'pm' : 'am'}`; };
+const fechaCorta = f => new Date(f + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric', month: 'short' });
+
+// ===== Datos =====
+async function cargar() {
+  let q = sb.from('pedidos_web').select('*, pedidos_web_items(nombre,cantidad,precio)').neq('estado', 'anulado')
+    .order('fecha_entrega').order('hora_entrega');
+  if (st.rango === 'hoy') q = q.eq('fecha_entrega', dias(0));
+  else if (st.rango === 'manana') q = q.eq('fecha_entrega', dias(1));
+  else if (st.rango === 'semana') q = q.gte('fecha_entrega', dias(0)).lte('fecha_entrega', dias(7));
+  else q = q.neq('estado', 'entregado');
+  if (st.tipo) q = q.eq('tipo_entrega', st.tipo);
+  const { data, error } = await q;
+  if (error) { $('tablero').innerHTML = `<div class="vacio" style="grid-column:1/-1">${/pedidos_web/.test(error.message) ? 'Falta correr el script <b>39_tienda_web.sql</b> en Supabase.' : esc(errTxt(error))}</div>`; return; }
+  // aviso (brillo + sonido) solo para pedidos que entraron mientras la pantalla está abierta
+  const nuevos = data.filter(p => new Date(p.creado_en) > st.inicio && !st.avisados.has(p.id)).map(p => p.id);
+  nuevos.forEach(id => st.avisados.add(id));
+  st.pedidos = data;
+  dibujar(nuevos);
+  if (nuevos.length) sonar();
+  contarPorValidar();
+}
+
+async function contarPorValidar() {
+  const { count } = await sb.from('pedidos_web').select('id', { count: 'exact', head: true }).eq('estado', 'por_validar');
+  const b = document.querySelector('#tabs [data-r="pend"]');
+  b.innerHTML = 'Todos pendientes' + (count ? `<span class="n">${count}</span>` : '');
+}
+
+function dibujar(nuevos = []) {
+  const hoy = dias(0);
+  const ahoraMin = new Date().getHours() * 60 + new Date().getMinutes();
+  $('tablero').innerHTML = COLS.map(c => {
+    const lista = st.pedidos.filter(p => p.estado === c.id);
+    return `<div class="col"><h3>${c.titulo}<span>${lista.length}</span></h3>${lista.length ? lista.map(p => tarjeta(p, hoy, ahoraMin, nuevos.includes(p.id))).join('') : '<div class="vacio">Sin pedidos</div>'}</div>`;
+  }).join('');
+  const ent = st.pedidos.filter(p => p.estado === 'entregado');
+  $('entregados').textContent = ent.length ? `Entregados en este rango: ${ent.map(p => p.codigo).join(', ')}` : '';
+}
+
+function tarjeta(p, hoy, ahoraMin, nuevo) {
+  const [hh, mm] = (p.hora_entrega || '00:00').split(':').map(Number);
+  const tarde = p.fecha_entrega < hoy || (p.fecha_entrega === hoy && hh * 60 + mm < ahoraMin && p.estado !== 'listo');
+  const cuando = (p.fecha_entrega === hoy ? '' : fechaCorta(p.fecha_entrega) + ' · ') + hora12(p.hora_entrega);
+  const tel = p.cliente_telefono || '';
+  const items = (p.pedidos_web_items || []).map(i => `<li><b>${i.cantidad}×</b> ${esc(i.nombre)}</li>`).join('');
+  const sig = SIGUIENTE[p.estado];
+  const txtSig = { por_validar: '✓ Yape recibido', confirmado: 'Empezar', en_produccion: 'Listo', listo: 'Entregado' }[p.estado];
+  return `
+  <div class="ped ${p.estado} ${nuevo ? 'nuevo' : ''}">
+    <div class="c1"><span class="cod">${esc(p.codigo)}</span><span class="cuando ${tarde ? 'tarde' : ''}">${esc(cuando)}</span></div>
+    <div class="cli">${esc(p.cliente_nombre)} · <a href="https://wa.me/51${esc(tel)}" target="_blank" rel="noopener">${esc(tel)}</a></div>
+    <span class="tag ${p.tipo_entrega}">${p.tipo_entrega === 'delivery' ? '🛵 Delivery' : '🏬 Recojo'}</span>
+    ${p.tipo_entrega === 'delivery' ? `<div class="dir">📍 ${esc(p.direccion)}${p.distrito ? ', ' + esc(p.distrito) : ''}${p.referencia ? `<br><small>${esc(p.referencia)}</small>` : ''}</div>` : ''}
+    <ul class="its">${items}</ul>
+    ${p.notas ? `<div class="nota">📝 ${esc(p.notas)}</div>` : ''}
+    <div class="pie">
+      <span>Yape op. ${esc(p.yape_operacion || '—')}${p.pago_validado ? ' ✓' : ''}</span>
+      <span class="tot">S/ ${Number(p.total_productos).toFixed(2)}</span>
+    </div>
+    ${p.tipo_entrega === 'delivery' ? `<div class="envio">Costo delivery S/ <input type="number" min="0" step="0.5" data-envio="${p.id}" value="${p.costo_delivery ?? ''}" placeholder="—"></div>` : ''}
+    <div class="acc">
+      ${ANTERIOR[p.estado] ? `<button class="b-sec" data-atras="${p.id}" title="Regresar un paso">↩</button>` : ''}
+      ${p.estado === 'por_validar' ? `<button class="b-sec" data-anular="${p.id}" title="Anular pedido">✕</button>` : ''}
+      ${sig ? `<button class="${p.estado === 'por_validar' ? 'b-yape' : 'b-sig'}" data-sig="${p.id}">${txtSig}</button>` : ''}
+    </div>
+  </div>`;
+}
+
+async function cambiarEstado(id, estado, extra = {}) {
+  const cambios = { estado, actualizado_por: st.usuario?.nombre || null, ...extra };
+  const { error } = await sb.from('pedidos_web').update(cambios).eq('id', id);
+  if (error) return alert(errTxt(error));
+  const p = st.pedidos.find(x => x.id == id); if (p) Object.assign(p, cambios);
+  dibujar(); contarPorValidar();
+}
+
+function sonar() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.25].forEach(t => { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = 880; o.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(0.2, ctx.currentTime + t); o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.18); });
+  } catch (e) {}
+}
+
+// ===== Eventos =====
+document.addEventListener('click', e => {
+  const t = e.target.closest('#tabs [data-r]');
+  if (t) { st.rango = t.dataset.r; document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('activa', b === t)); return cargar(); }
+  const s = e.target.closest('[data-sig]');
+  if (s) {
+    const p = st.pedidos.find(x => x.id == s.dataset.sig);
+    if (p.estado === 'por_validar') {
+      if (!confirm(`¿Confirmas que llegó el Yape de S/ ${Number(p.total_productos).toFixed(2)} (op. ${p.yape_operacion})?`)) return;
+      return cambiarEstado(p.id, 'confirmado', { pago_validado: true, pago_validado_por: st.usuario?.nombre || null, pago_validado_en: new Date().toISOString() });
+    }
+    if (p.estado === 'listo' && p.tipo_entrega === 'delivery' && p.costo_delivery == null && !confirm('No se registró el costo del delivery. ¿Marcar como entregado igual?')) return;
+    return cambiarEstado(p.id, SIGUIENTE[p.estado]);
+  }
+  const a = e.target.closest('[data-atras]');
+  if (a) { const p = st.pedidos.find(x => x.id == a.dataset.atras); return cambiarEstado(p.id, ANTERIOR[p.estado], p.estado === 'confirmado' ? { pago_validado: false, pago_validado_por: null, pago_validado_en: null } : {}); }
+  const x = e.target.closest('[data-anular]');
+  if (x && confirm('¿Anular este pedido? (por ejemplo, si el Yape nunca llegó)')) return cambiarEstado(x.dataset.anular, 'anulado');
+});
+document.addEventListener('change', async e => {
+  const inp = e.target.closest('[data-envio]'); if (!inp) return;
+  const v = inp.value === '' ? null : Math.max(0, Number(inp.value));
+  const { error } = await sb.from('pedidos_web').update({ costo_delivery: v, actualizado_por: st.usuario?.nombre || null }).eq('id', inp.dataset.envio);
+  if (error) return alert(errTxt(error));
+  const p = st.pedidos.find(x => x.id == inp.dataset.envio); if (p) p.costo_delivery = v;
+  inp.style.borderColor = 'var(--ok)'; setTimeout(() => inp.style.borderColor = '', 1200);
+});
+$('f-tipo').onchange = e => { st.tipo = e.target.value; cargar(); };
+
+function abrirApp() {
+  vista('v-app'); $('usr').textContent = st.usuario?.nombre || '';
+  cargar();
+  sb.channel('pedidos-web')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos_web' }, () => cargar())
+    .subscribe(s => { $('vivo').textContent = s === 'SUBSCRIBED' ? '● en vivo' : '● reconectando'; });
+  setInterval(cargar, 30000);                 // respaldo por si se corta el tiempo real
+  setInterval(() => dibujar(), 60000);         // actualiza los "tarde"
+}
+
+iniciar();
+</script>
+</body>
+</html>

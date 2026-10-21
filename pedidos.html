@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Haz tu pedido — Kadima | Panadería y Pastelería</title>
+<meta name="description" content="Pide tus panes, tortas y postres de Kadima. Recojo en tienda o delivery en San Juan de Lurigancho. Paga con Yape.">
+<link rel="icon" href="/Kadima_Logo.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -11,280 +13,274 @@
   :root {
     --espresso: #2E1B12;
     --cream: #FFFFFF;
-    --cream-soft: #FFFFFF;
     --wine: #7A2E3D;
     --wine-dark: #5E212C;
+    --wine-soft: #fbf5f6;
     --gold: #C98A2B;
+    --yape: #742284;
+    --muted: #6b5643;
+    --muted-2: #8a7256;
     --line: rgba(46, 27, 18, 0.16);
-    --shadow: rgba(46, 27, 18, 0.14);
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0;
-    background: var(--cream);
-    color: var(--espresso);
-    font-family: 'Work Sans', sans-serif;
-    line-height: 1.5;
-    padding-bottom: 90px; /* espacio para la barra flotante del carrito */
+    margin: 0; background: var(--cream); color: var(--espresso);
+    font-family: 'Work Sans', sans-serif; line-height: 1.5; padding-bottom: 90px;
   }
   h1, h2, h3 { font-family: 'Fraunces', serif; margin: 0; }
-  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+  .oculto { display: none !important; }
 
   /* ---------- HERO ---------- */
-  .hero {
-    padding: 56px 0 32px; border-bottom: 1px solid var(--line);
-    display: flex; align-items: flex-start; justify-content: space-between; gap: 32px;
-  }
+  .hero { padding: 48px 0 28px; border-bottom: 1px solid var(--line); display: flex; align-items: flex-start; justify-content: space-between; gap: 32px; }
   .hero-copy .kicker { font-size: 15px; color: var(--wine); font-weight: 600; margin-bottom: 10px; }
   .hero-copy h1 { font-size: clamp(30px, 4vw, 42px); font-weight: 500; }
   .hero-copy p { max-width: 56ch; font-size: 16px; margin-top: 12px; color: #4a352a; }
-
-  .hero-logo-box {
-    flex-shrink: 0;
-    width: 160px; height: 110px;
-    display: flex; align-items: center; justify-content: center;
-    overflow: hidden;
-  }
+  .hero-logo-box { flex-shrink: 0; width: 160px; height: 110px; display: flex; align-items: center; justify-content: center; }
   .hero-logo-box img { width: 100%; height: 100%; object-fit: contain; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+  .chip { font-size: 13px; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; color: var(--muted); }
 
-  @media (max-width: 760px) {
-    .hero { flex-direction: column-reverse; align-items: center; text-align: center; }
-    .hero-copy p { max-width: none; }
-  }
-
-  /* ---------- SEARCH BAR ---------- */
+  /* ---------- SEARCH + CATEGORIES ---------- */
   .search-bar { padding: 24px 0 0; }
-  .search-bar input {
-    width: 100%; font-family: inherit; font-size: 15px; padding: 12px 16px;
-    border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--espresso);
-  }
+  .search-bar input { width: 100%; font-family: inherit; font-size: 15px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--espresso); }
   .search-bar input:focus { outline: 2px solid var(--wine); outline-offset: 1px; }
-
-  /* ---------- CATEGORY PILLS ---------- */
-  .cats { display: flex; gap: 10px; flex-wrap: wrap; padding: 28px 0 8px; }
-  .cat-btn {
-    border: 1px solid var(--line);
-    background: #fff;
-    color: var(--espresso);
-    padding: 9px 18px;
-    border-radius: 999px;
-    font-size: 14px;
-    font-family: inherit;
-    cursor: pointer;
-  }
+  .cats { display: flex; gap: 10px; overflow-x: auto; padding: 20px 0 8px; scrollbar-width: none; }
+  .cats::-webkit-scrollbar { display: none; }
+  .cat-btn { flex-shrink: 0; border: 1px solid var(--line); background: #fff; color: var(--espresso); padding: 9px 18px; border-radius: 999px; font-size: 14px; font-family: inherit; cursor: pointer; }
   .cat-btn.active { background: var(--wine); border-color: var(--wine); color: #fff; }
 
   /* ---------- PRODUCT GRID ---------- */
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-    padding: 24px 0 48px;
-  }
-  .card {
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-  .card-photo {
-    aspect-ratio: 4/3;
-    background: repeating-linear-gradient(135deg, #efe2c9, #efe2c9 12px, #e8d8b8 12px, #e8d8b8 24px);
-    display: flex; align-items: center; justify-content: center;
-    color: #8a7256; font-size: 13px; text-align: center; padding: 10px;
-  }
-  .card-body { padding: 16px; display: flex; flex-direction: column; flex: 1; }
-  .card-name { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 500; }
-  .card-desc { font-size: 13px; color: #6b5643; margin-top: 4px; line-height: 1.4; }
-  .card-price { color: var(--wine); font-weight: 600; margin-top: 4px; font-size: 15px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 20px 0 48px; }
+  .card { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; background: #fff; }
+  .card-photo { aspect-ratio: 4/3; background: #f5ede1; position: relative; overflow: hidden; }
+  .card-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .card-photo .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-size: 44px; color: #c9b08c; }
+  .card-body { padding: 14px 16px 16px; display: flex; flex-direction: column; flex: 1; }
+  .card-cat { font-size: 12px; color: var(--muted-2); text-transform: uppercase; letter-spacing: .5px; }
+  .card-name { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 500; line-height: 1.3; }
+  .card-desc { font-size: 13px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
   .card-foot { margin-top: auto; padding-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-  .stepper { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 4px; }
-  .stepper button {
-    width: 30px; height: 30px; border: none; background: #fff; cursor: pointer; font-size: 16px; color: var(--wine); font-family: inherit;
-  }
-  .stepper span { width: 26px; text-align: center; font-size: 14px; }
-  .add-btn {
-    background: var(--wine); color: #fff; border: none; padding: 8px 14px;
-    border-radius: 4px; font-size: 13.5px; font-weight: 500; cursor: pointer; font-family: inherit;
-    white-space: nowrap;
-  }
+  .card-price { color: var(--wine); font-weight: 600; font-size: 16px; }
+  .add-btn { background: var(--wine); color: #fff; border: none; padding: 9px 16px; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; white-space: nowrap; }
   .add-btn:hover { background: var(--wine-dark); }
+  .stepper { display: flex; align-items: center; border: 1px solid var(--wine); border-radius: 6px; overflow: hidden; }
+  .stepper button { width: 34px; height: 34px; border: none; background: #fff; cursor: pointer; font-size: 18px; color: var(--wine); font-family: inherit; }
+  .stepper span { min-width: 28px; text-align: center; font-size: 15px; font-weight: 600; }
+  .estado-carga { grid-column: 1 / -1; text-align: center; color: var(--muted); padding: 40px 0; }
 
-  /* ---------- STICKY CART BAR ---------- */
-  #cart-bar {
-    position: fixed; left: 0; right: 0; bottom: 0;
-    background: var(--espresso); color: #fff;
-    padding: 14px 24px;
-    display: none;
-    align-items: center; justify-content: space-between;
-    z-index: 50;
-  }
+  /* ---------- CART BAR ---------- */
+  #cart-bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--espresso); color: #fff; padding: 14px 20px; display: none; align-items: center; justify-content: space-between; z-index: 50; gap: 12px; }
   #cart-bar .info { font-size: 14.5px; }
   #cart-bar .info strong { font-family: 'Fraunces', serif; font-size: 17px; }
-  #cart-bar button {
-    background: var(--gold); color: var(--espresso); border: none; padding: 11px 22px;
-    border-radius: 4px; font-weight: 600; font-size: 14.5px; cursor: pointer; font-family: inherit;
-  }
+  #cart-bar button { background: var(--gold); color: var(--espresso); border: none; padding: 11px 22px; border-radius: 6px; font-weight: 600; font-size: 14.5px; cursor: pointer; font-family: inherit; }
 
-  /* ---------- CHECKOUT SECTION ---------- */
-  #checkout { display: none; padding: 48px 0; border-top: 1px solid var(--line); }
-  .section-title { font-size: 26px; font-weight: 500; margin-bottom: 20px; }
-
-  .order-line {
-    display: grid; grid-template-columns: 1fr 110px 90px; align-items: center; gap: 12px;
-    padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 14.5px;
-  }
+  /* ---------- CHECKOUT ---------- */
+  #checkout { display: none; padding: 40px 0; border-top: 1px solid var(--line); }
+  .section-title { font-size: 26px; font-weight: 500; margin-bottom: 16px; }
+  .sub-title { font-family: 'Fraunces', serif; font-size: 19px; font-weight: 500; margin: 28px 0 12px; }
+  .order-line { display: grid; grid-template-columns: 1fr auto 90px; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 14.5px; }
   .order-line > span:last-child { text-align: right; }
-  .order-line .qty-controls { display: flex; align-items: center; justify-content: center; gap: 8px; }
-  .order-line .qty-controls span { min-width: 18px; text-align: center; display: inline-block; }
-  .order-line .qty-controls button {
-    width: 24px; height: 24px; border: 1px solid var(--line); background: #fff; border-radius: 4px; cursor: pointer; font-family: inherit;
-  }
-  .order-total { display: flex; justify-content: space-between; padding: 16px 0; font-size: 18px; font-weight: 600; }
+  .order-total { display: flex; justify-content: space-between; padding: 16px 0 4px; font-size: 18px; font-weight: 600; }
+  .order-nota { font-size: 13px; color: var(--muted-2); }
 
-  .delivery-opts { display: flex; gap: 14px; margin: 20px 0; }
-  .delivery-opt {
-    flex: 1; border: 1px solid var(--line); border-radius: 6px; padding: 16px;
-    cursor: pointer; font-size: 14.5px;
-  }
-  .delivery-opt.selected { border-color: var(--wine); background: #fbf5f6; }
-  .delivery-opt.disabled { opacity: 0.5; cursor: not-allowed; }
+  .delivery-opts { display: flex; gap: 14px; }
+  .delivery-opt { flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 16px; cursor: pointer; font-size: 14.5px; background: #fff; text-align: left; font-family: inherit; color: inherit; }
+  .delivery-opt.selected { border-color: var(--wine); background: var(--wine-soft); box-shadow: inset 0 0 0 1px var(--wine); }
   .delivery-opt .d-title { font-weight: 600; margin-bottom: 4px; }
-  .delivery-opt .d-note { font-size: 12.5px; color: #8a7256; }
+  .delivery-opt .d-note { font-size: 12.5px; color: var(--muted-2); }
 
-  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; margin: 16px 0; }
   .field { display: flex; flex-direction: column; }
+  .field.full { grid-column: 1 / -1; }
   .field label { font-size: 13.5px; font-weight: 500; margin-bottom: 7px; color: #4a352a; }
-  .field input {
-    font-family: inherit; font-size: 15px; padding: 11px 13px;
-    border: 1px solid var(--line); border-radius: 3px; background: #fff; color: var(--espresso);
-  }
-  .field input:focus { outline: 2px solid var(--wine); outline-offset: 1px; }
+  .field input, .field select, .field textarea { font-family: inherit; font-size: 15px; padding: 11px 13px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--espresso); width: 100%; }
+  .field textarea { resize: vertical; min-height: 70px; }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid var(--wine); outline-offset: 1px; }
+  .aviso { background: #fff8ea; border: 1px solid #e8cf9a; color: #6b4c15; border-radius: 8px; padding: 12px 14px; font-size: 13.5px; margin: 8px 0 4px; }
 
-  .pay-btn {
-    width: 100%; background: var(--wine); color: #fff; border: none; padding: 16px;
-    font-size: 16px; font-weight: 500; border-radius: 4px; cursor: pointer; font-family: inherit; margin-top: 8px;
-  }
+  /* ---------- YAPE ---------- */
+  .yape-box { border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: grid; grid-template-columns: 180px 1fr; gap: 24px; align-items: center; }
+  .yape-qr { width: 180px; height: 180px; border-radius: 8px; background: #f4eef6; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .yape-qr img { width: 100%; height: 100%; object-fit: contain; }
+  .yape-monto { font-family: 'Fraunces', serif; font-size: 30px; color: var(--yape); }
+  .yape-dato { font-size: 15px; margin: 4px 0; }
+  .yape-dato strong { font-size: 18px; letter-spacing: .5px; }
+  .copiar { border: 1px solid var(--yape); color: var(--yape); background: #fff; border-radius: 6px; padding: 4px 10px; font-size: 13px; cursor: pointer; font-family: inherit; margin-left: 6px; }
+  .pasos { margin: 10px 0 0; padding-left: 20px; font-size: 13.5px; color: var(--muted); }
+
+  .pay-btn { width: 100%; background: var(--wine); color: #fff; border: none; padding: 16px; font-size: 16px; font-weight: 500; border-radius: 8px; cursor: pointer; font-family: inherit; margin-top: 20px; }
   .pay-btn:hover { background: var(--wine-dark); }
-  .pay-note { font-size: 12.5px; color: #8a7256; margin-top: 10px; text-align: center; }
+  .pay-btn:disabled { opacity: .6; cursor: wait; }
+  .error { color: #b3261e; font-size: 14px; margin-top: 10px; min-height: 18px; }
+  .pay-note { font-size: 12.5px; color: var(--muted-2); margin-top: 10px; text-align: center; }
 
   /* ---------- CONFIRMATION ---------- */
-  #confirmacion { display: none; padding: 56px 0; text-align: center; }
-  #confirmacion .code-box {
-    display: inline-block; background: var(--cream); border: 1px dashed var(--gold);
-    border-radius: 3px; padding: 14px 28px; font-family: 'Fraunces', serif; font-size: 22px;
-    letter-spacing: 1px; margin: 18px 0;
-  }
-
-  @media (max-width: 760px) {
-    .grid { grid-template-columns: repeat(2, 1fr); }
-    .field-row { grid-template-columns: 1fr; }
-    .delivery-opts { flex-direction: column; }
-    .footer-cols { grid-template-columns: 1fr; gap: 24px; }
-    .card-foot { flex-direction: column; align-items: stretch; gap: 10px; }
-    .card-foot .stepper { justify-content: center; }
-    .card-foot .add-btn { width: 100%; text-align: center; }
-  }
+  #confirmacion { display: none; padding: 48px 0; text-align: center; }
+  #confirmacion .code-box { display: inline-block; border: 1px dashed var(--gold); border-radius: 6px; padding: 14px 28px; font-family: 'Fraunces', serif; font-size: 26px; letter-spacing: 1px; margin: 16px 0; }
+  #confirmacion p { color: var(--muted); max-width: 52ch; margin: 8px auto; }
+  .wa-btn { display: inline-flex; align-items: center; gap: 8px; background: #1f9d55; color: #fff; text-decoration: none; padding: 14px 24px; border-radius: 8px; font-weight: 600; margin-top: 16px; }
 
   /* ---------- FOOTER ---------- */
   .site-footer { border-top: 1px solid var(--line); margin-top: 40px; padding: 40px 0 32px; }
   .footer-cols { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; }
   .footer-brand { font-family: 'Fraunces', serif; font-size: 17px; margin-bottom: 8px; }
-  .site-footer p { font-size: 13.5px; color: #6b5643; margin: 4px 0; }
+  .site-footer p { font-size: 13.5px; color: var(--muted); margin: 4px 0; }
   .footer-links { display: flex; flex-direction: column; gap: 8px; }
   .footer-links a { font-size: 13.5px; color: var(--wine); text-decoration: none; }
   .footer-links a:hover { text-decoration: underline; }
-  .libro-badge {
-    display: inline-flex; align-items: center; gap: 6px; width: fit-content;
-    background: #fff8ea; border: 1px solid #e8cf9a; color: #6b4c15 !important;
-    padding: 6px 12px; border-radius: 4px; font-weight: 600; text-decoration: none !important;
-  }
+  .libro-badge { display: inline-flex; align-items: center; gap: 6px; width: fit-content; background: #fff8ea; border: 1px solid #e8cf9a; color: #6b4c15 !important; padding: 6px 12px; border-radius: 4px; font-weight: 600; text-decoration: none !important; }
   .footer-aviso { margin-top: 20px; padding-top: 16px; border-top: 1px dashed var(--line); font-size: 12.5px; }
-  .footer-legal { font-size: 12px; color: #8a7256; }
+  .footer-legal { font-size: 12px; color: var(--muted-2); }
+
+  @media (max-width: 760px) {
+    .hero { flex-direction: column-reverse; align-items: center; text-align: center; padding-top: 28px; }
+    .hero-copy p { max-width: none; }
+    .chips { justify-content: center; }
+    .grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .card-body { padding: 10px 12px 12px; }
+    .card-name { font-size: 15px; }
+    .card-desc { display: none; }
+    .card-foot { flex-direction: column; align-items: stretch; gap: 8px; }
+    .card-foot .stepper { justify-content: space-between; }
+    .add-btn { width: 100%; }
+    .field-row { grid-template-columns: 1fr; }
+    .delivery-opts { flex-direction: column; }
+    .yape-box { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+    .pasos { text-align: left; }
+    .footer-cols { grid-template-columns: 1fr; gap: 24px; }
+  }
 </style>
 </head>
 <body>
 
 <div class="wrap">
-
   <section class="hero">
     <div class="hero-copy">
       <div class="kicker">Kadima | Panadería y Pastelería</div>
       <h1>Haz tu pedido</h1>
-      <p>Elige tus productos de la nueva carta y recógelos en tienda. Pago seguro con tarjeta o Yape.</p>
+      <p>Elige tus productos y recógelos en tienda o pide delivery. Pagas fácil con Yape.</p>
+      <div class="chips"><span class="chip">🏬 Recojo en tienda</span><span class="chip">🛵 Delivery</span><span class="chip">💜 Pago con Yape</span></div>
     </div>
-    <div class="hero-logo-box">
-      <img src="Kadima_Logo.jpg" alt="Kadima">
-    </div>
+    <div class="hero-logo-box"><img src="/Kadima_Logo.jpg" alt="Kadima"></div>
   </section>
 
-  <div class="search-bar">
-    <input type="text" id="buscador" placeholder="Buscar producto..." oninput="onSearchInput()">
-  </div>
+  <div class="search-bar"><input type="search" id="buscador" placeholder="Buscar producto..." aria-label="Buscar producto"></div>
   <div class="cats" id="cats"></div>
-  <div class="grid" id="grid"></div>
-
+  <div class="grid" id="grid"><div class="estado-carga">Cargando productos…</div></div>
 </div>
 
-<!-- ============ BARRA FLOTANTE DEL CARRITO ============ -->
+<!-- ============ BARRA DEL CARRITO ============ -->
 <div id="cart-bar">
   <div class="info"><strong id="cart-count">0</strong> productos — S/ <span id="cart-total-mini">0.00</span></div>
-  <button onclick="goToCheckout()">Ver pedido</button>
+  <button id="btn-ver-pedido">Ver pedido</button>
 </div>
 
-<!-- ============ CHECKOUT ============ -->
 <div class="wrap">
+  <!-- ============ CHECKOUT ============ -->
   <section id="checkout">
     <div class="section-title">Tu pedido</div>
     <div id="order-lines"></div>
-    <div class="order-total"><span>Total</span><span>S/ <span id="order-total-amount">0.00</span></span></div>
+    <div class="order-total"><span>Total productos</span><span>S/ <span id="order-total-amount">0.00</span></span></div>
+    <div class="order-nota" id="nota-delivery-total" style="display:none">+ delivery (se coordina por WhatsApp)</div>
 
+    <div class="sub-title">¿Cómo lo recibes?</div>
     <div class="delivery-opts">
-      <div class="delivery-opt selected" id="opt-recojo" onclick="selectDelivery('recojo')">
-        <div class="d-title">Recojo en tienda</div>
-        <div class="d-note">Te avisamos cuando esté listo para recoger</div>
-      </div>
-      <div class="delivery-opt disabled" id="opt-delivery">
-        <div class="d-title">Delivery</div>
-        <div class="d-note">Aún no habilitado</div>
-      </div>
+      <button type="button" class="delivery-opt selected" data-tipo="recojo">
+        <div class="d-title">🏬 Recojo en tienda</div>
+        <div class="d-note">Mz K2 Lt. 3A, San Juan de Lurigancho</div>
+      </button>
+      <button type="button" class="delivery-opt" data-tipo="delivery">
+        <div class="d-title">🛵 Delivery</div>
+        <div class="d-note">El costo del envío te lo confirmamos por WhatsApp</div>
+      </button>
     </div>
 
     <div class="field-row">
       <div class="field">
-        <label for="fecha-recojo">Fecha de recojo</label>
-        <input type="date" id="fecha-recojo" required>
+        <label for="fecha" id="lbl-fecha">Fecha de recojo</label>
+        <input type="date" id="fecha" required>
       </div>
       <div class="field">
-        <label for="hora-recojo">Hora de recojo</label>
-        <select id="hora-recojo" required disabled>
-          <option value="">Elige primero una fecha</option>
-        </select>
+        <label for="hora" id="lbl-hora">Hora de recojo</label>
+        <select id="hora" required disabled><option value="">Elige primero una fecha</option></select>
       </div>
     </div>
 
+    <div id="bloque-delivery" class="oculto">
+      <div class="field-row">
+        <div class="field">
+          <label for="distrito">Distrito</label>
+          <input type="text" id="distrito" placeholder="Ej. San Juan de Lurigancho" list="lista-distritos" autocomplete="address-level2">
+          <datalist id="lista-distritos">
+            <option value="San Juan de Lurigancho"><option value="El Agustino"><option value="Santa Anita"><option value="Ate">
+            <option value="La Victoria"><option value="Cercado de Lima"><option value="Rímac"><option value="San Luis">
+            <option value="Los Olivos"><option value="San Martín de Porres"><option value="Comas"><option value="Independencia">
+            <option value="Surquillo"><option value="San Borja"><option value="Miraflores"><option value="Surco"><option value="La Molina">
+          </datalist>
+        </div>
+        <div class="field">
+          <label for="direccion">Dirección</label>
+          <input type="text" id="direccion" placeholder="Calle, número, Mz/Lt" autocomplete="street-address">
+        </div>
+        <div class="field full">
+          <label for="referencia">Referencia</label>
+          <input type="text" id="referencia" placeholder="Ej. Frente al parque, puerta verde">
+        </div>
+      </div>
+      <div class="aviso">🛵 El costo del delivery depende de la distancia. Te lo confirmamos por WhatsApp y se paga aparte.</div>
+    </div>
+
+    <div class="sub-title">Tus datos</div>
     <div class="field-row">
       <div class="field">
         <label for="nombre">Nombre completo</label>
-        <input type="text" id="nombre" required>
+        <input type="text" id="nombre" autocomplete="name" required>
       </div>
       <div class="field">
-        <label for="telefono">Teléfono / WhatsApp</label>
-        <input type="tel" id="telefono" placeholder="9XXXXXXXX" required>
+        <label for="telefono">Celular / WhatsApp</label>
+        <input type="tel" id="telefono" placeholder="9XXXXXXXX" inputmode="numeric" maxlength="12" autocomplete="tel" required>
+      </div>
+      <div class="field full">
+        <label for="notas">Indicaciones (opcional)</label>
+        <textarea id="notas" maxlength="500" placeholder="Ej. Escribir “Feliz cumpleaños Ana” en la torta"></textarea>
       </div>
     </div>
 
-    <button class="pay-btn" onclick="payWithCulqi()">Pagar S/ <span id="pay-amount">0.00</span></button>
-    <div class="pay-note">Pago procesado de forma segura por Culqi. Aceptamos tarjeta y Yape.</div>
+    <div class="sub-title">Paga con Yape</div>
+    <div class="yape-box">
+      <div class="yape-qr" id="yape-qr"><img id="yape-qr-img" alt="QR de Yape de Kadima"></div>
+      <div>
+        <div>Yapea exactamente</div>
+        <div class="yape-monto">S/ <span id="yape-monto">0.00</span></div>
+        <div class="yape-dato">Número: <strong id="yape-numero"></strong><button type="button" class="copiar" id="btn-copiar">Copiar</button></div>
+        <div class="yape-dato">A nombre de: <strong id="yape-titular"></strong></div>
+        <ol class="pasos">
+          <li>Escanea el QR o yapea al número.</li>
+          <li>Copia el <b>número de operación</b> que aparece en tu constancia.</li>
+          <li>Pégalo abajo y confirma tu pedido.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field full">
+        <label for="operacion">N° de operación de Yape</label>
+        <input type="text" id="operacion" inputmode="numeric" maxlength="20" placeholder="Ej. 01234567">
+      </div>
+    </div>
+
+    <button class="pay-btn" id="btn-confirmar">Confirmar pedido</button>
+    <div class="error" id="error"></div>
+    <div class="pay-note">Validamos tu Yape y te confirmamos por WhatsApp. Al confirmar aceptas los <a href="/terminos_kadima.html">términos y condiciones</a>.</div>
   </section>
 
   <!-- ============ CONFIRMACIÓN ============ -->
   <section id="confirmacion">
-    <h3>¡Pedido confirmado!</h3>
-    <p>Guarda tu código, te avisaremos por WhatsApp cuando esté listo para recoger.</p>
-    <div class="code-box" id="codigo-pedido">000000000</div>
-    <p id="resumen-recojo" style="color:#6b5643; font-size:14.5px;"></p>
+    <h3>¡Recibimos tu pedido!</h3>
+    <div class="code-box" id="codigo-pedido"></div>
+    <p id="resumen-entrega"></p>
+    <p>Último paso: envíanos tu pedido y la <b>captura del Yape</b> por WhatsApp para validarlo más rápido.</p>
+    <a class="wa-btn" id="wa-link" target="_blank" rel="noopener">💬 Enviar por WhatsApp</a>
   </section>
 
   <footer class="site-footer">
@@ -296,9 +292,9 @@
         <p>Correo: contacto@kadima.pe</p>
       </div>
       <div class="footer-links">
-        <a href="terminos_kadima.html">Términos y condiciones</a>
-        <a href="politica_cambios_kadima.html">Política de cambios y devoluciones</a>
-        <a href="libro_reclamaciones_kadima.html" class="libro-badge">📖 Libro de Reclamaciones</a>
+        <a href="/terminos_kadima.html">Términos y condiciones</a>
+        <a href="/politica_cambios_kadima.html">Política de cambios y devoluciones</a>
+        <a href="/libro_reclamaciones_kadima.html" class="libro-badge">📖 Libro de Reclamaciones</a>
       </div>
     </div>
     <p class="footer-aviso">Este establecimiento cuenta con Libro de Reclamaciones a su disposición.</p>
@@ -306,313 +302,271 @@
   </footer>
 </div>
 
-<!-- ============ CULQI CHECKOUT ============ -->
-<script src="https://checkout.culqi.com/js/v4"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
 <script>
   // =======================================================================
-  // CONFIGURACIÓN — ajustar aquí cuando conectemos el backend real
+  // CONFIGURACIÓN — lo único que se toca a mano
   // =======================================================================
   const CONFIG = {
-    // TODO Diego: pega aquí tu llave PÚBLICA de Culqi (CulqiPanel > Desarrollo > API Keys)
-    // Es segura de poner aquí. La llave SECRETA nunca va en este archivo.
-    CULQI_PUBLIC_KEY: "",
+    SUPABASE_URL: 'https://odhcnrjbmydjghafichc.supabase.co',
+    SUPABASE_KEY: 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK',
 
-    WHATSAPP_NUMBER: "51987023767",
+    WHATSAPP_NUMBER: '51987023767',
 
-    // TODO Diego: pegar aquí las URLs de los flujos de Power Automate cuando los armemos
-    FLOW_URL_GET_PRODUCTS: "",   // GET -> devuelve el catálogo desde la lista de SharePoint
-    FLOW_URL_SUBMIT_ORDER: "",   // POST -> guarda el pedido + token de pago para el cobro real
+    // TODO Diego: datos de tu Yape. El QR: sube la imagen al repo con el nombre yape-qr.png
+    YAPE_NUMERO: '987 023 767',
+    YAPE_TITULAR: 'Inversiones La Sonesta',
+    YAPE_QR: '/yape-qr.png',
 
-    DELIVERY_ENABLED: false, // cambiar a true cuando el delivery esté listo
-
-    // TODO Diego: política de recojo de ejemplo — ajusta estos 3 números
-    // cuando la definan con el equipo, no hace falta tocar nada más.
-    STORE_OPEN_HOUR: 8,          // 8am, mismo horario de la tienda
-    STORE_CLOSE_HOUR: 23,        // 11pm
-    MIN_LEAD_HOURS: 2,           // horas mínimas de anticipación para preparar el pedido
-    SAME_DAY_CUTOFF_HOUR: 13,    // pedidos después de esta hora recogen recién al día siguiente
+    // Horarios de recojo / entrega
+    STORE_OPEN_HOUR: 8,        // primera hora disponible
+    STORE_CLOSE_HOUR: 22,      // última hora disponible
+    MIN_LEAD_HOURS: 2,         // horas mínimas de anticipación
+    SAME_DAY_CUTOFF_HOUR: 13,  // después de esta hora, se entrega desde mañana
+    MAX_DAYS_AHEAD: 30,        // hasta cuántos días adelante se puede pedir
   };
 
-  Culqi.publicKey = CONFIG.CULQI_PUBLIC_KEY;
-
-  // ---- Catálogo de ejemplo (mismo formato que va a devolver Power Automate) ----
-  const PRODUCTOS_DEMO = [
-    { id: 1, nombre: "Pan de yema", categoria: "Panes", precio: 6.50, descripcion: "Pan tradicional horneado a diario, suave y ligeramente dulce." },
-    { id: 2, nombre: "Baguette artesanal", categoria: "Panes", precio: 8.00, descripcion: "Corteza crocante y miga alveolada, fermentación lenta." },
-    { id: 3, nombre: "Torta de chocolate (porción)", categoria: "Pasteles", precio: 12.00, descripcion: "Bizcocho húmedo de cacao con ganache de chocolate." },
-    { id: 4, nombre: "Alfajor relleno", categoria: "Pasteles", precio: 4.50, descripcion: "Galletas artesanales rellenas de manjar blanco casero." },
-    { id: 5, nombre: "Café americano", categoria: "Bebidas", precio: 7.00, descripcion: "Café de grano molido al momento, preparado en filtro." },
-    { id: 6, nombre: "Chicha morada (vaso)", categoria: "Bebidas", precio: 6.00, descripcion: "Preparada en casa con maíz morado, piña y especias." },
-  ];
+  const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY, { auth: { persistSession: false } });
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const soles = n => Number(n || 0).toFixed(2);
+  const leer = k => { try { return JSON.parse(localStorage.getItem('kadima_web_' + k)); } catch (e) { return null; } };
+  const guardar = (k, v) => { try { localStorage.setItem('kadima_web_' + k, JSON.stringify(v)); } catch (e) {} };
 
   let PRODUCTOS = [];
-  let cart = {}; // { productId: cantidad }
-  let currentCategory = "Todos";
+  let cart = {};               // { productoId: cantidad }
+  let categoria = 'Todos';
+  let busqueda = '';
+  let tipoEntrega = 'recojo';
 
-  async function loadProducts() {
-    if (!CONFIG.FLOW_URL_GET_PRODUCTS) {
-      PRODUCTOS = PRODUCTOS_DEMO;
+  // ---------- Catálogo ----------
+  async function cargarProductos() {
+    const { data, error } = await sb.rpc('catalogo_web');
+    if (error) {
+      $('grid').innerHTML = '<div class="estado-carga">No pudimos cargar los productos. Revisa tu conexión y recarga la página.</div>';
       return;
     }
-    try {
-      const res = await fetch(CONFIG.FLOW_URL_GET_PRODUCTS);
-      const data = await res.json();
-      PRODUCTOS = data.productos || PRODUCTOS_DEMO;
-    } catch (e) {
-      console.error("No se pudo cargar el catálogo, usando demo", e);
-      PRODUCTOS = PRODUCTOS_DEMO;
-    }
+    PRODUCTOS = (data || []).map(p => ({ ...p, precio: Number(p.precio), categoria: p.categoria || 'Otros' }));
+    // el carrito guardado solo conserva productos que siguen disponibles
+    const previo = leer('carrito') || {};
+    Object.entries(previo).forEach(([id, q]) => { if (PRODUCTOS.some(p => p.id == id) && q > 0) cart[id] = Math.min(99, q); });
   }
 
-  function renderCategories() {
-    const cats = ["Todos", ...new Set(PRODUCTOS.map(p => p.categoria))];
-    document.getElementById("cats").innerHTML = cats.map(c =>
-      `<button class="cat-btn ${c === currentCategory ? 'active' : ''}" onclick="setCategory('${c}')">${c}</button>`
-    ).join("");
+  function pintarCategorias() {
+    const cats = ['Todos', ...new Set(PRODUCTOS.map(p => p.categoria))];
+    $('cats').innerHTML = cats.map(c => `<button class="cat-btn ${c === categoria ? 'active' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('');
   }
 
-  function setCategory(cat) {
-    currentCategory = cat;
-    renderCategories();
-    renderGrid();
-  }
-
-  let searchQuery = "";
-
-  function onSearchInput() {
-    searchQuery = document.getElementById("buscador").value.toLowerCase();
-    renderGrid();
-  }
-
-  function renderGrid() {
-    let list = currentCategory === "Todos" ? PRODUCTOS : PRODUCTOS.filter(p => p.categoria === currentCategory);
-    if (searchQuery) list = list.filter(p => p.nombre.toLowerCase().includes(searchQuery));
-    document.getElementById("grid").innerHTML = list.map(p => `
+  function pintarGrid() {
+    let lista = categoria === 'Todos' ? PRODUCTOS : PRODUCTOS.filter(p => p.categoria === categoria);
+    if (busqueda) lista = lista.filter(p => (p.nombre + ' ' + (p.descripcion || '')).toLowerCase().includes(busqueda));
+    if (!PRODUCTOS.length) { $('grid').innerHTML = '<div class="estado-carga">Pronto tendremos productos disponibles aquí.</div>'; return; }
+    if (!lista.length) { $('grid').innerHTML = '<div class="estado-carga">No encontramos productos con esa búsqueda.</div>'; return; }
+    $('grid').innerHTML = lista.map(p => `
       <div class="card">
-        <div class="card-photo">Foto<br>${p.nombre}</div>
+        <div class="card-photo">
+          ${p.imagen ? `<img src="${esc(p.imagen)}" alt="${esc(p.nombre)}" loading="lazy">` : `<div class="ph">${esc(p.nombre.charAt(0))}</div>`}
+        </div>
         <div class="card-body">
-          <div class="card-name">${p.nombre}</div>
-          <div class="card-desc">${p.descripcion || ""}</div>
-          <div class="card-price">S/ ${p.precio.toFixed(2)}</div>
+          <div class="card-cat">${esc(p.categoria)}</div>
+          <div class="card-name">${esc(p.nombre)}</div>
+          ${p.descripcion ? `<div class="card-desc">${esc(p.descripcion)}</div>` : ''}
           <div class="card-foot">
-            <div class="stepper">
-              <button onclick="changeQty(${p.id}, -1)">-</button>
-              <span id="qty-${p.id}">${cart[p.id] || 0}</span>
-              <button onclick="changeQty(${p.id}, 1)">+</button>
-            </div>
-            <button class="add-btn" onclick="addToCart(${p.id})">Agregar</button>
+            <div class="card-price">S/ ${soles(p.precio)}</div>
+            <div id="ctl-${p.id}">${controlCantidad(p.id)}</div>
           </div>
         </div>
-      </div>
-    `).join("");
+      </div>`).join('');
   }
 
-  function changeQty(id, delta) {
-    const current = cart[id] || 0;
-    const next = Math.max(0, current + delta);
-    cart[id] = next;
-    const qtyEl = document.getElementById(`qty-${id}`);
-    if (qtyEl) qtyEl.textContent = next;
-    updateCartBar();
-    if (document.getElementById("checkout").style.display !== "none") {
-      renderOrderLines();
-    }
+  function controlCantidad(id) {
+    const q = cart[id] || 0;
+    if (!q) return `<button class="add-btn" data-mas="${id}">Agregar</button>`;
+    return `<div class="stepper"><button data-menos="${id}" aria-label="Quitar uno">−</button><span>${q}</span><button data-mas="${id}" aria-label="Agregar uno">+</button></div>`;
   }
 
-  function addToCart(id) {
-    if (!cart[id]) cart[id] = 1;
-    document.getElementById(`qty-${id}`).textContent = cart[id];
-    updateCartBar();
+  function cambiar(id, delta) {
+    const q = Math.max(0, Math.min(99, (cart[id] || 0) + delta));
+    if (q) cart[id] = q; else delete cart[id];
+    guardar('carrito', cart);
+    const ctl = $('ctl-' + id); if (ctl) ctl.innerHTML = controlCantidad(id);
+    actualizarBarra();
+    if ($('checkout').style.display === 'block') pintarLineas();
   }
 
-  function cartItems() {
-    return Object.entries(cart)
-      .filter(([, qty]) => qty > 0)
-      .map(([id, qty]) => ({ ...PRODUCTOS.find(p => p.id == id), qty }));
+  const items = () => Object.entries(cart).map(([id, qty]) => ({ ...PRODUCTOS.find(p => p.id == id), qty })).filter(i => i.id && i.qty > 0);
+  const total = () => items().reduce((s, i) => s + i.precio * i.qty, 0);
+
+  function actualizarBarra() {
+    const its = items();
+    $('cart-bar').style.display = its.length ? 'flex' : 'none';
+    $('cart-count').textContent = its.reduce((s, i) => s + i.qty, 0);
+    $('cart-total-mini').textContent = soles(total());
   }
 
-  function cartTotal() {
-    return cartItems().reduce((sum, item) => sum + item.precio * item.qty, 0);
+  function verPedido() {
+    pintarLineas();
+    $('checkout').style.display = 'block';
+    $('checkout').scrollIntoView({ behavior: 'smooth' });
   }
 
-  function updateCartBar() {
-    const items = cartItems();
-    const bar = document.getElementById("cart-bar");
-    if (items.length === 0) {
-      bar.style.display = "none";
-      return;
-    }
-    bar.style.display = "flex";
-    document.getElementById("cart-count").textContent = items.reduce((s, i) => s + i.qty, 0);
-    document.getElementById("cart-total-mini").textContent = cartTotal().toFixed(2);
-  }
-
-  function goToCheckout() {
-    renderOrderLines();
-    document.getElementById("checkout").style.display = "block";
-    document.getElementById("checkout").scrollIntoView({ behavior: "smooth" });
-  }
-
-  function renderOrderLines() {
-    const items = cartItems();
-    document.getElementById("order-lines").innerHTML = items.map(item => `
+  function pintarLineas() {
+    const its = items();
+    if (!its.length) { $('checkout').style.display = 'none'; return; }
+    $('order-lines').innerHTML = its.map(i => `
       <div class="order-line">
-        <span>${item.nombre}</span>
-        <div class="qty-controls">
-          <button onclick="changeQty(${item.id}, -1); goToCheckout();">-</button>
-          <span>${item.qty}</span>
-          <button onclick="changeQty(${item.id}, 1); goToCheckout();">+</button>
-        </div>
-        <span>S/ ${(item.precio * item.qty).toFixed(2)}</span>
-      </div>
-    `).join("");
-    const total = cartTotal();
-    document.getElementById("order-total-amount").textContent = total.toFixed(2);
-    document.getElementById("pay-amount").textContent = total.toFixed(2);
+        <span>${esc(i.nombre)}<br><small style="color:var(--muted-2)">S/ ${soles(i.precio)} c/u</small></span>
+        <div class="stepper"><button data-menos="${i.id}">−</button><span>${i.qty}</span><button data-mas="${i.id}">+</button></div>
+        <span>S/ ${soles(i.precio * i.qty)}</span>
+      </div>`).join('');
+    $('order-total-amount').textContent = soles(total());
+    $('yape-monto').textContent = soles(total());
   }
 
-  function selectDelivery(mode) {
-    if (mode === "delivery" && !CONFIG.DELIVERY_ENABLED) return; // bloqueado por ahora
-    document.getElementById("opt-recojo").classList.toggle("selected", mode === "recojo");
+  // ---------- Entrega ----------
+  function elegirEntrega(tipo) {
+    tipoEntrega = tipo;
+    document.querySelectorAll('.delivery-opt').forEach(b => b.classList.toggle('selected', b.dataset.tipo === tipo));
+    $('bloque-delivery').classList.toggle('oculto', tipo !== 'delivery');
+    $('nota-delivery-total').style.display = tipo === 'delivery' ? 'block' : 'none';
+    $('lbl-fecha').textContent = tipo === 'delivery' ? 'Fecha de entrega' : 'Fecha de recojo';
+    $('lbl-hora').textContent = tipo === 'delivery' ? 'Hora aproximada de entrega' : 'Hora de recojo';
   }
 
-  // ---- Fecha y hora de recojo ----
-  function pad2(n) { return n.toString().padStart(2, "0"); }
+  const pad2 = n => String(n).padStart(2, '0');
+  const fechaStr = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 
-  function earliestPickupDateStr() {
-    const now = new Date();
-    const earliest = new Date(now);
-    if (now.getHours() >= CONFIG.SAME_DAY_CUTOFF_HOUR) {
-      earliest.setDate(earliest.getDate() + 1); // ya pasó la hora de corte, recoge mañana
+  function primeraFecha() {
+    const d = new Date();
+    if (d.getHours() >= CONFIG.SAME_DAY_CUTOFF_HOUR) d.setDate(d.getDate() + 1);
+    return fechaStr(d);
+  }
+
+  function horarios(fecha) {
+    const ahora = new Date();
+    const desde = fecha === fechaStr(ahora) ? ahora.getHours() * 60 + ahora.getMinutes() + CONFIG.MIN_LEAD_HOURS * 60 : -1;
+    const lista = [];
+    for (let m = CONFIG.STORE_OPEN_HOUR * 60; m <= CONFIG.STORE_CLOSE_HOUR * 60; m += 30) if (m >= desde) lista.push(m);
+    return lista;
+  }
+  const hhmm = m => `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`;
+  const etiquetaHora = m => { const h = Math.floor(m / 60), h12 = h % 12 || 12; return `${h12}:${pad2(m % 60)} ${h >= 12 ? 'pm' : 'am'}`; };
+
+  function iniciarFechas() {
+    const max = new Date(); max.setDate(max.getDate() + CONFIG.MAX_DAYS_AHEAD);
+    $('fecha').min = primeraFecha(); $('fecha').max = fechaStr(max); $('fecha').value = primeraFecha();
+    const refrescar = () => {
+      const lista = $('fecha').value ? horarios($('fecha').value) : [];
+      $('hora').disabled = !lista.length;
+      $('hora').innerHTML = lista.length
+        ? '<option value="">Elige un horario</option>' + lista.map(m => `<option value="${hhmm(m)}">${etiquetaHora(m)}</option>`).join('')
+        : '<option value="">No hay horarios ese día</option>';
+    };
+    $('fecha').addEventListener('change', refrescar);
+    refrescar();
+  }
+
+  // ---------- Confirmar ----------
+  async function confirmar() {
+    const err = msg => { $('error').textContent = msg; };
+    err('');
+    const tel = $('telefono').value.replace(/\D/g, '').replace(/^51(?=9\d{8}$)/, '');
+    const datos = {
+      nombre: $('nombre').value.trim(),
+      telefono: tel,
+      tipo_entrega: tipoEntrega,
+      fecha: $('fecha').value,
+      hora: $('hora').value,
+      distrito: $('distrito').value.trim(),
+      direccion: $('direccion').value.trim(),
+      referencia: $('referencia').value.trim(),
+      notas: $('notas').value.trim(),
+      yape_operacion: $('operacion').value.trim(),
+      items: items().map(i => ({ producto_id: i.id, cantidad: i.qty })),
+    };
+    if (!datos.items.length) return err('Tu carrito está vacío.');
+    if (!datos.fecha || !datos.hora) return err('Elige la fecha y la hora.');
+    if (tipoEntrega === 'delivery' && datos.direccion.length < 5) return err('Escribe la dirección de entrega.');
+    if (datos.nombre.length < 3) return err('Escribe tu nombre completo.');
+    if (!/^9\d{8}$/.test(tel)) return err('El celular debe tener 9 dígitos y empezar con 9.');
+    if (datos.yape_operacion.replace(/\D/g, '').length < 4) return err('Escribe el número de operación de tu Yape.');
+
+    $('btn-confirmar').disabled = true; $('btn-confirmar').textContent = 'Enviando pedido…';
+    const { data, error } = await sb.rpc('crear_pedido_web', { p: datos });
+    $('btn-confirmar').disabled = false; $('btn-confirmar').textContent = 'Confirmar pedido';
+    if (error) {
+      const msg = /fetch|network/i.test(error.message) ? 'Sin conexión. Revisa tu internet e inténtalo otra vez.' : error.message;
+      if (/ya no está disponible/.test(msg)) { await cargarProductos(); pintarCategorias(); pintarGrid(); pintarLineas(); actualizarBarra(); }
+      return err(msg);
     }
-    return `${earliest.getFullYear()}-${pad2(earliest.getMonth() + 1)}-${pad2(earliest.getDate())}`;
+    mostrarConfirmacion(data, datos);
   }
 
-  function buildPickupSlotsForDate(dateStr) {
-    const now = new Date();
-    const isToday = dateStr === `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
-    const earliestMinutesFromNow = isToday ? (now.getHours() * 60 + now.getMinutes()) + (CONFIG.MIN_LEAD_HOURS * 60) : -Infinity;
+  function mostrarConfirmacion(res, datos) {
+    const its = items();
+    const fechaTxt = new Date(datos.fecha + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
+    const horaTxt = etiquetaHora(Number(datos.hora.slice(0, 2)) * 60 + Number(datos.hora.slice(3, 5)));
+    const entregaTxt = datos.tipo_entrega === 'delivery'
+      ? `Delivery el ${fechaTxt}, ${horaTxt} aprox.`
+      : `Recojo en tienda el ${fechaTxt}, ${horaTxt}.`;
 
-    const slots = [];
-    for (let m = CONFIG.STORE_OPEN_HOUR * 60; m <= CONFIG.STORE_CLOSE_HOUR * 60; m += 30) {
-      if (m >= earliestMinutesFromNow) slots.push(m);
+    $('codigo-pedido').textContent = res.codigo;
+    $('resumen-entrega').textContent = entregaTxt + ` Total productos: S/ ${soles(res.total)}.`;
+
+    const lineas = [
+      `Hola Kadima 👋, acabo de hacer un pedido en la web.`,
+      ``,
+      `*Pedido:* ${res.codigo}`,
+      `*Nombre:* ${datos.nombre}`,
+      ...its.map(i => `• ${i.qty} x ${i.nombre} — S/ ${soles(i.precio * i.qty)}`),
+      `*Total productos:* S/ ${soles(res.total)}`,
+      `*Entrega:* ${entregaTxt}`,
+    ];
+    if (datos.tipo_entrega === 'delivery') {
+      lineas.push(`*Dirección:* ${datos.direccion}${datos.distrito ? ', ' + datos.distrito : ''}`);
+      if (datos.referencia) lineas.push(`*Referencia:* ${datos.referencia}`);
+      lineas.push(`Quedo atento al costo del delivery.`);
     }
-    return slots;
+    if (datos.notas) lineas.push(`*Indicaciones:* ${datos.notas}`);
+    lineas.push(`*Yape N° operación:* ${datos.yape_operacion}`, ``, `Adjunto la captura del Yape.`);
+    $('wa-link').href = `https://wa.me/${CONFIG.WHATSAPP_NUMBER}?text=${encodeURIComponent(lineas.join('\n'))}`;
+
+    cart = {}; guardar('carrito', {});
+    guardar('cliente', { nombre: datos.nombre, telefono: datos.telefono, distrito: datos.distrito, direccion: datos.direccion, referencia: datos.referencia });
+    $('checkout').style.display = 'none';
+    $('cart-bar').style.display = 'none';
+    $('confirmacion').style.display = 'block';
+    $('confirmacion').scrollIntoView({ behavior: 'smooth' });
   }
 
-  function minutesToPickupLabel(mins) {
-    const h24 = Math.floor(mins / 60) % 24;
-    const m = mins % 60;
-    const ampm = h24 >= 12 ? "pm" : "am";
-    let h12 = h24 % 12;
-    if (h12 === 0) h12 = 12;
-    return `${h12}:${pad2(m)}${ampm}`;
-  }
-
-  function initPickupFields() {
-    const fechaRecojo = document.getElementById("fecha-recojo");
-    const horaRecojo = document.getElementById("hora-recojo");
-    fechaRecojo.min = earliestPickupDateStr();
-    fechaRecojo.value = earliestPickupDateStr();
-
-    function refreshSlots() {
-      const slots = buildPickupSlotsForDate(fechaRecojo.value);
-      if (slots.length === 0) {
-        horaRecojo.innerHTML = '<option value="">No hay horarios ese día</option>';
-        horaRecojo.disabled = true;
-        return;
-      }
-      horaRecojo.innerHTML = '<option value="">Elige un horario</option>' +
-        slots.map(s => `<option value="${s}">${minutesToPickupLabel(s)}</option>`).join("");
-      horaRecojo.disabled = false;
-    }
-
-    fechaRecojo.addEventListener("change", refreshSlots);
-    refreshSlots();
-  }
-
-  function generateOrderCode() {
-    const now = new Date();
-    const pad = n => n.toString().padStart(2, "0");
-    return `${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-  }
-
-  function payWithCulqi() {
-    const nombre = document.getElementById("nombre").value;
-    const telefono = document.getElementById("telefono").value;
-    const fechaRecojo = document.getElementById("fecha-recojo").value;
-    const horaRecojo = document.getElementById("hora-recojo").value;
-    if (!nombre || !telefono || !fechaRecojo || !horaRecojo) {
-      alert("Por favor completa nombre, teléfono, fecha y hora de recojo antes de pagar.");
-      return;
-    }
-    if (cartItems().length === 0) {
-      alert("Tu carrito está vacío.");
-      return;
-    }
-    const totalEnCentimos = Math.round(cartTotal() * 100);
-    Culqi.settings({
-      title: "Kadima | Panadería y Pastelería",
-      currency: "PEN",
-      amount: totalEnCentimos,
-      description: "Pedido Kadima",
-    });
-    Culqi.open();
-  }
-
-  // Culqi llama a esta función global exacta ("culqi") cuando el pago se procesa.
-  // No cambiar el nombre de la función, Culqi la busca así por convención.
-  window.culqi = function () {
-    if (Culqi.token) {
-      const token = Culqi.token.id;
-      const payload = {
-        codigo: generateOrderCode(),
-        nombre: document.getElementById("nombre").value,
-        telefono: document.getElementById("telefono").value,
-        entrega: "recojo",
-        fechaRecojo: document.getElementById("fecha-recojo").value,
-        horaRecojo: minutesToPickupLabel(Number(document.getElementById("hora-recojo").value)),
-        items: cartItems(),
-        total: cartTotal(),
-        culqiTokenId: token,
-      };
-      submitOrder(payload);
-    } else if (Culqi.error) {
-      console.error("Error de Culqi:", Culqi.error);
-      alert("Hubo un problema procesando el pago. Intenta de nuevo.");
-    }
+  // ---------- Eventos ----------
+  document.addEventListener('click', e => {
+    const mas = e.target.closest('[data-mas]'); if (mas) return cambiar(mas.dataset.mas, 1);
+    const menos = e.target.closest('[data-menos]'); if (menos) return cambiar(menos.dataset.menos, -1);
+    const cat = e.target.closest('[data-cat]'); if (cat) { categoria = cat.dataset.cat; pintarCategorias(); pintarGrid(); return; }
+    const opt = e.target.closest('.delivery-opt'); if (opt) return elegirEntrega(opt.dataset.tipo);
+  });
+  $('buscador').addEventListener('input', e => { busqueda = e.target.value.trim().toLowerCase(); pintarGrid(); });
+  $('btn-ver-pedido').onclick = verPedido;
+  $('btn-confirmar').onclick = confirmar;
+  $('btn-copiar').onclick = async () => {
+    try { await navigator.clipboard.writeText(CONFIG.YAPE_NUMERO.replace(/\s/g, '')); $('btn-copiar').textContent = '¡Copiado!'; }
+    catch (e) { $('btn-copiar').textContent = 'Cópialo a mano'; }
+    setTimeout(() => $('btn-copiar').textContent = 'Copiar', 2000);
   };
 
-  async function submitOrder(payload) {
-    if (CONFIG.FLOW_URL_SUBMIT_ORDER) {
-      try {
-        await fetch(CONFIG.FLOW_URL_SUBMIT_ORDER, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      } catch (e) {
-        console.error("No se pudo registrar el pedido", e);
-      }
-    }
-    // Modo de prueba: sin flujo conectado, solo simula el registro.
-    document.getElementById("codigo-pedido").textContent = payload.codigo;
-    document.getElementById("resumen-recojo").textContent =
-      `Recojo: ${payload.fechaRecojo} — ${payload.horaRecojo}`;
-    document.getElementById("checkout").style.display = "none";
-    document.getElementById("cart-bar").style.display = "none";
-    document.getElementById("confirmacion").style.display = "block";
-    document.getElementById("confirmacion").scrollIntoView({ behavior: "smooth" });
-  }
-
+  // ---------- Inicio ----------
   (async function init() {
-    await loadProducts();
-    renderCategories();
-    renderGrid();
-    initPickupFields();
+    $('yape-numero').textContent = CONFIG.YAPE_NUMERO;
+    $('yape-titular').textContent = CONFIG.YAPE_TITULAR;
+    $('yape-qr-img').onerror = () => $('yape-qr').classList.add('oculto');
+    $('yape-qr-img').src = CONFIG.YAPE_QR;
+    const cli = leer('cliente');
+    if (cli) ['nombre', 'telefono', 'distrito', 'direccion', 'referencia'].forEach(k => { if (cli[k]) $(k).value = cli[k]; });
+    iniciarFechas();
+    await cargarProductos();
+    pintarCategorias(); pintarGrid(); actualizarBarra();
   })();
 </script>
-
 </body>
 </html>

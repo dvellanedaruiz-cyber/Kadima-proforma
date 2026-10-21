@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kadima Tienda web</title>
+<meta name="theme-color" content="#8B0000">
+<link rel="icon" href="pos-icon-192.png">
+<style>
+:root{--rojo:#8B0000;--fondo:#f6f4f2;--borde:#e3dfdb;--gris:#6b6b6b;--texto:#1f1f1f;--ok:#1e7d3a;--aviso:#b26a00;--mal:#b00020}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--fondo);color:var(--texto);font-size:14px}
+button{font:inherit;cursor:pointer;border:none;border-radius:8px}
+input,select,textarea{font:inherit;padding:9px 10px;border:1px solid var(--borde);border-radius:8px;background:#fff;width:100%;color:inherit}
+.oculto{display:none!important}
+.btn{background:var(--rojo);color:#fff;padding:10px 16px;font-weight:600}.btn:disabled{opacity:.5}
+.btn-sec{background:#fff;color:var(--rojo);border:1.5px solid var(--rojo);padding:7px 12px;font-weight:600;text-decoration:none;display:inline-block}
+.btn-mini{background:var(--fondo);padding:6px 10px;font-size:12.5px;font-weight:600;color:var(--texto)}
+.error{color:var(--mal);min-height:18px;margin-top:8px}
+.centro{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.tarjeta{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);padding:24px;width:100%;max-width:380px}
+.marca{color:var(--rojo);font-weight:800;font-size:22px;margin:0}.sub{color:var(--gris);margin:4px 0 16px}
+.pin-puntos{display:flex;gap:10px;justify-content:center;margin:10px 0 16px}
+.pin-puntos span{width:14px;height:14px;border-radius:50%;border:2px solid var(--rojo)}.pin-puntos span.lleno{background:var(--rojo)}
+.teclado{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.teclado button{padding:16px;font-size:20px;background:var(--fondo);font-weight:600}
+.barra{background:var(--rojo);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:5}
+.barra b{font-size:18px}.barra .usr{margin-left:auto;font-size:13px;opacity:.9}
+.embebido .barra{display:none}
+
+.panel{padding:16px;max-width:1200px;margin:0 auto}
+.cab{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.cab h2{margin:0;font-size:20px;color:var(--rojo)}
+.cab .der{margin-left:auto;display:flex;gap:8px;align-items:center}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+.kpi{background:#fff;border-radius:12px;padding:12px}.kpi span{display:block;font-size:12px;color:var(--gris)}.kpi b{font-size:22px}
+.filtros{display:grid;grid-template-columns:2fr 1fr auto;gap:10px;margin-bottom:12px;align-items:center}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chips button{background:#fff;padding:7px 12px;font-size:12.5px;font-weight:600;color:var(--gris);border:1px solid var(--borde)}
+.chips button.activa{background:var(--rojo);color:#fff;border-color:var(--rojo)}
+.ayuda{background:#fff8ea;border:1px solid #f0d9a8;color:#6b4c15;border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:12px}
+
+.lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.prod{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.05);display:flex;flex-direction:column;border:2px solid transparent}
+.prod.visible{border-color:#cfe8d6}
+.foto{position:relative;aspect-ratio:4/3;background:#efe9e3;cursor:pointer;overflow:hidden}
+.foto img{width:100%;height:100%;object-fit:cover;display:block}
+.foto .vacia{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--gris);font-size:13px;gap:4px}
+.foto .vacia b{font-size:30px}
+.foto .subiendo{position:absolute;inset:0;background:rgba(255,255,255,.8);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--rojo)}
+.foto .cambiar{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.6);color:#fff;font-size:12px;padding:5px 9px;border-radius:8px}
+.info{padding:12px;display:flex;flex-direction:column;gap:8px;flex:1}
+.fila1{display:flex;gap:8px;align-items:flex-start}
+.fila1 .n{font-weight:700;font-size:15px;line-height:1.25}
+.fila1 small{color:var(--gris);display:block;font-size:12px;margin-top:2px}
+.precio{margin-left:auto;font-weight:700;color:var(--rojo);white-space:nowrap}
+.switch{display:flex;align-items:center;gap:10px;font-weight:600;cursor:pointer;user-select:none}
+.switch input{display:none}
+.switch .t{width:44px;height:24px;border-radius:12px;background:#ccc;position:relative;transition:.15s;flex-shrink:0}
+.switch .t::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.15s}
+.switch input:checked+.t{background:var(--ok)}.switch input:checked+.t::after{left:23px}
+.info textarea{min-height:62px;resize:vertical;font-size:13px}
+.fila2{display:flex;gap:8px;align-items:center}
+.fila2 label{font-size:12px;color:var(--gris);white-space:nowrap}
+.fila2 input{width:70px;padding:6px 8px}
+.estado{margin-left:auto;font-size:12px;font-weight:600;min-height:16px}
+.estado.ok{color:var(--ok)}.estado.mal{color:var(--mal)}
+.aviso-precio{font-size:12px;color:var(--aviso)}
+.vacio{grid-column:1/-1;text-align:center;color:var(--gris);padding:40px}
+@media (max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}.filtros{grid-template-columns:1fr}.lista{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<section id="v-login" class="centro oculto">
+  <form class="tarjeta" id="f-login">
+    <p class="marca">KADIMA</p><p class="sub">Tienda web · iniciar sesión</p>
+    <input id="l-email" type="email" value="admin@kadima.pe" required style="margin-bottom:10px">
+    <input id="l-pass" type="password" placeholder="Contraseña" required style="margin-bottom:10px">
+    <button class="btn" style="width:100%">Ingresar</button><div class="error" id="l-error"></div>
+  </form>
+</section>
+<section id="v-pin" class="centro oculto">
+  <div class="tarjeta" style="max-width:340px">
+    <p class="marca">KADIMA</p><p class="sub">Tienda web · Ingresa tu PIN</p>
+    <div class="pin-puntos" id="pin-puntos"></div><div class="teclado" id="teclado"></div>
+    <div class="error" id="pin-error" style="text-align:center"></div>
+  </div>
+</section>
+
+<section id="v-app" class="oculto">
+  <div class="barra"><b>Tienda web</b><span class="usr" id="usr"></span></div>
+  <div class="panel">
+    <div class="cab">
+      <h2>🛒 Catálogo de la tienda web</h2>
+      <div class="der"><a class="btn-sec" href="/pedidos" target="_blank" rel="noopener">Ver tienda ↗</a></div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><span>Visibles en la web</span><b id="k-vis">0</b></div>
+      <div class="kpi"><span>Visibles sin foto</span><b id="k-sinfoto">0</b></div>
+      <div class="kpi"><span>Visibles sin descripción</span><b id="k-sindesc">0</b></div>
+      <div class="kpi"><span>Productos de venta</span><b id="k-total">0</b></div>
+    </div>
+    <div class="ayuda">Aquí solo aparecen productos de venta creados en <b>Recetas</b>. El nombre y el precio se cambian allá; aquí decides qué se muestra, la descripción, la foto y el orden. Todo se guarda solo.</div>
+    <div class="filtros">
+      <input type="search" id="buscar" placeholder="Buscar por nombre o código…">
+      <select id="f-cat"><option value="">Todas las categorías</option></select>
+      <div class="chips" id="chips">
+        <button data-f="" class="activa">Todos</button>
+        <button data-f="vis">Visibles</button>
+        <button data-f="ocu">Ocultos</button>
+        <button data-f="sinfoto">Sin foto</button>
+      </div>
+    </div>
+    <div class="lista" id="lista"></div>
+  </div>
+</section>
+
+<input type="file" id="archivo" accept="image/*" class="oculto">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
+<script>
+const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
+const BUCKET = 'productos-web';
+const EMBEBIDO = window.self !== window.top;
+if (EMBEBIDO) document.documentElement.classList.add('embebido');
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, EMBEBIDO ? { auth: { storageKey: 'kadima-gestion-auth' } } : undefined);
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const errTxt = e => { const m = (e && (e.message || e.error_description)) || String(e); return /fetch|network/i.test(m) ? 'Sin conexión a internet.' : /Invalid login/i.test(m) ? 'Correo o contraseña incorrectos.' : m; };
+const st = { usuario: null, productos: [], cats: {}, filtro: '', busca: '', cat: '', fotoDe: null };
+
+// ===== Sesión y PIN =====
+function vista(id) { ['v-login', 'v-pin', 'v-app'].forEach(v => $(v).classList.toggle('oculto', v !== id)); }
+$('f-login').addEventListener('submit', async ev => {
+  ev.preventDefault(); $('l-error').textContent = '';
+  const { error } = await sb.auth.signInWithPassword({ email: $('l-email').value.trim(), password: $('l-pass').value });
+  if (error) return $('l-error').textContent = errTxt(error);
+  iniciar();
+});
+async function iniciar() { const { data } = await sb.auth.getSession(); if (!data.session) return vista('v-login'); pedirPin(); }
+let pin = '';
+function pedirPin() {
+  try { if (EMBEBIDO && window.parent.KADIMA_USUARIO) { st.usuario = window.parent.KADIMA_USUARIO; return abrirApp(); } } catch (e) {}
+  pin = ''; vista('v-pin'); $('pin-error').textContent = ''; dibujarPin();
+}
+function dibujarPin() { $('pin-puntos').innerHTML = [0, 1, 2, 3].map(i => `<span class="${i < pin.length ? 'lleno' : ''}"></span>`).join(''); }
+$('teclado').innerHTML = ['1','2','3','4','5','6','7','8','9','⌫','0','OK'].map(t => `<button data-t="${t}">${t}</button>`).join('');
+$('teclado').onclick = e => { const t = e.target.dataset.t; if (!t) return; if (t === '⌫') pin = pin.slice(0, -1); else if (t === 'OK') return validarPin(); else if (pin.length < 6) pin += t; dibujarPin(); if (pin.length === 4) validarPin(); };
+document.addEventListener('keydown', e => {
+  if ($('v-pin').classList.contains('oculto')) return;
+  if (/^[0-9]$/.test(e.key) && pin.length < 6) { pin += e.key; dibujarPin(); if (pin.length === 4) validarPin(); }
+  if (e.key === 'Backspace') { pin = pin.slice(0, -1); dibujarPin(); }
+});
+async function validarPin() {
+  const { data, error } = await sb.from('usuarios').select('id,nombre,rol,pin').eq('activo', true);
+  if (error) { $('pin-error').textContent = errTxt(error); pin = ''; return dibujarPin(); }
+  const u = (data || []).find(x => x.pin === pin);
+  if (!u) { $('pin-error').textContent = 'PIN incorrecto'; pin = ''; return dibujarPin(); }
+  st.usuario = u; abrirApp();
+}
+
+// ===== Datos =====
+async function abrirApp() {
+  vista('v-app'); $('usr').textContent = st.usuario?.nombre || '';
+  $('lista').innerHTML = '<div class="vacio">Cargando productos…</div>';
+  const [p, c] = await Promise.all([
+    sb.from('productos').select('id,codigo,nombre,precio_venta,precio_libre,categoria_id,web_visible,web_descripcion,web_imagen,web_orden')
+      .eq('vendible', true).eq('activo', true).order('nombre'),
+    sb.from('categorias').select('id,nombre').order('nombre'),
+  ]);
+  if (p.error || c.error) {
+    const m = errTxt(p.error || c.error);
+    $('lista').innerHTML = `<div class="vacio">${/web_visible/.test(m) ? 'Falta correr el script <b>39_tienda_web.sql</b> en Supabase.' : esc(m)}</div>`;
+    return;
+  }
+  st.productos = p.data; st.cats = Object.fromEntries(c.data.map(x => [x.id, x.nombre]));
+  const usadas = [...new Set(st.productos.map(x => x.categoria_id).filter(Boolean))].sort((a, b) => (st.cats[a] || '').localeCompare(st.cats[b] || ''));
+  $('f-cat').innerHTML = '<option value="">Todas las categorías</option>' + usadas.map(id => `<option value="${id}">${esc(st.cats[id])}</option>`).join('');
+  pintar();
+}
+
+const tienePrecio = p => !p.precio_libre && Number(p.precio_venta) > 0;
+
+function kpis() {
+  const vis = st.productos.filter(p => p.web_visible);
+  $('k-vis').textContent = vis.length;
+  $('k-sinfoto').textContent = vis.filter(p => !p.web_imagen).length;
+  $('k-sindesc').textContent = vis.filter(p => !(p.web_descripcion || '').trim()).length;
+  $('k-total').textContent = st.productos.length;
+}
+
+function pintar() {
+  kpis();
+  const q = st.busca.toLowerCase();
+  let lista = st.productos.filter(p =>
+    (!q || (p.nombre + ' ' + (p.codigo || '')).toLowerCase().includes(q)) &&
+    (!st.cat || String(p.categoria_id) === st.cat) &&
+    (st.filtro !== 'vis' || p.web_visible) &&
+    (st.filtro !== 'ocu' || !p.web_visible) &&
+    (st.filtro !== 'sinfoto' || !p.web_imagen));
+  // visibles primero, luego por orden y nombre
+  lista.sort((a, b) => (b.web_visible - a.web_visible) || (a.web_orden - b.web_orden) || a.nombre.localeCompare(b.nombre));
+  if (!lista.length) { $('lista').innerHTML = '<div class="vacio">No hay productos con ese filtro.</div>'; return; }
+  $('lista').innerHTML = lista.map(tarjeta).join('');
+}
+
+function tarjeta(p) {
+  const conPrecio = tienePrecio(p);
+  return `
+  <div class="prod ${p.web_visible ? 'visible' : ''}" id="p-${p.id}">
+    <div class="foto" data-foto="${p.id}" title="Subir o cambiar foto">
+      ${p.web_imagen ? `<img src="${esc(p.web_imagen)}" alt="" loading="lazy"><span class="cambiar">📷 Cambiar</span>` : `<div class="vacia"><b>📷</b>Toca para subir foto</div>`}
+    </div>
+    <div class="info">
+      <div class="fila1">
+        <div><div class="n">${esc(p.nombre)}</div><small>${esc(p.codigo || '')} · ${esc(st.cats[p.categoria_id] || 'Sin categoría')}</small></div>
+        <div class="precio">${conPrecio ? 'S/ ' + Number(p.precio_venta).toFixed(2) : '—'}</div>
+      </div>
+      ${conPrecio
+        ? `<label class="switch"><input type="checkbox" data-vis="${p.id}" ${p.web_visible ? 'checked' : ''}><span class="t"></span><span>${p.web_visible ? 'Se muestra en la web' : 'Oculto'}</span></label>`
+        : `<div class="aviso-precio">⚠ Sin precio fijo: ponle precio en Recetas para poder mostrarlo.</div>`}
+      <textarea data-desc="${p.id}" maxlength="300" placeholder="Descripción para el cliente (ej. Bizcocho de chocolate con fudge, para 12 personas)">${esc(p.web_descripcion || '')}</textarea>
+      <div class="fila2">
+        <label>Orden</label><input type="number" min="1" max="999" data-orden="${p.id}" value="${p.web_orden ?? 100}" title="Número menor = aparece primero">
+        ${p.web_imagen ? `<button class="btn-mini" data-quitar="${p.id}">Quitar foto</button>` : ''}
+        <span class="estado" id="e-${p.id}"></span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function marca(id, txt, ok = true) {
+  const e = $('e-' + id); if (!e) return;
+  e.textContent = txt; e.className = 'estado ' + (ok ? 'ok' : 'mal');
+  if (ok) setTimeout(() => { if (e.textContent === txt) e.textContent = ''; }, 2000);
+}
+
+async function guardar(id, cambios) {
+  const p = st.productos.find(x => x.id == id);
+  const antes = { ...p };
+  Object.assign(p, cambios);
+  marca(id, 'Guardando…');
+  const { error } = await sb.from('productos').update(cambios).eq('id', id);
+  if (error) { Object.assign(p, antes); marca(id, errTxt(error), false); return false; }
+  marca(id, '✓ Guardado'); kpis();
+  return true;
+}
+
+// ===== Fotos =====
+function reducir(file, max = 1200) {
+  return new Promise((ok, mal) => {
+    const img = new Image();
+    img.onload = () => {
+      const r = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
+      const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(b => b ? ok(b) : mal(new Error('No se pudo procesar la imagen.')), 'image/jpeg', 0.85);
+      URL.revokeObjectURL(img.src);
+    };
+    img.onerror = () => mal(new Error('Ese archivo no es una imagen válida.'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+const rutaDe = url => { const i = (url || '').indexOf('/' + BUCKET + '/'); return i < 0 ? null : decodeURIComponent(url.slice(i + BUCKET.length + 2).split('?')[0]); };
+
+async function subirFoto(id, file) {
+  const p = st.productos.find(x => x.id == id);
+  const caja = document.querySelector(`[data-foto="${id}"]`);
+  caja.insertAdjacentHTML('beforeend', '<div class="subiendo">Subiendo…</div>');
+  try {
+    const blob = await reducir(file);
+    const ruta = `${p.codigo || 'prod'}-${p.id}-${Date.now()}.jpg`.replace(/[^\w.-]/g, '_');
+    const up = await sb.storage.from(BUCKET).upload(ruta, blob, { contentType: 'image/jpeg', cacheControl: '31536000' });
+    if (up.error) throw up.error;
+    const url = sb.storage.from(BUCKET).getPublicUrl(ruta).data.publicUrl;
+    const vieja = rutaDe(p.web_imagen);
+    if (await guardar(id, { web_imagen: url })) {
+      if (vieja) sb.storage.from(BUCKET).remove([vieja]).then(() => {});
+      $('p-' + id).outerHTML = tarjeta(p); marca(id, '✓ Foto lista');
+    } else {
+      sb.storage.from(BUCKET).remove([ruta]).then(() => {});
+    }
+  } catch (e) {
+    caja.querySelector('.subiendo')?.remove(); marca(id, errTxt(e), false);
+  }
+}
+
+async function quitarFoto(id) {
+  if (!confirm('¿Quitar la foto de este producto?')) return;
+  const p = st.productos.find(x => x.id == id);
+  const vieja = rutaDe(p.web_imagen);
+  if (await guardar(id, { web_imagen: null })) {
+    if (vieja) sb.storage.from(BUCKET).remove([vieja]).then(() => {});
+    $('p-' + id).outerHTML = tarjeta(p);
+  }
+}
+
+// ===== Eventos =====
+document.addEventListener('click', e => {
+  const f = e.target.closest('[data-foto]'); if (f) { st.fotoDe = f.dataset.foto; $('archivo').value = ''; $('archivo').click(); return; }
+  const q = e.target.closest('[data-quitar]'); if (q) return quitarFoto(q.dataset.quitar);
+  const ch = e.target.closest('#chips [data-f]');
+  if (ch) { st.filtro = ch.dataset.f; document.querySelectorAll('#chips button').forEach(b => b.classList.toggle('activa', b === ch)); pintar(); }
+});
+$('archivo').onchange = () => { const f = $('archivo').files[0]; if (f && st.fotoDe) subirFoto(st.fotoDe, f); };
+document.addEventListener('change', async e => {
+  const v = e.target.closest('[data-vis]');
+  if (v) {
+    const id = v.dataset.vis;
+    const ok = await guardar(id, { web_visible: v.checked });
+    if (!ok) v.checked = !v.checked;
+    const p = st.productos.find(x => x.id == id);
+    $('p-' + id).classList.toggle('visible', p.web_visible);
+    v.nextElementSibling.nextElementSibling.textContent = p.web_visible ? 'Se muestra en la web' : 'Oculto';
+    if (p.web_visible && !p.web_imagen) marca(id, '✓ Visible (falta foto)');
+    return;
+  }
+  const d = e.target.closest('[data-desc]');
+  if (d) { const t = d.value.trim(); const p = st.productos.find(x => x.id == d.dataset.desc); if ((p.web_descripcion || '') !== t) guardar(d.dataset.desc, { web_descripcion: t || null }); return; }
+  const o = e.target.closest('[data-orden]');
+  if (o) { const n = Math.max(1, Math.min(999, parseInt(o.value, 10) || 100)); o.value = n; guardar(o.dataset.orden, { web_orden: n }); }
+});
+$('buscar').addEventListener('input', e => { st.busca = e.target.value.trim(); pintar(); });
+$('f-cat').onchange = e => { st.cat = e.target.value; pintar(); };
+
+iniciar();
+</script>
+</body>
+</html>
