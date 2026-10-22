@@ -3,70 +3,103 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Kadima · Costos de insumos</title>
+<title>Kadima · Costos</title>
 <meta name="theme-color" content="#8B0000">
 <style>
-:root{--vino:#8B0000;--vino2:#b23a3a;--fondo:#f6f4f2;--card:#fff;--txt:#222;--muted:#777;--borde:#e6e1dc;--sube:#c62828;--baja:#2e7d32;--suave:#faf7f5}
+:root{--vino:#8B0000;--vino-s:#f7e9e9;--fondo:#f6f4f2;--card:#fff;--txt:#1f1f1f;--muted:#6f6a66;--borde:#ebe6e2;--sube:#c62828;--baja:#2e7d32;--suave:#faf7f5;--amb:#b26a00}
 *{box-sizing:border-box}
-body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--fondo);color:var(--txt);font-size:14px}
+html,body{margin:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--fondo);color:var(--txt);font-size:14px}
 .oculto{display:none!important}
-header{background:var(--vino);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:5}
-header h1{font-size:16px;margin:0;flex:1}
-.tabs{display:flex;gap:4px}
-.tabs button{background:transparent;border:1px solid rgba(255,255,255,.4);color:#fff;padding:6px 12px;border-radius:16px;cursor:pointer;font-size:13px}
-.tabs button.activa{background:#fff;color:var(--vino);font-weight:600}
-main{max-width:1200px;margin:0 auto;padding:14px 16px 40px}
-.bloque{background:var(--card);border:1px solid var(--borde);border-radius:12px;padding:14px;margin-bottom:14px}
-.bloque h3{margin:0 0 10px;font-size:15px}
-.ayuda{color:var(--muted);font-size:12.5px;margin:0 0 10px;line-height:1.45}
-.filtros{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.filtros label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
-input,select{font:inherit;padding:7px 9px;border:1px solid var(--borde);border-radius:8px;background:#fff;color:var(--txt)}
-.chips{display:flex;gap:4px;flex-wrap:wrap}
-.chips button{border:1px solid var(--borde);background:#fff;border-radius:14px;padding:5px 10px;font-size:12.5px;cursor:pointer;color:var(--txt)}
-.chips button.activa{background:var(--vino);border-color:var(--vino);color:#fff}
-.btn{background:var(--vino);color:#fff;border:0;border-radius:8px;padding:8px 14px;font:inherit;font-weight:600;cursor:pointer}
-.btn.sec{background:#fff;color:var(--vino);border:1px solid var(--vino)}
+/* cabecera */
+header{background:var(--vino);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:20}
+header h1{font-size:16px;margin:0;white-space:nowrap}
+.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{background:transparent;border:0;color:rgba(255,255,255,.8);padding:7px 12px;border-radius:8px;cursor:pointer;font:inherit;font-size:13.5px;font-weight:600;white-space:nowrap}
+.tabs button.activa{background:rgba(255,255,255,.2);color:#fff}
+.embebido header{background:#fff;color:var(--txt);border-bottom:1px solid var(--borde);padding:8px 16px}
+.embebido header h1{display:none}
+.embebido .tabs button{color:var(--muted)}
+.embebido .tabs button:hover{background:var(--suave)}
+.embebido .tabs button.activa{background:var(--vino-s);color:var(--vino)}
+main{max-width:1280px;margin:0 auto;padding:16px 16px 48px}
+/* bloques */
+.bloque{background:var(--card);border:1px solid var(--borde);border-radius:14px;padding:16px;margin-bottom:14px}
+.bloque h3{margin:0 0 4px;font-size:15px}
+.ayuda{color:var(--muted);font-size:12.5px;margin:0 0 12px;line-height:1.5}
+.filtros{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.filtros .lbl{font-size:12px;color:var(--muted);margin-right:-4px}
+input,select{font:inherit;padding:8px 10px;border:1px solid var(--borde);border-radius:9px;background:#fff;color:var(--txt);min-width:0}
+input:focus,select:focus{outline:2px solid #e9c9c9;border-color:#d9a9a9}
+.chips{display:inline-flex;background:var(--suave);border:1px solid var(--borde);border-radius:10px;padding:2px;gap:2px;flex-wrap:wrap}
+.chips button{border:0;background:transparent;border-radius:8px;padding:5px 10px;font:inherit;font-size:12.5px;cursor:pointer;color:var(--muted);font-weight:600}
+.chips button.activa{background:#fff;color:var(--vino);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.btn{background:var(--vino);color:#fff;border:0;border-radius:9px;padding:8px 14px;font:inherit;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn.sec{background:#fff;color:var(--vino);border:1px solid #e3c6c6}
+.btn.peq{padding:5px 10px;font-size:12.5px}
 .btn:disabled{opacity:.5;cursor:default}
-.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
-.kpi{background:var(--card);border:1px solid var(--borde);border-radius:12px;padding:12px}
+.link{background:none;border:0;color:var(--vino);font:inherit;font-weight:600;cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:2px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--borde);border-radius:14px;padding:12px 14px;min-width:0}
 .kpi .t{font-size:12px;color:var(--muted)}
-.kpi .v{font-size:22px;font-weight:700;margin-top:4px}
+.kpi .v{font-size:22px;font-weight:700;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .kpi .s{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sube{color:var(--sube)}.baja{color:var(--baja)}
+.sube{color:var(--sube)}.baja{color:var(--baja)}.amb{color:var(--amb)}
 .grafico{width:100%;height:320px}
-.tablawrap{overflow-x:auto}
+.grafico.bajo{height:220px}
+.tablawrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 table.t{width:100%;border-collapse:collapse;font-size:13px}
-table.t th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:7px 6px;border-bottom:1px solid var(--borde);white-space:nowrap;cursor:default}
+table.t th{text-align:left;font-size:11.5px;color:var(--muted);font-weight:600;padding:8px 8px;border-bottom:1px solid var(--borde);white-space:nowrap;text-transform:uppercase;letter-spacing:.02em;background:#fff;position:sticky;top:0}
 table.t th.ord{cursor:pointer}
-table.t td{padding:7px 6px;border-bottom:1px solid #f0ece8;vertical-align:middle}
+table.t td{padding:8px 8px;border-bottom:1px solid #f2eeea;vertical-align:middle}
 table.t tr.clic{cursor:pointer}
-table.t tr.clic:hover{background:var(--suave)}
-table.t tr.sel{background:#fbeeee}
+table.t tr.clic:hover td{background:var(--suave)}
+table.t tr.sel td{background:#fbeeee}
 .n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .cod{color:var(--muted);font-size:12px}
-.tag{display:inline-block;font-size:11px;padding:2px 7px;border-radius:10px;background:#eee;color:#555;white-space:nowrap}
+.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;background:#eee;color:#555;white-space:nowrap;font-weight:600}
 .tag.compra{background:#e8f1fb;color:#1f5d99}.tag.hist{background:#f3eadf;color:#8a5a12}.tag.ini{background:#ece8f6;color:#5b3d99}
-.vacio{color:var(--muted);text-align:center;padding:20px}
+.tag.ok{background:#e7f4ea;color:#1e6b34}.tag.mal{background:#fbe9e9;color:#a52222}.tag.med{background:#fff3df;color:#8a5a00}
+.tag.A{background:#8B0000;color:#fff}.tag.B{background:#e8c9c9;color:#6b1010}.tag.C{background:#eee;color:#666}
+.barrita{display:flex;align-items:center;gap:8px;min-width:120px}
+.barrita i{display:block;height:8px;border-radius:4px;background:var(--vino);opacity:.75}
+.barrita span{font-variant-numeric:tabular-nums;white-space:nowrap}
+.vacio{color:var(--muted);text-align:center;padding:28px 16px;line-height:1.6}
 .error{color:var(--sube);font-size:13px}
 .okmsg{color:var(--baja);font-size:13px}
-.det-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px}
+.det-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px}
 .det-cab h3{margin:0}
 .cerrar{background:none;border:0;font-size:22px;color:var(--muted);cursor:pointer;line-height:1}
 .grid2{display:grid;grid-template-columns:2fr 1fr;gap:14px}
-.form{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;align-items:end}
-.form label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.grid-l{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:14px;align-items:start}
+.form{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;align-items:end}
+.form label,.campo{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
 .form .full{grid-column:1/-1}
 .chk{flex-direction:row!important;align-items:center;gap:6px!important;color:var(--txt)!important;font-size:13px!important}
 .cargando{color:var(--muted);padding:30px;text-align:center}
+.nota{background:var(--suave);border:1px solid var(--borde);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.55}
+.nota b{color:var(--txt)}
+.titular{font-size:17px;line-height:1.45;margin:0 0 6px}
+.titular b{color:var(--vino)}
+.pildoras{display:flex;flex-wrap:wrap;gap:6px}
+.pildoras button{border:1px solid var(--borde);background:#fff;border-radius:16px;padding:5px 11px;font:inherit;font-size:12.5px;cursor:pointer}
+.pildoras button:hover{border-color:#d9a9a9}
+.sticky-l{position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto}
 #login{max-width:340px;margin:60px auto}
 #login form{display:flex;flex-direction:column;gap:10px}
+@media (max-width:900px){
+  .grid-l{grid-template-columns:minmax(0,1fr)}
+  .grid-l>*{min-width:0}
+  .sticky-l{position:static;max-height:none}
+}
 @media (max-width:760px){
-  .kpis{grid-template-columns:repeat(2,1fr)}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
   .grid2,.form{grid-template-columns:1fr}
   .m-ocultar{display:none}
   .grafico{height:260px}
-  header h1{font-size:15px}
+  main{padding:12px 12px 40px}
+  .kpi .v{font-size:19px}
 }
 </style>
 </head>
@@ -74,11 +107,11 @@ table.t tr.sel{background:#fbeeee}
 
 <section id="login" class="oculto">
   <div class="bloque">
-    <h3>Kadima · Costos de insumos</h3>
-    <form id="f-login">
+    <h3>Kadima · Costos</h3>
+    <form id="f-login" style="margin-top:10px">
       <input id="l-email" type="email" placeholder="Correo" value="admin@kadima.pe" required>
       <input id="l-pass" type="password" placeholder="Contraseña" required>
-      <button class="btn">Entrar</button>
+      <button class="btn" style="justify-content:center">Entrar</button>
       <div id="l-error" class="error"></div>
     </form>
   </div>
@@ -86,11 +119,14 @@ table.t tr.sel{background:#fbeeee}
 
 <section id="app" class="oculto">
   <header>
-    <h1>📈 Costos de insumos</h1>
-    <div class="tabs" id="tabs">
-      <button data-tab="evolucion" class="activa">Evolución</button>
+    <h1>📈 Costos</h1>
+    <nav class="tabs" id="tabs">
+      <button data-tab="evolucion">Evolución de insumos</button>
+      <button data-tab="impacto">Impacto en productos</button>
+      <button data-tab="precios">Precios y elasticidad</button>
+      <button data-tab="pareto">Pareto de insumos</button>
       <button data-tab="cargar">Cargar históricos</button>
-    </div>
+    </nav>
   </header>
   <main id="main"></main>
 </section>
@@ -101,28 +137,42 @@ table.t tr.sel{background:#fbeeee}
 <script>
 const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
+const EMBEBIDO = window.self !== window.top;
+if (EMBEBIDO) document.documentElement.classList.add('embebido');
 // misma sesión que Kadima Gestión
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storageKey: 'kadima-gestion-auth' } });
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pad = n => String(n).padStart(2, '0');
 const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const S = (v, dec = 2) => v == null || isNaN(v) ? '—' : 'S/ ' + Number(v).toLocaleString('es-PE', { minimumFractionDigits: dec, maximumFractionDigits: dec });
-const P = v => v == null || isNaN(v) ? '—' : (v > 0 ? '+' : '') + (v * 100).toFixed(1) + '%';
+const num = (v, dec = 2) => Number(v).toLocaleString('es-PE', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+const S = (v, dec = 2) => v == null || !isFinite(v) ? '—' : 'S/ ' + num(v, dec);
+const P = (v, dec = 1) => v == null || !isFinite(v) ? '—' : (v > 0 ? '+' : '') + (v * 100).toFixed(dec) + '%';
+const PCT = (v, dec = 1) => v == null || !isFinite(v) ? '—' : (v * 100).toFixed(dec) + '%';
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'dic'];
 const fechaTxt = f => { const [y, m, d] = f.split('-'); return `${d}/${m}/${y}`; };
+const mesTxt = f => { const [y, m] = f.split('-'); return `${MESES[+m - 1]} ${y.slice(2)}`; };
 const UNI = u => ({ Kilo: 'kg', Litro: 'L', Unidad: 'und' }[u] || u || '');
+const cant = (v, u) => { const x = Number(v); if (u === 'Kilo' && x < 1) return num(x * 1000, 0) + ' g'; if (u === 'Litro' && x < 1) return num(x * 1000, 0) + ' mL'; return num(x, x < 10 ? 2 : 0) + ' ' + UNI(u); };
 const TIPOS = [['insumo', 'Insumos'], ['paqueteria', 'Paquetería'], ['mercaderia', 'Mercadería'], ['', 'Todos']];
-const usuarioId = () => { try { return (window.parent && window.parent.KADIMA_USUARIO && window.parent.KADIMA_USUARIO.id) || (window.KADIMA_USUARIO && window.KADIMA_USUARIO.id) || null; } catch (e) { return null; } };
+const usuarioId = () => { try { return (window.parent && window.parent.KADIMA_USUARIO && window.parent.KADIMA_USUARIO.id) || null; } catch (e) { return null; } };
 const leer = k => { try { return localStorage.getItem('kcostos_' + k); } catch (e) { return null; } };
 const guardar = (k, v) => { try { localStorage.setItem('kcostos_' + k, v); } catch (e) {} };
 const errTxt = e => /fetch/i.test(e?.message || '') ? 'Sin conexión a internet.' : (e?.message || String(e));
+const ROJO = '#8B0000', AZUL = '#1f5d99', GRIS = '#9a948f';
 
 const hoy = new Date();
 const st = {
-  tab: 'evolucion', prods: [], datos: [], rango: leer('rango') || '12m', desde: '', hasta: iso(hoy),
-  tipo: leer('tipo') ?? 'insumo', base: leer('base') || 'neto', agr: leer('agr') || 'mes', q: '',
-  orden: 'var', ordenDir: -1, sel: null, comparar: new Set(), charts: {}
+  tab: leer('tab') || 'evolucion', prods: [], catalogo: null, charts: {},
+  // evolución
+  datos: [], rango: leer('rango') || '12m', tipo: leer('tipo') ?? 'insumo', base: leer('base') || 'neto', agr: leer('agr') || 'mes', q: '',
+  orden: 'var', ordenDir: -1, sel: null, comparar: new Set(), evolCache: {},
+  // impacto
+  imp: { id: Number(leer('imp_id')) || null, rango: leer('imp_rango') || '12m', modo: 'subio', v: null, datos: null, vEvol: null, desde: null },
+  // precios
+  pre: { rango: leer('pre_rango') || '12m', cat: '', q: '', sel: null, datos: null, clave: '' },
+  // pareto
+  par: { rango: leer('par_rango') || '3m', por: leer('par_por') || 'venta', datos: null, clave: '' },
 };
 
 // ===== SESIÓN =====
@@ -137,10 +187,18 @@ async function iniciar() {
   if (!data.session) { $('login').classList.remove('oculto'); $('app').classList.add('oculto'); return; }
   $('login').classList.add('oculto'); $('app').classList.remove('oculto');
   await cargarProductos();
-  abrirTab(st.tab);
+  irTab(st.tab);
 }
-$('tabs').onclick = e => { const t = e.target.dataset.tab; if (!t) return; st.tab = t; [...$('tabs').children].forEach(b => b.classList.toggle('activa', b.dataset.tab === t)); abrirTab(t); };
-function abrirTab(t) { Object.values(st.charts).forEach(c => c && c.dispose()); st.charts = {}; t === 'cargar' ? tabCargar() : tabEvolucion(); }
+$('tabs').onclick = e => { const t = e.target.closest('[data-tab]'); if (t) irTab(t.dataset.tab); };
+function irTab(t) {
+  if (!['evolucion', 'impacto', 'precios', 'pareto', 'cargar'].includes(t)) t = 'evolucion';
+  st.tab = t; guardar('tab', t);
+  [...$('tabs').children].forEach(b => b.classList.toggle('activa', b.dataset.tab === t));
+  limpiarGraficos(); window.scrollTo(0, 0);
+  ({ evolucion: tabEvolucion, impacto: tabImpacto, precios: tabPrecios, pareto: tabPareto, cargar: tabCargar })[t]();
+}
+function limpiarGraficos() { Object.values(st.charts).forEach(c => c && c.dispose()); st.charts = {}; }
+function grafico(id, op) { if (st.charts[id]) st.charts[id].dispose(); const c = echarts.init($(id)); c.setOption(op); st.charts[id] = c; return c; }
 window.addEventListener('resize', () => Object.values(st.charts).forEach(c => c && c.resize()));
 
 async function traerTodo(armar) {
@@ -159,67 +217,57 @@ async function cargarProductos() {
     st.prods = await traerTodo(() => sb.from('productos').select('id,codigo,nombre,tipo_item,unidad_medida,afecto_igv').in('tipo_item', ['insumo', 'paqueteria', 'mercaderia']).order('nombre'));
   } catch (e) { st.prods = []; }
 }
+async function cargarCatalogo() {
+  if (st.catalogo) return st.catalogo;
+  const [prods, cats] = await Promise.all([
+    traerTodo(() => sb.from('productos').select('id,codigo,nombre,tipo_item,categoria_id,precio_venta').order('id')),
+    sb.from('categorias').select('id,nombre,categoria_principal').then(r => r.data || []),
+  ]);
+  const catMap = new Map(cats.map(c => [c.id, c]));
+  st.catalogo = new Map(prods.map(p => [p.id, { ...p, categoria: (catMap.get(p.categoria_id) || {}).nombre || 'Sin categoría', principal: (catMap.get(p.categoria_id) || {}).categoria_principal || 'Sin categoría' }]));
+  return st.catalogo;
+}
+function buscarProd(txt) {
+  const t = String(txt || '').trim().toUpperCase();
+  if (!t) return null;
+  return st.prods.find(x => t.startsWith(String(x.codigo).toUpperCase() + ' ')) || st.prods.find(x => String(x.codigo).toUpperCase() === t)
+    || st.prods.find(x => x.nombre.toUpperCase() === t);
+}
+const opcionInsumo = p => `${p.codigo} · ${p.nombre} (${UNI(p.unidad_medida) || 'sin unidad'})`;
 
-// ===== RANGO / PERIODOS =====
-function calcDesde() {
+// ===== RANGOS =====
+const RANGOS = [['3m', '3 meses'], ['6m', '6 meses'], ['12m', '12 meses'], ['anio', 'Este año'], ['todo', 'Todo']];
+function desdeDe(r) {
   const d = new Date(hoy);
-  if (st.rango === '3m') d.setMonth(d.getMonth() - 3);
-  else if (st.rango === '6m') d.setMonth(d.getMonth() - 6);
-  else if (st.rango === '12m') d.setMonth(d.getMonth() - 12);
-  else if (st.rango === 'anio') { d.setMonth(0); d.setDate(1); }
-  else if (st.rango === 'todo') return '2000-01-01';
-  else return st.desde || '2000-01-01';
+  if (r === '1m') d.setMonth(d.getMonth() - 1);
+  else if (r === '3m') d.setMonth(d.getMonth() - 3);
+  else if (r === '6m') d.setMonth(d.getMonth() - 6);
+  else if (r === '12m') d.setMonth(d.getMonth() - 12);
+  else if (r === '18m') d.setMonth(d.getMonth() - 18);
+  else if (r === '24m') d.setMonth(d.getMonth() - 24);
+  else if (r === 'anio') { d.setMonth(0); d.setDate(1); }
+  else return '2000-01-01';
   return iso(d);
 }
-function periodo(f) {
-  if (st.agr === 'mes') return f.slice(0, 7) + '-01';
+const chipsHtml = (id, ops, val) => `<div class="chips" id="${id}">${ops.map(([k, t]) => `<button data-k="${k}" class="${val === k ? 'activa' : ''}">${t}</button>`).join('')}</div>`;
+function chipsOn(id, cb) {
+  $(id).onclick = e => {
+    const b = e.target.closest('[data-k]'); if (!b) return;
+    [...$(id).children].forEach(x => x.classList.toggle('activa', x === b));
+    cb(b.dataset.k);
+  };
+}
+
+// ===== SERIES DE COSTO (compartido) =====
+function periodo(f, agr) {
+  if (agr === 'mes') return f.slice(0, 7) + '-01';
   const d = new Date(f + 'T12:00:00'); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return iso(d);
 }
-function periodoTxt(k) {
-  const [y, m, d] = k.split('-');
-  return st.agr === 'mes' ? `${MESES[+m - 1]} ${y.slice(2)}` : `${d}/${m}`;
-}
-const precio = r => Number(st.base === 'neto' ? r.costo_neto : r.costo_bruto);
-
-// ===== EVOLUCIÓN =====
-async function tabEvolucion() {
-  $('main').innerHTML = `
-  <div class="bloque">
-    <div class="filtros">
-      <div class="chips" id="f-rango">${[['3m', '3 meses'], ['6m', '6 meses'], ['12m', '12 meses'], ['anio', 'Este año'], ['todo', 'Todo']].map(([k, t]) => `<button data-k="${k}" class="${st.rango === k ? 'activa' : ''}">${t}</button>`).join('')}</div>
-      <div class="chips" id="f-tipo">${TIPOS.map(([k, t]) => `<button data-k="${k}" class="${st.tipo === k ? 'activa' : ''}">${t}</button>`).join('')}</div>
-      <div class="chips" id="f-base"><button data-k="neto" class="${st.base === 'neto' ? 'activa' : ''}">Sin IGV</button><button data-k="bruto" class="${st.base === 'bruto' ? 'activa' : ''}">Con IGV</button></div>
-      <div class="chips" id="f-agr"><button data-k="mes" class="${st.agr === 'mes' ? 'activa' : ''}">Por mes</button><button data-k="semana" class="${st.agr === 'semana' ? 'activa' : ''}">Por semana</button></div>
-      <input id="f-q" placeholder="Buscar insumo o código" value="${esc(st.q)}" style="flex:1;min-width:160px">
-    </div>
-  </div>
-  <div id="contenido"><div class="cargando">Cargando costos…</div></div>`;
-  const chips = (id, key, recargar) => $(id).onclick = e => {
-    const k = e.target.dataset.k; if (k === undefined) return;
-    st[key] = k; guardar(key, k);
-    [...$(id).children].forEach(b => b.classList.toggle('activa', b.dataset.k === k));
-    recargar ? cargarDatos() : pintar();
-  };
-  chips('f-rango', 'rango', true); chips('f-tipo', 'tipo'); chips('f-base', 'base'); chips('f-agr', 'agr');
-  $('f-q').oninput = () => { st.q = $('f-q').value.trim().toLowerCase(); pintar(); };
-  cargarDatos();
-}
-async function cargarDatos() {
-  $('contenido').innerHTML = '<div class="cargando">Cargando costos…</div>';
-  const desde = calcDesde();
-  try {
-    st.datos = await traerTodo(() => sb.from('v_costos_evolucion').select('*').gte('fecha', desde).lte('fecha', iso(hoy)).order('fecha').order('producto_id'));
-  } catch (e) {
-    return $('contenido').innerHTML = `<div class="bloque error">${esc(errTxt(e))}<br><small>¿Ya corriste el script 39_costos_historicos.sql?</small></div>`;
-  }
-  pintar();
-}
-
-function resumen() {
+function periodoTxt(k, agr) { const [y, m, d] = k.split('-'); return agr === 'mes' ? `${MESES[+m - 1]} ${y.slice(2)}` : `${d}/${m}`; }
+function seriesInsumos(rows, base, agr) {
+  const precio = r => Number(base === 'neto' ? r.costo_neto : r.costo_bruto);
   const por = new Map();
-  for (const r of st.datos) {
-    if (st.tipo && r.tipo_item !== st.tipo) continue;
-    if (st.q && !(r.nombre || '').toLowerCase().includes(st.q) && !(r.codigo || '').toLowerCase().includes(st.q)) continue;
+  for (const r of rows) {
     if (!(precio(r) >= 0)) continue;
     if (!por.has(r.producto_id)) por.set(r.producto_id, { id: r.producto_id, codigo: r.codigo, nombre: r.nombre, unidad: r.unidad_medida, tipo: r.tipo_item, filas: [] });
     por.get(r.producto_id).filas.push(r);
@@ -228,7 +276,7 @@ function resumen() {
   for (const it of por.values()) {
     const per = new Map(); let min = Infinity, max = -Infinity, gasto = 0;
     for (const r of it.filas) {
-      const p = precio(r), w = Number(r.cantidad) > 0 ? Number(r.cantidad) : 1, k = periodo(r.fecha);
+      const p = precio(r), w = Number(r.cantidad) > 0 ? Number(r.cantidad) : 1, k = periodo(r.fecha, agr);
       if (!per.has(k)) per.set(k, { s: 0, w: 0 });
       const a = per.get(k); a.s += p * w; a.w += w;
       min = Math.min(min, p); max = Math.max(max, p);
@@ -236,6 +284,7 @@ function resumen() {
     }
     it.serie = [...per.keys()].sort().map(k => ({ k, v: per.get(k).s / per.get(k).w }));
     it.ini = it.serie[0].v; it.ult = it.serie[it.serie.length - 1].v;
+    it.iniK = it.serie[0].k;
     it.var = it.serie.length > 1 && it.ini > 0 ? it.ult / it.ini - 1 : null;
     it.min = min; it.max = max; it.gasto = gasto; it.n = it.filas.length;
     it.ultFecha = it.filas[it.filas.length - 1].fecha;
@@ -243,7 +292,47 @@ function resumen() {
   }
   return items;
 }
+async function cargarEvol(desde) {
+  if (st.evolCache[desde]) return st.evolCache[desde];
+  const rows = await traerTodo(() => sb.from('v_costos_evolucion').select('*').gte('fecha', desde).lte('fecha', iso(hoy)).order('fecha').order('producto_id'));
+  st.evolCache[desde] = rows;
+  return rows;
+}
 
+// ======================================================
+// EVOLUCIÓN
+// ======================================================
+async function tabEvolucion() {
+  $('main').innerHTML = `
+  <div class="bloque">
+    <div class="filtros">
+      ${chipsHtml('f-rango', RANGOS, st.rango)}
+      ${chipsHtml('f-tipo', TIPOS, st.tipo)}
+      ${chipsHtml('f-base', [['neto', 'Sin IGV'], ['bruto', 'Con IGV']], st.base)}
+      ${chipsHtml('f-agr', [['mes', 'Por mes'], ['semana', 'Por semana']], st.agr)}
+      <input id="f-q" placeholder="🔍 Buscar insumo o código" value="${esc(st.q)}" style="flex:1;min-width:180px">
+    </div>
+  </div>
+  <div id="contenido"><div class="cargando">Cargando costos…</div></div>`;
+  chipsOn('f-rango', k => { st.rango = k; guardar('rango', k); cargarDatos(); });
+  chipsOn('f-tipo', k => { st.tipo = k; guardar('tipo', k); pintar(); });
+  chipsOn('f-base', k => { st.base = k; guardar('base', k); pintar(); });
+  chipsOn('f-agr', k => { st.agr = k; guardar('agr', k); pintar(); });
+  $('f-q').oninput = () => { st.q = $('f-q').value.trim().toLowerCase(); pintar(); };
+  cargarDatos();
+}
+async function cargarDatos() {
+  $('contenido').innerHTML = '<div class="cargando">Cargando costos…</div>';
+  try { st.datos = await cargarEvol(desdeDe(st.rango)); }
+  catch (e) { return $('contenido').innerHTML = `<div class="bloque error">${esc(errTxt(e))}<br><small>¿Ya corriste los scripts 39 y 40?</small></div>`; }
+  pintar();
+}
+const precioEv = r => Number(st.base === 'neto' ? r.costo_neto : r.costo_bruto);
+function resumen() {
+  const rows = st.datos.filter(r => (!st.tipo || r.tipo_item === st.tipo) &&
+    (!st.q || (r.nombre || '').toLowerCase().includes(st.q) || (r.codigo || '').toLowerCase().includes(st.q)));
+  return seriesInsumos(rows, st.base, st.agr);
+}
 function indiceGeneral(items) {
   const conVar = items.filter(i => i.var != null);
   const keys = [...new Set(items.flatMap(i => i.serie.map(s => s.k)))].sort();
@@ -274,13 +363,12 @@ function spark(serie) {
   const color = vs[vs.length - 1] > vs[0] ? 'var(--sube)' : vs[vs.length - 1] < vs[0] ? 'var(--baja)' : '#999';
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6"/></svg>`;
 }
-
 function pintar() {
   if (!$('contenido')) return;
   const items = resumen();
-  Object.values(st.charts).forEach(c => c && c.dispose()); st.charts = {};
+  limpiarGraficos();
   if (!items.length) {
-    return $('contenido').innerHTML = `<div class="bloque vacio">No hay costos en este rango.<br>Registra compras o carga costos de periodos anteriores en <b>Cargar históricos</b>.</div>`;
+    return $('contenido').innerHTML = `<div class="bloque vacio">No hay costos en este rango.<br>Prueba con <b>Todo</b>, registra compras o carga costos anteriores en <button class="link" onclick="irTab('cargar')">Cargar históricos</button>.</div>`;
   }
   const ind = indiceGeneral(items);
   const ultIdx = [...ind.vals].reverse().find(v => v != null);
@@ -312,6 +400,7 @@ function pintar() {
   <div id="detalle"></div>
   <div class="bloque">
     <h3>Por insumo · ${items.length}</h3>
+    <p class="ayuda">Toca un insumo para ver su detalle y en qué productos impacta.</p>
     <div class="tablawrap"><table class="t">
       <tr><th></th><th class="ord" data-o="nombre">Insumo${flecha('nombre')}</th><th class="n m-ocultar">Primer</th><th class="n ord" data-o="ult">Último${flecha('ult')}</th>
       <th class="n ord" data-o="var">Var.${flecha('var')}</th><th class="m-ocultar">Tendencia</th><th class="n m-ocultar">Mín – Máx</th><th class="n ord m-ocultar" data-o="gasto">Comprado${flecha('gasto')}</th><th class="n m-ocultar">Últ. registro</th></tr>
@@ -327,25 +416,21 @@ function pintar() {
     </table></div>
   </div>`;
 
-  // gráfico índice
-  const series = [{ name: 'General', type: 'line', data: ind.vals, smooth: true, symbolSize: 6, lineStyle: { width: 3, color: '#8B0000' }, itemStyle: { color: '#8B0000' }, connectNulls: true,
+  const series = [{ name: 'General', type: 'line', data: ind.vals, smooth: true, symbolSize: 6, lineStyle: { width: 3, color: ROJO }, itemStyle: { color: ROJO }, connectNulls: true,
     markLine: { silent: true, symbol: 'none', lineStyle: { type: 'dashed', color: '#999' }, data: [{ yAxis: 100 }], label: { formatter: '100' } } }];
   for (const id of st.comparar) {
     const it = items.find(i => i.id === id); if (!it) continue;
-    series.push({ name: it.nombre, type: 'line', data: serieBase100(it, ind.keys), smooth: true, symbolSize: 5 });
+    series.push({ name: it.nombre, type: 'line', data: serieBase100(it, ind.keys), smooth: true, symbolSize: 5, connectNulls: true });
   }
-  const g = echarts.init($('g-indice'));
-  g.setOption({
-    grid: { left: 40, right: 16, top: 30, bottom: 30 },
+  grafico('g-indice', {
+    grid: { left: 40, right: 16, top: 34, bottom: 30 },
     tooltip: { trigger: 'axis', valueFormatter: v => v == null ? '—' : v.toFixed(1) },
     legend: { top: 0, type: 'scroll' },
-    xAxis: { type: 'category', data: ind.keys.map(periodoTxt) },
+    xAxis: { type: 'category', data: ind.keys.map(k => periodoTxt(k, st.agr)) },
     yAxis: { type: 'value', scale: true },
     series
   });
-  st.charts.indice = g;
 
-  // eventos tabla
   $('contenido').querySelectorAll('th[data-o]').forEach(th => th.onclick = () => {
     const o = th.dataset.o; if (st.orden === o) st.ordenDir *= -1; else { st.orden = o; st.ordenDir = o === 'nombre' ? 1 : -1; } pintar();
   });
@@ -357,7 +442,6 @@ function pintar() {
   });
   if (st.sel) pintarDetalle(items.find(i => i.id === st.sel));
 }
-
 function pintarDetalle(it) {
   if (!it) { st.sel = null; return; }
   const tagF = f => f === 'compra' ? '<span class="tag compra">Compra</span>' : f === 'histórico' ? '<span class="tag hist">Histórico</span>' : '<span class="tag ini">Inv. inicial</span>';
@@ -366,17 +450,18 @@ function pintarDetalle(it) {
     const k = r.proveedor || '(sin proveedor)';
     if (!provs.has(k)) provs.set(k, { s: 0, w: 0, n: 0, ult: null, ultP: null });
     const a = provs.get(k), w = Number(r.cantidad) > 0 ? Number(r.cantidad) : 1;
-    a.s += precio(r) * w; a.w += w; a.n++; a.ult = r.fecha; a.ultP = precio(r);
+    a.s += precioEv(r) * w; a.w += w; a.n++; a.ult = r.fecha; a.ultP = precioEv(r);
   }
   const listaProv = [...provs.entries()].map(([k, a]) => ({ k, prom: a.s / a.w, n: a.n, ult: a.ult, ultP: a.ultP })).sort((a, b) => a.prom - b.prom);
   $('detalle').innerHTML = `
   <div class="bloque">
-    <div class="det-cab"><div><h3>${esc(it.nombre)}</h3><span class="cod">${esc(it.codigo)} · costo ${st.base === 'neto' ? 'sin IGV' : 'con IGV'} por ${UNI(it.unidad)} · ${it.n} registros</span></div><button class="cerrar" id="d-cerrar">×</button></div>
+    <div class="det-cab"><div><h3>${esc(it.nombre)}</h3><span class="cod">${esc(it.codigo)} · costo ${st.base === 'neto' ? 'sin IGV' : 'con IGV'} por ${UNI(it.unidad)} · ${it.n} registros</span></div>
+      <div style="display:flex;gap:8px;align-items:center"><button class="btn peq" id="d-imp">Ver productos que lo llevan →</button><button class="cerrar" id="d-cerrar" title="Cerrar">×</button></div></div>
     <div id="g-det" class="grafico"></div>
     <div class="grid2" style="margin-top:10px">
       <div class="tablawrap"><table class="t">
         <tr><th>Fecha</th><th>Origen</th><th class="n">Costo</th><th class="n m-ocultar">Cant.</th><th>Proveedor / ref.</th><th></th></tr>
-        ${it.filas.slice().reverse().map(r => `<tr><td>${fechaTxt(r.fecha)}</td><td>${tagF(r.fuente)}</td><td class="n">${S(precio(r), 3)}</td>
+        ${it.filas.slice().reverse().map(r => `<tr><td>${fechaTxt(r.fecha)}</td><td>${tagF(r.fuente)}</td><td class="n">${S(precioEv(r), 3)}</td>
           <td class="n m-ocultar">${r.cantidad ? Number(r.cantidad).toLocaleString('es-PE') : '—'}</td>
           <td>${esc(r.proveedor || '')}<br><span class="cod">${esc(r.referencia || '')}</span></td>
           <td>${r.hist_id ? `<button class="cerrar" style="font-size:16px" title="Borrar registro histórico" data-borrar="${r.hist_id}">🗑</button>` : ''}</td></tr>`).join('')}
@@ -388,30 +473,489 @@ function pintarDetalle(it) {
     </div>
   </div>`;
   $('d-cerrar').onclick = () => { st.sel = null; pintar(); };
+  $('d-imp').onclick = () => { st.imp.id = it.id; guardar('imp_id', it.id); irTab('impacto'); };
   $('detalle').querySelectorAll('[data-borrar]').forEach(b => b.onclick = async () => {
     if (!confirm('¿Borrar este costo histórico? No afecta stock ni compras.')) return;
     const { error } = await sb.from('costos_historicos').delete().eq('id', Number(b.dataset.borrar));
     if (error) return alert(errTxt(error));
-    cargarDatos();
+    st.evolCache = {}; cargarDatos();
   });
-  const fuentes = [['compra', 'Compras', '#1f5d99'], ['histórico', 'Históricos', '#c2861a'], ['inventario inicial', 'Inv. inicial', '#5b3d99']];
-  const g = echarts.init($('g-det'));
-  g.setOption({
-    grid: { left: 50, right: 16, top: 30, bottom: 30 },
+  const fuentes = [['compra', 'Compras', AZUL], ['histórico', 'Históricos', '#c2861a'], ['inventario inicial', 'Inv. inicial', '#5b3d99']];
+  grafico('g-det', {
+    grid: { left: 56, right: 16, top: 34, bottom: 30 },
     legend: { top: 0 },
     tooltip: { trigger: 'item', formatter: p => p.seriesType === 'line'
-      ? `${periodoTxt(p.value[0])}<br>Promedio: <b>${S(p.value[1], 3)}</b>`
+      ? `${periodoTxt(p.value[0], st.agr)}<br>Promedio: <b>${S(p.value[1], 3)}</b>`
       : `${fechaTxt(p.value[0])} · ${p.seriesName}<br><b>${S(p.value[1], 3)}</b>${p.value[2] ? '<br>' + esc(p.value[2]) : ''}` },
     xAxis: { type: 'time' },
     yAxis: { type: 'value', scale: true, axisLabel: { formatter: v => 'S/ ' + v.toFixed(2) } },
-    series: [{ name: st.agr === 'mes' ? 'Promedio mensual' : 'Promedio semanal', type: 'line', step: 'end', data: it.serie.map(s => [s.k, Math.round(s.v * 10000) / 10000]), lineStyle: { color: '#8B0000', width: 2 }, itemStyle: { color: '#8B0000' }, symbolSize: 4 }]
+    series: [{ name: st.agr === 'mes' ? 'Promedio mensual' : 'Promedio semanal', type: 'line', step: 'end', data: it.serie.map(s => [s.k, Math.round(s.v * 10000) / 10000]), lineStyle: { color: ROJO, width: 2 }, itemStyle: { color: ROJO }, symbolSize: 4 }]
       .concat(fuentes.map(([f, n, c]) => ({ name: n, type: 'scatter', symbolSize: 8, itemStyle: { color: c },
-        data: it.filas.filter(r => r.fuente === f).map(r => [r.fecha, precio(r), r.proveedor || ''] ) })).filter(s => s.data.length))
+        data: it.filas.filter(r => r.fuente === f).map(r => [r.fecha, precioEv(r), r.proveedor || '']) })).filter(s => s.data.length))
   });
-  st.charts.det = g;
 }
 
-// ===== CARGAR HISTÓRICOS =====
+// ======================================================
+// IMPACTO EN PRODUCTOS
+// ======================================================
+async function tabImpacto() {
+  const sel = st.prods.find(p => p.id === st.imp.id);
+  $('main').innerHTML = `
+  <div class="bloque">
+    <h3>¿Qué productos llevan este insumo y cuánto pesa en su costo?</h3>
+    <p class="ayuda">Elige un insumo. Verás cada producto que lo lleva (también a través de bases), cuánto representa en soles y en % de su costo, y el precio que mantendría su food cost.</p>
+    <div class="filtros">
+      <input id="i-prod" list="i-lista" placeholder="🔍 Escribe el insumo o su código" value="${sel ? esc(opcionInsumo(sel)) : ''}" style="flex:1;min-width:240px">
+      <datalist id="i-lista">${st.prods.map(p => `<option value="${esc(opcionInsumo(p))}"></option>`).join('')}</datalist>
+      <span class="lbl">Variación medida en:</span>${chipsHtml('i-rango', RANGOS, st.imp.rango)}
+    </div>
+    <div id="i-sug" style="margin-top:12px"></div>
+  </div>
+  <div id="i-cont"></div>`;
+  const elegir = () => { const p = buscarProd($('i-prod').value); if (p && p.id !== st.imp.id) { st.imp.id = p.id; st.imp.v = null; guardar('imp_id', p.id); cargarImpacto(); } };
+  $('i-prod').oninput = elegir; $('i-prod').onchange = elegir;
+  chipsOn('i-rango', k => { st.imp.rango = k; st.imp.v = null; guardar('imp_rango', k); cargarImpacto(); });
+  cargarImpacto();
+}
+async function cargarImpacto() {
+  const cont = $('i-cont'); if (!cont) return;
+  // sugerencias: insumos que más subieron en el rango
+  let evol = [];
+  try { evol = await cargarEvol(desdeDe(st.imp.rango)); } catch (e) { evol = []; }
+  const items = seriesInsumos(evol, 'neto', 'mes');
+  const top = items.filter(i => i.var > 0.005).sort((a, b) => b.var - a.var).slice(0, 8);
+  if ($('i-sug')) $('i-sug').innerHTML = top.length ? `<div class="pildoras"><span class="cod" style="align-self:center">Más subieron:</span>${top.map(i => `<button data-id="${i.id}">${esc(i.nombre)} <b class="sube">${P(i.var, 0)}</b></button>`).join('')}</div>` : '';
+  if ($('i-sug')) $('i-sug').onclick = e => { const b = e.target.closest('[data-id]'); if (!b) return; st.imp.id = Number(b.dataset.id); st.imp.v = null; guardar('imp_id', st.imp.id); const p = st.prods.find(x => x.id === st.imp.id); if (p) $('i-prod').value = opcionInsumo(p); cargarImpacto(); };
+  if (!st.imp.id) return cont.innerHTML = `<div class="bloque vacio">Elige un insumo arriba para ver en qué productos impacta.</div>`;
+  cont.innerHTML = '<div class="cargando">Calculando…</div>';
+  const { data, error } = await sb.rpc('insumo_impacto', { p_insumo: st.imp.id, p_dias: 90 });
+  if (error) return cont.innerHTML = `<div class="bloque error">${esc(errTxt(error))}<br><small>¿Ya corriste el script 41_costos_analisis.sql?</small></div>`;
+  st.imp.datos = data;
+  const it = items.find(i => i.id === st.imp.id);
+  const costoAct = Number(data.costo_insumo);
+  st.imp.desde = it ? it.iniK : null;
+  st.imp.vEvol = it && it.ini > 0 && costoAct > 0 ? costoAct / it.ini - 1 : null;
+  if (st.imp.v == null) st.imp.v = st.imp.vEvol != null ? Math.round(st.imp.vEvol * 1000) / 10 : 10;
+  if (st.imp.vEvol == null) st.imp.modo = 'simular';
+  pintarImpacto();
+}
+function calcImpacto() {
+  const d = st.imp.datos, ci0 = Number(d.costo_insumo) || 0, v = (Number(st.imp.v) || 0) / 100, subio = st.imp.modo === 'subio';
+  return d.productos.map(p => {
+    const pv = p.precio_venta != null ? Number(p.precio_venta) : null;
+    const pn = pv != null && pv > 0 ? (p.afecto_igv ? pv / 1.18 : pv) : null;
+    const ci = Number(p.cantidad) * ci0, cp = Number(p.costo_producto) || 0;
+    const ciAntes = subio ? ci / (1 + v) : ci, ciDesp = subio ? ci : ci * (1 + v);
+    const cpAntes = cp - ci + ciAntes, cpDesp = cp - ci + ciDesp;
+    const fcAntes = pn ? cpAntes / pn : null, fcDesp = pn ? cpDesp / pn : null;
+    const sugNeto = pn && cpAntes > 0 ? pn * cpDesp / cpAntes : null;
+    const sug = sugNeto != null ? Math.ceil((p.afecto_igv ? sugNeto * 1.18 : sugNeto) * 10 - 1e-9) / 10 : null;
+    const impU = ciDesp - ciAntes, mensual = impU * Number(p.unidades) / (st.imp.datos.dias / 30);
+    return { ...p, pv, pn, ci, cp, share: cp > 0 ? ci / cp : null, ciAntes, ciDesp, fcAntes, fcDesp, sug, ajuste: sug != null && pv ? sug / pv - 1 : null, impU, mensual };
+  });
+}
+function pintarImpacto() {
+  const cont = $('i-cont'), d = st.imp.datos, ins = st.prods.find(p => p.id === st.imp.id) || { nombre: '', unidad_medida: '' };
+  limpiarGraficos();
+  if (!d.productos.length) return cont.innerHTML = `<div class="bloque vacio"><b>${esc(ins.nombre)}</b> no está en ninguna receta todavía.<br>Cuando lo agregues a recetas en el módulo Recetas, aquí verás su impacto.</div>`;
+  const filas = calcImpacto();
+  const subio = st.imp.modo === 'subio', v = Number(st.imp.v) || 0;
+  const totalMes = filas.reduce((a, f) => a + (f.mensual || 0), 0);
+  const conPrecio = filas.filter(f => f.pn);
+  const pierden = conPrecio.filter(f => f.fcDesp - f.fcAntes >= 0.02).length;
+  const masPeso = filas.filter(f => f.share != null).sort((a, b) => b.share - a.share)[0];
+  cont.innerHTML = `
+  <div class="kpis">
+    <div class="kpi"><div class="t">Costo actual (sin IGV)</div><div class="v">${S(d.costo_insumo, 2)}</div><div class="s">por ${UNI(ins.unidad_medida)} · ${esc(ins.nombre)}</div></div>
+    <div class="kpi"><div class="t">Variación ${st.imp.desde ? 'desde ' + mesTxt(st.imp.desde) : 'en el rango'}</div><div class="v ${st.imp.vEvol > 0 ? 'sube' : st.imp.vEvol < 0 ? 'baja' : ''}">${P(st.imp.vEvol)}</div><div class="s">${st.imp.vEvol == null ? 'sin historial: usa la simulación' : 'del costo de compra'}</div></div>
+    <div class="kpi"><div class="t">Productos que lo llevan</div><div class="v">${filas.length}</div><div class="s">${masPeso ? 'pesa más en ' + esc(masPeso.nombre) + ' (' + PCT(masPeso.share, 0) + ')' : ''}</div></div>
+    <div class="kpi"><div class="t">${subio ? 'Te cuesta de más al mes' : 'Te costaría de más al mes'}</div><div class="v sube">${S(totalMes, 0)}</div><div class="s">si no ajustas precios · ${pierden} producto${pierden === 1 ? '' : 's'} pierden +2 pts de food cost</div></div>
+  </div>
+  <div class="bloque">
+    <div class="filtros" style="justify-content:space-between">
+      <div class="filtros">
+        ${chipsHtml('i-modo', [['subio', 'Ya subió: recuperar food cost'], ['simular', 'Simular una subida']], st.imp.modo)}
+        <label class="campo" style="flex-direction:row;align-items:center;gap:8px">Variación del insumo
+          <input id="i-v" type="number" step="0.5" value="${v}" style="width:90px"> %</label>
+        ${st.imp.vEvol != null ? `<button class="link" id="i-vreal">usar la real (${P(st.imp.vEvol)})</button>` : ''}
+      </div>
+    </div>
+    <p class="ayuda" style="margin:10px 0 0">${subio
+      ? `El costo actual ya incluye la subida. El <b>precio sugerido</b> devuelve a cada producto el food cost que tenía antes de que el insumo subiera ${P(v / 100)}.`
+      : `Simula que el insumo sube ${P(v / 100)} desde hoy. El <b>precio sugerido</b> mantiene el food cost actual de cada producto.`}
+      Precios de venta con IGV, redondeados a S/ 0.10 hacia arriba. Unidades = últimos ${d.dias} días.</p>
+  </div>
+  <div class="bloque">
+    <h3>Productos que llevan ${esc(ins.nombre)}</h3>
+    <div class="tablawrap"><table class="t">
+      <tr><th>Producto</th><th class="n m-ocultar">Lleva</th><th class="n">Insumo en el costo</th><th>% del costo</th><th class="n m-ocultar">Costo producto</th>
+        <th class="n">Precio</th><th class="n">Food cost</th><th class="n m-ocultar">Unid. ${d.dias}d</th><th class="n m-ocultar">S/ al mes</th><th class="n">Precio sugerido</th></tr>
+      ${filas.map(f => `<tr>
+        <td>${esc(f.nombre)}<br><span class="cod">${esc(f.codigo)} · ${esc(f.categoria)}</span></td>
+        <td class="n m-ocultar">${cant(f.cantidad, ins.unidad_medida)}</td>
+        <td class="n">${S(f.ci, 2)}<br><span class="cod ${f.impU > 0 ? 'sube' : ''}">${f.impU ? (f.impU > 0 ? '+' : '') + S(f.impU, 2) + ' c/u' : ''}</span></td>
+        <td><div class="barrita"><i style="width:${Math.max(2, Math.min(1, f.share || 0) * 90)}px"></i><span>${PCT(f.share, 0)}</span></div></td>
+        <td class="n m-ocultar">${S(f.cp, 2)}</td>
+        <td class="n">${f.pv ? S(f.pv, 2) : '<span class="cod">sin precio</span>'}</td>
+        <td class="n">${f.pn ? `${PCT(f.fcAntes)} → <b class="${f.fcDesp - f.fcAntes >= 0.02 ? 'sube' : ''}">${PCT(f.fcDesp)}</b>` : '—'}</td>
+        <td class="n m-ocultar">${num(f.unidades, 0)}</td>
+        <td class="n m-ocultar">${f.mensual ? S(f.mensual, 0) : '—'}</td>
+        <td class="n">${f.sug != null && v ? `<b>${S(f.sug, 2)}</b><br><span class="cod ${f.ajuste > 0 ? 'sube' : ''}">${P(f.ajuste)}</span>` : '—'}</td></tr>`).join('')}
+    </table></div>
+  </div>
+  <div class="bloque">
+    <h3>Peso del insumo en cada producto</h3>
+    <p class="ayuda">Parte del costo de cada producto que es ${esc(ins.nombre)}. Mientras más alto, más te afecta cuando sube.</p>
+    <div id="g-peso" class="grafico" style="height:${Math.max(180, Math.min(filas.length, 20) * 30 + 40)}px"></div>
+  </div>`;
+  chipsOn('i-modo', k => { st.imp.modo = k; if (k === 'subio' && st.imp.vEvol != null) st.imp.v = Math.round(st.imp.vEvol * 1000) / 10; pintarImpacto(); });
+  $('i-v').onchange = () => { st.imp.v = Number($('i-v').value) || 0; pintarImpacto(); };
+  if ($('i-vreal')) $('i-vreal').onclick = () => { st.imp.v = Math.round(st.imp.vEvol * 1000) / 10; st.imp.modo = 'subio'; pintarImpacto(); };
+  const g = filas.filter(f => f.share != null).sort((a, b) => a.share - b.share).slice(-20);
+  grafico('g-peso', {
+    grid: { left: 10, right: 50, top: 10, bottom: 10, containLabel: true },
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: ps => { const f = g[ps[0].dataIndex]; return `<b>${esc(f.nombre)}</b><br>${esc(ins.nombre)}: ${S(f.ci, 2)} de ${S(f.cp, 2)} (${PCT(f.share)})`; } },
+    xAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%' } },
+    yAxis: { type: 'category', data: g.map(f => f.nombre.length > 28 ? f.nombre.slice(0, 27) + '…' : f.nombre) },
+    series: [{ type: 'bar', data: g.map(f => Math.round(f.share * 1000) / 10), itemStyle: { color: ROJO, borderRadius: [0, 4, 4, 0] }, barMaxWidth: 18, label: { show: true, position: 'right', formatter: '{c}%' } }]
+  });
+}
+
+// ======================================================
+// PRECIOS Y ELASTICIDAD
+// ======================================================
+async function tabPrecios() {
+  $('main').innerHTML = `
+  <div class="bloque">
+    <h3>Precio cobrado y unidades vendidas por producto</h3>
+    <p class="ayuda">Precio = venta ÷ unidades de cada mes (incluye descuentos). Las unidades se ven <b>por día de venta</b> para que meses cortos no confundan, y se comparan contra la venta total del local para separar el efecto del precio del movimiento general.</p>
+    <div class="filtros">
+      ${chipsHtml('p-rango', [['12m', '12 meses'], ['18m', '18 meses'], ['24m', '24 meses'], ['todo', 'Todo']], st.pre.rango)}
+      <select id="p-cat"><option value="">Todas las categorías</option></select>
+      <input id="p-q" placeholder="🔍 Buscar producto" value="${esc(st.pre.q)}" style="flex:1;min-width:180px">
+    </div>
+  </div>
+  <div id="p-cont"><div class="cargando">Cargando ventas…</div></div>`;
+  chipsOn('p-rango', k => { st.pre.rango = k; guardar('pre_rango', k); cargarPrecios(); });
+  $('p-cat').onchange = () => { st.pre.cat = $('p-cat').value; pintarPrecios(); };
+  $('p-q').oninput = () => { st.pre.q = $('p-q').value.trim().toLowerCase(); pintarPrecios(); };
+  cargarPrecios();
+}
+async function cargarPrecios() {
+  const desde = desdeDe(st.pre.rango), clave = desde;
+  if (st.pre.clave !== clave || !st.pre.datos) {
+    $('p-cont').innerHTML = '<div class="cargando">Cargando ventas…</div>';
+    try {
+      const [cat, r] = await Promise.all([cargarCatalogo(), sb.rpc('ventas_mensuales_productos', { p_desde: desde, p_hasta: iso(hoy) })]);
+      if (r.error) throw r.error;
+      st.pre.datos = armarPrecios(r.data, cat); st.pre.clave = clave;
+    } catch (e) { return $('p-cont').innerHTML = `<div class="bloque error">${esc(errTxt(e))}<br><small>¿Ya corriste el script 41_costos_analisis.sql?</small></div>`; }
+  }
+  const cats = [...new Set(st.pre.datos.productos.map(p => p.categoria))].sort();
+  $('p-cat').innerHTML = '<option value="">Todas las categorías</option>' + cats.map(c => `<option ${c === st.pre.cat ? 'selected' : ''}>${esc(c)}</option>`).join('');
+  pintarPrecios();
+}
+// regresión: ln(q/día) = a + b·ln(precio) + c·ln(venta local/día)
+function ols(X, y) {
+  const k = X[0].length, A = Array.from({ length: k }, () => Array(k).fill(0)), bb = Array(k).fill(0);
+  for (let i = 0; i < y.length; i++) for (let a = 0; a < k; a++) { bb[a] += X[i][a] * y[i]; for (let c = 0; c < k; c++) A[a][c] += X[i][a] * X[i][c]; }
+  for (let i = 0; i < k; i++) {   // Gauss
+    let m = i; for (let r = i + 1; r < k; r++) if (Math.abs(A[r][i]) > Math.abs(A[m][i])) m = r;
+    [A[i], A[m]] = [A[m], A[i]]; [bb[i], bb[m]] = [bb[m], bb[i]];
+    if (Math.abs(A[i][i]) < 1e-12) return null;
+    for (let r = 0; r < k; r++) if (r !== i) { const f = A[r][i] / A[i][i]; for (let c = i; c < k; c++) A[r][c] -= f * A[i][c]; bb[r] -= f * bb[i]; }
+  }
+  const beta = bb.map((v, i) => v / A[i][i]);
+  const ym = y.reduce((a, v) => a + v, 0) / y.length;
+  let ssr = 0, sst = 0;
+  y.forEach((v, i) => { const f = X[i].reduce((a, x, j) => a + x * beta[j], 0); ssr += (v - f) ** 2; sst += (v - ym) ** 2; });
+  return { beta, r2: sst > 0 ? 1 - ssr / sst : 0 };
+}
+function corr(a, b) {
+  const n = a.length; if (n < 3) return null;
+  const ma = a.reduce((s, v) => s + v, 0) / n, mb = b.reduce((s, v) => s + v, 0) / n;
+  let sab = 0, saa = 0, sbb = 0;
+  for (let i = 0; i < n; i++) { sab += (a[i] - ma) * (b[i] - mb); saa += (a[i] - ma) ** 2; sbb += (b[i] - mb) ** 2; }
+  return saa && sbb ? sab / Math.sqrt(saa * sbb) : null;
+}
+function armarPrecios(data, cat) {
+  const meses = data.meses.map(m => ({ mes: m.mes, dias: Math.max(1, m.dias), venta: Number(m.venta), neta: Number(m.venta_neta) }));
+  const mesMap = new Map(meses.map(m => [m.mes, m]));
+  const por = new Map();
+  for (const [mes, pid, u, t, n] of data.filas) {
+    if (!por.has(pid)) por.set(pid, []);
+    const m = mesMap.get(mes) || { dias: 30, venta: 0 };
+    por.get(pid).push({ mes, u: Number(u), t: Number(t), n: Number(n), precio: Number(t) / Number(u), upd: Number(u) / m.dias, tpd: m.venta / m.dias });
+  }
+  const productos = [];
+  for (const [pid, filas] of por) {
+    const p = cat.get(pid) || { nombre: 'Producto #' + pid, codigo: '', categoria: 'Sin categoría', precio_venta: null };
+    filas.sort((a, b) => a.mes.localeCompare(b.mes));
+    const tot = filas.reduce((a, f) => a + f.t, 0), uTot = filas.reduce((a, f) => a + f.u, 0);
+    const pIni = filas[0].precio, pUlt = filas[filas.length - 1].precio;
+    const ventana = n => filas.slice(n).reduce((a, f) => a + f.upd, 0) / Math.max(1, filas.slice(n).length);
+    const uIni = filas.slice(0, 3).reduce((a, f) => a + f.upd, 0) / Math.min(3, filas.length), uUlt = ventana(-3);
+    // elasticidad
+    const ok = filas.filter(f => f.u > 0 && f.precio > 0 && f.tpd > 0);
+    const precios = ok.map(f => f.precio), rangoP = precios.length ? Math.max(...precios) / Math.min(...precios) - 1 : 0;
+    let ela = null, r2 = null, conf = 'sin datos';
+    if (ok.length >= 6 && rangoP >= 0.03) {
+      const reg = ols(ok.map(f => [1, Math.log(f.precio), Math.log(f.tpd)]), ok.map(f => Math.log(f.upd)));
+      if (reg) { ela = reg.beta[1]; r2 = reg.r2; conf = ok.length >= 12 && r2 >= 0.5 ? 'alta' : ok.length >= 8 && r2 >= 0.25 ? 'media' : 'baja'; }
+    } else if (ok.length >= 2 && rangoP < 0.03) conf = 'precio estable';
+    const cT = corr(ok.map(f => f.upd), ok.map(f => f.tpd));
+    productos.push({ id: pid, nombre: p.nombre, codigo: p.codigo, categoria: p.categoria, lista: p.precio_venta, filas, tot, uTot, pIni, pUlt,
+      varP: pIni > 0 ? pUlt / pIni - 1 : null, uIni, uUlt, varU: uIni > 0 ? uUlt / uIni - 1 : null, ela, r2, conf, cT, rangoP });
+  }
+  productos.sort((a, b) => b.tot - a.tot);
+  return { meses, productos };
+}
+function lecturaEla(p) {
+  if (p.ela == null) return p.conf === 'precio estable' ? '<span class="tag">precio sin cambios</span>' : '<span class="tag">pocos datos</span>';
+  if (p.ela > -0.3) return '<span class="tag ok">poco sensible</span>';
+  if (p.ela > -1) return '<span class="tag med">moderada</span>';
+  return '<span class="tag mal">muy sensible</span>';
+}
+function pintarPrecios() {
+  const cont = $('p-cont'); if (!cont || !st.pre.datos) return;
+  limpiarGraficos();
+  const lista = st.pre.datos.productos.filter(p => (!st.pre.cat || p.categoria === st.pre.cat) &&
+    (!st.pre.q || p.nombre.toLowerCase().includes(st.pre.q) || (p.codigo || '').toLowerCase().includes(st.pre.q)));
+  if (!st.pre.datos.productos.length) return cont.innerHTML = '<div class="bloque vacio">No hay ventas en este rango.</div>';
+  if (!st.pre.sel || !lista.find(p => p.id === st.pre.sel)) st.pre.sel = lista[0] ? lista[0].id : null;
+  const conEla = st.pre.datos.productos.filter(p => p.ela != null);
+  cont.innerHTML = `
+  <div class="grid-l">
+    <div class="bloque sticky-l" style="padding:0;overflow:hidden">
+      <div style="padding:12px 14px;border-bottom:1px solid var(--borde)"><b>${lista.length} productos</b> <span class="cod">· ordenados por venta · ${conEla.length} con elasticidad calculable</span></div>
+      <div class="tablawrap" style="max-height:calc(100vh - 170px);overflow:auto"><table class="t">
+        <tr><th>Producto</th><th class="n">Precio</th><th class="n">Var.</th><th>Sensibilidad</th></tr>
+        ${lista.slice(0, 300).map(p => `<tr class="clic ${p.id === st.pre.sel ? 'sel' : ''}" data-p="${p.id}">
+          <td>${esc(p.nombre)}<br><span class="cod">${esc(p.categoria)} · ${S(p.tot, 0)}</span></td>
+          <td class="n">${S(p.pUlt, 2)}</td>
+          <td class="n ${p.varP > 0.005 ? 'sube' : p.varP < -0.005 ? 'baja' : ''}">${P(p.varP, 0)}</td>
+          <td>${lecturaEla(p)}</td></tr>`).join('') || '<tr><td colspan="4" class="vacio">Sin productos con ese filtro.</td></tr>'}
+      </table></div>
+    </div>
+    <div id="p-det"></div>
+  </div>`;
+  cont.querySelectorAll('tr[data-p]').forEach(tr => tr.onclick = () => {
+    st.pre.sel = Number(tr.dataset.p);
+    cont.querySelectorAll('tr[data-p]').forEach(x => x.classList.toggle('sel', x === tr));
+    pintarDetPrecio();
+    if (window.innerWidth < 900) $('p-det').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  pintarDetPrecio();
+}
+function eventosPrecio(p) {
+  const f = p.filas, ev = [];
+  for (let i = 1; i < f.length; i++) {
+    const cambio = f[i].precio / f[i - 1].precio - 1;
+    if (Math.abs(cambio) < 0.03) continue;
+    const antes = f.slice(Math.max(0, i - 2), i), desp = f.slice(i, i + 2);
+    const q = a => a.reduce((s, x) => s + x.upd / x.tpd, 0) / a.length;   // unidades por S/ de venta del local
+    const qa = q(antes), qd = q(desp), pa = antes.reduce((s, x) => s + x.precio, 0) / antes.length, pd = desp.reduce((s, x) => s + x.precio, 0) / desp.length;
+    const dq = (qd - qa) / ((qd + qa) / 2), dp = (pd - pa) / ((pd + pa) / 2);
+    const upa = antes.reduce((s, x) => s + x.upd, 0) / antes.length, upd = desp.reduce((s, x) => s + x.upd, 0) / desp.length;
+    ev.push({ mes: f[i].mes, pa, pd, cambio: pd / pa - 1, upa, upd, varU: upd / upa - 1, varUaj: qd / qa - 1, ela: dp ? dq / dp : null, ing: (pd * upd) / (pa * upa) - 1 });
+  }
+  return ev;
+}
+function pintarDetPrecio() {
+  const det = $('p-det'), p = st.pre.datos.productos.find(x => x.id === st.pre.sel);
+  if (!det) return;
+  if (!p) return det.innerHTML = '<div class="bloque vacio">Elige un producto.</div>';
+  const ev = eventosPrecio(p);
+  let lectura;
+  if (p.ela == null) lectura = p.conf === 'precio estable'
+    ? `El precio casi no cambió en este rango (${P(p.rangoP, 0)} entre el más bajo y el más alto), así que no se puede medir cómo reaccionan las ventas al precio. Amplía el rango o espera al próximo ajuste.`
+    : 'Hay muy pocos meses con ventas para medir la sensibilidad al precio.';
+  else {
+    const e10 = p.ela * 10;
+    lectura = `Elasticidad <b>${p.ela.toFixed(2)}</b>: si subes el precio 10%, las unidades cambian alrededor de <b>${e10 > 0 ? '+' : ''}${e10.toFixed(1)}%</b> (con la venta del local constante). ` +
+      (p.ela > -1 ? `Como es menor a 1 en valor absoluto, <b>subir el precio aumenta tus ingresos</b> por este producto${p.ela > -0.3 ? ' y casi no pierdes clientes' : ', aunque vendes algo menos'}.`
+        : `Como es mayor a 1 en valor absoluto, <b>subir el precio baja tus ingresos</b>: el cliente lo reemplaza con facilidad.`) +
+      ` Confianza <b>${p.conf}</b> (${p.filas.length} meses, R² ${(p.r2 * 100).toFixed(0)}%).`;
+  }
+  const relTotal = p.cT == null ? '' : `<br>Relación con la venta del local: <b>${p.cT.toFixed(2)}</b> — ${p.cT > 0.6 ? 'se mueve con el tráfico general (temporada, clima, días)' : p.cT > 0.3 ? 'algo influido por el tráfico general' : 'se mueve por su cuenta, no por el tráfico general'}.`;
+  det.innerHTML = `
+  <div class="kpis">
+    <div class="kpi"><div class="t">Precio promedio cobrado</div><div class="v">${S(p.pUlt, 2)}</div><div class="s">${P(p.varP)} vs ${mesTxt(p.filas[0].mes)}${p.lista ? ' · lista ' + S(p.lista, 2) : ''}</div></div>
+    <div class="kpi"><div class="t">Unidades por día</div><div class="v">${num(p.uUlt, p.uUlt < 10 ? 1 : 0)}</div><div class="s ${p.varU < 0 ? 'sube' : 'baja'}">${P(p.varU)} últimos 3 meses vs primeros 3</div></div>
+    <div class="kpi"><div class="t">Elasticidad precio</div><div class="v">${p.ela == null ? '—' : p.ela.toFixed(2)}</div><div class="s">${p.ela == null ? esc(p.conf) : 'confianza ' + p.conf}</div></div>
+    <div class="kpi"><div class="t">Venta del rango</div><div class="v">${S(p.tot, 0)}</div><div class="s">${num(p.uTot, 0)} unidades</div></div>
+  </div>
+  <div class="bloque">
+    <div class="det-cab"><div><h3>${esc(p.nombre)}</h3><span class="cod">${esc(p.codigo || '')} · ${esc(p.categoria)}</span></div></div>
+    <div id="g-pre" class="grafico"></div>
+    <div class="nota" style="margin-top:10px">${lectura}${relTotal}</div>
+  </div>
+  <div class="bloque">
+    <h3>Participación en la venta del local</h3>
+    <p class="ayuda">Si la participación cae justo después de subir el precio, el cliente reaccionó al precio. Si cae junto con todo el local, fue la temporada.</p>
+    <div id="g-part" class="grafico bajo"></div>
+  </div>
+  <div class="bloque">
+    <h3>Cambios de precio detectados</h3>
+    <p class="ayuda">Meses donde el precio cambió 3% o más. Compara 2 meses antes vs 2 meses después. "Ajustado" descuenta el movimiento de la venta total del local.</p>
+    ${ev.length ? `<div class="tablawrap"><table class="t">
+      <tr><th>Mes</th><th class="n">Precio</th><th class="n">Unid./día</th><th class="n">Ajustado</th><th class="n m-ocultar">Elasticidad</th><th class="n">Ingreso</th></tr>
+      ${ev.map(e => `<tr><td>${mesTxt(e.mes)}</td><td class="n">${S(e.pa, 2)} → <b>${S(e.pd, 2)}</b><br><span class="cod">${P(e.cambio)}</span></td>
+        <td class="n">${num(e.upa, 1)} → ${num(e.upd, 1)}<br><span class="cod">${P(e.varU)}</span></td>
+        <td class="n ${e.varUaj < -0.02 ? 'sube' : e.varUaj > 0.02 ? 'baja' : ''}">${P(e.varUaj)}</td>
+        <td class="n m-ocultar">${e.ela == null ? '—' : e.ela.toFixed(2)}</td>
+        <td class="n ${e.ing > 0 ? 'baja' : 'sube'}"><b>${P(e.ing)}</b></td></tr>`).join('')}
+    </table></div>` : '<div class="vacio" style="padding:12px">Sin cambios de precio de 3% o más en el rango.</div>'}
+  </div>`;
+  const meses = p.filas.map(f => mesTxt(f.mes));
+  grafico('g-pre', {
+    grid: { left: 50, right: 60, top: 36, bottom: 30 },
+    legend: { top: 0 },
+    tooltip: { trigger: 'axis', formatter: ps => { const f = p.filas[ps[0].dataIndex]; return `<b>${mesTxt(f.mes)}</b><br>Precio: ${S(f.precio, 2)}<br>Unidades: ${num(f.u, 0)} (${num(f.upd, 1)}/día)<br>Venta: ${S(f.t, 0)}`; } },
+    xAxis: { type: 'category', data: meses },
+    yAxis: [{ type: 'value', splitLine: { lineStyle: { color: '#f0ece8' } } },
+            { type: 'value', scale: true, splitLine: { show: false }, axisLabel: { formatter: v => 'S/ ' + v.toFixed(v < 10 ? 2 : 0) } }],
+    series: [
+      { name: 'Unidades por día', type: 'bar', data: p.filas.map(f => Math.round(f.upd * 10) / 10), itemStyle: { color: '#e5c9c9', borderRadius: [4, 4, 0, 0] }, barMaxWidth: 28 },
+      { name: 'Precio promedio', type: 'line', yAxisIndex: 1, step: 'middle', data: p.filas.map(f => Math.round(f.precio * 100) / 100), lineStyle: { color: ROJO, width: 3 }, itemStyle: { color: ROJO }, symbolSize: 6 }
+    ]
+  });
+  grafico('g-part', {
+    grid: { left: 50, right: 60, top: 30, bottom: 30 },
+    legend: { top: 0 },
+    tooltip: { trigger: 'axis' },
+    xAxis: { type: 'category', data: meses },
+    yAxis: [{ type: 'value', axisLabel: { formatter: v => 'S/ ' + (v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v) }, splitLine: { lineStyle: { color: '#f0ece8' } } },
+            { type: 'value', axisLabel: { formatter: '{value}%' }, splitLine: { show: false }, scale: true }],
+    series: [
+      { name: 'Venta local por día', type: 'bar', data: p.filas.map(f => Math.round(f.tpd)), itemStyle: { color: '#ece8e4' }, barMaxWidth: 28, tooltip: { valueFormatter: v => S(v, 0) } },
+      { name: 'Participación del producto', type: 'line', yAxisIndex: 1, data: p.filas.map(f => f.tpd ? Math.round(f.upd * f.precio / f.tpd * 1000) / 10 : null), lineStyle: { color: AZUL, width: 2 }, itemStyle: { color: AZUL }, tooltip: { valueFormatter: v => v + '%' } }
+    ]
+  });
+}
+
+// ======================================================
+// PARETO DE INSUMOS
+// ======================================================
+async function tabPareto() {
+  $('main').innerHTML = `
+  <div class="bloque">
+    <h3>¿Con qué insumos produces la mayor parte de lo que vendes?</h3>
+    <p class="ayuda">Cruza lo vendido con las recetas. Un producto queda "cubierto" cuando tienes <b>todos</b> sus insumos; la línea muestra cuánto de tu venta cubres al ir sumando insumos, del más usado al menos usado.</p>
+    <div class="filtros">
+      ${chipsHtml('a-rango', [['1m', 'Último mes'], ['3m', '3 meses'], ['6m', '6 meses'], ['12m', '12 meses']], st.par.rango)}
+      <span class="lbl">Medir por:</span>${chipsHtml('a-por', [['venta', 'Venta S/'], ['unidades', 'Unidades']], st.par.por)}
+    </div>
+  </div>
+  <div id="a-cont"><div class="cargando">Calculando…</div></div>`;
+  chipsOn('a-rango', k => { st.par.rango = k; guardar('par_rango', k); cargarPareto(); });
+  chipsOn('a-por', k => { st.par.por = k; guardar('par_por', k); pintarPareto(); });
+  cargarPareto();
+}
+async function cargarPareto() {
+  const desde = desdeDe(st.par.rango);
+  if (st.par.clave !== desde || !st.par.datos) {
+    $('a-cont').innerHTML = '<div class="cargando">Calculando…</div>';
+    try {
+      const [r, evol] = await Promise.all([sb.rpc('pareto_insumos', { p_desde: desde, p_hasta: iso(hoy) }), cargarEvol(desdeDe(['1m', '3m', '6m'].includes(st.par.rango) ? '12m' : st.par.rango))]);
+      if (r.error) throw r.error;
+      st.par.datos = r.data; st.par.evol = seriesInsumos(evol, 'neto', 'mes'); st.par.clave = desde;
+    } catch (e) { return $('a-cont').innerHTML = `<div class="bloque error">${esc(errTxt(e))}<br><small>¿Ya corriste el script 41_costos_analisis.sql?</small></div>`; }
+  }
+  pintarPareto();
+}
+function calcPareto() {
+  const d = st.par.datos, porVenta = st.par.por === 'venta';
+  const peso = pr => Number(porVenta ? pr.venta_neta : pr.unidades) || 0;
+  const pesoIns = new Map();
+  for (const pr of d.productos) for (const i of pr.insumos || []) pesoIns.set(i, (pesoIns.get(i) || 0) + peso(pr));
+  const total = d.productos.reduce((a, pr) => a + peso(pr), 0);
+  const evol = new Map((st.par.evol || []).map(e => [e.id, e]));
+  const ins = d.insumos.map(i => {
+    const e = evol.get(i.insumo_id), costo = Number(i.costo) || 0;
+    const v = e && e.ini > 0 && costo > 0 ? costo / e.ini - 1 : null;
+    const soles = Number(i.consumo) * costo;
+    return { ...i, peso: pesoIns.get(i.insumo_id) || 0, share: total ? (pesoIns.get(i.insumo_id) || 0) / total : 0, soles, v, impacto: v != null ? soles - soles / (1 + v) : null };
+  }).sort((a, b) => b.peso - a.peso || b.soles - a.soles);
+  const rank = new Map(ins.map((i, k) => [i.insumo_id, k + 1]));
+  const cubiertoEn = new Array(ins.length + 1).fill(0);
+  for (const pr of d.productos) { const mx = Math.max(...(pr.insumos || []).map(i => rank.get(i) || ins.length)); cubiertoEn[mx] += peso(pr); }
+  let acum = 0;
+  ins.forEach((i, k) => { acum += cubiertoEn[k + 1]; i.cob = total ? acum / total : 0; });
+  const n80 = (ins.findIndex(i => i.cob >= 0.8 - 1e-9) + 1) || ins.length;
+  const n95 = (ins.findIndex(i => i.cob >= 0.95 - 1e-9) + 1) || ins.length;
+  ins.forEach((i, k) => { i.clase = k < n80 ? 'A' : k < n95 ? 'B' : 'C'; });
+  return { ins, total, n80, porVenta };
+}
+function pintarPareto() {
+  const cont = $('a-cont'), d = st.par.datos; if (!cont || !d) return;
+  limpiarGraficos();
+  if (!d.insumos.length) return cont.innerHTML = `<div class="bloque vacio">No hay ventas de productos con receta en este rango.<br>El Pareto se arma cuando los productos vendidos tienen su receta en el módulo Recetas.</div>`;
+  const { ins, n80, porVenta } = calcPareto();
+  const cobReceta = porVenta ? (d.total_venta ? d.receta_venta / d.total_venta : 0) : (d.total_unidades ? d.receta_unidades / d.total_unidades : 0);
+  const que = porVenta ? 'de tu venta' : 'de las unidades que vendes';
+  const criticos = ins.filter(i => i.clase === 'A' && i.v > 0.02).sort((a, b) => (b.impacto || 0) - (a.impacto || 0)).slice(0, 4);
+  const totSoles = ins.reduce((a, i) => a + i.soles, 0);
+  cont.innerHTML = `
+  <div class="bloque">
+    <p class="titular">Con <b>${n80} insumo${n80 === 1 ? '' : 's'}</b> (${PCT(n80 / ins.length, 0)} de los ${ins.length} que usas) produces el <b>80% ${que}</b> con receta.</p>
+    <p class="ayuda" style="margin:0">Los productos con receta son el ${PCT(cobReceta, 0)} ${que} del periodo (${porVenta ? S(d.receta_venta, 0) + ' de ' + S(d.total_venta, 0) + ' sin IGV' : num(d.receta_unidades, 0) + ' de ' + num(d.total_unidades, 0) + ' unidades'}). El resto (mercadería o productos sin receta) no entra al cálculo.</p>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><div class="t">Insumos clase A</div><div class="v">${n80}</div><div class="s">nunca deben faltar</div></div>
+    <div class="kpi"><div class="t">Consumo teórico</div><div class="v">${S(totSoles, 0)}</div><div class="s">recetas × lo vendido, a costo actual</div></div>
+    <div class="kpi"><div class="t">Consumo en insumos A</div><div class="v">${PCT(ins.filter(i => i.clase === 'A').reduce((a, i) => a + i.soles, 0) / (totSoles || 1), 0)}</div><div class="s">del consumo teórico en soles</div></div>
+    <div class="kpi"><div class="t">Pagas de más por alzas</div><div class="v sube">${S(ins.reduce((a, i) => a + (i.impacto > 0 ? i.impacto : 0), 0), 0)}</div><div class="s">en el periodo, por alzas de los últimos ${['1m', '3m', '6m'].includes(st.par.rango) ? '12' : st.par.rango.replace('m', '')} meses</div></div>
+  </div>
+  <div class="bloque">
+    <h3>Pareto</h3>
+    <p class="ayuda">Barras: % ${que} que usa cada insumo. Línea: % ${que} que ya puedes producir con los insumos hasta ese punto.</p>
+    <div id="g-par" class="grafico" style="height:340px"></div>
+  </div>
+  <div class="bloque">
+    <h3>¿Cómo se enlaza con el precio?</h3>
+    <div class="nota">Los insumos <b>A</b> son los que más venta sostienen: si uno de ellos sube, afecta a muchos productos a la vez. Por eso conviene <b>vigilar su precio de compra, negociarlo o tener un segundo proveedor</b>, y revisar el precio de venta de los productos que los llevan.
+      ${criticos.length ? `<br><br>Insumos A que subieron de precio (toca uno para ver sus productos y el precio sugerido):` : '<br><br>Ningún insumo A subió más de 2% en los últimos meses. 👍'}
+      ${criticos.length ? `<div class="pildoras" style="margin-top:8px">${criticos.map(i => `<button data-imp="${i.insumo_id}">${esc(i.nombre)} <b class="sube">${P(i.v, 0)}</b> · +${S(i.impacto, 0)} → ver productos</button>`).join('')}</div>` : ''}
+    </div>
+  </div>
+  <div class="bloque">
+    <h3>Detalle por insumo</h3>
+    <div class="tablawrap"><table class="t">
+      <tr><th>#</th><th>Insumo</th><th>Clase</th><th class="n m-ocultar">Productos</th><th>Usa el</th><th class="n">Cubres</th><th class="n m-ocultar">Consumo teórico</th><th class="n">Consumo S/</th><th class="n">Var. precio ${['1m', '3m', '6m'].includes(st.par.rango) ? '12m' : st.par.rango}</th><th class="n m-ocultar">Pagas de más</th></tr>
+      ${ins.map((i, k) => `<tr class="clic" data-imp="${i.insumo_id}" title="Ver productos que lo llevan">
+        <td class="cod">${k + 1}</td>
+        <td>${esc(i.nombre)}<br><span class="cod">${esc(i.codigo)}</span></td>
+        <td><span class="tag ${i.clase}">${i.clase}</span></td>
+        <td class="n m-ocultar">${i.n_productos}</td>
+        <td><div class="barrita"><i style="width:${Math.max(2, i.share * 80)}px"></i><span>${PCT(i.share, 0)}</span></div></td>
+        <td class="n">${PCT(i.cob, 0)}</td>
+        <td class="n m-ocultar">${cant(i.consumo, i.unidad)}</td>
+        <td class="n">${S(i.soles, 0)}</td>
+        <td class="n ${i.v > 0.005 ? 'sube' : i.v < -0.005 ? 'baja' : ''}">${P(i.v, 0)}</td>
+        <td class="n m-ocultar">${i.impacto ? S(i.impacto, 0) : '—'}</td></tr>`).join('')}
+    </table></div>
+  </div>`;
+  cont.querySelectorAll('[data-imp]').forEach(b => b.onclick = () => { st.imp.id = Number(b.dataset.imp); st.imp.v = null; guardar('imp_id', st.imp.id); irTab('impacto'); });
+  const nombres = ins.map(i => i.nombre.length > 18 ? i.nombre.slice(0, 17) + '…' : i.nombre);
+  grafico('g-par', {
+    grid: { left: 44, right: 44, top: 30, bottom: ins.length > 12 ? 90 : 60 },
+    legend: { top: 0 },
+    tooltip: { trigger: 'axis', formatter: ps => { const i = ins[ps[0].dataIndex]; return `<b>${esc(i.nombre)}</b> · clase ${i.clase}<br>Lo usa el ${PCT(i.share)} ${que}<br>Con los ${ps[0].dataIndex + 1} primeros cubres el ${PCT(i.cob)}`; } },
+    xAxis: { type: 'category', data: nombres, axisLabel: { rotate: ins.length > 8 ? 40 : 0, interval: 0, fontSize: 11 } },
+    yAxis: [{ type: 'value', max: 100, axisLabel: { formatter: '{value}%' } }, { type: 'value', max: 100, axisLabel: { formatter: '{value}%' }, splitLine: { show: false } }],
+    dataZoom: ins.length > 30 ? [{ type: 'slider', start: 0, end: Math.round(30 / ins.length * 100), height: 16, bottom: 4 }] : [],
+    series: [
+      { name: '% que lo usa', type: 'bar', itemStyle: { color: ROJO }, data: ins.map(i => ({ value: Math.round(i.share * 1000) / 10, itemStyle: { color: i.clase === 'A' ? ROJO : i.clase === 'B' ? '#d79c9c' : '#ddd' } })), barMaxWidth: 26 },
+      { name: 'Cobertura acumulada', type: 'line', yAxisIndex: 1, data: ins.map(i => Math.round(i.cob * 1000) / 10), lineStyle: { color: AZUL, width: 2.5 }, itemStyle: { color: AZUL }, symbolSize: 5,
+        markLine: { silent: true, symbol: 'none', lineStyle: { type: 'dashed', color: '#999' }, data: [{ yAxis: 80 }], label: { formatter: '80%', position: 'insideStartTop', color: '#888' } } }
+    ]
+  });
+}
+
+// ======================================================
+// CARGAR HISTÓRICOS
+// ======================================================
 let filasExcel = [];
 function tabCargar() {
   $('main').innerHTML = `
@@ -421,15 +965,15 @@ function tabCargar() {
     El costo va <b>por unidad base</b> (kg, L o unidad, igual que en el maestro). Si un insumo ya tiene costo para esa fecha y proveedor, se reemplaza.</p>
     <div class="filtros">
       <button class="btn sec" id="x-plantilla">⬇ Descargar plantilla</button>
-      <label class="btn" style="flex-direction:row;color:#fff">⬆ Subir Excel<input type="file" id="x-file" accept=".xlsx,.xls,.csv" class="oculto"></label>
+      <label class="btn" style="cursor:pointer">⬆ Subir Excel<input type="file" id="x-file" accept=".xlsx,.xls,.csv" class="oculto"></label>
     </div>
     <div id="x-prev" style="margin-top:12px"></div>
   </div>
   <div class="bloque">
     <h3>Registrar uno</h3>
-    <div class="form">
+    <div class="form" style="margin-top:10px">
       <label>Insumo<input id="m-prod" list="m-lista" placeholder="Escribe nombre o código"></label>
-      <datalist id="m-lista">${st.prods.map(p => `<option value="${esc(p.codigo)} · ${esc(p.nombre)} (${UNI(p.unidad_medida) || 'sin unidad'})"></option>`).join('')}</datalist>
+      <datalist id="m-lista">${st.prods.map(p => `<option value="${esc(opcionInsumo(p))}"></option>`).join('')}</datalist>
       <label>Fecha (o 1.º del mes)<input id="m-fecha" type="date" max="${iso(hoy)}"></label>
       <label><span>Costo unitario S/ <b id="m-uni" style="color:var(--vino)"></b></span><input id="m-costo" type="number" step="0.0001" min="0" inputmode="decimal"></label>
       <label class="chk"><input type="checkbox" id="m-igv"> Incluye IGV</label>
@@ -445,10 +989,9 @@ function tabCargar() {
   $('x-plantilla').onclick = descargarPlantilla;
   $('x-file').onchange = leerExcel;
   $('m-ok').onclick = guardarUno;
-  $('m-prod').oninput = $('m-prod').onchange = () => { const p = buscarProd($('m-prod').value.trim()); $('m-uni').textContent = p ? 'por ' + (UNI(p.unidad_medida) || 'unidad (sin unidad en el maestro)') : ''; };
+  $('m-prod').oninput = $('m-prod').onchange = () => { const p = buscarProd($('m-prod').value); $('m-uni').textContent = p ? 'por ' + (UNI(p.unidad_medida) || 'unidad (sin unidad en el maestro)') : ''; };
   listarHistoricos();
 }
-
 function descargarPlantilla() {
   const filas = [['Código', 'Producto', 'Unidad', 'Fecha', 'Costo unitario S/', 'Incluye IGV', 'Proveedor', 'Nota']];
   st.prods.forEach(p => filas.push([p.codigo, p.nombre, p.unidad_medida || '', '', '', 'No', '', '']));
@@ -468,7 +1011,6 @@ function descargarPlantilla() {
   XLSX.utils.book_append_sheet(wb, ins, 'Instrucciones');
   XLSX.writeFile(wb, 'plantilla_costos_historicos.xlsx');
 }
-
 function parseFecha(v) {
   if (v == null || v === '') return null;
   let y, m, d;
@@ -482,7 +1024,7 @@ function parseFecha(v) {
     else if ((x = s.match(/^(\d{4})[\/\-](\d{1,2})$/))) [y, m, d] = [+x[1], +x[2], 1];
     else if ((x = s.match(/^(\d{1,2})[\/\-](\d{4})$/))) [m, y, d] = [+x[1], +x[2], 1];
     else if ((x = s.match(/^([a-záéíóú]+)\.?[\s\-\/]*(?:de\s+|del\s+)?(\d{2,4})$/))) {
-      const t = x[1].normalize('NFD').replace(/[\u0300-\u036f]/g, '').slice(0, 3);
+      const t = x[1].normalize('NFD').replace(/[̀-ͯ]/g, '').slice(0, 3);
       const i = MESES.indexOf(t === 'sep' ? 'set' : t);
       if (i < 0) return null;
       [y, m, d] = [+x[2], i + 1, 1];
@@ -500,7 +1042,6 @@ function parseCosto(v) {
   if (s.includes(',') && !s.includes('.')) s = s.replace(',', '.'); else s = s.replace(/,/g, '');
   const n = parseFloat(s); return isNaN(n) ? null : n;
 }
-
 async function leerExcel(ev) {
   const file = ev.target.files[0]; if (!file) return;
   const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
@@ -523,7 +1064,7 @@ async function leerExcel(ev) {
     else if (!fecha) err = 'Fecha no válida';
     else if (fecha > hoyIso) err = 'Fecha futura';
     else if (costo == null || costo < 0) err = 'Costo no válido';
-    filasExcel.push({ fila: i + 2, codigo, nombre: p ? p.nombre : String(col(r, 'producto')), fecha, costo,
+    filasExcel.push({ fila: i + 2, codigo, nombre: p ? p.nombre : String(col(r, 'producto')), unidad: p ? p.unidad_medida : '', fecha, costo,
       incluye_igv: /^s/.test(igvTxt), proveedor: String(col(r, 'proveedor')).trim(), nota: String(col(r, 'nota')).trim(), err });
   });
   ev.target.value = '';
@@ -536,7 +1077,7 @@ function pintarPrevia() {
     <p><b>${ok.length}</b> filas listas${mal.length ? ` · <span class="error">${mal.length} con error (no se cargan)</span>` : ''}</p>
     <div class="tablawrap" style="max-height:340px;overflow:auto"><table class="t">
       <tr><th>Fila</th><th>Insumo</th><th>Fecha</th><th class="n">Costo</th><th>IGV</th><th class="m-ocultar">Proveedor</th><th>Estado</th></tr>
-      ${filasExcel.map(f => `<tr><td>${f.fila}</td><td>${esc(f.nombre)}<br><span class="cod">${esc(f.codigo)}</span></td><td>${f.fecha ? fechaTxt(f.fecha) : '—'}</td>
+      ${filasExcel.map(f => `<tr><td>${f.fila}</td><td>${esc(f.nombre)}<br><span class="cod">${esc(f.codigo)}${f.unidad ? ' · por ' + UNI(f.unidad) : ''}</span></td><td>${f.fecha ? fechaTxt(f.fecha) : '—'}</td>
         <td class="n">${S(f.costo, 3)}</td><td>${f.incluye_igv ? 'Con' : 'Sin'}</td><td class="m-ocultar">${esc(f.proveedor)}</td>
         <td>${f.err ? `<span class="error">${esc(f.err)}</span>` : '<span class="okmsg">✓</span>'}</td></tr>`).join('')}
     </table></div>
@@ -551,14 +1092,9 @@ function pintarPrevia() {
       cargados += data.cargados; errores = errores.concat(data.errores || []);
     }
     $('x-msg').innerHTML = `<span class="okmsg">✓ ${cargados} costos cargados.</span>` + (errores.length ? `<br><span class="error">${errores.length} con error: ${errores.slice(0, 8).map(e => `fila ${e.fila}: ${esc(e.error)}`).join(' · ')}</span>` : '');
-    filasExcel = [];
+    filasExcel = []; st.evolCache = {};
     listarHistoricos();
   };
-}
-
-function buscarProd(txt) {
-  const t = txt.toUpperCase();
-  return st.prods.find(x => t.startsWith(String(x.codigo).toUpperCase() + ' ')) || st.prods.find(x => String(x.codigo).toUpperCase() === t);
 }
 async function guardarUno() {
   const txt = $('m-prod').value.trim(); $('m-msg').textContent = '';
@@ -573,14 +1109,13 @@ async function guardarUno() {
   if (error) return $('m-msg').innerHTML = `<span class="error">${esc(errTxt(error))}</span>`;
   if (data.errores && data.errores.length) return $('m-msg').innerHTML = `<span class="error">${esc(data.errores[0].error)}</span>`;
   $('m-msg').innerHTML = `<span class="okmsg">✓ Guardado: ${esc(p.nombre)} ${fechaTxt(fecha)}</span>`;
-  $('m-costo').value = ''; $('m-nota').value = ''; $('m-costo').focus();
+  $('m-costo').value = ''; $('m-nota').value = ''; $('m-costo').focus(); st.evolCache = {};
   listarHistoricos();
 }
-
 async function listarHistoricos() {
   const { data, error } = await sb.from('v_costos_evolucion').select('*').eq('fuente', 'histórico').order('fecha', { ascending: false }).order('nombre').limit(200);
   if (!$('h-lista')) return;
-  if (error) return $('h-lista').innerHTML = `<span class="error">${esc(errTxt(error))}<br><small>¿Ya corriste el script 39_costos_historicos.sql?</small></span>`;
+  if (error) return $('h-lista').innerHTML = `<span class="error">${esc(errTxt(error))}<br><small>¿Ya corriste los scripts 39 y 40?</small></span>`;
   $('h-lista').className = '';
   $('h-lista').innerHTML = data.length ? `<div class="tablawrap"><table class="t">
     <tr><th>Fecha</th><th>Insumo</th><th class="n">Sin IGV</th><th class="n m-ocultar">Con IGV</th><th class="m-ocultar">Proveedor</th><th class="m-ocultar">Nota</th><th></th></tr>
@@ -593,7 +1128,7 @@ async function listarHistoricos() {
     if (!confirm('¿Borrar este costo histórico? No afecta stock ni compras.')) return;
     const { error } = await sb.from('costos_historicos').delete().eq('id', Number(b.dataset.borrar));
     if (error) return alert(errTxt(error));
-    listarHistoricos();
+    st.evolCache = {}; listarHistoricos();
   });
 }
 

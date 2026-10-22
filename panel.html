@@ -106,6 +106,13 @@ main{padding:14px;max-width:1300px;margin:0 auto}
 .caja h3{margin:0 0 6px;font-size:14px;color:var(--rojo)}
 .caja .nota{font-size:12px;color:var(--gris);margin:-2px 0 6px}
 .g{width:100%;height:300px}.g.alto{height:380px}.g.bajo{height:230px}
+.tv-ctrl{display:flex;flex-wrap:wrap;gap:8px 16px;margin:4px 0 10px}
+.tv-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:8px}
+.tv-kpis>div{background:var(--fondo);border-radius:10px;padding:9px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tv-kpis span{font-size:12px;color:var(--gris)}.tv-kpis b{font-size:20px}.tv-kpis small{font-size:11.5px;color:var(--gris);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tv-frase p{margin:0 0 6px;font-size:13.5px}
+.tv-det{margin-top:6px}.tv-det td:first-child{white-space:nowrap}.tv-det summary{cursor:pointer;color:var(--rojo);font-weight:600;font-size:13px;padding:4px 0}
+@media (max-width:600px){.tv-kpis{grid-template-columns:1fr}.tv-kpis>div{flex-direction:row;align-items:baseline;gap:8px;flex-wrap:wrap}.tv-kpis b{font-size:17px}}
 table.t{width:100%;border-collapse:collapse;font-size:13px}
 .t th{text-align:left;font-size:12px;color:var(--gris);padding:7px 6px;border-bottom:1px solid var(--borde)}
 .t td{padding:7px 6px;border-bottom:1px solid #f3f0ed}
@@ -335,6 +342,8 @@ const KV = (k, bruto, neto) => !k ? 0 : st.igv18 ? num(k[bruto]) / 1.18 : num(k[
 const notaNeto = () => st.igv18 ? 'sin IGV · todo como boleta/factura' : 'sin IGV';
 const lblA = () => fRango(st.desde, st.hasta), lblC = () => st.rc ? fRango(st.rc[0], st.rc[1]) : '';
 const AZUL = '#3d6b99';
+const lsGet = k => { try { return localStorage.getItem('kpanel_' + k); } catch (e) { return null; } };
+Object.assign(st, { tvRango: lsGet('tvRango') || 'm12', tvAgr: lsGet('tvAgr') || 'mes', tvVista: lsGet('tvVista') || 'indice', tvKey: null, tvDatos: null });
 
 // ===== Ayudantes de gráficos =====
 function limpiar() { while (graficos.length) graficos.pop().dispose(); }
@@ -519,6 +528,15 @@ function ventas(d, c) {
       ${kpi('Ventas al crédito', S(KV(k, 'credito', 'credito_neto')), 'Facturas por cobrar · neto')}
       ${kpi('Ventas con IGV', S(k.ventas), `IGV: ${S0(num(k.ventas) - KV(k, 'ventas', 'neto'))}`)}
     </div>
+    <div class="grid">${caja('c12', '¿Vendes más por más clientes o por un ticket más alto?', `
+      <div class="sync tv-ctrl">
+        <div class="fila" id="tv-rango">${Object.entries(TV_RANGOS).map(([x, t]) => `<button class="chip ${st.tvRango === x ? 'activa' : ''}" data-x="${x}">${t}</button>`).join('')}</div>
+        <div class="fila" id="tv-agr">${Object.entries({ dia: 'Día', semana: 'Semana', mes: 'Mes' }).map(([x, t]) => `<button class="chip ${st.tvAgr === x ? 'activa' : ''}" data-x="${x}">${t}</button>`).join('')}</div>
+        <div class="fila" id="tv-vista">${Object.entries({ indice: 'Índice (base 100)', valores: 'Valores' }).map(([x, t]) => `<button class="chip ${st.tvVista === x ? 'activa' : ''}" data-x="${x}">${t}</button>`).join('')}</div>
+      </div>
+      <div class="tv-frase" id="tv-frase"></div>
+      <div class="g" id="g-tv"><div class="vacio">Cargando…</div></div>
+      <div id="tv-tabla"></div>`, 'Ventas = transacciones × ticket promedio. Por semana y por mes se usa el <b>promedio por día con venta</b>, para que un mes incompleto no se vea como caída.' + (c ? ' Este bloque no usa la comparación.' : ''))}</div>
     <div class="grid">
       ${caja('c6', 'Ventas netas por hora', '<div class="g" id="g-hora"></div>', 'Suma del periodo · línea = tickets')}
       ${caja('c6', 'Promedio neto por día de la semana', '<div class="g" id="g-dow"></div>')}
@@ -570,6 +588,104 @@ function ventas(d, c) {
     legend: c ? leyenda : undefined, grid: rejilla,
     xAxis: { type: 'category', data: vm.map(x => fMes(x.mes)), boundaryGap: false }, yAxis: ejeS, series: sM,
   });
+  tendenciaVentas();
+}
+
+// ===== Ventas = transacciones × ticket =====
+const TV_RANGOS = { panel: 'Rango elegido', m6: '6 meses', m12: '12 meses', m24: '24 meses' };
+const TV_COL = { venta: '#8B0000', tickets: '#e0a458', ticket: '#3d6b99' };
+function tvFechas() {
+  if (st.tvRango === 'panel') return [st.desde, st.hasta];
+  const h = new Date(), d = new Date(h.getFullYear(), h.getMonth() - ({ m6: 5, m12: 11, m24: 23 }[st.tvRango] || 11), 1);
+  const f = x => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+  return [f(d), f(h)];
+}
+async function tendenciaVentas() {
+  ['tv-rango', 'tv-agr', 'tv-vista'].forEach(id => { const el = $(id); if (el) el.onclick = e => {
+    const b = e.target.closest('[data-x]'); if (!b) return;
+    const k = { 'tv-rango': 'tvRango', 'tv-agr': 'tvAgr', 'tv-vista': 'tvVista' }[id];
+    st[k] = b.dataset.x; try { localStorage.setItem('kpanel_' + k, st[k]); } catch (x) {}
+    [...el.children].forEach(c => c.classList.toggle('activa', c === b));
+    tendenciaVentas();
+  }; });
+  const [desde, hasta] = tvFechas(), clave = [desde, hasta, st.tvAgr].join('|');
+  if (st.tvKey !== clave) {
+    const { data, error } = await sb.rpc('tendencia_ventas', { p_desde: desde, p_hasta: hasta, p_agr: st.tvAgr });
+    if (!$('g-tv')) return;
+    if (error) { $('g-tv').style.height = 'auto'; $('g-tv').innerHTML = `<div class="vacio">${esc(/tendencia_ventas/.test(error.message) ? 'Falta correr el script 42_tendencia_ventas.sql en Supabase.' : error.message)}</div>`; return; }
+    st.tvDatos = data || []; st.tvKey = clave;
+  }
+  if (!$('g-tv')) return;
+  pintarTendencia();
+}
+function pintarTendencia() {
+  const porDia = st.tvAgr !== 'dia';
+  const filas = (st.tvDatos || []).map(x => {
+    const dias = Math.max(1, num(x.dias)), venta = V(x);
+    return { p: x.periodo, dias, venta: porDia ? venta / dias : venta, tickets: porDia ? num(x.tickets) / dias : num(x.tickets), ticket: num(x.tickets) ? venta / num(x.tickets) : 0 };
+  }).filter(x => x.tickets > 0);
+  const el = $('g-tv');
+  const prev = window.echarts && echarts.getInstanceByDom(el);
+  if (prev) { const i = graficos.indexOf(prev); if (i >= 0) graficos.splice(i, 1); prev.dispose(); }
+  if (filas.length < 2) { el.style.height = 'auto'; el.innerHTML = '<div class="vacio">Se necesitan al menos 2 periodos con venta. Elige un rango más largo o agrupa por día.</div>'; $('tv-frase').innerHTML = ''; $('tv-tabla').innerHTML = ''; return; }
+  el.style.height = ''; el.innerHTML = '';
+  const etq = x => st.tvAgr === 'mes' ? fMes(x.p) : fCorta(x.p);
+  const f0 = filas[0], f1 = filas[filas.length - 1];
+  // descomposición: 1 + Δventa = (1 + Δtransacciones) × (1 + Δticket), repartida en escala logarítmica
+  const dV = f1.venta / f0.venta - 1, dN = f1.tickets / f0.tickets - 1, dT = f1.ticket / f0.ticket - 1;
+  const lv = Math.log(f1.venta / f0.venta), parteN = lv ? Math.log(f1.tickets / f0.tickets) / lv : 0;
+  const pct = v => (v > 0 ? '+' : '') + (v * 100).toFixed(1) + '%';
+  const col = v => v > 0.005 ? '#2e7d32' : v < -0.005 ? '#c62828' : 'inherit';
+  const que = porDia ? 'por día' : 'del día';
+  let motivo;
+  if (Math.abs(dV) < 0.01) motivo = 'La venta se mantuvo casi igual';
+  else if (Math.sign(dN) === Math.sign(dT)) motivo = `${dV > 0 ? 'Creció' : 'Bajó'} por las dos cosas; pesó más ${Math.abs(parteN) >= 0.5 ? 'la cantidad de transacciones' : 'el ticket promedio'} (${Math.round(Math.max(parteN, 1 - parteN) * 100)}% del cambio)`;
+  else motivo = dV > 0
+    ? (dN > 0 ? 'Creció porque vinieron más clientes, aunque el ticket promedio bajó' : 'Creció porque el ticket subió, aunque hubo menos transacciones')
+    : (dN < 0 ? 'Bajó porque hubo menos transacciones; el ticket subió pero no alcanzó a compensar' : 'Bajó porque el ticket cayó, aunque hubo más transacciones');
+  $('tv-frase').innerHTML = `
+    <div class="tv-kpis">
+      <div><span>Venta ${que}</span><b style="color:${col(dV)}">${pct(dV)}</b><small>${S0(f0.venta)} → ${S0(f1.venta)}</small></div>
+      <div><span>Transacciones ${que}</span><b style="color:${col(dN)}">${pct(dN)}</b><small>${f0.tickets.toLocaleString('es-PE', { maximumFractionDigits: 1 })} → ${f1.tickets.toLocaleString('es-PE', { maximumFractionDigits: 1 })}</small></div>
+      <div><span>Ticket promedio</span><b style="color:${col(dT)}">${pct(dT)}</b><small>${S(f0.ticket)} → ${S(f1.ticket)}</small></div>
+    </div>
+    <p><b>${motivo}.</b> Comparando ${etq(f0)} con ${etq(f1)}${f1.dias < 20 && st.tvAgr === 'mes' ? ` (${etq(f1)} va ${f1.dias} días)` : ''}.</p>`;
+  const idx = (x, k) => +(x[k] / f0[k] * 100).toFixed(1);
+  const series = st.tvVista === 'indice' ? [
+    { name: 'Venta' + (porDia ? ' por día' : ''), key: 'venta', fmt: S0 },
+    { name: 'Transacciones' + (porDia ? ' por día' : ''), key: 'tickets', fmt: v => v.toLocaleString('es-PE', { maximumFractionDigits: 1 }) },
+    { name: 'Ticket promedio', key: 'ticket', fmt: S },
+  ].map(sr => ({ name: sr.name, type: 'line', smooth: true, symbolSize: 6, data: filas.map(x => idx(x, sr.key)), color: TV_COL[sr.key], lineStyle: { width: sr.key === 'venta' ? 3.5 : 2.5 },
+      ...(sr.key === 'venta' ? { markLine: { silent: true, symbol: 'none', lineStyle: { type: 'dashed', color: '#aaa' }, label: { formatter: '100', color: '#999' }, data: [{ yAxis: 100 }] } } : {}) }))
+  : [
+    { name: 'Venta' + (porDia ? ' por día' : ''), type: 'bar', data: filas.map(x => +x.venta.toFixed(2)), color: TV_COL.venta, barMaxWidth: 26, itemStyle: { borderRadius: [4, 4, 0, 0], opacity: .85 } },
+    { name: 'Transacciones' + (porDia ? ' por día' : ''), type: 'line', yAxisIndex: 1, smooth: true, symbolSize: 6, data: filas.map(x => +x.tickets.toFixed(1)), color: TV_COL.tickets, lineStyle: { width: 3 } },
+    { name: 'Ticket promedio', type: 'line', yAxisIndex: 2, smooth: true, symbolSize: 6, data: filas.map(x => +x.ticket.toFixed(2)), color: TV_COL.ticket, lineStyle: { width: 3 } },
+  ];
+  const tip = ps => { const x = filas[ps[0].dataIndex];
+    return `<b>${etq(x)}</b>${porDia ? ` · ${x.dias} días con venta` : ''}<br>` +
+      `<span style="color:${TV_COL.venta}">●</span> Venta${porDia ? '/día' : ''}: <b>${S0(x.venta)}</b>${st.tvVista === 'indice' ? ` (${idx(x, 'venta')})` : ''}<br>` +
+      `<span style="color:${TV_COL.tickets}">●</span> Transacciones${porDia ? '/día' : ''}: <b>${x.tickets.toLocaleString('es-PE', { maximumFractionDigits: 1 })}</b>${st.tvVista === 'indice' ? ` (${idx(x, 'tickets')})` : ''}<br>` +
+      `<span style="color:${TV_COL.ticket}">●</span> Ticket promedio: <b>${S(x.ticket)}</b>${st.tvVista === 'indice' ? ` (${idx(x, 'ticket')})` : ''}`; };
+  g('g-tv', {
+    tooltip: { trigger: 'axis', formatter: tip }, legend: { ...leyenda, left: 0, right: 'auto' },
+    grid: st.tvVista === 'indice' ? rejilla : { ...rejilla, right: movil() ? 8 : 70 },
+    xAxis: { type: 'category', data: filas.map(etq), axisTick: { show: false }, boundaryGap: st.tvVista !== 'indice' },
+    yAxis: st.tvVista === 'indice'
+      ? { type: 'value', scale: true, splitLine: { lineStyle: { color: '#eee' } } }
+      : [ejeS,
+         { type: 'value', scale: true, splitLine: { show: false }, axisLabel: { color: TV_COL.tickets, show: !movil() } },
+         { type: 'value', scale: true, splitLine: { show: false }, offset: 40, axisLabel: { color: TV_COL.ticket, formatter: v => 'S/' + v.toFixed(0), show: !movil() } }],
+    dataZoom: filas.length > 45 ? [{ type: 'inside', start: Math.max(0, 100 - 45 / filas.length * 100), end: 100 }] : [],
+    series,
+  });
+  // tabla: cada periodo contra el anterior
+  const ult = filas.slice(-Math.min(filas.length, 13));
+  const celda = (a, b) => b ? `<span style="color:${col(a / b - 1)}">${pct(a / b - 1)}</span>` : '';
+  $('tv-tabla').innerHTML = `<details class="tv-det"><summary>Ver detalle por ${st.tvAgr === 'dia' ? 'día' : st.tvAgr} (vs el anterior)</summary><div class="scroll"><table class="t">
+    <tr><th>${st.tvAgr === 'dia' ? 'Día' : st.tvAgr === 'semana' ? 'Semana' : 'Mes'}</th><th class="n">Venta${porDia ? '/día' : ''}</th><th class="n">Var.</th><th class="n">Transacc.${porDia ? '/día' : ''}</th><th class="n">Var.</th><th class="n">Ticket</th><th class="n">Var.</th></tr>
+    ${ult.map((x, i) => { const a = i ? ult[i - 1] : null; return `<tr><td>${etq(x)}${porDia ? ` <small style="color:#999">${x.dias}d</small>` : ''}</td><td class="n">${S0(x.venta)}</td><td class="n">${a ? celda(x.venta, a.venta) : ''}</td><td class="n">${x.tickets.toLocaleString('es-PE', { maximumFractionDigits: 1 })}</td><td class="n">${a ? celda(x.tickets, a.tickets) : ''}</td><td class="n">${S(x.ticket)}</td><td class="n">${a ? celda(x.ticket, a.ticket) : ''}</td></tr>`; }).reverse().join('')}
+  </table></div></details>`;
 }
 
 function productos(d, c) {

@@ -11,7 +11,7 @@
 <link rel="icon" href="pos-icon-192.png">
 <link rel="apple-touch-icon" href="pos-icon-192.png">
 <style>
-:root{--rojo:#8B0000;--fondo:#f6f4f2;--borde:#e8e3df;--gris:#6b6b6b;--mal:#b00020}
+:root{--rojo:#8B0000;--rojo-s:#f7e9e9;--fondo:#f6f4f2;--borde:#ebe6e2;--gris:#6f6a66;--mal:#b00020;--lat:236px;--lat-min:68px}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--fondo);color:#1f1f1f;font-size:14px}
 button{font:inherit;cursor:pointer;border:none;border-radius:8px}
@@ -26,30 +26,73 @@ input{font:inherit;padding:10px;border:1px solid var(--borde);border-radius:8px;
 .pin-puntos span{width:14px;height:14px;border-radius:50%;border:2px solid var(--rojo)}.pin-puntos span.lleno{background:var(--rojo)}
 .teclado{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.teclado button{padding:16px;font-size:20px;background:var(--fondo);font-weight:600}
 
-/* app */
-#v-app{position:fixed;inset:0;display:flex;flex-direction:column}
-.cabecera{background:#5e0000;color:#fff;display:flex;align-items:center;gap:6px;padding:0 10px;height:46px;flex:none;padding-top:env(safe-area-inset-top)}
-.cabecera b{font-size:15px;letter-spacing:.5px;margin-right:10px;white-space:nowrap}
-.menu{display:flex;gap:2px;height:100%}
-.menu button{background:none;color:rgba(255,255,255,.75);padding:0 14px;font-weight:600;border-radius:0;height:100%;border-bottom:3px solid transparent;white-space:nowrap}
-.menu button.activa{color:#fff;border-bottom-color:#fff;background:rgba(255,255,255,.08)}
-.menu .ico{margin-right:6px}
-.cabecera .esp{flex:1}
-.cabecera .usr{font-size:12px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}
-.cabecera .acc{background:rgba(255,255,255,.15);color:#fff;padding:6px 10px;font-weight:600;font-size:12px}
+/* ===== app ===== */
+#v-app{position:fixed;inset:0;display:flex}
+/* barra lateral */
+.lateral{width:var(--lat);flex:none;background:#fff;border-right:1px solid var(--borde);display:flex;flex-direction:column;transition:width .18s ease;overflow:hidden;z-index:30}
+.lat-cab{display:flex;align-items:center;gap:10px;padding:14px 14px 10px;height:60px;flex:none}
+.logo{width:34px;height:34px;border-radius:10px;background:var(--rojo);color:#fff;display:grid;place-items:center;font-weight:800;font-size:16px;flex:none}
+.lat-cab .txt{display:flex;flex-direction:column;line-height:1.15;white-space:nowrap}
+.lat-cab .txt b{font-size:15px;letter-spacing:.6px;color:var(--rojo)}
+.lat-cab .txt span{font-size:11.5px;color:var(--gris)}
+.nav{flex:1;overflow-y:auto;padding:6px 10px;scrollbar-width:thin}
+.grupo{font-size:10.5px;font-weight:700;color:#a39d98;text-transform:uppercase;letter-spacing:.08em;padding:14px 10px 6px;white-space:nowrap}
+.item{display:flex;align-items:center;gap:12px;width:100%;background:none;color:#3b3632;padding:9px 10px;border-radius:10px;font-weight:600;text-align:left;white-space:nowrap;position:relative}
+.item:hover{background:#f6f2ef}
+.item .ico{font-size:18px;width:24px;text-align:center;flex:none;filter:grayscale(.35)}
+.item.activa{background:var(--rojo-s);color:var(--rojo)}
+.item.activa .ico{filter:none}
+.item.activa::before{content:"";position:absolute;left:-10px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--rojo)}
+.item .atajo{margin-left:auto;font-size:10.5px;color:#b3ada8;font-weight:500}
+.lat-pie{border-top:1px solid var(--borde);padding:10px;display:flex;flex-direction:column;gap:4px;flex:none}
+.usuario{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:10px;background:none;width:100%;text-align:left;white-space:nowrap}
+.usuario:hover{background:#f6f2ef}
+.avatar{width:30px;height:30px;border-radius:50%;background:#efe4e4;color:var(--rojo);display:grid;place-items:center;font-weight:700;flex:none}
+.usuario .txt{display:flex;flex-direction:column;line-height:1.2;overflow:hidden}
+.usuario .txt b{font-size:13px;overflow:hidden;text-overflow:ellipsis}
+.usuario .txt span{font-size:11px;color:var(--gris)}
+.acciones{display:flex;gap:4px}
+.acciones button{flex:1;background:#f6f2ef;color:#4a4541;padding:7px 6px;font-size:12.5px;font-weight:600;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:6px}
+.acciones button:hover{background:#efe8e3}
+.plegar{background:none;color:var(--gris);padding:6px 8px;font-size:12.5px;display:flex;align-items:center;gap:10px;white-space:nowrap;width:100%;border-radius:8px}
+.plegar:hover{background:#f6f2ef}
+.plegar .ico{width:24px;text-align:center;font-size:15px}
+/* plegada */
+.min .lateral{width:var(--lat-min)}
+.min .lat-cab .txt,.min .item .lbl,.min .item .atajo,.min .grupo,.min .usuario .txt,.min .acciones .lbl,.min .plegar .lbl{display:none}
+.min .grupo{display:block;height:10px;padding:0;font-size:0;border-top:1px solid var(--borde);margin:8px 6px}
+.min .grupo:first-child{display:none}
+.min .item{justify-content:center;padding:10px 0}
+.min .acciones{flex-direction:column}
+.min .usuario{justify-content:center;padding:6px 0}
+.min .plegar{justify-content:center}
+/* contenido */
+.cuerpo{flex:1;display:flex;flex-direction:column;min-width:0}
+.top-movil{display:none}
 .marcos{flex:1;position:relative;background:var(--fondo)}
 .marcos iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--fondo)}
-/* celular: menú abajo */
-@media (max-width:700px){
-  .cabecera .menu{display:none}
-  .abajo{display:flex!important}
+.carga{position:absolute;left:0;top:0;height:3px;background:var(--rojo);z-index:5;width:0;opacity:0;transition:width 1.2s ease,opacity .3s}
+.carga.on{width:80%;opacity:1}
+.velo{display:none}
+/* tooltip simple en plegada */
+.min .item[data-tip]:hover::after{content:attr(data-tip);position:fixed;left:calc(var(--lat-min) + 6px);background:#2b2522;color:#fff;font-size:12px;padding:5px 9px;border-radius:6px;white-space:nowrap;pointer-events:none;transform:translateY(-2px)}
+/* ===== celular ===== */
+@media (max-width:760px){
+  #v-app{flex-direction:column}
+  .lateral{position:fixed;left:0;top:0;bottom:0;width:280px!important;transform:translateX(-102%);transition:transform .2s ease;box-shadow:4px 0 24px rgba(0,0,0,.15)}
+  .abierta .lateral{transform:none}
+  .min .lat-cab .txt,.min .item .lbl,.min .grupo,.min .usuario .txt,.min .acciones .lbl{display:revert}
+  .min .item{justify-content:flex-start;padding:9px 10px}
+  .min .grupo{height:auto;font-size:10.5px;border:0;margin:0;padding:14px 10px 6px}
+  .min .acciones{flex-direction:row}
+  .plegar,.item .atajo{display:none!important}
+  .velo{display:block;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:25;opacity:0;pointer-events:none;transition:opacity .2s}
+  .abierta .velo{opacity:1;pointer-events:auto}
+  .top-movil{display:flex;align-items:center;gap:8px;height:50px;padding:0 8px;padding-top:env(safe-area-inset-top);background:#fff;border-bottom:1px solid var(--borde);flex:none}
+  .top-movil button{background:none;font-size:20px;width:40px;height:40px;display:grid;place-items:center;color:#3b3632}
+  .top-movil b{flex:1;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .marcos{padding-bottom:env(safe-area-inset-bottom)}
 }
-.abajo{display:none;flex:none;background:#fff;border-top:1px solid var(--borde);padding-bottom:env(safe-area-inset-bottom)}
-.abajo{overflow-x:auto;scrollbar-width:none}
-.abajo button{flex:1 0 auto;min-width:56px;white-space:nowrap;background:none;padding:7px 2px 6px;color:var(--gris);font-size:11px;font-weight:600;border-radius:0;display:flex;flex-direction:column;align-items:center;gap:2px}
-.abajo button .ico{font-size:20px;line-height:1;filter:grayscale(1);opacity:.7}
-.abajo button.activa{color:var(--rojo)}
-.abajo button.activa .ico{filter:none;opacity:1}
 </style>
 </head>
 <body>
@@ -74,16 +117,27 @@ input{font:inherit;padding:10px;border:1px solid var(--borde);border-radius:8px;
 </section>
 
 <section id="v-app" class="oculto">
-  <div class="cabecera">
-    <b>KADIMA</b>
-    <nav class="menu" id="menu"></nav>
-    <span class="esp"></span>
-    <span class="usr" id="usr"></span>
-    <button class="acc" id="b-recargar" title="Recargar esta sección">⟳</button>
-    <button class="acc" id="b-salir">Salir</button>
+  <aside class="lateral" id="lateral">
+    <div class="lat-cab"><div class="logo">K</div><div class="txt"><b>KADIMA</b><span>Gestión</span></div></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="lat-pie">
+      <button class="usuario" id="usr" title="Cambiar de usuario (PIN)"><span class="avatar" id="usr-ini">?</span><span class="txt"><b id="usr-nom"></b><span>Cambiar usuario</span></span></button>
+      <div class="acciones">
+        <button id="b-recargar" title="Recargar esta sección"><span>⟳</span><span class="lbl">Recargar</span></button>
+        <button id="b-salir" title="Cerrar sesión"><span>⎋</span><span class="lbl">Salir</span></button>
+      </div>
+      <button class="plegar" id="b-plegar" title="Plegar / desplegar menú (Ctrl+B)"><span class="ico" id="plegar-ico">«</span><span class="lbl">Plegar menú</span></button>
+    </div>
+  </aside>
+  <div class="velo" id="velo"></div>
+  <div class="cuerpo">
+    <div class="top-movil">
+      <button id="b-menu" aria-label="Menú">☰</button>
+      <b id="titulo-movil"></b>
+      <button id="b-recargar2" aria-label="Recargar">⟳</button>
+    </div>
+    <div class="marcos" id="marcos"><div class="carga" id="carga"></div></div>
   </div>
-  <div class="marcos" id="marcos"></div>
-  <nav class="abajo" id="abajo"></nav>
 </section>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
@@ -94,19 +148,41 @@ const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storageKey: 'kadima-gestion-auth' } });
 const PERMITIDOS = ['admin@kadima.pe'];
 const $ = id => document.getElementById(id);
-const MODULOS = [
-  { id: 'panel', nombre: 'Panel', ico: '📊', url: 'panel.html' },
-  { id: 'comprobantes', nombre: 'Comprobantes', ico: '🧾', url: 'comprobantes.html' },
-  { id: 'almacen', nombre: 'Almacén', ico: '📦', url: 'almacen.html' },
-  { id: 'recetas', nombre: 'Recetas', ico: '🍰', url: 'recetas.html' },
-  { id: 'costos', nombre: 'Costos', ico: '📈', url: 'costos.html' },
-  { id: 'historico', nombre: 'Histórico', ico: '🗂️', url: 'historico.html' },
-  { id: 'pedidosweb', nombre: 'Pedidos web', ico: '🛵', url: 'pedidos-produccion.html' },
-  { id: 'tiendaweb', nombre: 'Tienda web', ico: '🛒', url: 'tienda-web.html' },
+const GRUPOS = [
+  { nombre: 'Análisis', mods: [
+    { id: 'panel', nombre: 'Panel', ico: '📊', url: 'panel.html' },
+    { id: 'costos', nombre: 'Costos', ico: '📈', url: 'costos.html' },
+  ] },
+  { nombre: 'Operación', mods: [
+    { id: 'almacen', nombre: 'Almacén', ico: '📦', url: 'almacen.html' },
+    { id: 'recetas', nombre: 'Recetas', ico: '🍰', url: 'recetas.html' },
+    { id: 'pedidosweb', nombre: 'Pedidos web', ico: '🛵', url: 'pedidos-produccion.html' },
+  ] },
+  { nombre: 'Ventas', mods: [
+    { id: 'comprobantes', nombre: 'Comprobantes', ico: '🧾', url: 'comprobantes.html' },
+    { id: 'historico', nombre: 'Histórico', ico: '🗂️', url: 'historico.html' },
+    { id: 'tiendaweb', nombre: 'Tienda web', ico: '🛒', url: 'tienda-web.html' },
+  ] },
 ];
+const MODULOS = GRUPOS.flatMap(g => g.mods);
 const leer = k => { try { return localStorage.getItem('kgestion_' + k); } catch (e) { return null; } };
 const guardar = (k, v) => { try { localStorage.setItem('kgestion_' + k, v); } catch (e) {} };
+const esMovil = () => window.matchMedia('(max-width:760px)').matches;
 let actual = null;
+
+// Estilo que Gestión le pone a cada módulo: barra superior blanca y compacta,
+// sin el título repetido (el módulo ya está marcado en el menú lateral).
+const ESTILO_MODULO = `
+html.kg .barra{background:#fff!important;color:#1f1f1f!important;border-bottom:1px solid #ebe6e2!important;padding:8px 16px!important;min-height:48px;box-shadow:none!important}
+html.kg .barra>b,html.kg .barra>h1{display:none!important}
+html.kg .barra .tabs{margin-left:0!important}
+html.kg .barra .tabs button,html.kg .barra .tab{background:transparent!important;color:#6f6a66!important;opacity:1!important;border-radius:8px!important;border:0!important}
+html.kg .barra .tabs button:hover,html.kg .barra .tab:hover{background:#faf7f5!important}
+html.kg .barra .tabs button.activa,html.kg .barra .tab.activa{background:#f7e9e9!important;color:#8B0000!important}
+html.kg .barra>button,html.kg .barra .acc{background:#f4f0ec!important;color:#3b3632!important}
+html.kg .barra select{border:1px solid #ebe6e2}
+html.kg .barra .vivo{background:#f4f0ec!important;color:#3b3632}
+`;
 
 function vista(id) { ['v-login', 'v-pin', 'v-app'].forEach(v => $(v).classList.toggle('oculto', v !== id)); }
 
@@ -150,11 +226,16 @@ async function validarPin() {
 // ===== Navegación =====
 function abrirApp() {
   vista('v-app');
-  $('usr').textContent = window.KADIMA_USUARIO.nombre;
-  $('marcos').innerHTML = '';
-  const botones = m => `<button data-m="${m.id}"><span class="ico">${m.ico}</span><span>${m.nombre}</span></button>`;
-  $('menu').innerHTML = MODULOS.map(botones).join('');
-  $('abajo').innerHTML = MODULOS.map(botones).join('');
+  const u = window.KADIMA_USUARIO;
+  $('usr-nom').textContent = u.nombre;
+  $('usr-ini').textContent = (u.nombre || '?').trim().charAt(0).toUpperCase();
+  [...$('marcos').querySelectorAll('iframe')].forEach(f => f.remove());
+  let n = 0;
+  $('nav').innerHTML = GRUPOS.map(g => `<div class="grupo">${g.nombre}</div>` + g.mods.map(m => {
+    n++;
+    return `<button class="item" data-m="${m.id}" data-tip="${m.nombre}"><span class="ico">${m.ico}</span><span class="lbl">${m.nombre}</span><span class="atajo">Alt+${n}</span></button>`;
+  }).join('')).join('');
+  plegar(leer('plegado') === '1');
   ir(leer('modulo') || 'panel');
 }
 function ir(id) {
@@ -162,18 +243,56 @@ function ir(id) {
   actual = m.id; guardar('modulo', m.id);
   // cada módulo se carga una sola vez y se queda abierto: al volver sigue donde lo dejaste
   let f = $('f-' + m.id);
-  if (!f) { f = document.createElement('iframe'); f.id = 'f-' + m.id; f.title = m.nombre; f.src = m.url; $('marcos').appendChild(f); }
-  [...$('marcos').children].forEach(x => x.classList.toggle('oculto', x !== f));
+  if (!f) {
+    f = document.createElement('iframe'); f.id = 'f-' + m.id; f.title = m.nombre;
+    $('carga').classList.add('on');
+    f.addEventListener('load', () => { estilizar(f); $('carga').classList.remove('on'); });
+    f.src = m.url; $('marcos').appendChild(f);
+  }
+  [...$('marcos').querySelectorAll('iframe')].forEach(x => x.classList.toggle('oculto', x !== f));
   document.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('activa', b.dataset.m === m.id));
   document.title = 'Kadima · ' + m.nombre;
+  $('titulo-movil').textContent = m.ico + ' ' + m.nombre;
+  cerrarMenu();
 }
-$('menu').onclick = $('abajo').onclick = e => { const b = e.target.closest('[data-m]'); if (b) ir(b.dataset.m); };
-$('b-recargar').onclick = () => { const f = $('f-' + actual); if (f) f.contentWindow.location.reload(); };
+function estilizar(f) {
+  try {
+    const d = f.contentDocument; if (!d) return;
+    d.documentElement.classList.add('embebido', 'kg');
+    if (!d.getElementById('kg-estilo')) { const s = d.createElement('style'); s.id = 'kg-estilo'; s.textContent = ESTILO_MODULO; d.head.appendChild(s); }
+    // atajos de teclado también cuando el foco está dentro del módulo
+    d.addEventListener('keydown', atajos);
+  } catch (e) { /* otro dominio: se deja como está */ }
+}
+function plegar(si) { document.body.classList.toggle('min', si); $('plegar-ico').textContent = si ? '»' : '«'; guardar('plegado', si ? '1' : '0'); }
+function abrirMenu() { document.body.classList.add('abierta'); }
+function cerrarMenu() { document.body.classList.remove('abierta'); }
+function recargar() { const f = $('f-' + actual); if (f) { $('carga').classList.add('on'); f.contentWindow.location.reload(); } }
+function atajos(e) {
+  if (e.altKey && /^[1-9]$/.test(e.key)) { const m = MODULOS[Number(e.key) - 1]; if (m) { e.preventDefault(); ir(m.id); } }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) { e.preventDefault(); plegar(!document.body.classList.contains('min')); }
+}
+document.addEventListener('keydown', e => { if (!$('v-app').classList.contains('oculto')) atajos(e); });
+$('nav').onclick = e => { const b = e.target.closest('[data-m]'); if (b) ir(b.dataset.m); };
+$('b-plegar').onclick = () => plegar(!document.body.classList.contains('min'));
+$('b-menu').onclick = abrirMenu;
+$('velo').onclick = cerrarMenu;
+$('b-recargar').onclick = $('b-recargar2').onclick = recargar;
 $('b-salir').onclick = async () => {
   if (!confirm('¿Cerrar sesión de Gestión?')) return;
-  await sb.auth.signOut(); window.KADIMA_USUARIO = null; $('marcos').innerHTML = ''; vista('v-login');
+  await sb.auth.signOut(); window.KADIMA_USUARIO = null; [...$('marcos').querySelectorAll('iframe')].forEach(f => f.remove()); vista('v-login');
 };
-$('usr').onclick = () => { if (confirm('¿Cambiar de usuario (PIN)?')) { $('marcos').innerHTML = ''; pedirPin(); } };
+$('usr').onclick = () => { if (confirm('¿Cambiar de usuario (PIN)?')) { [...$('marcos').querySelectorAll('iframe')].forEach(f => f.remove()); pedirPin(); } };
+// deslizar desde el borde izquierdo abre el menú en el celular
+let x0 = null;
+document.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
+document.addEventListener('touchend', e => {
+  if (x0 == null || !esMovil()) return;
+  const dx = e.changedTouches[0].clientX - x0;
+  if (x0 < 24 && dx > 60) abrirMenu();
+  if (document.body.classList.contains('abierta') && dx < -60) cerrarMenu();
+  x0 = null;
+}, { passive: true });
 
 iniciar();
 </script>
