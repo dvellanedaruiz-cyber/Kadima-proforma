@@ -129,7 +129,7 @@ const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
 // dentro de "Kadima Gestión" usa la sesión de Gestión (no se mezcla con la caja)
 const EMBEBIDO = window.self !== window.top;
 if (EMBEBIDO) document.documentElement.classList.add('embebido');
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, EMBEBIDO ? { auth: { storageKey: 'kadima-gestion-auth' } } : undefined);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, EMBEBIDO ? { auth: { storageKey: (() => { try { return window.parent.KADIMA_AUTH_KEY || 'kadima-gestion-auth'; } catch (e) { return 'kadima-gestion-auth'; } })() } } : undefined);
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 const S = (n, d = 2) => n === null || n === undefined || isNaN(n) ? '—' : 'S/ ' + Number(n).toLocaleString('es-PE', { minimumFractionDigits: d, maximumFractionDigits: d });

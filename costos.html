@@ -24,6 +24,7 @@ header h1{font-size:16px;margin:0;white-space:nowrap}
 .embebido .tabs button:hover{background:var(--suave)}
 .embebido .tabs button.activa{background:var(--vino-s);color:var(--vino)}
 main{max-width:1280px;margin:0 auto;padding:16px 16px 48px}
+.solo .tabs button:not([data-tab="cargar"]){display:none}
 /* bloques */
 .bloque{background:var(--card);border:1px solid var(--borde);border-radius:14px;padding:16px;margin-bottom:14px}
 .bloque h3{margin:0 0 4px;font-size:15px}
@@ -138,9 +139,12 @@ table.t tr.sel td{background:#fbeeee}
 const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
 const EMBEBIDO = window.self !== window.top;
+// ?solo=cargar → solo la pestaña de carga de costos (acceso de Logística)
+const SOLO = new URLSearchParams(location.search).get('solo');
+if (SOLO) document.documentElement.classList.add('solo');
 if (EMBEBIDO) document.documentElement.classList.add('embebido');
 // misma sesión que Kadima Gestión
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storageKey: 'kadima-gestion-auth' } });
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storageKey: EMBEBIDO ? (() => { try { return window.parent.KADIMA_AUTH_KEY || 'kadima-gestion-auth'; } catch (e) { return 'kadima-gestion-auth'; } })() : 'kadima-gestion-auth' } });
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pad = n => String(n).padStart(2, '0');
@@ -191,8 +195,9 @@ async function iniciar() {
 }
 $('tabs').onclick = e => { const t = e.target.closest('[data-tab]'); if (t) irTab(t.dataset.tab); };
 function irTab(t) {
+  if (SOLO) t = SOLO;
   if (!['evolucion', 'impacto', 'precios', 'pareto', 'cargar'].includes(t)) t = 'evolucion';
-  st.tab = t; guardar('tab', t);
+  st.tab = t; if (!SOLO) guardar('tab', t);
   [...$('tabs').children].forEach(b => b.classList.toggle('activa', b.dataset.tab === t));
   limpiarGraficos(); window.scrollTo(0, 0);
   ({ evolucion: tabEvolucion, impacto: tabImpacto, precios: tabPrecios, pareto: tabPareto, cargar: tabCargar })[t]();
