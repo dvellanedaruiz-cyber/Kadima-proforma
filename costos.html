@@ -40,7 +40,7 @@ input:focus,select:focus{outline:2px solid #e9c9c9;border-color:#d9a9a9}
 .btn.peq{padding:5px 10px;font-size:12.5px}
 .btn:disabled{opacity:.5;cursor:default}
 .link{background:none;border:0;color:var(--vino);font:inherit;font-weight:600;cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:2px}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px}
 .kpi{background:var(--card);border:1px solid var(--borde);border-radius:14px;padding:12px 14px;min-width:0}
 .kpi .t{font-size:12px;color:var(--muted)}
 .kpi .v{font-size:22px;font-weight:700;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -627,8 +627,8 @@ function pintarImpacto() {
 async function tabPrecios() {
   $('main').innerHTML = `
   <div class="bloque">
-    <h3>Precio cobrado y unidades vendidas por producto</h3>
-    <p class="ayuda">Precio = venta ÷ unidades de cada mes (incluye descuentos). Las unidades se ven <b>por día de venta</b> para que meses cortos no confundan, y se comparan contra la venta total del local para separar el efecto del precio del movimiento general.</p>
+    <h3>Precio y unidades vendidas por producto</h3>
+    <p class="ayuda">Precio = <b>precio de lista de cada venta</b> (columna "Precio" del histórico de restaurant.pe y precio unitario de la caja nueva), promediado por mes según las unidades vendidas a cada precio. Las unidades se ven <b>por día de venta</b> para que meses cortos no confundan, y se comparan contra la venta total del local para separar el efecto del precio del movimiento general.</p>
     <div class="filtros">
       ${chipsHtml('p-rango', [['12m', '12 meses'], ['18m', '18 meses'], ['24m', '24 meses'], ['todo', 'Todo']], st.pre.rango)}
       <select id="p-cat"><option value="">Todas las categorías</option></select>
@@ -682,10 +682,12 @@ function armarPrecios(data, cat) {
   const meses = data.meses.map(m => ({ mes: m.mes, dias: Math.max(1, m.dias), venta: Number(m.venta), neta: Number(m.venta_neta) }));
   const mesMap = new Map(meses.map(m => [m.mes, m]));
   const por = new Map();
-  for (const [mes, pid, u, t, n] of data.filas) {
+  for (const [mes, pid, u, t, n, pl, pmin, pmax] of data.filas) {
     if (!por.has(pid)) por.set(pid, []);
     const m = mesMap.get(mes) || { dias: 30, venta: 0 };
-    por.get(pid).push({ mes, u: Number(u), t: Number(t), n: Number(n), precio: Number(t) / Number(u), upd: Number(u) / m.dias, tpd: m.venta / m.dias });
+    const cobrado = Number(t) / Number(u), lista = Number(pl) > 0 ? Number(pl) : null;
+    por.get(pid).push({ mes, u: Number(u), t: Number(t), n: Number(n), precio: lista ?? cobrado, cobrado, lista,
+      pmin: Number(pmin) || null, pmax: Number(pmax) || null, upd: Number(u) / m.dias, tpd: m.venta / m.dias });
   }
   const productos = [];
   for (const [pid, filas] of por) {
@@ -780,7 +782,7 @@ function pintarDetPrecio() {
   const relTotal = p.cT == null ? '' : `<br>Relación con la venta del local: <b>${p.cT.toFixed(2)}</b> — ${p.cT > 0.6 ? 'se mueve con el tráfico general (temporada, clima, días)' : p.cT > 0.3 ? 'algo influido por el tráfico general' : 'se mueve por su cuenta, no por el tráfico general'}.`;
   det.innerHTML = `
   <div class="kpis">
-    <div class="kpi"><div class="t">Precio promedio cobrado</div><div class="v">${S(p.pUlt, 2)}</div><div class="s">${P(p.varP)} vs ${mesTxt(p.filas[0].mes)}${p.lista ? ' · lista ' + S(p.lista, 2) : ''}</div></div>
+    <div class="kpi"><div class="t">Precio de lista</div><div class="v">${S(p.pUlt, 2)}</div><div class="s">${P(p.varP)} vs ${mesTxt(p.filas[0].mes)}${p.lista && Math.abs(p.lista - p.pUlt) > 0.05 ? ' · maestro hoy ' + S(p.lista, 2) : ''}</div></div>
     <div class="kpi"><div class="t">Unidades por día</div><div class="v">${num(p.uUlt, p.uUlt < 10 ? 1 : 0)}</div><div class="s ${p.varU < 0 ? 'sube' : 'baja'}">${P(p.varU)} últimos 3 meses vs primeros 3</div></div>
     <div class="kpi"><div class="t">Elasticidad precio</div><div class="v">${p.ela == null ? '—' : p.ela.toFixed(2)}</div><div class="s">${p.ela == null ? esc(p.conf) : 'confianza ' + p.conf}</div></div>
     <div class="kpi"><div class="t">Venta del rango</div><div class="v">${S(p.tot, 0)}</div><div class="s">${num(p.uTot, 0)} unidades</div></div>
@@ -811,13 +813,13 @@ function pintarDetPrecio() {
   grafico('g-pre', {
     grid: { left: 50, right: 60, top: 36, bottom: 30 },
     legend: { top: 0 },
-    tooltip: { trigger: 'axis', formatter: ps => { const f = p.filas[ps[0].dataIndex]; return `<b>${mesTxt(f.mes)}</b><br>Precio: ${S(f.precio, 2)}<br>Unidades: ${num(f.u, 0)} (${num(f.upd, 1)}/día)<br>Venta: ${S(f.t, 0)}`; } },
+    tooltip: { trigger: 'axis', formatter: ps => { const f = p.filas[ps[0].dataIndex]; return `<b>${mesTxt(f.mes)}</b><br>Precio de lista: ${S(f.precio, 2)}${f.pmin && f.pmax && f.pmax - f.pmin > 0.05 ? ` <span style="color:#b26a00">(entre ${S(f.pmin, 2)} y ${S(f.pmax, 2)}: cambió en el mes)</span>` : ''}${f.lista && Math.abs(f.cobrado - f.lista) / f.lista > 0.01 ? `<br>Cobrado con descuentos: ${S(f.cobrado, 2)}` : ''}<br>Unidades: ${num(f.u, 0)} (${num(f.upd, 1)}/día)<br>Venta: ${S(f.t, 0)}`; } },
     xAxis: { type: 'category', data: meses },
     yAxis: [{ type: 'value', splitLine: { lineStyle: { color: '#f0ece8' } } },
             { type: 'value', scale: true, splitLine: { show: false }, axisLabel: { formatter: v => 'S/ ' + v.toFixed(v < 10 ? 2 : 0) } }],
     series: [
       { name: 'Unidades por día', type: 'bar', data: p.filas.map(f => Math.round(f.upd * 10) / 10), itemStyle: { color: '#e5c9c9', borderRadius: [4, 4, 0, 0] }, barMaxWidth: 28 },
-      { name: 'Precio promedio', type: 'line', yAxisIndex: 1, step: 'middle', data: p.filas.map(f => Math.round(f.precio * 100) / 100), lineStyle: { color: ROJO, width: 3 }, itemStyle: { color: ROJO }, symbolSize: 6 }
+      { name: 'Precio de lista', type: 'line', yAxisIndex: 1, step: 'middle', data: p.filas.map(f => Math.round(f.precio * 100) / 100), lineStyle: { color: ROJO, width: 3 }, itemStyle: { color: ROJO }, symbolSize: 6 }
     ]
   });
   grafico('g-part', {
