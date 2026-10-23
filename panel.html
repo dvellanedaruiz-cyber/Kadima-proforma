@@ -431,7 +431,7 @@ function vs(act, ant, comp) {
 const caja = (cls, titulo, cuerpo, nota = '') => `<div class="caja ${cls}"><h3>${titulo}</h3>${nota ? `<div class="nota">${nota}</div>` : ''}${cuerpo}</div>`;
 const vacio = t => `<div class="vacio">${t}</div>`;
 const etiquetaTipoDoc = { boleta: 'Boleta', factura: 'Factura', nota_venta: 'Nota de venta' };
-const etiquetaMetodo = m => ({ efectivo: 'Efectivo', visa: 'Visa', mastercard: 'Mastercard', yape: 'Yape', plin: 'Plin', transferencia: 'Transferencia', otro: 'Otro', credito: 'Crédito' }[m] || m);
+const etiquetaMetodo = m => ({ efectivo: 'Efectivo', tarjeta: 'Tarjeta', visa: 'Tarjeta (Visa)', mastercard: 'Tarjeta (Mastercard)', yape: 'Yape', plin: 'Plin', transferencia: 'Transferencia', otro: 'Otro', credito: 'Crédito' }[m] || m);
 
 // food cost y gasto (todo sobre venta neta)
 function margenes(d) {

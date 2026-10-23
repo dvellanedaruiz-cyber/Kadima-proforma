@@ -271,7 +271,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
     <div class="ctx oculto" id="ctx"><span id="ctx-txt"></span><button class="btn-link" id="ctx-cancelar">Cancelar</button></div>
     <div class="carrito" id="carrito"></div>
     <div class="pie">
-      <div class="canal-sel">Canal de la venta <select id="c-canal"></select></div>
+      <div class="canal-sel oculto">Canal de la venta <select id="c-canal"></select></div>
       <div class="docs" id="docs">
         <button data-doc="boleta" class="activa">Boleta</button>
         <button data-doc="nota_venta">Nota de venta</button>
@@ -436,10 +436,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
     <div class="metodos" id="metodos">
       <button data-m="efectivo" class="activa">Efectivo</button>
       <button data-m="yape">Yape</button>
-      <button data-m="plin">Plin</button>
-      <button data-m="visa">Visa</button>
-      <button data-m="mastercard">Mastercard</button>
-      <button data-m="transferencia">Transferencia</button>
+      <button data-m="tarjeta">Tarjeta</button>
     </div>
     <div class="fila">
       <div class="campo"><label id="p-label">Monto recibido (S/)</label><input id="p-monto" type="number" step="0.10" min="0" inputmode="decimal"></div>
@@ -504,7 +501,8 @@ const S = n => 'S/ ' + Number(n || 0).toFixed(2);
 const r2 = n => Math.round(n * 100) / 100;
 const guardar = (k, v) => { try { localStorage.setItem('kadima_' + k, JSON.stringify(v)); } catch (e) {} };
 const leer = k => { try { return JSON.parse(localStorage.getItem('kadima_' + k)); } catch (e) { return null; } };
-const NOMBRES_METODO = { efectivo:'Efectivo', yape:'Yape', plin:'Plin', visa:'Visa', mastercard:'Mastercard', transferencia:'Transferencia' };
+// la caja cobra solo con Efectivo, Yape y Tarjeta; los demás nombres quedan para mostrar ventas antiguas
+const NOMBRES_METODO = { efectivo:'Efectivo', yape:'Yape', tarjeta:'Tarjeta', plin:'Plin', visa:'Tarjeta (Visa)', mastercard:'Tarjeta (Mastercard)', transferencia:'Transferencia' };
 const NOMBRE_DOC = { boleta:'Boleta', factura:'Factura', nota_venta:'Nota de venta' };
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() :
   'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
