@@ -247,7 +247,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
     </div>
     <span class="vivo" id="vivo">● conectando</span>
     <span class="usr" id="usr" title="Cambiar de usuario"></span>
-    <span style="font-size:11px;opacity:.7" title="Versión de la app">v23.10-j</span>
+    <span style="font-size:11px;opacity:.7" title="Versión de la app">v23.10-k</span>
   </div>
 
   <!-- ===== CENTRAL ===== -->
@@ -290,6 +290,12 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
             <div><label>Facturación</label><select data-k="facturacion"><option value="normal">Normal (se cobra por pedido)</option><option value="mensual">🏫 Factura mensual al crédito</option></select></div>
             <div id="f-cmen-w" class="oculto"><label>Cliente mensual</label><select id="f-cmen"></select></div>
           </div>
+          <div class="fila">
+            <div style="max-width:150px"><label>🎂 Ocasión (opcional)</label><select data-k="ocasion_tipo"><option value="">—</option><option value="cumpleanos">Cumpleaños</option><option value="aniversario">Aniversario</option><option value="otro">Otra fecha</option></select></div>
+            <div style="flex:2"><label>¿De quién?</label><input data-k="ocasion_para" placeholder="Ej. Ana (hija), Carlos (esposo)"></div>
+            <div style="max-width:170px"><label>Fecha de la ocasión</label><input data-k="ocasion_fecha" type="date"></div>
+          </div>
+          <p class="ayuda" style="margin:-4px 0 0">La ocasión queda en el CRM para escribirle el próximo año.</p>
         </div>
         <div class="bloque">
           <h3>🚚 Entrega</h3>
@@ -764,6 +770,13 @@ async function abrirApp() {
     .subscribe(s => { $('vivo').textContent = s === 'SUBSCRIBED' ? '● en vivo' : '● reconectando'; });
   setInterval(() => st.seccion === 'central' && cargarCentral(), 30000);
   setInterval(() => st.seccion === 'central' && dibujarCentral(), 60000);
+  // enlace desde el CRM: encargos?nuevo=1&tel=…&nombre=…&doc=…
+  const q = new URLSearchParams(location.search);
+  if (q.get('nuevo')) {
+    st.f = null; irSeccion('nuevo');
+    nuevoForm({ cliente_telefono: q.get('tel') || '', cliente_nombre: q.get('nombre') || '', cliente_doc: q.get('doc') || '' });
+    history.replaceState(null, '', location.pathname);
+  }
 }
 
 // =====================================================================
@@ -1405,7 +1418,7 @@ function nuevoForm(base = {}) {
     id: null, codigo: null, estado: null, canal: 'whatsapp', cliente_nombre: '', cliente_telefono: '', cliente_doc: '',
     fecha_entrega: '', hora_entrega: '', tipo_entrega: 'recojo', direccion: '', distrito: '', referencia: '',
     costo_delivery: '', notas: '', items: [], fotosBorrar: [], ubicacion_lat: null, ubicacion_lng: null, ubicacion_link: '',
-    delivery_modo: 'al_despachar', facturacion: 'normal', delivery_costo_real: null, ...base,
+    delivery_modo: 'al_despachar', facturacion: 'normal', delivery_costo_real: null, ocasion_tipo: '', ocasion_para: '', ocasion_fecha: '', ...base,
   };
   pintarForm();
 }
@@ -1520,6 +1533,10 @@ async function guardarPedido(estado, cobrar) {
     const pid = data.id;
     // modo de cobro del delivery y facturación (columnas del script 48)
     const ex = await sb.from('pedidos_encargo').update({ delivery_modo: f.tipo_entrega === 'delivery' ? f.delivery_modo : 'fijo', facturacion: f.facturacion }).eq('id', pid);
+    if (f.ocasion_fecha || f.ocasion_tipo || f.ocasion_para) {
+      const oc = await sb.from('pedidos_encargo').update({ ocasion_tipo: f.ocasion_tipo || (f.ocasion_fecha ? 'cumpleanos' : null), ocasion_para: f.ocasion_para || null, ocasion_fecha: f.ocasion_fecha || null }).eq('id', pid);
+      if (oc.error) toast(/ocasion/.test(oc.error.message) ? 'Corre 51_crm.sql para guardar la ocasión' : errTxt(oc.error));
+    }
     if (ex.error && !/delivery_modo|facturacion/.test(ex.error.message)) throw ex.error;
     if (ex.error) toast('Corre 48_delivery_despacho_mensual.sql para guardar el modo del delivery');
     // fotos quitadas
@@ -1623,6 +1640,7 @@ async function editarPedido(id) {
     direccion: d.direccion || '', distrito: d.distrito || '', referencia: d.referencia || '', costo_delivery: d.costo_delivery ?? '', notas: d.notas || '',
     ubicacion_lat: d.ubicacion_lat == null ? null : Number(d.ubicacion_lat), ubicacion_lng: d.ubicacion_lng == null ? null : Number(d.ubicacion_lng), ubicacion_link: d.ubicacion_link || '',
     delivery_modo: d.delivery_modo || 'fijo', facturacion: d.facturacion || 'normal', delivery_costo_real: d.delivery_costo_real ?? null,
+    ocasion_tipo: d.ocasion_tipo || '', ocasion_para: d.ocasion_para || '', ocasion_fecha: d.ocasion_fecha || '',
     items: itemsDesde(d, false),
   });
 }

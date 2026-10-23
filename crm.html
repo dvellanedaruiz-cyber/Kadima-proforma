@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kadima CRM</title>
+<meta name="theme-color" content="#8B0000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="CRM">
+<link rel="manifest" href="crm-manifest.webmanifest">
+<link rel="icon" href="pos-icon-192.png">
+<link rel="apple-touch-icon" href="pos-icon-192.png">
+<style>
+:root{--rojo:#8B0000;--rojo-s:#f7e9e9;--fondo:#f6f4f2;--borde:#e3dfdb;--gris:#6b6b6b;--texto:#1f1f1f;--ok:#1e7d3a;--aviso:#b26a00;--mal:#b00020;--azul:#1f5fbf;--yape:#742284;--wa:#128c4a}
+*{box-sizing:border-box}
+html,body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--fondo);color:var(--texto);font-size:14px}
+button{font:inherit;cursor:pointer;border:none;border-radius:8px}
+input,select,textarea{font:inherit;padding:8px 10px;border:1px solid var(--borde);border-radius:8px;background:#fff;color:inherit;width:100%}
+textarea{resize:vertical}
+label{display:block;font-size:12px;color:var(--gris);margin:0 0 4px;font-weight:600}
+.oculto{display:none!important}
+.btn{background:var(--rojo);color:#fff;padding:10px 16px;font-weight:700}
+.btn-sec{background:#fff;border:1px solid var(--borde);color:var(--texto);padding:9px 14px;font-weight:600}
+.btn-wa{background:var(--wa);color:#fff;padding:9px 14px;font-weight:700}
+.error{color:var(--mal);min-height:18px;margin-top:8px}
+.okmsg{color:var(--ok);font-weight:600}
+.centro{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.tarjeta{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);padding:24px;width:100%;max-width:380px}
+.marca{color:var(--rojo);font-weight:800;font-size:22px;margin:0}.sub{color:var(--gris);margin:4px 0 16px}
+.pin-puntos{display:flex;gap:10px;justify-content:center;margin:10px 0 16px}
+.pin-puntos span{width:14px;height:14px;border-radius:50%;border:2px solid var(--rojo)}.pin-puntos span.lleno{background:var(--rojo)}
+.teclado{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.teclado button{padding:16px;font-size:20px;background:var(--fondo);font-weight:600}
+
+.barra{background:var(--rojo);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:20;flex-wrap:wrap}
+.barra b{font-size:18px}
+.barra .usr{margin-left:auto;font-size:13px;opacity:.9;cursor:pointer}
+.barra .vivo{font-size:12px;font-weight:700;padding:3px 9px;border-radius:12px;background:rgba(255,255,255,.18)}
+.secc{display:flex;gap:6px;flex-wrap:wrap}
+.secc button{background:rgba(255,255,255,.15);color:#fff;padding:8px 14px;font-weight:700}
+.secc button.activa{background:#fff;color:var(--rojo)}
+.secc .n{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:#fff3c4;color:#7a5300;font-size:11px;margin-left:4px}
+
+.sub-barra{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 14px;background:#fff;border-bottom:1px solid var(--borde)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips button{background:var(--fondo);padding:7px 12px;font-weight:600;font-size:13px}
+.chips button.activa{background:var(--rojo);color:#fff}
+.sub-barra select{width:auto}
+
+/* ===== central ===== */
+.tablero{display:grid;grid-template-columns:repeat(4,minmax(270px,1fr));gap:12px;padding:14px;align-items:start;overflow-x:auto}
+.col h3{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--gris);display:flex;justify-content:space-between}
+.col h3 span{background:#fff;border-radius:10px;padding:0 8px;color:var(--texto)}
+.vacio{color:var(--gris);font-size:13px;text-align:center;padding:16px;border:1px dashed var(--borde);border-radius:12px}
+.entregados{padding:0 14px 20px;color:var(--gris);font-size:13px}
+
+/* ===== nuevo pedido ===== */
+.form{display:grid;grid-template-columns:1.25fr 1fr;gap:14px;padding:14px;max-width:1300px;margin:0 auto}
+.bloque{background:#fff;border-radius:14px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.05);margin-bottom:14px}
+.bloque h3{margin:0 0 12px;font-size:15px;display:flex;align-items:center;gap:8px}
+.bloque h3 .der{margin-left:auto}
+.fila{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.fila>div{flex:1;min-width:130px}
+.seg{display:flex;background:var(--fondo);border-radius:10px;padding:3px;gap:3px}
+.seg button{flex:1;background:transparent;padding:8px;font-weight:700;color:var(--gris)}
+.seg button.activa{background:#fff;color:var(--rojo);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.item{border:1px solid var(--borde);border-radius:12px;padding:10px 12px;margin-bottom:8px;display:grid;grid-template-columns:1fr auto;gap:6px}
+.item .t{font-weight:700;font-size:15px}
+.item .d{font-size:12.5px;color:var(--gris)}
+.item .p{text-align:right;font-weight:800}
+.item .p small{display:block;font-weight:600;color:var(--gris);font-size:11.5px}
+.item .acc2{grid-column:1/-1;display:flex;gap:6px}
+.item .acc2 button{padding:6px 10px;font-size:12.5px;font-weight:600;background:var(--fondo)}
+.resumen{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:14px}
+.resumen .tot{font-weight:800;font-size:18px}
+.resumen .saldo{color:var(--mal);font-weight:800}
+.acciones-form{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.aviso-ed{background:#fff3c4;border-radius:10px;padding:8px 12px;margin:14px 14px 0;font-weight:600;display:flex;gap:10px;align-items:center;max-width:1272px}
+@media (min-width:1301px){.aviso-ed{margin:14px auto 0}}
+
+/* ===== modal ===== */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:20px 12px;overflow:auto}
+.caja{background:#fff;border-radius:16px;width:100%;max-width:880px;padding:18px;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+.caja h2{margin:0 0 12px;font-size:18px;display:flex;align-items:center}
+.caja h2 .x{margin-left:auto;background:var(--fondo);width:34px;height:34px;font-size:16px}
+.cot{display:grid;grid-template-columns:1.4fr 1fr;gap:14px}
+.buscador{position:relative}
+.resultados{position:absolute;left:0;right:0;top:100%;background:#fff;border:1px solid var(--borde);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);max-height:280px;overflow:auto;z-index:5}
+.resultados div{padding:8px 10px;display:flex;justify-content:space-between;gap:8px;cursor:pointer;border-bottom:1px solid #f3f0ed}
+.resultados div:hover,.resultados div.foco{background:var(--rojo-s)}
+.resultados small{color:var(--gris)}
+.grupo-ad{margin:8px 0 4px;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--gris);font-weight:700}
+.chip{display:inline-block;background:var(--fondo);border-radius:16px;padding:6px 11px;margin:0 6px 6px 0;font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent}
+.chip:hover{border-color:var(--rojo)}
+.chip small{color:var(--gris);font-weight:500}
+table.t{width:100%;border-collapse:collapse;font-size:13px}
+table.t th{text-align:left;color:var(--gris);font-size:11.5px;font-weight:700;padding:6px 4px;border-bottom:1px solid var(--borde)}
+table.t td{padding:5px 4px;border-bottom:1px solid #f3f0ed;vertical-align:middle}
+table.t .n{text-align:right;white-space:nowrap}
+table.t input,table.t select{padding:5px 6px}
+table.t .x{background:var(--fondo);width:28px;height:28px}
+.sin-costo{color:var(--aviso);font-weight:600}
+.calc{background:var(--fondo);border-radius:12px;padding:12px}
+.calc .k{display:flex;justify-content:space-between;padding:4px 0;font-size:14px}
+.calc .k b{font-size:16px}
+.sug{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0}
+.sug button{background:#fff;border:1px solid var(--borde);padding:8px 4px;font-weight:800;font-size:15px}
+.sug button small{display:block;font-weight:600;font-size:11px;color:var(--gris)}
+.sug button:hover{border-color:var(--rojo)}
+.fc{font-weight:800}.fc.bien{color:var(--ok)}.fc.medio{color:var(--aviso)}.fc.mal{color:var(--mal)}
+.drop{border:2px dashed var(--borde);border-radius:12px;padding:12px;text-align:center;color:var(--gris);font-size:13px}
+.drop.sobre{border-color:var(--rojo);background:var(--rojo-s)}
+.miniaturas{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.miniaturas .m{position:relative}
+.miniaturas img{width:74px;height:74px;object-fit:cover;border-radius:10px;border:1px solid var(--borde)}
+.miniaturas .m button{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;background:var(--mal);color:#fff;font-size:12px;padding:0}
+.ayuda{font-size:12px;color:var(--gris);margin:6px 0 0}
+
+/* ===== historial ===== */
+.hist{padding:14px;max-width:1100px;margin:0 auto}
+.h-item{background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.05);display:grid;grid-template-columns:76px 1fr auto;gap:12px;align-items:start}
+.h-item .ph{width:76px;height:76px;border-radius:10px;background:var(--fondo);object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:28px}
+.h-item .t{font-weight:800}
+.h-item .meta{color:var(--gris);font-size:12.5px;margin-top:2px}
+.h-item ul{margin:6px 0 0;padding-left:18px;font-size:13.5px}
+.h-item .bot{display:flex;flex-direction:column;gap:6px;align-items:stretch;min-width:130px}
+.h-item .bot button{padding:8px 10px;font-weight:700;font-size:13px}
+.est{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;background:var(--fondo);margin-left:6px}
+.est.cotizado{background:#f1ecf7;color:var(--yape)}.est.entregado{background:#e7f6ec;color:var(--ok)}.est.anulado{background:#fde8ea;color:var(--mal)}
+.cmp{font-size:12px;margin-top:4px}
+
+/* ===== adicionales ===== */
+.adic{padding:14px;max-width:1100px;margin:0 auto}
+
+/* ===== visor de fotos ===== */
+.visor{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:80;display:flex;align-items:center;justify-content:center;cursor:zoom-out}
+.visor img{max-width:94vw;max-height:92vh;border-radius:10px}
+
+#lienzo{position:fixed;left:-10000px;top:0}
+.ubi-info{font-size:12.5px;color:var(--gris);display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.ubi-info a{color:var(--azul);font-weight:700;text-decoration:none}
+.ubi-ok{color:var(--ok);font-weight:700}
+#s-mapa .mapa-grande{height:calc(100vh - 128px);min-height:420px}
+.mapa-stats{font-size:13px;color:var(--gris);margin-left:auto}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1f1f1f;color:#fff;padding:10px 16px;border-radius:10px;z-index:90;font-weight:600;max-width:92vw}
+
+@media (max-width:900px){.form,.cot{grid-template-columns:1fr}.tablero{grid-template-columns:repeat(4,85vw)}.h-item{grid-template-columns:60px 1fr}.h-item .ph{width:60px;height:60px}.h-item .bot{grid-column:1/-1;flex-direction:row;flex-wrap:wrap}.h-item .bot button{flex:1}}
+
+.pag{padding:14px;max-width:1200px;margin:0 auto}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px}
+.kpi{background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.kpi span{display:block;font-size:12px;color:var(--gris);font-weight:600}.kpi b{font-size:22px}
+.seg-tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;white-space:nowrap}
+.sg-top{background:#fff3c4;color:#7a5300}.sg-frecuente{background:#e7f6ec;color:var(--ok)}.sg-nuevo{background:#e8f0fe;color:var(--azul)}
+.sg-dormido{background:#fde8ea;color:var(--mal)}.sg-activo{background:var(--fondo);color:var(--gris)}.sg-prospecto{background:#f1ecf7;color:var(--yape)}
+.fila-cli{cursor:pointer}.fila-cli:hover td{background:#faf7f5}
+.etq{display:inline-block;font-size:11px;background:var(--rojo-s);color:var(--rojo);border-radius:6px;padding:1px 6px;margin:2px 4px 0 0}
+.lst{display:flex;flex-direction:column;gap:8px}
+.it{background:#fff;border-radius:12px;padding:12px;box-shadow:0 1px 4px rgba(0,0,0,.05);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.it .q{min-width:92px;text-align:center;border-radius:10px;background:var(--fondo);padding:6px 8px;font-weight:800}
+.it .q small{display:block;font-weight:600;color:var(--gris);font-size:11px}
+.it .q.hoy{background:var(--rojo);color:#fff}.it .q.hoy small{color:#fde}
+.it .d{flex:1;min-width:200px}.it .d .t{font-weight:700}.it .d .m{font-size:12.5px;color:var(--gris);margin-top:2px}
+.it .a{display:flex;gap:6px;flex-wrap:wrap}
+.ok-tag{color:var(--ok);font-weight:700;font-size:12.5px}
+.aviso-ley{background:#fff8ea;border:1px solid #e8cf9a;color:#6b4c15;border-radius:10px;padding:8px 12px;font-size:12.5px;margin-bottom:10px}
+.barras .b{display:grid;grid-template-columns:160px 1fr 40px;gap:8px;align-items:center;font-size:13px;margin:4px 0}
+.barras .b i{display:block;height:12px;border-radius:6px;background:var(--rojo)}
+.hist td small{color:var(--gris)}
+@media (max-width:700px){.oc-movil{display:none}}
+</style>
+</head>
+<body>
+
+<section id="v-login" class="centro oculto">
+  <form class="tarjeta" id="f-login">
+    <p class="marca">KADIMA</p><p class="sub">CRM · iniciar sesión</p>
+    <input id="l-email" type="email" placeholder="Correo" required style="margin-bottom:10px">
+    <input id="l-pass" type="password" placeholder="Contraseña" required style="margin-bottom:10px">
+    <button class="btn" style="width:100%">Ingresar</button><div class="error" id="l-error"></div>
+  </form>
+</section>
+<section id="v-pin" class="centro oculto">
+  <div class="tarjeta" style="max-width:340px">
+    <p class="marca">KADIMA</p><p class="sub">CRM · Ingresa tu PIN</p>
+    <div class="pin-puntos" id="pin-puntos"></div><div class="teclado" id="teclado"></div>
+    <div class="error" id="pin-error" style="text-align:center"></div>
+  </div>
+</section>
+
+<section id="v-app" class="oculto">
+  <div class="barra">
+    <b>Kadima CRM</b>
+    <div class="secc" id="secc">
+      <button data-s="cli" class="activa">👥 Clientes</button>
+      <button data-s="fechas">🎂 Fechas especiales</button>
+      <button data-s="cot">📝 Cotizaciones</button>
+      <button data-s="camp">📣 Campañas</button>
+    </div>
+    <span class="usr" id="usr" title="Cambiar de usuario"></span>
+    <span style="font-size:11px;opacity:.7">v1.0</span>
+  </div>
+
+  <!-- ===== CLIENTES ===== -->
+  <div id="s-cli" class="pag">
+    <div class="kpis" id="c-kpis"></div>
+    <div class="bloque">
+      <div class="fila" style="align-items:end;margin-bottom:8px">
+        <div style="flex:3"><input id="c-q" placeholder="Buscar por nombre, celular, DNI/RUC o distrito…"></div>
+        <div style="flex:0 0 auto"><button class="btn" id="c-nuevo">+ Nuevo cliente</button></div>
+        <div style="flex:0 0 auto"><button class="btn-sec" id="c-csv">📥 CSV</button></div>
+      </div>
+      <div class="chips" id="c-seg" style="margin-bottom:8px"></div>
+      <div style="overflow-x:auto"><table class="t"><thead><tr><th>Cliente</th><th>Celular</th><th class="oc-movil">Distrito</th><th class="n">Compras</th><th class="n">Total</th><th class="n oc-movil">Ticket prom.</th><th>Última compra</th><th>Segmento</th></tr></thead><tbody id="c-tabla"></tbody></table></div>
+      <div class="ayuda" id="c-pie"></div>
+    </div>
+  </div>
+
+  <!-- ===== FECHAS ESPECIALES ===== -->
+  <div id="s-fechas" class="pag oculto">
+    <div class="bloque">
+      <h3>🎂 Próximas fechas especiales</h3>
+      <div class="fila" style="align-items:end">
+        <div class="chips" id="f-rango" style="flex:2"><button data-d="7">7 días</button><button data-d="15">15 días</button><button data-d="30" class="activa">30 días</button><button data-d="60">60 días</button></div>
+        <label style="display:flex;gap:6px;align-items:center;flex:1;font-weight:400"><input type="checkbox" id="f-pend" checked style="width:auto"> Solo sin contactar este año</label>
+      </div>
+      <label>Mensaje de WhatsApp ({nombre}, {ocasion}, {para}, {fecha})</label>
+      <textarea id="f-msg" rows="2"></textarea>
+      <p class="ayuda">Escríbele unos 7 a 10 días antes: tiempo justo para cotizar y producir la torta.</p>
+    </div>
+    <div class="lst" id="f-lista"></div>
+  </div>
+
+  <!-- ===== COTIZACIONES ===== -->
+  <div id="s-cot" class="pag oculto">
+    <div class="kpis" id="q-kpis"></div>
+    <div class="bloque">
+      <div class="chips" id="q-filtro" style="margin-bottom:8px"><button data-f="hoy" class="activa">Para seguir hoy</button><button data-f="abiertas">Todas las abiertas</button><button data-f="perdidas">Perdidas</button></div>
+      <label>Mensaje de seguimiento ({nombre}, {codigo}, {total}, {fecha})</label>
+      <textarea id="q-msg" rows="2"></textarea>
+    </div>
+    <div class="lst" id="q-lista"></div>
+    <div class="bloque" style="margin-top:14px"><h3>¿Por qué se pierden? (últimos 90 días)</h3><div class="barras" id="q-motivos"></div></div>
+  </div>
+
+  <!-- ===== CAMPAÑAS ===== -->
+  <div id="s-camp" class="pag oculto">
+    <div class="bloque">
+      <h3>📣 Campaña por WhatsApp</h3>
+      <div class="aviso-ley">Por la Ley de Protección de Datos Personales (Ley 29733), solo escribe con fines comerciales a clientes que aceptaron recibir promociones. Márcalo en la ficha del cliente cuando te dé su permiso.</div>
+      <div class="fila">
+        <div style="flex:2"><label>Nombre de la campaña</label><input id="k-nombre" placeholder="Ej. Navidad 2026 - panetones"></div>
+        <div><label>Segmento</label><select id="k-seg"><option value="">Todos</option><option value="top">Top (más gastan)</option><option value="frecuente">Frecuentes</option><option value="nuevo">Nuevos</option><option value="dormido">Dormidos (+60 días)</option><option value="prospecto">Solo cotizaron</option><option value="empresa">Empresas (RUC)</option></select></div>
+        <div><label>Distrito contiene</label><input id="k-dist" placeholder="Ej. Lurigancho"></div>
+        <div style="max-width:150px"><label>Sin comprar hace ≥ días</label><input id="k-dias" type="number" min="0" placeholder="0"></div>
+      </div>
+      <label style="display:flex;gap:6px;align-items:center;font-weight:400;margin-bottom:8px"><input type="checkbox" id="k-consent" checked style="width:auto"> Solo clientes con consentimiento de promociones</label>
+      <label>Mensaje ({nombre})</label>
+      <textarea id="k-msg" rows="3" placeholder="Hola {nombre}, en Kadima ya tenemos…"></textarea>
+      <div class="ayuda" id="k-res"></div>
+    </div>
+    <div class="lst" id="k-lista"></div>
+  </div>
+</section>
+
+<!-- ===== FICHA DEL CLIENTE ===== -->
+<div class="modal oculto" id="m-ficha">
+  <div class="caja" style="max-width:980px">
+    <h2><span id="fi-tit">Cliente</span><button class="x" id="fi-x">✕</button></h2>
+    <div class="kpis" id="fi-kpis"></div>
+    <div class="fila">
+      <div style="flex:2"><label>Nombre</label><input id="fi-nombre"></div>
+      <div><label>Celular</label><input id="fi-tel" inputmode="tel" maxlength="12"></div>
+      <div><label>DNI / RUC</label><input id="fi-doc" inputmode="numeric" maxlength="11"></div>
+    </div>
+    <div class="fila">
+      <div><label>Correo</label><input id="fi-email" type="email"></div>
+      <div><label>Distrito</label><input id="fi-dist"></div>
+      <div style="flex:2"><label>Dirección</label><input id="fi-dir"></div>
+    </div>
+    <div class="fila">
+      <div style="flex:2"><label>Etiquetas (separadas por coma)</label><input id="fi-etq" placeholder="Ej. sin azúcar, empresa, alérgico a nueces"></div>
+      <div style="flex:3"><label>Notas</label><input id="fi-notas" placeholder="Gustos, preferencias, cómo prefiere que le escriban…"></div>
+    </div>
+    <label style="display:flex;gap:8px;align-items:center;font-weight:400;margin-bottom:10px"><input type="checkbox" id="fi-promo" style="width:auto"> <span>Aceptó recibir promociones por WhatsApp <small id="fi-promo-en" style="color:var(--gris)"></small></span></label>
+    <div class="acciones-form" style="margin-bottom:12px">
+      <a class="btn-wa" id="fi-wa" target="_blank" rel="noopener" style="text-decoration:none">💬 WhatsApp</a>
+      <a class="btn-sec" id="fi-ped" target="_blank" rel="noopener" style="text-decoration:none">➕ Nuevo pedido</a>
+      <button class="btn" id="fi-guardar">💾 Guardar</button>
+    </div>
+    <div class="error" id="fi-error"></div>
+
+    <div class="bloque" style="box-shadow:none;border:1px solid var(--borde)">
+      <h3>🎂 Fechas especiales</h3>
+      <table class="t"><tbody id="fi-fechas"></tbody></table>
+      <div class="fila" style="align-items:end;margin-top:8px">
+        <div style="max-width:150px"><label>Tipo</label><select id="nf-tipo"><option value="cumpleanos">Cumpleaños</option><option value="aniversario">Aniversario</option><option value="otro">Otra fecha</option></select></div>
+        <div style="flex:2"><label>¿De quién?</label><input id="nf-para" placeholder="Ej. Ana (hija)"></div>
+        <div style="max-width:90px"><label>Día</label><input id="nf-dia" type="number" min="1" max="31"></div>
+        <div style="max-width:130px"><label>Mes</label><select id="nf-mes"></select></div>
+        <div style="flex:0 0 auto"><button class="btn-sec" id="nf-add">+ Agregar</button></div>
+      </div>
+    </div>
+
+    <div class="bloque" style="box-shadow:none;border:1px solid var(--borde)">
+      <h3>🧾 Historial de compras y cotizaciones</h3>
+      <div style="overflow-x:auto"><table class="t hist"><thead><tr><th>Fecha</th><th>Origen</th><th>Documento</th><th>Detalle</th><th class="n">Total</th><th>Estado</th></tr></thead><tbody id="fi-hist"></tbody></table></div>
+    </div>
+
+    <div class="bloque" style="box-shadow:none;border:1px solid var(--borde)">
+      <h3>📞 Contactos</h3>
+      <table class="t"><tbody id="fi-cont"></tbody></table>
+      <div class="fila" style="align-items:end;margin-top:8px">
+        <div style="max-width:160px"><label>Motivo</label><select id="nc-mot"><option value="otro">Otro</option><option value="cotizacion">Cotización</option><option value="fecha_especial">Fecha especial</option><option value="campana">Campaña</option></select></div>
+        <div style="flex:3"><label>Nota</label><input id="nc-nota" placeholder="Ej. Llamó para preguntar por tortas sin azúcar"></div>
+        <div style="flex:0 0 auto"><button class="btn-sec" id="nc-add">+ Registrar</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MARCAR COTIZACIÓN PERDIDA / SEGUIMIENTO ===== -->
+<div class="modal oculto" id="m-cot">
+  <div class="caja" style="max-width:480px">
+    <h2><span id="mq-tit">Cotización</span><button class="x" id="mq-x">✕</button></h2>
+    <div id="mq-seg">
+      <label>Próximo seguimiento</label><input id="mq-fecha" type="date" style="margin-bottom:8px">
+      <label>Nota</label><input id="mq-nota" placeholder="Ej. Confirma el viernes después de cobrar">
+    </div>
+    <div id="mq-per">
+      <label>Motivo de la pérdida</label>
+      <select id="mq-motivo" style="margin-bottom:8px"><option>Precio alto</option><option>No respondió</option><option>Fecha no disponible</option><option>Compró en otro lugar</option><option>Cambió de planes</option><option>Diseño no posible</option><option>Otro</option></select>
+      <label>Detalle (opcional)</label><input id="mq-det">
+    </div>
+    <div class="acciones-form" style="margin-top:12px"><button class="btn" id="mq-ok">Guardar</button></div>
+    <div class="error" id="mq-error"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
+<script>
+// =====================================================================
+// Kadima CRM · clientes, fechas especiales, cotizaciones y campañas
+// =====================================================================
+const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storageKey: 'kadima-crm-auth' } });
+const PERMITIDOS = ['admin@kadima.pe', 'caja@kadima.pe'];
+const URL_PEDIDOS = 'https://kadima.pe/encargos';
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const errTxt = e => { const m = (e && (e.message || e.error_description)) || String(e); return /fetch|network/i.test(m) ? 'Sin conexión a internet.' : /Invalid login/i.test(m) ? 'Correo o contraseña incorrectos.' : /crm_|v_crm/.test(m) ? 'Falta correr el script 51_crm.sql en Supabase.' : /duplicate|unique/i.test(m) ? 'Ese celular o documento ya pertenece a otro cliente.' : m; };
+const S = n => n == null || isNaN(n) ? '—' : 'S/ ' + Number(n).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const toast = t => { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2600); };
+const pad2 = n => String(n).padStart(2, '0');
+const fstr = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const hoyD = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+const diasDesde = f => f ? Math.floor((hoyD() - new Date(f + 'T00:00:00')) / 864e5) : null;
+const fechaCorta = f => f ? new Date(String(f).slice(0, 10) + 'T12:00:00').toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const OCASION = { cumpleanos: 'cumpleaños', aniversario: 'aniversario', otro: 'fecha especial' };
+const SEG = { top: 'Top', frecuente: 'Frecuente', nuevo: 'Nuevo', dormido: 'Dormido', activo: 'Activo', prospecto: 'Solo cotizó' };
+const ESTADOS = { cotizado: 'Cotización', confirmado: 'Confirmado', en_produccion: 'En producción', listo: 'Listo', entregado: 'Entregado', anulado: 'Anulado', por_validar: 'Validar Yape' };
+// WhatsApp de escritorio daña los emojis "nuevos" que llegan por enlace: solo texto y símbolos básicos
+const lsGet = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+const waURL = (tel, txt) => `https://wa.me/${tel ? '51' + String(tel).replace(/\D/g, '').replace(/^51(?=9\d{8}$)/, '') : ''}?text=${encodeURIComponent(txt || '')}`;
+const plantilla = (t, v) => t.replace(/\{(\w+)\}/g, (m, k) => v[k] ?? '');
+const primerNombre = n => { const p = String(n || '').trim().split(/\s+/)[0] || ''; return p.charAt(0).toUpperCase() + p.slice(1).toLowerCase(); };
+
+const st = { usuario: null, sec: 'cli', clientes: [], seg: '', p90: 0, ficha: null, fechas: [], cont: [], cots: [], qf: 'hoy', mq: null };
+
+// ===================== SESIÓN Y PIN =====================
+function vista(id) { ['v-login', 'v-pin', 'v-app'].forEach(v => $(v).classList.toggle('oculto', v !== id)); }
+$('f-login').addEventListener('submit', async ev => {
+  ev.preventDefault(); $('l-error').textContent = '';
+  const { error } = await sb.auth.signInWithPassword({ email: $('l-email').value.trim(), password: $('l-pass').value });
+  if (error) return $('l-error').textContent = errTxt(error);
+  iniciar();
+});
+async function iniciar() {
+  const { data } = await sb.auth.getSession();
+  if (!data.session) return vista('v-login');
+  if (!PERMITIDOS.includes((data.session.user?.email || '').toLowerCase())) { await sb.auth.signOut(); vista('v-login'); return $('l-error').textContent = 'Este usuario no tiene acceso al CRM.'; }
+  pedirPin();
+}
+let pin = '';
+function pedirPin() { pin = ''; vista('v-pin'); $('pin-error').textContent = ''; dibujarPin(); }
+function dibujarPin() { $('pin-puntos').innerHTML = [0, 1, 2, 3].map(i => `<span class="${i < pin.length ? 'lleno' : ''}"></span>`).join(''); }
+$('teclado').innerHTML = ['1','2','3','4','5','6','7','8','9','⌫','0','OK'].map(t => `<button data-t="${t}">${t}</button>`).join('');
+$('teclado').onclick = e => { const t = e.target.dataset.t; if (!t) return; if (t === '⌫') pin = pin.slice(0, -1); else if (t === 'OK') return validarPin(); else if (pin.length < 6) pin += t; dibujarPin(); if (pin.length === 4) validarPin(); };
+document.addEventListener('keydown', e => {
+  if ($('v-pin').classList.contains('oculto')) return;
+  if (/^[0-9]$/.test(e.key) && pin.length < 6) { pin += e.key; dibujarPin(); if (pin.length === 4) validarPin(); }
+  if (e.key === 'Backspace') { pin = pin.slice(0, -1); dibujarPin(); }
+});
+async function validarPin() {
+  const { data, error } = await sb.from('usuarios').select('id,nombre,rol,pin').eq('activo', true);
+  if (error) { $('pin-error').textContent = errTxt(error); pin = ''; return dibujarPin(); }
+  const u = (data || []).find(x => x.pin === pin);
+  if (!u) { $('pin-error').textContent = 'PIN incorrecto'; pin = ''; return dibujarPin(); }
+  st.usuario = u; abrirApp();
+}
+$('usr').onclick = () => { if (confirm('¿Cambiar de usuario?')) pedirPin(); };
+
+function abrirApp() {
+  vista('v-app'); $('usr').textContent = st.usuario?.nombre || '';
+  $('f-msg').value = lsGet('crm-msg-fecha', 'Hola {nombre}, te saluda Kadima. Se acerca el {ocasion} de {para} ({fecha}). ¿Te ayudamos con su torta este año? Te enviamos opciones.');
+  $('q-msg').value = lsGet('crm-msg-cot', 'Hola {nombre}, te saluda Kadima. Te escribimos por tu cotización {codigo} por {total} para el {fecha}. ¿La confirmamos para separar tu fecha?');
+  $('k-msg').value = lsGet('crm-msg-camp', '');
+  $('nf-mes').innerHTML = MESES.map((m, i) => `<option value="${i + 1}">${m}</option>`).join('');
+  irSeccion('cli');
+}
+function irSeccion(s) {
+  st.sec = s;
+  document.querySelectorAll('#secc [data-s]').forEach(b => b.classList.toggle('activa', b.dataset.s === s));
+  ['cli', 'fechas', 'cot', 'camp'].forEach(x => $('s-' + x).classList.toggle('oculto', x !== s));
+  if (s === 'cli') cargarClientes();
+  if (s === 'fechas') cargarFechas();
+  if (s === 'cot') cargarCots();
+  if (s === 'camp') cargarClientes().then(pintarCamp);
+  window.scrollTo(0, 0);
+}
+$('secc').onclick = e => { const b = e.target.closest('[data-s]'); if (b) irSeccion(b.dataset.s); };
+
+// ===================== CLIENTES =====================
+function segmento(c) {
+  const d = diasDesde(c.ultima_compra), n = Number(c.compras || 0), t = Number(c.total || 0);
+  if (!n) return 'prospecto';
+  if (st.p90 > 0 && t >= st.p90 && d <= 120) return 'top';
+  if (n >= 3 && d <= 90) return 'frecuente';
+  if (d > 60) return 'dormido';
+  if (n === 1 && d <= 30) return 'nuevo';
+  return 'activo';
+}
+async function cargarClientes() {
+  const { data, error } = await sb.from('v_crm_clientes').select('*').order('total', { ascending: false }).limit(5000);
+  if (error) { $('c-tabla').innerHTML = `<tr><td colspan="8" class="vacio">${esc(errTxt(error))}</td></tr>`; return; }
+  const l = data || [];
+  const tot = l.filter(c => Number(c.compras) > 0).map(c => Number(c.total)).sort((a, b) => b - a);
+  st.p90 = tot.length >= 10 ? tot[Math.floor(tot.length * 0.1)] : (tot[0] || 0) * 0.8;
+  l.forEach(c => { c.seg = segmento(c); c.empresa = String(c.num_doc || '').length === 11; });
+  st.clientes = l;
+  pintarClientes();
+}
+function pintarClientes() {
+  const l = st.clientes, cnt = k => l.filter(c => c.seg === k).length;
+  const compr = l.filter(c => Number(c.compras) > 0), recompra = compr.length ? Math.round(compr.filter(c => Number(c.compras) >= 2).length / compr.length * 100) : 0;
+  const ticket = compr.length ? compr.reduce((a, c) => a + Number(c.total), 0) / compr.reduce((a, c) => a + Number(c.compras), 0) : 0;
+  $('c-kpis').innerHTML = `<div class="kpi"><span>Clientes</span><b>${l.length}</b></div><div class="kpi"><span>Con compras</span><b>${compr.length}</b></div>
+    <div class="kpi"><span>Recompra (2+ compras)</span><b>${recompra}%</b></div><div class="kpi"><span>Ticket promedio</span><b>${S(ticket)}</b></div>
+    <div class="kpi"><span>Dormidos (+60 días)</span><b style="color:var(--mal)">${cnt('dormido')}</b></div><div class="kpi"><span>Aceptan promociones</span><b>${l.filter(c => c.acepta_promos).length}</b></div>`;
+  const chips = [['', 'Todos', l.length], ['top', 'Top', cnt('top')], ['frecuente', 'Frecuentes', cnt('frecuente')], ['nuevo', 'Nuevos', cnt('nuevo')], ['activo', 'Activos', cnt('activo')],
+    ['dormido', 'Dormidos', cnt('dormido')], ['prospecto', 'Solo cotizaron', cnt('prospecto')], ['empresa', 'Empresas', l.filter(c => c.empresa).length], ['promo', 'Aceptan promos', l.filter(c => c.acepta_promos).length]];
+  $('c-seg').innerHTML = chips.map(([k, t, n]) => `<button data-g="${k}" class="${st.seg === k ? 'activa' : ''}">${t} (${n})</button>`).join('');
+  const f = filtrados();
+  $('c-tabla').innerHTML = f.slice(0, 400).map(c => `<tr class="fila-cli" data-c="${c.id}">
+      <td><b>${esc(c.nombre)}</b>${c.empresa ? ' <small>🏢</small>' : ''}${c.acepta_promos ? ' <small title="Acepta promociones">✓</small>' : ''}${Number(c.fechas) ? ' <small title="Tiene fechas especiales">🎂</small>' : ''}<br>${(c.etiquetas || []).map(e => `<span class="etq">${esc(e)}</span>`).join('')}</td>
+      <td>${esc(c.telefono || '—')}</td><td class="oc-movil">${esc(c.distrito || '')}</td>
+      <td class="n">${c.compras}</td><td class="n">${S(c.total)}</td><td class="n oc-movil">${Number(c.compras) ? S(c.total / c.compras) : '—'}</td>
+      <td>${c.ultima_compra ? `${fechaCorta(c.ultima_compra)}<br><small>hace ${diasDesde(c.ultima_compra)} días</small>` : '—'}</td>
+      <td><span class="seg-tag sg-${c.seg}">${SEG[c.seg]}</span>${Number(c.cotizaciones_abiertas) ? ` <small title="Cotizaciones abiertas">📝${c.cotizaciones_abiertas}</small>` : ''}</td></tr>`).join('')
+    || '<tr><td colspan="8" class="vacio">Sin clientes. Se crean solos con cada pedido web, de WhatsApp/tienda o comprobante con DNI/RUC.</td></tr>';
+  $('c-pie').textContent = f.length > 400 ? `Mostrando 400 de ${f.length}. Usa el buscador para encontrar al cliente.` : `${f.length} cliente(s).`;
+}
+function filtrados() {
+  const q = $('c-q').value.trim().toLowerCase();
+  return st.clientes.filter(c => {
+    if (st.seg === 'empresa' ? !c.empresa : st.seg === 'promo' ? !c.acepta_promos : st.seg && c.seg !== st.seg) return false;
+    if (!q) return true;
+    const t = [c.nombre, c.telefono, c.num_doc, c.distrito, c.email, ...(c.etiquetas || [])].join(' ').toLowerCase();
+    return q.split(/\s+/).every(w => t.includes(w));
+  });
+}
+$('c-q').oninput = pintarClientes;
+$('c-seg').onclick = e => { const b = e.target.closest('[data-g]'); if (!b) return; st.seg = b.dataset.g; pintarClientes(); };
+$('c-tabla').onclick = e => { const r = e.target.closest('[data-c]'); if (r) abrirFicha(Number(r.dataset.c)); };
+$('c-nuevo').onclick = () => abrirFicha(null);
+$('c-csv').onclick = () => {
+  const cols = ['nombre', 'telefono', 'num_doc', 'email', 'distrito', 'direccion', 'compras', 'total', 'ultima_compra', 'seg', 'acepta_promos'];
+  const csv = [cols.join(','), ...filtrados().map(c => cols.map(k => `"${String(k === 'seg' ? SEG[c.seg] : c[k] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' })); a.download = `clientes-kadima-${fstr(new Date())}.csv`; a.click();
+};
+
+// ===================== FICHA =====================
+async function abrirFicha(id) {
+  $('fi-error').textContent = '';
+  const c = id ? st.clientes.find(x => x.id === id) || (await sb.from('v_crm_clientes').select('*').eq('id', id).single()).data : { nombre: '', etiquetas: [], compras: 0, total: 0 };
+  if (!c) return;
+  if (id && !c.seg) c.seg = segmento(c);
+  st.ficha = c;
+  $('fi-tit').textContent = id ? c.nombre : 'Nuevo cliente';
+  $('fi-nombre').value = c.nombre || ''; $('fi-tel').value = c.telefono || ''; $('fi-doc').value = c.num_doc || '';
+  $('fi-email').value = c.email || ''; $('fi-dist').value = c.distrito || ''; $('fi-dir').value = c.direccion || '';
+  $('fi-etq').value = (c.etiquetas || []).join(', '); $('fi-notas').value = c.notas || '';
+  $('fi-promo').checked = !!c.acepta_promos; $('fi-promo-en').textContent = c.acepta_promos_en ? `(desde ${fechaCorta(c.acepta_promos_en)})` : '';
+  $('fi-kpis').innerHTML = id ? `<div class="kpi"><span>Compras</span><b>${c.compras}</b></div><div class="kpi"><span>Total</span><b>${S(c.total)}</b></div>
+    <div class="kpi"><span>Ticket promedio</span><b>${Number(c.compras) ? S(c.total / c.compras) : '—'}</b></div>
+    <div class="kpi"><span>Última compra</span><b style="font-size:16px">${c.ultima_compra ? `hace ${diasDesde(c.ultima_compra)} días` : '—'}</b></div>
+    <div class="kpi"><span>Segmento</span><b style="font-size:16px"><span class="seg-tag sg-${c.seg}">${SEG[c.seg]}</span></b></div>` : '';
+  $('fi-wa').href = waURL(c.telefono, `Hola ${primerNombre(c.nombre)}, te saluda Kadima.`);
+  $('fi-wa').classList.toggle('oculto', !c.telefono);
+  $('fi-ped').href = `${URL_PEDIDOS}?nuevo=1&tel=${encodeURIComponent(c.telefono || '')}&nombre=${encodeURIComponent(c.nombre || '')}&doc=${encodeURIComponent(c.num_doc || '')}`;
+  $('fi-ped').classList.toggle('oculto', !id);
+  ['fi-fechas', 'fi-hist', 'fi-cont'].forEach(x => $(x).innerHTML = id ? '<tr><td class="vacio">Cargando…</td></tr>' : '<tr><td class="vacio">Guarda el cliente primero.</td></tr>');
+  $('m-ficha').classList.remove('oculto');
+  if (id) { cargarFechasCli(); cargarHistorial(); cargarContactos(); }
+}
+$('fi-x').onclick = () => { $('m-ficha').classList.add('oculto'); if (st.sec === 'cli') cargarClientes(); };
+$('fi-guardar').onclick = async () => {
+  const c = st.ficha, err = t => $('fi-error').textContent = t; err('');
+  const tel = $('fi-tel').value.replace(/\D/g, '').replace(/^51(?=9\d{8}$)/, ''), doc = $('fi-doc').value.replace(/\D/g, '');
+  if (!$('fi-nombre').value.trim()) return err('Escribe el nombre.');
+  if (tel && !/^9\d{8}$/.test(tel)) return err('El celular debe tener 9 dígitos y empezar con 9.');
+  if (doc && !/^(\d{8}|\d{11})$/.test(doc)) return err('El DNI tiene 8 dígitos y el RUC 11.');
+  if (!tel && !doc) return err('Pon al menos el celular o el DNI/RUC.');
+  const promo = $('fi-promo').checked;
+  const fila = { nombre: $('fi-nombre').value.trim(), telefono: tel || null, num_doc: doc || null, email: $('fi-email').value.trim() || null,
+    distrito: $('fi-dist').value.trim() || null, direccion: $('fi-dir').value.trim() || null, notas: $('fi-notas').value.trim() || null,
+    etiquetas: $('fi-etq').value.split(',').map(x => x.trim()).filter(Boolean), acepta_promos: promo, actualizado_en: new Date().toISOString() };
+  if (promo && !c.acepta_promos) fila.acepta_promos_en = new Date().toISOString();
+  if (!promo) fila.acepta_promos_en = null;
+  const q = c.id ? sb.from('crm_clientes').update(fila).eq('id', c.id).select().single() : sb.from('crm_clientes').insert({ ...fila, origen: 'manual' }).select().single();
+  const { data, error } = await q;
+  if (error) return err(errTxt(error));
+  toast('Cliente guardado');
+  await cargarClientes();
+  abrirFicha(data.id);
+};
+// --- fechas especiales del cliente
+async function cargarFechasCli() {
+  const { data, error } = await sb.from('crm_fechas').select('*').eq('cliente_id', st.ficha.id).order('mes').order('dia');
+  if (error) return $('fi-fechas').innerHTML = `<tr><td class="vacio">${esc(errTxt(error))}</td></tr>`;
+  $('fi-fechas').innerHTML = (data || []).map(f => `<tr><td>🎂 <b>${OCASION[f.tipo]}</b>${f.para_quien ? ' de ' + esc(f.para_quien) : ''}</td><td>${f.dia} de ${MESES[f.mes - 1]}</td>
+      <td><small>${f.origen_pedido ? 'del pedido ' + esc(f.origen_pedido) : ''}</small></td><td class="n"><button class="x" data-fx="${f.id}" title="Quitar">✕</button></td></tr>`).join('')
+    || '<tr><td class="vacio">Sin fechas. Agrega el cumpleaños del cliente o de quien recibe la torta.</td></tr>';
+}
+$('nf-add').onclick = async () => {
+  const dia = Number($('nf-dia').value), mes = Number($('nf-mes').value);
+  if (!(dia >= 1 && dia <= 31)) return toast('Pon el día');
+  const { error } = await sb.from('crm_fechas').insert({ cliente_id: st.ficha.id, tipo: $('nf-tipo').value, para_quien: $('nf-para').value.trim() || null, dia, mes });
+  if (error) return alert(/duplicate|unique/.test(error.message) ? 'Esa fecha ya está registrada.' : errTxt(error));
+  $('nf-para').value = ''; $('nf-dia').value = ''; cargarFechasCli();
+};
+$('fi-fechas').onclick = async e => {
+  const b = e.target.closest('[data-fx]'); if (!b || !confirm('¿Quitar esta fecha?')) return;
+  const { error } = await sb.from('crm_fechas').delete().eq('id', Number(b.dataset.fx)); if (error) return alert(errTxt(error)); cargarFechasCli();
+};
+// --- historial: pedidos web, pedidos WhatsApp/tienda y comprobantes de caja
+async function cargarHistorial() {
+  const c = st.ficha;
+  const tareas = [
+    sb.from('pedidos_encargo').select('codigo,estado,fecha_entrega,creado_en,total_productos,costo_delivery,perdida_motivo,pedidos_encargo_items(descripcion,cantidad)').eq('cliente_id', c.id),
+    sb.from('pedidos_web').select('codigo,estado,fecha_entrega,creado_en,total_productos,costo_delivery,pedidos_web_items(nombre,cantidad)').eq('cliente_id', c.id),
+  ];
+  if (c.num_doc) tareas.push(sb.from('clientes').select('id').eq('num_doc', c.num_doc));
+  const [e, w, cl] = await Promise.all(tareas);
+  let ventas = [];
+  const ids = (cl?.data || []).map(x => x.id);
+  if (ids.length) {
+    const v = await sb.from('ventas').select('tipo_doc,serie,numero,emitida_en,total,estado,pedido_externo,venta_items(descripcion,cantidad)').in('cliente_id', ids).is('pedido_externo', null).order('emitida_en', { ascending: false }).limit(100);
+    ventas = v.data || [];
+  }
+  const filas = [
+    ...(e.data || []).map(p => ({ f: p.fecha_entrega || p.creado_en.slice(0, 10), o: '💬 WhatsApp/tienda', doc: p.codigo, det: (p.pedidos_encargo_items || []).map(i => `${Number(i.cantidad)} × ${i.descripcion}`).join('; '), t: Number(p.total_productos || 0) + Number(p.costo_delivery || 0), est: p.perdida_motivo ? `Perdida: ${p.perdida_motivo}` : ESTADOS[p.estado] || p.estado })),
+    ...(w.data || []).map(p => ({ f: p.fecha_entrega || p.creado_en.slice(0, 10), o: '🌐 Web', doc: p.codigo, det: (p.pedidos_web_items || []).map(i => `${Number(i.cantidad)} × ${i.nombre}`).join('; '), t: Number(p.total_productos || 0) + Number(p.costo_delivery || 0), est: ESTADOS[p.estado] || p.estado })),
+    ...ventas.map(v => ({ f: v.emitida_en.slice(0, 10), o: '🏪 Caja', doc: `${v.serie}-${v.numero}`, det: (v.venta_items || []).map(i => `${Number(i.cantidad)} × ${i.descripcion}`).join('; '), t: Number(v.total), est: v.estado === 'anulada' ? 'Anulada' : 'Emitida' })),
+  ].sort((a, b) => b.f.localeCompare(a.f));
+  $('fi-hist').innerHTML = filas.map(x => `<tr><td>${fechaCorta(x.f)}</td><td>${x.o}</td><td>${esc(x.doc)}</td><td><small>${esc(x.det).slice(0, 160)}</small></td><td class="n">${S(x.t)}</td><td>${esc(x.est)}</td></tr>`).join('')
+    || '<tr><td colspan="6" class="vacio">Sin compras registradas.</td></tr>';
+}
+// --- contactos
+async function cargarContactos() {
+  const { data, error } = await sb.from('crm_contactos').select('*').eq('cliente_id', st.ficha.id).order('fecha', { ascending: false }).limit(50);
+  if (error) return $('fi-cont').innerHTML = `<tr><td class="vacio">${esc(errTxt(error))}</td></tr>`;
+  const MOT = { campana: '📣 Campaña', fecha_especial: '🎂 Fecha especial', cotizacion: '📝 Cotización', otro: '💬 Otro' };
+  $('fi-cont').innerHTML = (data || []).map(x => `<tr><td>${fechaCorta(x.fecha)}</td><td>${MOT[x.motivo] || x.motivo}</td><td>${esc(x.referencia || '')}</td><td>${esc(x.nota || '')}</td><td><small>${esc(x.usuario || '')}</small></td></tr>`).join('')
+    || '<tr><td class="vacio">Aún no hay contactos registrados.</td></tr>';
+}
+async function registrarContacto(cliente_id, motivo, referencia, nota) {
+  const { error } = await sb.from('crm_contactos').insert({ cliente_id, motivo, referencia: referencia || null, nota: nota || null, usuario: st.usuario?.nombre || null });
+  if (error) toast(errTxt(error));
+  return !error;
+}
+$('nc-add').onclick = async () => {
+  if (!$('nc-nota').value.trim()) return toast('Escribe una nota');
+  if (await registrarContacto(st.ficha.id, $('nc-mot').value, null, $('nc-nota').value.trim())) { $('nc-nota').value = ''; cargarContactos(); }
+};
+
+// ===================== FECHAS ESPECIALES =====================
+let fRango = 30;
+function proxima(f) {
+  const h = hoyD(); let d = new Date(h.getFullYear(), f.mes - 1, f.dia);
+  if (d < h) d = new Date(h.getFullYear() + 1, f.mes - 1, f.dia);
+  return d;
+}
+async function cargarFechas() {
+  const [f, c] = await Promise.all([
+    sb.from('crm_fechas').select('*, crm_clientes(id,nombre,telefono,acepta_promos)').eq('activo', true),
+    sb.from('crm_contactos').select('cliente_id,referencia,fecha').eq('motivo', 'fecha_especial').gte('fecha', new Date(new Date().getFullYear(), 0, 1).toISOString()),
+  ]);
+  if (f.error) return $('f-lista').innerHTML = `<div class="vacio">${esc(errTxt(f.error))}</div>`;
+  const hechos = new Set((c.data || []).map(x => x.referencia));
+  st.fechas = (f.data || []).map(x => { const d = proxima(x); return { ...x, d, en: Math.round((d - hoyD()) / 864e5), ref: `F${x.id}-${d.getFullYear()}` }; })
+    .map(x => ({ ...x, hecho: hechos.has(x.ref) }));
+  pintarFechas();
+}
+function pintarFechas() {
+  const l = st.fechas.filter(x => x.en <= fRango && (!$('f-pend').checked || !x.hecho)).sort((a, b) => a.en - b.en);
+  $('f-lista').innerHTML = l.map(x => {
+    const c = x.crm_clientes || {};
+    return `<div class="it"><div class="q ${x.en <= 10 ? 'hoy' : ''}">${x.d.getDate()} ${MESES[x.d.getMonth()].slice(0, 3)}<small>${x.en === 0 ? 'hoy' : x.en === 1 ? 'mañana' : 'en ' + x.en + ' días'}</small></div>
+      <div class="d"><div class="t">${OCASION[x.tipo][0].toUpperCase() + OCASION[x.tipo].slice(1)}${x.para_quien ? ' de ' + esc(x.para_quien) : ''}</div>
+        <div class="m">Cliente: <a href="#" data-fc="${c.id}">${esc(c.nombre)}</a> · ${esc(c.telefono || 'sin celular')}${x.origen_pedido ? ' · el año pasado: ' + esc(x.origen_pedido) : ''}${c.acepta_promos ? '' : ' · <span style="color:var(--aviso)">⚠ sin consentimiento de promociones</span>'}</div></div>
+      <div class="a">${x.hecho ? '<span class="ok-tag">✓ Contactado</span>' : `${c.telefono ? `<button class="btn-wa" data-fw="${x.id}">💬 WhatsApp</button>` : ''}<button class="btn-sec" data-fok="${x.id}">✓ Contactado</button>`}</div></div>`;
+  }).join('') || `<div class="vacio">No hay fechas especiales en los próximos ${fRango} días. Se registran en Nuevo pedido (campo 🎂 Ocasión) o en la ficha del cliente.</div>`;
+}
+$('f-rango').onclick = e => { const b = e.target.closest('[data-d]'); if (!b) return; fRango = Number(b.dataset.d); [...$('f-rango').children].forEach(x => x.classList.toggle('activa', x === b)); pintarFechas(); };
+$('f-pend').onchange = pintarFechas;
+$('f-msg').oninput = () => lsSet('crm-msg-fecha', $('f-msg').value);
+$('f-lista').onclick = async e => {
+  const fc = e.target.closest('[data-fc]'); if (fc) { e.preventDefault(); return abrirFicha(Number(fc.dataset.fc)); }
+  const w = e.target.closest('[data-fw]'), ok = e.target.closest('[data-fok]');
+  const x = st.fechas.find(f => f.id === Number((w || ok || {}).dataset?.fw || (ok || {}).dataset?.fok)); if (!x) return;
+  const c = x.crm_clientes || {};
+  if (w) {
+    if (!c.acepta_promos && !confirm('Este cliente no tiene marcado el consentimiento de promociones. ¿Escribirle igual (por ejemplo, porque te lo pidió)?')) return;
+    window.open(waURL(c.telefono, plantilla($('f-msg').value, { nombre: primerNombre(c.nombre), ocasion: OCASION[x.tipo], para: x.para_quien || 'tu ser querido', fecha: `${x.d.getDate()} de ${MESES[x.d.getMonth()]}` })), '_blank');
+  }
+  if (await registrarContacto(c.id, 'fecha_especial', x.ref, `${OCASION[x.tipo]}${x.para_quien ? ' de ' + x.para_quien : ''}`)) { x.hecho = true; pintarFechas(); }
+};
+
+// ===================== COTIZACIONES =====================
+async function cargarCots() {
+  const desde = new Date(Date.now() - 90 * 864e5).toISOString();
+  const { data, error } = await sb.from('pedidos_encargo').select('id,codigo,estado,cliente_id,cliente_nombre,cliente_telefono,fecha_entrega,creado_en,total_productos,costo_delivery,perdida_motivo,perdida_en,seguimiento_fecha,seguimiento_nota,pedidos_encargo_items(descripcion,cantidad)')
+    .or(`estado.eq.cotizado,creado_en.gte.${desde}`).order('creado_en', { ascending: false }).limit(1000);
+  if (error) return $('q-lista').innerHTML = `<div class="vacio">${esc(errTxt(error))}</div>`;
+  st.cots = data || [];
+  const rec = st.cots.filter(p => p.creado_en >= desde);
+  const abiertas = st.cots.filter(p => p.estado === 'cotizado'), perd = rec.filter(p => p.perdida_motivo), conf = rec.filter(p => !['cotizado', 'anulado'].includes(p.estado));
+  const tasa = conf.length + perd.length ? Math.round(conf.length / (conf.length + perd.length) * 100) : null;
+  const montoAb = abiertas.reduce((a, p) => a + Number(p.total_productos || 0), 0);
+  $('q-kpis').innerHTML = `<div class="kpi"><span>Cotizaciones abiertas</span><b>${abiertas.length}</b></div><div class="kpi"><span>Monto por cerrar</span><b>${S(montoAb)}</b></div>
+    <div class="kpi"><span>Para seguir hoy</span><b style="color:var(--rojo)">${abiertas.filter(paraHoy).length}</b></div>
+    <div class="kpi"><span>Cierre (90 días)</span><b>${tasa == null ? '—' : tasa + '%'}</b></div><div class="kpi"><span>Perdidas (90 días)</span><b style="color:var(--mal)">${perd.length}</b></div>`;
+  const mot = {}; perd.forEach(p => { const k = p.perdida_motivo.split(':')[0]; mot[k] = (mot[k] || 0) + 1; });
+  const max = Math.max(1, ...Object.values(mot));
+  $('q-motivos').innerHTML = Object.entries(mot).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<div class="b"><span>${esc(k)}</span><i style="width:${n / max * 100}%"></i><b>${n}</b></div>`).join('') || '<div class="ayuda">Aún no hay cotizaciones marcadas como perdidas.</div>';
+  pintarCots();
+}
+function paraHoy(p) {
+  const hoy = fstr(new Date());
+  if (p.seguimiento_fecha) return p.seguimiento_fecha <= hoy;
+  return diasDesde(p.creado_en.slice(0, 10)) >= 1;   // sin seguimiento programado: insistir desde el día siguiente
+}
+function pintarCots() {
+  const hoy = fstr(new Date());
+  const l = st.qf === 'perdidas' ? st.cots.filter(p => p.perdida_motivo) : st.cots.filter(p => p.estado === 'cotizado' && (st.qf === 'abiertas' || paraHoy(p)));
+  $('q-lista').innerHTML = l.map(p => {
+    const tot = Number(p.total_productos || 0) + Number(p.costo_delivery || 0), vencida = p.fecha_entrega && p.fecha_entrega < hoy;
+    return `<div class="it"><div class="q">${esc(p.codigo)}<small>hace ${diasDesde(p.creado_en.slice(0, 10))} d</small></div>
+      <div class="d"><div class="t">${esc(p.cliente_nombre || 'Sin nombre')} · ${S(tot)}</div>
+        <div class="m">${(p.pedidos_encargo_items || []).map(i => `${Number(i.cantidad)} × ${esc(i.descripcion)}`).join('; ')}</div>
+        <div class="m">Entrega: ${p.fecha_entrega ? fechaCorta(p.fecha_entrega) : 'sin fecha'}${vencida && !p.perdida_motivo ? ' · <b style="color:var(--mal)">fecha ya pasó</b>' : ''}${p.seguimiento_fecha ? ` · seguimiento ${fechaCorta(p.seguimiento_fecha)}` : ''}${p.seguimiento_nota ? ' · ' + esc(p.seguimiento_nota) : ''}${p.perdida_motivo ? ` · <b style="color:var(--mal)">Perdida: ${esc(p.perdida_motivo)}</b>` : ''}</div></div>
+      <div class="a">${p.perdida_motivo ? `<button class="btn-sec" data-qr="${p.id}">↩ Reabrir</button>` : `${p.cliente_telefono ? `<button class="btn-wa" data-qw="${p.id}">💬 Seguimiento</button>` : ''}<button class="btn-sec" data-qs="${p.id}">📅 Programar</button><button class="btn-sec" data-qp="${p.id}">✕ Perdida</button>`}${p.cliente_id ? `<button class="btn-sec" data-qc="${p.cliente_id}">👤</button>` : ''}</div></div>`;
+  }).join('') || `<div class="vacio">${st.qf === 'hoy' ? 'No hay cotizaciones para seguir hoy. ' : ''}Sin resultados.</div>`;
+}
+$('q-filtro').onclick = e => { const b = e.target.closest('[data-f]'); if (!b) return; st.qf = b.dataset.f; [...$('q-filtro').children].forEach(x => x.classList.toggle('activa', x === b)); pintarCots(); };
+$('q-msg').oninput = () => lsSet('crm-msg-cot', $('q-msg').value);
+$('q-lista').onclick = async e => {
+  const g = a => e.target.closest(`[data-${a}]`), id = b => Number(b.getAttribute(b.getAttributeNames().find(n => n.startsWith('data-q'))));
+  const c = g('qc'); if (c) return abrirFicha(Number(c.dataset.qc));
+  const b = g('qw') || g('qs') || g('qp') || g('qr'); if (!b) return;
+  const p = st.cots.find(x => x.id === id(b)); if (!p) return;
+  if (b.dataset.qw) {
+    const tot = Number(p.total_productos || 0) + Number(p.costo_delivery || 0);
+    window.open(waURL(p.cliente_telefono, plantilla($('q-msg').value, { nombre: primerNombre(p.cliente_nombre), codigo: p.codigo, total: S(tot), fecha: p.fecha_entrega ? fechaCorta(p.fecha_entrega) : 'la fecha que nos indiques' })), '_blank');
+    if (p.cliente_id) await registrarContacto(p.cliente_id, 'cotizacion', p.codigo, 'Seguimiento por WhatsApp');
+    // siguiente seguimiento en 2 días
+    const d = new Date(); d.setDate(d.getDate() + 2);
+    await sb.from('pedidos_encargo').update({ seguimiento_fecha: fstr(d) }).eq('id', p.id); p.seguimiento_fecha = fstr(d);
+    return pintarCots();
+  }
+  if (b.dataset.qr) {
+    if (!confirm('¿Reabrir esta cotización?')) return;
+    const { error } = await sb.from('pedidos_encargo').update({ estado: 'cotizado', perdida_motivo: null, perdida_en: null }).eq('id', p.id);
+    if (error) return alert(errTxt(error)); return cargarCots();
+  }
+  st.mq = { p, modo: b.dataset.qs ? 'seg' : 'per' };
+  $('mq-tit').textContent = (st.mq.modo === 'seg' ? 'Programar seguimiento · ' : 'Cotización perdida · ') + p.codigo;
+  $('mq-seg').classList.toggle('oculto', st.mq.modo !== 'seg'); $('mq-per').classList.toggle('oculto', st.mq.modo !== 'per');
+  const d = new Date(); d.setDate(d.getDate() + 1);
+  $('mq-fecha').value = p.seguimiento_fecha || fstr(d); $('mq-nota').value = p.seguimiento_nota || ''; $('mq-det').value = ''; $('mq-error').textContent = '';
+  $('m-cot').classList.remove('oculto');
+};
+$('mq-x').onclick = () => $('m-cot').classList.add('oculto');
+$('mq-ok').onclick = async () => {
+  const { p, modo } = st.mq;
+  const cambios = modo === 'seg' ? { seguimiento_fecha: $('mq-fecha').value || null, seguimiento_nota: $('mq-nota').value.trim() || null }
+    : { estado: 'anulado', perdida_motivo: $('mq-motivo').value + ($('mq-det').value.trim() ? ': ' + $('mq-det').value.trim() : ''), perdida_en: new Date().toISOString(), actualizado_por: st.usuario?.nombre || null };
+  const { error } = await sb.from('pedidos_encargo').update(cambios).eq('id', p.id);
+  if (error) return $('mq-error').textContent = errTxt(error);
+  $('m-cot').classList.add('oculto'); toast('Guardado'); cargarCots();
+};
+
+// ===================== CAMPAÑAS =====================
+let enviadosCamp = new Set();
+async function pintarCamp() {
+  const nom = $('k-nombre').value.trim();
+  if (nom) {
+    const { data } = await sb.from('crm_contactos').select('cliente_id').eq('motivo', 'campana').eq('referencia', nom);
+    enviadosCamp = new Set((data || []).map(x => x.cliente_id));
+  } else enviadosCamp = new Set();
+  const seg = $('k-seg').value, dist = $('k-dist').value.trim().toLowerCase(), dmin = Number($('k-dias').value || 0), cons = $('k-consent').checked;
+  const l = st.clientes.filter(c => c.telefono && (!cons || c.acepta_promos) && (!seg || (seg === 'empresa' ? c.empresa : c.seg === seg))
+    && (!dist || String(c.distrito || '').toLowerCase().includes(dist)) && (!dmin || (c.ultima_compra ? diasDesde(c.ultima_compra) >= dmin : true)));
+  const sinCons = st.clientes.filter(c => c.telefono && !c.acepta_promos).length;
+  $('k-res').innerHTML = `${l.length} cliente(s) · ${l.filter(c => enviadosCamp.has(c.id)).length} ya enviados en esta campaña${cons && sinCons ? ` · ${sinCons} sin consentimiento (no se muestran)` : ''}`;
+  $('k-lista').innerHTML = l.slice(0, 300).map(c => `<div class="it"><div class="d"><div class="t">${esc(c.nombre)} <span class="seg-tag sg-${c.seg}">${SEG[c.seg]}</span></div>
+      <div class="m">${esc(c.telefono)} · ${esc(c.distrito || '')} · ${c.compras} compra(s) · ${S(c.total)}${c.ultima_compra ? ' · última hace ' + diasDesde(c.ultima_compra) + ' días' : ''}</div></div>
+      <div class="a">${enviadosCamp.has(c.id) ? '<span class="ok-tag">✓ Enviado</span>' : `<button class="btn-wa" data-kw="${c.id}">💬 Enviar</button>`}</div></div>`).join('')
+    || '<div class="vacio">Ningún cliente cumple los filtros.</div>';
+}
+['k-seg', 'k-consent'].forEach(i => $(i).onchange = pintarCamp);
+['k-dist', 'k-dias'].forEach(i => $(i).oninput = pintarCamp);
+$('k-nombre').onchange = pintarCamp;
+$('k-msg').oninput = () => lsSet('crm-msg-camp', $('k-msg').value);
+$('k-lista').onclick = async e => {
+  const b = e.target.closest('[data-kw]'); if (!b) return;
+  const nom = $('k-nombre').value.trim(), msg = $('k-msg').value.trim();
+  if (!nom) return alert('Ponle nombre a la campaña (sirve para no enviarle dos veces al mismo cliente).');
+  if (!msg) return alert('Escribe el mensaje.');
+  const c = st.clientes.find(x => x.id === Number(b.dataset.kw)); if (!c) return;
+  window.open(waURL(c.telefono, plantilla(msg, { nombre: primerNombre(c.nombre) })), '_blank');
+  if (await registrarContacto(c.id, 'campana', nom, msg.slice(0, 200))) { enviadosCamp.add(c.id); b.outerHTML = '<span class="ok-tag">✓ Enviado</span>'; }
+};
+
+iniciar();
+</script>
+</body>
+</html>
