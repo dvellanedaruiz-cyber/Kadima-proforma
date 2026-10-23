@@ -245,6 +245,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
     </div>
     <span class="vivo" id="vivo">● conectando</span>
     <span class="usr" id="usr" title="Cambiar de usuario"></span>
+    <span style="font-size:11px;opacity:.7" title="Versión de la app">v23.10-d</span>
   </div>
 
   <!-- ===== CENTRAL ===== -->
@@ -307,13 +308,14 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
         </div>
         <div class="bloque">
           <h3>💵 Pago</h3>
-          <p class="ayuda" style="margin:0 0 10px">El adelanto se cobra después de confirmar, con <b>💵 Cobrar</b>: emite nota de venta, boleta o factura.</p>
+          <p class="ayuda" style="margin:0 0 10px">Con <b>💵 Cobrar adelanto y confirmar</b> se emite la nota de venta, boleta o factura por el monto, y recién ahí el pedido se confirma y pasa a la Central.</p>
           <div class="resumen" id="f-resumen"></div>
         </div>
         <div class="acciones-form">
           <button class="btn-sec" id="b-limpiar">Limpiar</button>
           <button class="btn-sec" id="b-cotizacion">💾 Guardar como cotización</button>
-          <button class="btn" id="b-confirmar">✓ Confirmar pedido</button>
+          <button class="btn-sec" id="b-confirmar">✓ Confirmar sin adelanto</button>
+          <button class="btn" id="b-cobrar-conf">💵 Cobrar adelanto y confirmar</button>
         </div>
         <div class="error" id="f-error" style="text-align:right"></div>
       </div>
@@ -411,6 +413,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
     <h2>💵 Cobrar pedido <span id="p-cod" style="margin-left:6px"></span><button class="x" id="p-cerrar">✕</button></h2>
     <div class="resumen" id="p-resumen" style="margin-bottom:6px"></div>
     <div id="p-comps"></div>
+    <div id="p-aviso-conf" class="oculto" style="background:#fff7e0;border:1px solid #f0d58a;border-radius:10px;padding:8px 10px;font-size:13px;margin-top:8px">⏳ Este pedido aún <b>no está confirmado</b>. Al emitir el comprobante se confirma y pasa a la Central. Si cierras sin emitir, queda como cotización.</div>
     <div id="p-form" style="margin-top:12px">
       <label>Comprobante</label>
       <div class="seg" id="p-docs" style="margin-bottom:10px"><button data-d="nota_venta">Nota de venta</button><button data-d="boleta" class="activa">Boleta</button><button data-d="factura">Factura</button></div>
@@ -612,6 +615,7 @@ $('visor').onclick = () => $('visor').classList.add('oculto');
 
 // ===================== NAVEGACIÓN =====================
 function irSeccion(s) {
+  ocultarAviso();
   st.seccion = s;
   document.querySelectorAll('#secc [data-s]').forEach(b => b.classList.toggle('activa', b.dataset.s === s));
   ['central', 'nuevo', 'hist', 'mapa', 'adic'].forEach(x => $('s-' + x).classList.toggle('oculto', x !== s));
@@ -818,7 +822,7 @@ $('tablero').addEventListener('change', async e => {
 
 // ===================== COBRO CON COMPROBANTE =====================
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
-async function abrirPago(id) {
+async function abrirPago(id, opts = {}) {
   st.pagoPed = id; $('p-error').textContent = ''; $('p-op').value = '';
   const [pd, vt, man] = await Promise.all([
     sb.from('pedidos_encargo').select('*, pedidos_encargo_items(*)').eq('id', id).single(),
@@ -827,13 +831,15 @@ async function abrirPago(id) {
   if (pd.error) return alert(errTxt(pd.error));
   const ped = pd.data;
   const v = await sb.from('ventas').select('id,tipo_doc,serie,numero,total,estado,estado_sunat,pdf_url,emitida_en,tipo_cobro,venta_items(descripcion,importe)').eq('pedido_externo', ped.codigo).order('emitida_en');
-  st.cobro = { ped, ventas: v.data || [], manual: man.data || [], doc: 'boleta', tipo: 'adelanto', listos: {} };
+  st.cobro = { ped, ventas: v.data || [], manual: man.data || [], doc: 'boleta', tipo: 'adelanto', listos: {},
+    confirmar: !!opts.confirmar && ped.estado === 'cotizado', confirmado: false, post: opts.post || null };
+  $('p-aviso-conf').classList.toggle('oculto', !st.cobro.confirmar);
   $('p-cod').textContent = ped.codigo;
   $('p-form').classList.remove('oculto'); $('p-listo').classList.add('oculto');
   $('p-docnum').value = ped.cliente_doc || ''; $('p-nombre').value = ped.cliente_nombre || ''; $('p-ret').checked = false;
   pintarCobro();
   const k = cuentasCobro();
-  elegirTipo(k.pagado > 0 ? 'saldo' : 'adelanto');
+  elegirTipo(k.pagado > 0 && !st.cobro.confirmar ? 'saldo' : 'adelanto');
   elegirDoc((ped.cliente_doc || '').length === 11 ? 'factura' : 'boleta');
   $('m-pago').classList.remove('oculto');
 }
@@ -887,7 +893,19 @@ function calcCobro() {
 $('p-docs').onclick = e => { const b = e.target.closest('[data-d]'); if (b) elegirDoc(b.dataset.d); };
 $('p-tipos').onclick = e => { const b = e.target.closest('[data-t]'); if (b) elegirTipo(b.dataset.t); };
 ['p-monto', 'p-deliv'].forEach(i => $(i).oninput = calcCobro); $('p-ret').onchange = calcCobro;
-$('p-cerrar').onclick = () => { $('m-pago').classList.add('oculto'); if (st.seccion === 'central') cargarCentral(); };
+$('p-cerrar').onclick = () => {
+  $('m-pago').classList.add('oculto');
+  const c = st.cobro;
+  if (c && c.post) {
+    // volvió del flujo "Cobrar adelanto y confirmar": avisar cómo quedó
+    const k = cuentasCobro(), est = c.confirmado ? 'confirmado' : 'cotizado';
+    const resumen = textoWhatsApp({ ...c.post.snap, estado: est }, k.pagado);
+    mostrarGuardado(c.post.snap.codigo, est, resumen, c.post.fueEdicion && !c.confirmado, c.post.tel, c.post.pid, c.post,
+      c.confirmado ? null : 'No se emitió comprobante: quedó como cotización (no aparece en la Central).');
+  }
+  if (st.seccion === 'central') cargarCentral();
+  if (st.seccion === 'hist') cargarHist();
+};
 
 async function turnoDigital() {
   const { data } = await sb.from('turnos_caja').select('id').eq('caja_id', st.emi.caja.id).eq('estado', 'abierto').order('abierto_en', { ascending: false }).limit(1).maybeSingle();
@@ -926,6 +944,11 @@ $('p-ok').onclick = async () => {
   try {
     const { data, error } = await sb.rpc('registrar_venta', { p: payload });
     if (error) throw error;
+    if (c.confirmar && !c.confirmado) {
+      const u = await sb.from('pedidos_encargo').update({ estado: 'confirmado', actualizado_por: st.usuario?.nombre || null, actualizado_en: new Date().toISOString() }).eq('id', p.id).eq('estado', 'cotizado');
+      if (u.error) toast('Comprobante emitido, pero no se pudo confirmar el pedido: ' + errTxt(u.error));
+      else { c.confirmado = true; c.confirmar = false; p.estado = 'confirmado'; $('p-aviso-conf').classList.add('oculto'); toast(`✅ Pedido ${p.codigo} confirmado: ya aparece en la Central`); }
+    }
     let sunat = null;
     if (c.doc !== 'nota_venta') { $('p-ok').textContent = 'Enviando a SUNAT…'; sunat = await enviarSunat(data.venta_id); }
     // guardar el DNI/RUC en el pedido para la próxima vez
@@ -1082,7 +1105,10 @@ function pintarForm() {
   if (f.id) { ae.classList.remove('oculto'); ae.innerHTML = `✏️ Editando <b>${esc(f.codigo)}</b> (${ESTADOS[f.estado]}) <button class="btn-sec" id="b-salir-ed" style="margin-left:auto">Salir sin guardar</button>`; $('b-salir-ed').onclick = () => { nuevoForm(); }; }
   else ae.classList.add('oculto');
   $('b-cotizacion').classList.toggle('oculto', !!f.id && f.estado !== 'cotizado');
-  $('b-confirmar').textContent = f.id ? (f.estado === 'cotizado' ? '✓ Confirmar pedido' : '💾 Guardar cambios') : '✓ Confirmar pedido';
+  const esNuevoOCot = !f.id || f.estado === 'cotizado';
+  $('b-cobrar-conf').classList.toggle('oculto', !esNuevoOCot);
+  $('b-confirmar').textContent = esNuevoOCot ? '✓ Confirmar sin adelanto' : '💾 Guardar cambios';
+  $('b-confirmar').className = esNuevoOCot ? 'btn-sec' : 'btn';
   $('f-error').textContent = '';
   pintarItems();
 }
@@ -1113,7 +1139,7 @@ function pintarResumen() {
     <span class="tot">Total</span><b class="tot">${S(tp + del)}</b>
     ${fc != null ? `<span>Food cost del pedido</span><b class="fc ${fcClase(fc)}">${fc.toFixed(1)}%</b>` : ''}`;
 }
-document.querySelectorAll('#s-nuevo [data-k]').forEach(i => i.addEventListener('input', () => { st.f[i.dataset.k] = i.value; pintarResumen(); }));
+document.querySelectorAll('#s-nuevo [data-k]').forEach(i => i.addEventListener('input', () => { ocultarAviso(); st.f[i.dataset.k] = i.value; pintarResumen(); }));
 $('seg-entrega').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; st.f.tipo_entrega = b.dataset.v; [...$('seg-entrega').children].forEach(x => x.classList.toggle('activa', x === b)); $('f-delivery').classList.toggle('oculto', b.dataset.v !== 'delivery'); pintarResumen(); pintarUbicacion(); };
 $('f-items').onclick = e => {
   const ed = e.target.closest('[data-ed-item]'); if (ed) return abrirCotizador(Number(ed.dataset.edItem));
@@ -1122,21 +1148,23 @@ $('f-items').onclick = e => {
   const de = e.target.closest('[data-del-item]');
   if (de && confirm('¿Quitar este producto del pedido?')) { const it = st.f.items.splice(Number(de.dataset.delItem), 1)[0]; (it.fotosExistentes || []).forEach(x => x.id && st.f.fotosBorrar.push(x)); pintarItems(); }
 };
-$('b-agregar').onclick = () => abrirCotizador(null);
+$('b-agregar').onclick = () => { ocultarAviso(); abrirCotizador(null); };
 $('b-limpiar').onclick = () => { if (!st.f.items.length || confirm('¿Borrar todo lo ingresado?')) nuevoForm(); };
 $('b-cotizacion').onclick = () => guardarPedido('cotizado');
 $('b-confirmar').onclick = () => guardarPedido(st.f.id && st.f.estado !== 'cotizado' ? st.f.estado : 'confirmado');
+// se guarda como cotización y se abre el cobro; al emitir el comprobante pasa a "confirmado"
+$('b-cobrar-conf').onclick = () => guardarPedido('cotizado', true);
 
-async function guardarPedido(estado) {
+async function guardarPedido(estado, cobrar) {
   const f = st.f; $('f-error').textContent = '';
   if (!f.items.length) return $('f-error').textContent = 'Agrega al menos un producto.';
-  if (estado !== 'cotizado') {
+  if (estado !== 'cotizado' || cobrar) {
     if (!f.cliente_nombre.trim()) return $('f-error').textContent = 'Falta el nombre del cliente.';
     if (!f.fecha_entrega) return $('f-error').textContent = 'Falta la fecha de entrega.';
     if (f.tipo_entrega === 'delivery' && !f.direccion.trim() && f.ubicacion_lat == null) return $('f-error').textContent = 'Falta la dirección o la ubicación del delivery.';
     if (f.tipo_entrega === 'delivery' && f.ubicacion_lat == null && !confirm('El delivery no tiene ubicación en el mapa (no saldrá en el mapa de clientes). ¿Guardar igual?')) return;
   }
-  const btns = [$('b-cotizacion'), $('b-confirmar')]; btns.forEach(b => b.disabled = true);
+  const btns = [$('b-cotizacion'), $('b-confirmar'), $('b-cobrar-conf')]; btns.forEach(b => b.disabled = true);
   try {
     const payload = {
       id: f.id, estado, canal: f.canal, cliente_nombre: f.cliente_nombre.trim(), cliente_telefono: f.cliente_telefono.replace(/\D/g, ''), cliente_doc: f.cliente_doc.trim(),
@@ -1176,8 +1204,10 @@ async function guardarPedido(estado) {
     }
     const resumen = textoWhatsApp({ ...f, codigo: data.codigo, estado }, 0);
     const fueEdicion = !!f.id, tel = f.cliente_telefono;
+    const snap = { ...f, codigo: data.codigo };
     nuevoForm();
-    mostrarGuardado(data.codigo, estado, resumen, fueEdicion, tel, pid);
+    if (cobrar) await abrirPago(pid, { confirmar: true, post: { snap, tel, pid, fueEdicion } });
+    else mostrarGuardado(data.codigo, estado, resumen, fueEdicion, tel, pid, { snap, tel, pid, fueEdicion });
   } catch (e) {
     $('f-error').textContent = errTxt(e);
   } finally { btns.forEach(b => b.disabled = false); }
@@ -1204,13 +1234,19 @@ function abrirWhatsApp(tel, texto) {
   const num = n.length === 9 ? '51' + n : n;
   window.open(`https://wa.me/${num}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
 }
-function mostrarGuardado(codigo, estado, resumen, edicion, tel, pid) {
+// el aviso de "guardado" desaparece al empezar otro pedido, al cambiar de pestaña o con ✕
+function ocultarAviso() { if (!st.avisoGuardado) return; st.avisoGuardado = false; if (!st.f || !st.f.id) $('aviso-ed').classList.add('oculto'); }
+function mostrarGuardado(codigo, estado, resumen, edicion, tel, pid, post, nota) {
   const ae = $('aviso-ed'); ae.classList.remove('oculto');
-  ae.innerHTML = `✅ ${edicion ? 'Cambios guardados en' : estado === 'cotizado' ? 'Cotización guardada:' : 'Pedido registrado:'} <b>${esc(codigo)}</b>
+  ae.innerHTML = `${nota ? '⚠️' : '✅'} ${edicion ? 'Cambios guardados en' : estado === 'cotizado' ? 'Cotización guardada:' : 'Pedido confirmado:'} <b>${esc(codigo)}</b>
+    ${nota ? `<span style="font-size:13px;color:var(--mal)">${esc(nota)}</span>` : ''}
     <button class="btn-sec" id="b-copiar" style="margin-left:auto">📋 Copiar</button>
     <button class="btn-wa" id="b-wa">💬 Enviar por WhatsApp</button>
-    ${estado !== 'cotizado' ? '<button class="btn" id="b-cobrar">💵 Cobrar adelanto</button>' : ''}`;
-  if ($('b-cobrar')) $('b-cobrar').onclick = () => abrirPago(pid);
+    <button class="btn" id="b-cobrar">${estado === 'cotizado' ? '💵 Cobrar adelanto y confirmar' : '💵 Cobrar'}</button>
+    <button class="btn-sec" id="b-cerrar-aviso" title="Cerrar">✕</button>`;
+  $('b-cobrar').onclick = () => estado === 'cotizado' ? abrirPago(pid, { confirmar: true, post }) : abrirPago(pid);
+  $('b-cerrar-aviso').onclick = ocultarAviso;
+  st.avisoGuardado = true;
   $('b-wa').onclick = () => abrirWhatsApp(tel, resumen);
   $('b-copiar').onclick = async () => { try { await navigator.clipboard.writeText(resumen); toast('Copiado'); } catch (e) { prompt('Copia el resumen:', resumen); } };
   if (!String(tel || '').replace(/\D/g, '')) $('b-wa').title = 'Sin celular: WhatsApp te pedirá elegir el chat';
@@ -1558,6 +1594,18 @@ async function cargarHist() {
   const { data, error } = await sb.from('pedidos_encargo').select('*, pedidos_encargo_items(*), pedidos_encargo_fotos(id,item_orden,ruta)').order('creado_en', { ascending: false }).limit(400);
   if (error) return $('h-lista').innerHTML = `<div class="vacio">${/pedidos_encargo/.test(error.message) ? 'Falta correr el script <b>40_pedidos_encargo.sql</b> en Supabase.' : esc(errTxt(error))}</div>`;
   st.hist = data || [];
+  // pagado de cada pedido (comprobantes emitidos + pagos sin comprobante)
+  st.hpag = {};
+  const peds = st.hist.filter(p => !['cotizado', 'anulado'].includes(p.estado));
+  if (peds.length) {
+    const [vp, mp] = await Promise.all([
+      sb.from('v_pagos_pedido').select('pedido_externo,total').in('pedido_externo', peds.map(p => p.codigo)),
+      sb.from('pedidos_encargo_pagos').select('pedido_id,monto').in('pedido_id', peds.map(p => p.id)),
+    ]);
+    const idCod = Object.fromEntries(peds.map(p => [p.id, p.codigo]));
+    (vp.data || []).forEach(x => { st.hpag[x.pedido_externo] = (st.hpag[x.pedido_externo] || 0) + Number(x.total); });
+    (mp.data || []).forEach(x => { const c = idCod[x.pedido_id]; if (c) st.hpag[c] = (st.hpag[c] || 0) + Number(x.monto); });
+  }
   await firmar(st.hist.map(p => (p.pedidos_encargo_fotos || [])[0]?.ruta).filter(Boolean));
   pintarHist();
 }
@@ -1573,17 +1621,23 @@ function pintarHist() {
   $('h-lista').innerHTML = l.length ? l.map(p => {
     const its = (p.pedidos_encargo_items || []).sort((a, b) => a.orden - b.orden);
     const foto = (p.pedidos_encargo_fotos || [])[0];
+    const esPed = !['cotizado', 'anulado'].includes(p.estado);
+    const totalP = Number(p.total_productos || 0) + (p.tipo_entrega === 'delivery' ? Number(p.costo_delivery || 0) : 0);
+    const pag = r2((st.hpag || {})[p.codigo] || 0), sal = Math.max(r2(totalP - pag), 0);
     return `<div class="h-item">
       ${foto && st.urls[foto.ruta] ? `<img class="ph" src="${st.urls[foto.ruta]}" data-zoom="${esc(st.urls[foto.ruta])}" alt="">` : '<div class="ph">🎂</div>'}
       <div><div class="t">${esc(p.codigo)}<span class="est ${p.estado}">${ESTADOS[p.estado]}</span></div>
-        <div class="meta">${esc(p.cliente_nombre || 'Sin nombre')}${p.cliente_telefono ? ' · ' + esc(p.cliente_telefono) : ''} · ${p.fecha_entrega ? 'entrega ' + fechaCorta(p.fecha_entrega) : 'registrado ' + new Date(p.creado_en).toLocaleDateString('es-PE')} · ${S(p.total_productos)}</div>
+        <div class="meta">${esc(p.cliente_nombre || 'Sin nombre')}${p.cliente_telefono ? ' · ' + esc(p.cliente_telefono) : ''} · ${p.fecha_entrega ? 'entrega ' + fechaCorta(p.fecha_entrega) : 'registrado ' + new Date(p.creado_en).toLocaleDateString('es-PE')} · Total ${S(totalP)}</div>
+        ${esPed ? `<div class="meta" style="font-weight:700">Pagado <span style="color:var(--ok)">${S(pag)}</span> · Saldo <span style="color:${sal > 0 ? 'var(--mal)' : 'var(--ok)'}">${sal > 0 ? S(sal) : 'S/ 0.00 ✓'}</span></div>` : ''}
         <ul>${its.map(i => {
           const hoy = costoCotizacion(i.cotizacion), antes = i.costo_unit == null ? null : Number(i.costo_unit);
           const cmp = hoy && hoy.total > 0 && antes ? (() => { const d = (hoy.total - antes) / antes * 100; const sug = sugerido(hoy.total, FC_MED); return `<div class="cmp">Costo entonces ${S(antes)} → hoy ${S(hoy.total)} <b style="color:${Math.abs(d) < 3 ? 'var(--gris)' : d > 0 ? 'var(--mal)' : 'var(--ok)'}">(${d > 0 ? '+' : ''}${d.toFixed(1)}%)</b> · precio sugerido hoy S/ ${sug}</div>`; })() : '';
           return `<li>${Number(i.cantidad)} × ${esc(i.descripcion)} — ${S(i.precio_unit)} c/u${i.personalizacion ? ` <small style="color:#7a5300">✏️ ${esc(i.personalizacion)}</small>` : ''}${cmp}</li>`;
         }).join('')}</ul></div>
       <div class="bot">
-        <button class="btn" data-base="${p.id}">⧉ Usar como base</button>
+        ${esPed ? `<button class="btn" data-hpago="${p.id}">${sal > 0 ? '💵 Cobrar saldo' : '💵 Comprobantes'}</button>` : ''}
+        <button class="${esPed ? 'btn-sec' : 'btn'}" data-base="${p.id}">⧉ Usar como base</button>
+        ${p.estado !== 'anulado' ? `<button class="btn-wa" data-hwa="${p.id}">💬 Enviar por WhatsApp</button>` : ''}
         ${!['entregado', 'anulado'].includes(p.estado) ? `<button class="btn-sec" data-heditar="${p.id}">${p.estado === 'cotizado' ? '✓ Confirmar / editar' : '✏️ Editar'}</button>` : ''}
         ${p.estado === 'cotizado' ? `<button class="btn-sec" data-hanular="${p.id}">✕ Descartar</button>` : ''}
       </div></div>`;
@@ -1593,6 +1647,21 @@ $('h-q').oninput = pintarHist;
 $('h-tipos').onclick = e => { const b = e.target.closest('[data-k]'); if (!b) return; st.htipo = b.dataset.k; [...$('h-tipos').children].forEach(x => x.classList.toggle('activa', x === b)); pintarHist(); };
 $('h-lista').onclick = async e => {
   const b = e.target.closest('[data-base]'); if (b) return usarComoBase(Number(b.dataset.base));
+  const hp = e.target.closest('[data-hpago]'); if (hp) return abrirPago(Number(hp.dataset.hpago));
+  const w = e.target.closest('[data-hwa]');
+  if (w) {
+    const r = st.hist.find(x => x.id === Number(w.dataset.hwa)); if (!r) return;
+    let pagado = 0;
+    if (r.estado !== 'cotizado') {
+      const [a, m] = await Promise.all([
+        sb.from('v_pagos_pedido').select('total').eq('pedido_externo', r.codigo),
+        sb.from('pedidos_encargo_pagos').select('monto').eq('pedido_id', r.id),
+      ]);
+      pagado = (a.data || []).reduce((t, x) => t + Number(x.total), 0) + (m.data || []).reduce((t, x) => t + Number(x.monto), 0);
+    }
+    const f = { ...r, items: (r.pedidos_encargo_items || []).sort((x, y) => x.orden - y.orden).map(i => ({ descripcion: i.descripcion, personalizacion: i.personalizacion, cantidad: Number(i.cantidad), precio_unit: Number(i.precio_unit) })) };
+    return abrirWhatsApp(r.cliente_telefono, textoWhatsApp(f, pagado));
+  }
   const ed = e.target.closest('[data-heditar]'); if (ed) return editarPedido(Number(ed.dataset.heditar));
   const an = e.target.closest('[data-hanular]');
   if (an && confirm('¿Descartar esta cotización? Seguirá en el historial como anulada.')) {
