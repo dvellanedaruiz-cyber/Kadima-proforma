@@ -38,30 +38,33 @@ input{font:inherit;padding:10px;border:1px solid var(--borde);border-radius:8px;
 #b-hechos.activa{background:#fff;color:var(--ok)}
 
 /* ===== lista ===== */
-.lista{max-width:980px;margin:0 auto;padding:14px}
+.lista{max-width:1500px;margin:0 auto;padding:14px}
 .dia{margin:6px 0 10px;font-size:14px;font-weight:800;color:var(--gris);text-transform:uppercase;letter-spacing:.4px}
-.fila{display:grid;grid-template-columns:180px 1fr;gap:16px;background:#fff;border-radius:14px;box-shadow:0 1px 5px rgba(0,0,0,.07);padding:12px;margin-bottom:12px;transition:opacity .35s,transform .35s}
-.fila.sale{opacity:0;transform:translateX(40px)}
-.fila.nuevo{animation:brillo 1.2s ease 3}
+.ped{background:#fff;border-radius:14px;box-shadow:0 1px 5px rgba(0,0,0,.07);padding:12px 14px;margin-bottom:14px;transition:opacity .35s,transform .35s}
+.ped.sale{opacity:0;transform:translateX(40px)}
+.ped.nuevo{animation:brillo 1.2s ease 3}
 @keyframes brillo{50%{box-shadow:0 0 0 5px #f3c8d0}}
-.fila.hecha{opacity:.75}
-.foto{width:180px;height:180px;border-radius:12px;background:var(--fondo);overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;font-size:56px}
-.foto img{width:100%;height:100%;object-fit:cover;cursor:zoom-in}
-.foto .mas{position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.65);color:#fff;font-size:13px;font-weight:700;padding:3px 8px;border-radius:10px;cursor:zoom-in}
-.det{display:flex;flex-direction:column;min-width:0}
-.top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
-.hora{font-size:24px;font-weight:900}
+.ped.hecha{opacity:.75}
+.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hora{font-size:26px;font-weight:900}
 .hora.tarde{color:var(--mal)}
 .cod{color:var(--gris);font-weight:700;font-size:13px}
 .ent{font-size:12px;font-weight:700;padding:2px 9px;border-radius:8px;background:#eef3fb;color:var(--azul)}
 .ent.delivery{background:#fff1e0;color:#9a5300}
-.its{list-style:none;margin:8px 0 0;padding:0}
-.its li{padding:6px 0;font-size:18px;font-weight:700;border-top:1px dashed #ece8e4}
-.its li:first-child{border-top:0}
-.its li b{color:var(--rojo);margin-right:6px}
-.pers{display:block;font-size:15px;font-weight:700;color:#5c3d00;background:#fff3c4;border-radius:8px;padding:6px 9px;margin-top:5px;white-space:pre-wrap}
-.nota{margin-top:6px;background:#fff3c4;font-weight:600;padding:6px 9px;border-radius:8px;font-size:14px}
-.hecho{margin-top:auto;padding-top:10px;display:flex;justify-content:flex-end}
+.top .hecho{margin-left:auto}
+/* cada producto con su foto: la foto ocupa ~1/4 de la pantalla */
+.prod{display:grid;grid-template-columns:min(25vw,520px) 1fr;gap:18px;padding:14px 0 4px;border-top:1px dashed #ece8e4;margin-top:10px;align-items:start}
+.prod.sin{grid-template-columns:90px 1fr;align-items:center}
+.foto{width:100%;aspect-ratio:1/1;border-radius:14px;background:var(--fondo);overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;font-size:42px}
+.prod.sin .foto{width:90px;height:90px;aspect-ratio:auto}
+.foto img{width:100%;height:100%;object-fit:cover;cursor:zoom-in}
+.foto .mas{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.65);color:#fff;font-size:14px;font-weight:700;padding:4px 10px;border-radius:10px;cursor:zoom-in}
+.mini{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.mini img{width:64px;height:64px;object-fit:cover;border-radius:8px;cursor:zoom-in;border:2px solid transparent}
+.txt .nom{font-size:22px;font-weight:800;line-height:1.25}
+.txt .nom b{color:var(--rojo);margin-right:8px}
+.pers{display:block;font-size:17px;font-weight:700;color:#5c3d00;background:#fff3c4;border-radius:10px;padding:8px 11px;margin-top:8px;white-space:pre-wrap}
+.nota{margin-top:10px;background:#fff3c4;font-weight:600;padding:6px 9px;border-radius:8px;font-size:14px}
 .hecho button{display:flex;align-items:center;gap:10px;background:#e7f6ec;color:var(--ok);font-weight:800;font-size:17px;padding:12px 18px;border:2px solid #bfe3cb}
 .hecho button .caja{width:24px;height:24px;border-radius:6px;border:2px solid var(--ok);background:#fff}
 .hecho button:hover{background:var(--ok);color:#fff}
@@ -74,7 +77,7 @@ input{font:inherit;padding:10px;border:1px solid var(--borde);border-radius:8px;
 .visor button{position:absolute;background:rgba(255,255,255,.2);color:#fff;font-size:26px;width:52px;height:52px;border-radius:50%}
 .visor .cerrar{top:16px;right:16px}.visor .ant{left:16px}.visor .sig{right:16px}
 .visor .cnt{position:absolute;bottom:18px;color:#fff;font-weight:700}
-@media (max-width:640px){.fila{grid-template-columns:110px 1fr;gap:10px}.foto{width:110px;height:110px;font-size:40px}.its li{font-size:16px}.hora{font-size:20px}.hecho button{font-size:15px;padding:10px 14px}}
+@media (max-width:700px){.prod{grid-template-columns:42vw 1fr;gap:10px}.txt .nom{font-size:17px}.pers{font-size:14px}.hora{font-size:21px}.hecho button{font-size:15px;padding:10px 14px}.top .hecho{margin-left:0;width:100%}.top .hecho button{width:100%;justify-content:center}}
 </style>
 </head>
 <body>
@@ -196,17 +199,20 @@ async function cargar() {
   if (w.error || e.error) { $('lista').innerHTML = `<div class="vacio">${esc(errTxt(w.error || e.error))}</div>`; return; }
   const lista = [
     ...(w.data || []).map(p => ({ key: 'w' + p.id, origen: 'web', id: p.id, codigo: p.codigo, estado: p.estado, fecha: p.fecha_entrega, hora: p.hora_entrega, tipo: p.tipo_entrega, nota: p.notas, creado: p.creado_en,
-      items: (p.pedidos_web_items || []).map(i => ({ desc: i.nombre, cant: Number(i.cantidad), pers: '' })), fotos: [] })),
+      items: (p.pedidos_web_items || []).map(i => ({ desc: i.nombre, cant: Number(i.cantidad), pers: '', fotos: [] })) })),
     ...(e.data || []).map(p => {
       const its = (p.pedidos_encargo_items || []).sort((a, b) => a.orden - b.orden);
-      const fotos = (p.pedidos_encargo_fotos || []).slice().sort((a, b) => (a.item_orden ?? 99) - (b.item_orden ?? 99)).map(f => f.ruta);
-      return { key: 'e' + p.id, origen: 'enc', id: p.id, codigo: p.codigo, estado: p.estado, fecha: p.fecha_entrega, hora: p.hora_entrega, tipo: p.tipo_entrega, nota: '', creado: p.creado_en,
-        items: its.map(i => ({ desc: i.descripcion, cant: Number(i.cantidad), pers: i.personalizacion })), fotos };
+      const fotos = p.pedidos_encargo_fotos || [];
+      const items = its.map(i => ({ desc: i.descripcion, cant: Number(i.cantidad), pers: i.personalizacion, fotos: fotos.filter(f => f.item_orden === i.orden).map(f => f.ruta) }));
+      // fotos sin producto asignado: van al primero
+      const sueltas = fotos.filter(f => !its.some(i => i.orden === f.item_orden)).map(f => f.ruta);
+      if (sueltas.length && items[0]) items[0].fotos.push(...sueltas);
+      return { key: 'e' + p.id, origen: 'enc', id: p.id, codigo: p.codigo, estado: p.estado, fecha: p.fecha_entrega, hora: p.hora_entrega, tipo: p.tipo_entrega, nota: '', creado: p.creado_en, items };
     }),
   ].sort((a, b) => st.hechos
     ? (b.fecha || '').localeCompare(a.fecha || '') || (b.hora || '').localeCompare(a.hora || '')
     : (a.fecha || '').localeCompare(b.fecha || '') || (a.hora || '99').localeCompare(b.hora || '99'));
-  const faltan = [...new Set(lista.flatMap(p => p.fotos))].filter(r => !st.urls[r]);
+  const faltan = [...new Set(lista.flatMap(p => p.items.flatMap(i => i.fotos)))].filter(r => !st.urls[r]);
   if (faltan.length) { const { data } = await sb.storage.from(BUCKET).createSignedUrls(faltan, 60 * 60 * 6); (data || []).forEach(d => { if (d.signedUrl) st.urls[d.path] = d.signedUrl; }); }
   const nuevos = st.hechos ? [] : lista.filter(p => new Date(p.creado) > st.inicio && !st.avisados.has(p.key)).map(p => p.key);
   nuevos.forEach(k => st.avisados.add(k));
@@ -231,20 +237,23 @@ function dibujar(nuevos = []) {
 function fila(p, hoy, ahora, nuevo) {
   const [h, m] = (p.hora || '23:59').split(':').map(Number);
   const tarde = !st.hechos && (p.fecha < hoy || (p.fecha === hoy && h * 60 + m < ahora));
-  const urls = p.fotos.map(r => st.urls[r]).filter(Boolean);
-  const foto = urls.length
-    ? `<img src="${urls[0]}" data-ver="${p.key}" data-i="0" alt="referencia">${urls.length > 1 ? `<span class="mas" data-ver="${p.key}" data-i="0">+${urls.length - 1} foto${urls.length > 2 ? 's' : ''}</span>` : ''}`
-    : '🎂';
-  return `<div class="fila ${st.hechos ? 'hecha' : ''} ${nuevo ? 'nuevo' : ''}" id="f-${p.key}">
-    <div class="foto">${foto}</div>
-    <div class="det">
-      <div class="top"><span class="hora ${tarde ? 'tarde' : ''}">${hora12(p.hora)}</span><span class="ent ${p.tipo}">${p.tipo === 'delivery' ? '🛵 Delivery' : '🏬 Recojo'}</span><span class="cod">${esc(p.codigo)}</span></div>
-      <ul class="its">${p.items.map(i => `<li><b>${i.cant}×</b>${esc(i.desc)}${i.pers ? `<span class="pers">✏️ ${esc(i.pers)}</span>` : ''}</li>`).join('')}</ul>
-      ${p.nota ? `<div class="nota">📝 ${esc(p.nota)}</div>` : ''}
-      <div class="hecho">${st.hechos
-        ? `<span class="marca-hecho" style="margin-right:auto;align-self:center">✓ Hecho</span><button class="deshacer" data-deshacer="${p.key}">↩ Volver a pendientes</button>`
-        : `<button data-hecho="${p.key}"><span class="caja"></span>Marcar como hecho</button>`}</div>
-    </div>
+  const boton = st.hechos
+    ? `<span class="marca-hecho">✓ Hecho</span> <button class="deshacer" data-deshacer="${p.key}">↩ Volver a pendientes</button>`
+    : `<button data-hecho="${p.key}"><span class="caja"></span>Marcar como hecho</button>`;
+  const prods = p.items.map((i, n) => {
+    const urls = i.fotos.map(r => st.urls[r]).filter(Boolean);
+    const foto = urls.length
+      ? `<img src="${urls[0]}" data-ver="${p.key}" data-it="${n}" data-i="0" alt="referencia">${urls.length > 1 ? `<span class="mas" data-ver="${p.key}" data-it="${n}" data-i="0">+${urls.length - 1}</span>` : ''}`
+      : '🎂';
+    return `<div class="prod ${urls.length ? '' : 'sin'}">
+      <div><div class="foto">${foto}</div>${urls.length > 1 ? `<div class="mini">${urls.map((u, k) => `<img src="${u}" data-ver="${p.key}" data-it="${n}" data-i="${k}" alt="">`).join('')}</div>` : ''}</div>
+      <div class="txt"><div class="nom"><b>${i.cant}×</b>${esc(i.desc)}</div>${i.pers ? `<span class="pers">✏️ ${esc(i.pers)}</span>` : ''}</div>
+    </div>`;
+  }).join('');
+  return `<div class="ped ${st.hechos ? 'hecha' : ''} ${nuevo ? 'nuevo' : ''}" id="f-${p.key}">
+    <div class="top"><span class="hora ${tarde ? 'tarde' : ''}">${hora12(p.hora)}</span><span class="ent ${p.tipo}">${p.tipo === 'delivery' ? '🛵 Delivery' : '🏬 Recojo'}</span><span class="cod">${esc(p.codigo)}</span><div class="hecho">${boton}</div></div>
+    ${prods}
+    ${p.nota ? `<div class="nota">📝 ${esc(p.nota)}</div>` : ''}
   </div>`;
 }
 async function cambiar(p, estado) {
@@ -256,7 +265,7 @@ async function cambiar(p, estado) {
   return true;
 }
 $('lista').onclick = async e => {
-  const v = e.target.closest('[data-ver]'); if (v) return abrirVisor(v.dataset.ver, Number(v.dataset.i));
+  const v = e.target.closest('[data-ver]'); if (v) return abrirVisor(v.dataset.ver, Number(v.dataset.it), Number(v.dataset.i));
   const b = e.target.closest('[data-hecho], [data-deshacer]'); if (!b) return;
   const key = b.dataset.hecho || b.dataset.deshacer, p = st.pedidos.find(x => x.key === key);
   b.disabled = true;
@@ -266,9 +275,9 @@ $('lista').onclick = async e => {
 };
 
 // ===== visor de fotos =====
-function abrirVisor(key, i) {
-  const p = st.pedidos.find(x => x.key === key); if (!p) return;
-  st.visor = { fotos: p.fotos.map(r => st.urls[r]).filter(Boolean), i };
+function abrirVisor(key, it, i) {
+  const p = st.pedidos.find(x => x.key === key); if (!p || !p.items[it]) return;
+  st.visor = { fotos: p.items[it].fotos.map(r => st.urls[r]).filter(Boolean), i };
   if (!st.visor.fotos.length) return;
   $('visor').classList.remove('oculto'); pintarVisor();
 }

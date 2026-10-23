@@ -417,8 +417,8 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
       <label>Cobro</label>
       <div class="seg" id="p-tipos" style="margin-bottom:10px"><button data-t="adelanto" class="activa">Adelanto</button><button data-t="saldo">Saldo</button><button data-t="total">Pago total</button></div>
       <div class="fila">
-        <div><label>Pedido S/</label><input id="p-monto" type="number" min="0" step="0.5"></div>
-        <div><label>Delivery S/</label><input id="p-deliv" type="number" min="0" step="0.5"></div>
+        <div><label id="p-monto-l">Pedido S/</label><input id="p-monto" type="number" min="0" step="0.5"></div>
+        <div id="p-deliv-w"><label>Delivery S/</label><input id="p-deliv" type="number" min="0" step="0.5"></div>
       </div>
       <div class="fila">
         <div><label>Método de pago</label><select id="p-metodo"><option value="yape">Yape</option><option value="plin">Plin</option><option value="transferencia">Transferencia</option><option value="efectivo">Efectivo</option><option value="visa">Visa</option><option value="mastercard">Mastercard</option></select></div>
@@ -432,7 +432,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
       <div class="p-calc" id="p-calc"></div>
       <button class="btn" id="p-ok" style="width:100%">Emitir comprobante</button>
       <div class="error" id="p-error"></div>
-      <p class="ayuda">Se emite con la serie de la Caja Digital y queda en su turno, pero el cierre de caja lo muestra aparte (no entra al cuadre de la cajera). El detalle del pedido no va al comprobante: solo “PEDIDO N° …” y “DELIVERY PEDIDO N° …”.</p>
+      <p class="ayuda">Se emite con la misma serie de la caja de tienda y queda en el turno de la Caja Digital, pero el cierre de caja lo muestra aparte (no entra al cuadre de la cajera). El detalle del pedido no va al comprobante: solo “PEDIDO N° …” y “DELIVERY PEDIDO N° …”.</p>
     </div>
     <div id="p-listo" class="oculto"></div>
   </div>
@@ -547,11 +547,12 @@ async function cargarMaestros() {
   st.adicionales = a.data || [];
   await cargarEmision();
 }
-// equipo de la Caja Digital (misma serie que la caja), Caja Digital, canales y conceptos SV-900 / SV-901
+// equipo de caja de tienda (sus series), Caja Digital (turno), canales y conceptos SV-900 / SV-901
 // Los cobros llevan "tipo_cobro", por eso el cierre de caja los muestra aparte y no entran al cuadre.
 async function cargarEmision() {
   const [d, c, k, pr] = await Promise.all([
-    sb.from('dispositivos').select('*').eq('rol', 'digital').eq('activo', true).order('id').limit(1).maybeSingle(),
+    // series de la caja de tienda (las que Nubefact ya acepta); el número lo asigna Supabase, sin choques
+    sb.from('dispositivos').select('*').eq('rol', 'caja').eq('activo', true).not('serie_boleta', 'is', null).order('id').limit(1).maybeSingle(),
     sb.from('cajas').select('*').eq('tipo', 'virtual').eq('activo', true).order('id').limit(1).maybeSingle(),
     sb.from('canales').select('id,nombre'),
     sb.from('productos').select('id,codigo,nombre').in('codigo', ['SV-900', 'SV-901']),
@@ -852,7 +853,7 @@ function pintarCobro() {
     c.ventas.map(v => `<div class="comp"><span class="nm">${CORTO[v.tipo_doc]} ${v.serie}-${String(v.numero).padStart(8, '0')}</span>
       <span>${COBRO[v.tipo_cobro] ? COBRO[v.tipo_cobro].toLowerCase() : ''} · ${S(v.total)}</span>
       ${v.estado === 'anulada' ? '<span class="anul">ANULADA</span>' : v.tipo_doc !== 'nota_venta' ? `<span class="estado-sunat ${v.estado_sunat}">${v.estado_sunat}</span>` : ''}
-      ${v.estado === 'emitida' ? `<span class="der"><button data-vpdf="${v.id}">📄 PDF</button><button data-vwa="${v.id}">${c.listos[v.id] ? '💬 Enviar' : '💬 WhatsApp'}</button></span>` : ''}</div>`).join('') +
+      ${v.estado === 'emitida' ? `<span class="der">${['pendiente', 'rechazado'].includes(v.estado_sunat) ? `<button data-vre="${v.id}" title="Reenviar a SUNAT">🔁 Reenviar</button>` : ''}<button data-vpdf="${v.id}">📄 PDF</button><button data-vwa="${v.id}">${c.listos[v.id] ? '💬 Enviar' : '💬 WhatsApp'}</button></span>` : ''}</div>`).join('') +
     c.manual.map(x => `<div class="comp"><span class="nm">Pago sin comprobante</span><span>${x.tipo} · ${x.metodo} · ${S(x.monto)}</span></div>`).join('')
     : '';
 }
@@ -866,13 +867,16 @@ function elegirDoc(d) {
 function elegirTipo(t) {
   st.cobro.tipo = t; [...$('p-tipos').children].forEach(b => b.classList.toggle('activa', b.dataset.t === t));
   const k = cuentasCobro();
+  // el adelanto es un solo monto a cuenta del total (sin separar delivery)
+  $('p-deliv-w').classList.toggle('oculto', t === 'adelanto');
+  $('p-monto-l').textContent = t === 'adelanto' ? 'Monto del adelanto S/ (a cuenta del total)' : 'Pedido S/';
   if (t === 'adelanto') { $('p-monto').value = ''; $('p-deliv').value = ''; }
   else { const dv = k.delivCobrado ? 0 : k.del; $('p-deliv').value = dv ? dv.toFixed(2) : ''; $('p-monto').value = Math.max(r2(k.saldo - dv), 0).toFixed(2); }
   calcCobro();
   if (t === 'adelanto') $('p-monto').focus();
 }
 function montosCobro() {
-  const m = r2($('p-monto').value), d = r2($('p-deliv').value), total = r2(m + d);
+  const m = r2($('p-monto').value), d = st.cobro.tipo === 'adelanto' ? 0 : r2($('p-deliv').value), total = r2(m + d);
   const ret = st.cobro.doc === 'factura' && $('p-ret').checked && total > 700 ? r2(total * 0.03) : 0;
   return { m, d, total, ret, neto: r2(total - ret) };
 }
@@ -893,7 +897,7 @@ $('p-ok').onclick = async () => {
   const err = t => { $('p-error').textContent = t; };
   err('');
   const c = st.cobro, p = c.ped, x = montosCobro();
-  if (!st.emi || !st.emi.disp) return err('No encuentro el equipo de la Caja Digital (rol digital) con sus series.');
+  if (!st.emi || !st.emi.disp) return err('No encuentro el equipo de caja con sus series.');
   if (!st.emi.caja) return err('No encuentro la Caja Digital (caja virtual).');
   if (!st.emi.sv900 || (x.d > 0 && !st.emi.sv901)) return err('Faltan los conceptos SV-900 / SV-901 en productos.');
   if (!(x.total > 0)) return err('Ingresa el monto del pedido y/o del delivery.');
@@ -951,7 +955,8 @@ async function mostrarEmitido(ventaId, sunat) {
   pintarCobro();
   $('p-form').classList.add('oculto'); $('p-listo').classList.remove('oculto');
   $('p-listo').innerHTML = `<div class="listo-box">✅ Comprobante emitido<div class="n">${CORTO[v.tipo_doc]} ${v.serie}-${String(v.numero).padStart(8, '0')} · ${S(v.total)}</div>
-    ${sunat && sunat.error ? `<div class="sin-costo" style="margin-bottom:8px">⚠ SUNAT/Nubefact: ${esc(sunat.error)}. Quedó pendiente; la caja lo reintenta.</div>` : ''}
+    ${v.estado_sunat === 'rechazado' ? `<div style="color:var(--mal);font-weight:700;margin-bottom:8px">✕ Nubefact lo rechazó${sunat && sunat.error ? ': ' + esc(sunat.error) : ''}. No es válido ante SUNAT hasta corregir y reenviarlo.</div>`
+      : sunat && sunat.error ? `<div class="sin-costo" style="margin-bottom:8px">⚠ Aún no llega a SUNAT (${esc(sunat.error)}). Quedó pendiente: puedes reenviarlo con 🔁.</div>` : ''}
     <div class="acc3"><button class="btn-sec" id="l-pdf">📄 Descargar PDF</button><button class="btn-wa" id="l-wa" disabled>⏳ Preparando PDF…</button><button class="btn-sec" id="l-otro">Emitir otro</button></div></div>`;
   $('l-otro').onclick = () => { $('p-listo').classList.add('oculto'); $('p-form').classList.remove('oculto'); elegirTipo('saldo'); };
   const archivo = await pdfDe(v);
@@ -960,6 +965,16 @@ async function mostrarEmitido(ventaId, sunat) {
   $('l-wa').disabled = false; $('l-wa').textContent = '💬 Enviar por WhatsApp';
   $('l-wa').onclick = () => compartir(archivo, textoComprobante(v), st.cobro.ped.cliente_telefono, v.pdf_url);
 }
+$('p-comps').addEventListener('click', async e => {
+  const b = e.target.closest('[data-vre]'); if (!b) return;
+  e.stopImmediatePropagation(); b.disabled = true; b.textContent = '⏳';
+  const r = await enviarSunat(Number(b.dataset.vre));
+  const v2 = await sb.from('ventas').select('id,tipo_doc,serie,numero,total,estado,estado_sunat,pdf_url,emitida_en,tipo_cobro,venta_items(descripcion,importe)').eq('pedido_externo', st.cobro.ped.codigo).order('emitida_en');
+  st.cobro.ventas = v2.data || st.cobro.ventas; delete st.cobro.listos[Number(b.dataset.vre)];
+  pintarCobro();
+  const v = st.cobro.ventas.find(x => x.id === Number(b.dataset.vre));
+  toast(v && v.estado_sunat === 'aceptado' ? '✓ Aceptado por SUNAT' : 'Sigue sin aceptarse' + (r && r.error ? ': ' + r.error : ''));
+}, true);
 $('p-comps').onclick = async e => {
   const bp = e.target.closest('[data-vpdf]'), bw = e.target.closest('[data-vwa]'); if (!bp && !bw) return;
   const id = Number((bp || bw).dataset.vpdf || (bp || bw).dataset.vwa);
@@ -975,7 +990,7 @@ $('p-comps').onclick = async e => {
 function textoComprobante(v) {
   const p = st.cobro.ped, k = cuentasCobro();
   const f = { ...p, items: (p.pedidos_encargo_items || []).sort((a, b) => a.orden - b.orden).map(i => ({ descripcion: i.descripcion, personalizacion: i.personalizacion, cantidad: Number(i.cantidad), precio_unit: Number(i.precio_unit) })) };
-  return textoWhatsApp(f, k.pagado) + `\n🧾 ${CORTO[v.tipo_doc]} ${v.serie}-${String(v.numero).padStart(8, '0')}: S/ ${Number(v.total).toFixed(2)}`;
+  return textoWhatsApp(f, k.pagado) + `\n✅ *Comprobante:* ${CORTO[v.tipo_doc]} ${v.serie}-${String(v.numero).padStart(8, '0')}: S/ ${Number(v.total).toFixed(2)}`;
 }
 function bajar(file) { const u = URL.createObjectURL(file); const a = document.createElement('a'); a.href = u; a.download = file.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000); }
 async function compartir(file, texto, tel, pdfUrl) {
@@ -1167,18 +1182,19 @@ async function guardarPedido(estado) {
     $('f-error').textContent = errTxt(e);
   } finally { btns.forEach(b => b.disabled = false); }
 }
+// Solo símbolos básicos (⏰ ✅ ✨ •): WhatsApp de escritorio daña los emojis "nuevos" que llegan por link.
 function textoWhatsApp(f, adelanto) {
   const tp = f.items.reduce((a, it) => a + it.precio_unit * it.cantidad, 0);
   const del = f.tipo_entrega === 'delivery' ? Number(f.costo_delivery || 0) : 0;
   const l = [
     `*Kadima · ${f.estado === 'cotizado' ? 'Cotización' : 'Pedido'} ${f.codigo}*`,
     ...f.items.map(it => `• ${Number(it.cantidad)} × ${it.descripcion}${it.personalizacion ? ` (${it.personalizacion})` : ''} — S/ ${(it.precio_unit * it.cantidad).toFixed(2)}`),
-    f.fecha_entrega ? `📅 ${fechaCorta(f.fecha_entrega)}${f.hora_entrega ? ' · ' + hora12(f.hora_entrega) : ''} · ${f.tipo_entrega === 'delivery' ? 'Delivery' : 'Recojo en tienda'}` : '',
-    del ? `🛵 Delivery: S/ ${del.toFixed(2)}` : '',
-    f.tipo_entrega === 'delivery' && f.ubicacion_lat != null ? `📍 https://www.google.com/maps?q=${f.ubicacion_lat},${f.ubicacion_lng}` : '',
+    f.fecha_entrega ? `⏰ *Entrega:* ${fechaCorta(f.fecha_entrega)}${f.hora_entrega ? ' · ' + hora12(f.hora_entrega) : ''} · ${f.tipo_entrega === 'delivery' ? 'Delivery' : 'Recojo en tienda'}` : '',
+    del ? `*Delivery:* S/ ${del.toFixed(2)}` : '',
+    f.tipo_entrega === 'delivery' && f.ubicacion_lat != null ? `*Ubicación:* https://www.google.com/maps?q=${f.ubicacion_lat},${f.ubicacion_lng}` : '',
     `*Total: S/ ${(tp + del).toFixed(2)}*`,
     adelanto > 0 ? `Pagado: S/ ${adelanto.toFixed(2)} · Saldo: S/ ${Math.max(tp + del - adelanto, 0).toFixed(2)}` : '',
-    '¡Gracias por tu pedido! 🧁',
+    '¡Gracias por tu pedido! ✨',
   ];
   return l.filter(Boolean).join('\n');
 }
