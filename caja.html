@@ -255,7 +255,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
       <span class="info" id="b-info"></span>
       <span class="red ok" id="b-red">En línea</span>
       <button id="b-mesas">Mesas <b id="b-nmesas"></b></button>
-      <button id="b-pedido">Cobro de pedido</button>
+      <button id="b-pedido" class="oculto" title="Los pedidos se cobran en la app de Pedidos">Cobro de pedido</button>
       <button id="b-ventas">Ventas</button>
       <button id="b-cerrar">Cerrar caja</button>
       <button id="b-salir">Cambiar usuario</button>
@@ -1365,7 +1365,7 @@ $('b-cerrar').onclick = async () => {
   msg('ci-error'); $('ci-contado').value = ''; $('ci-dif').textContent = '—';
   const { data, error } = await sb.from('ventas').select('total,estado,contado_credito,retencion_monto,tipo_cobro,venta_pagos(metodo,monto)').eq('turno_id', st.turno.id);
   if (error) return msg('v-error', errorTexto(error));
-  // los cobros de pedidos (Power Apps) se cuadran aparte
+  // los cobros de pedidos se cobran y cuadran en la app de Pedidos: aquí no se suman ni se muestran
   const pedidos = data.filter(v => v.estado === 'emitida' && v.tipo_cobro);
   const validas = data.filter(v => v.estado === 'emitida' && !v.tipo_cobro);
   const pedMetodo = {};
@@ -1384,9 +1384,6 @@ $('b-cerrar').onclick = async () => {
     `<tr><td><b>Efectivo que debería haber</b></td><td>${S(resumenCierre.efectivoEsperado)}</td></tr>` +
     (credito.length ? `<tr><td>Facturas al crédito (por cobrar)</td><td>${credito.length} · ${S(credito.reduce((a, v) => a + Number(v.total) - Number(v.retencion_monto), 0))}</td></tr>` : '') +
     (retenido > 0 ? `<tr><td>Retenciones 3% (las paga el cliente a SUNAT)</td><td>${S(retenido)}</td></tr>` : '') +
-    (pedidos.length ? `<tr><td colspan="2" style="padding-top:12px"><b>Cobros de pedidos · se entregan aparte (no entran a tu cuadre)</b></td></tr>` +
-      Object.keys(NOMBRES_METODO).filter(m => pedMetodo[m]).map(m => `<tr><td>&nbsp;&nbsp;${NOMBRES_METODO[m]}</td><td>${S(pedMetodo[m])}</td></tr>`).join('') +
-      `<tr><td>&nbsp;&nbsp;${pedidos.length} cobro(s) de pedido</td><td>${S(pedidos.reduce((a, v) => a + Number(v.total), 0))}</td></tr>` : '') +
     (anuladas.length ? `<tr><td>Ventas anuladas (no suman)</td><td>${anuladas.length} · ${S(anuladas.reduce((a, v) => a + Number(v.total), 0))}</td></tr>` : '');
   $('m-cierre').classList.remove('oculto');
 };
