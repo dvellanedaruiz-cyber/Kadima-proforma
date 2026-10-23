@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root {
     --espresso: #2E1B12;
@@ -156,6 +157,39 @@
     .pasos { text-align: left; }
     .footer-cols { grid-template-columns: 1fr; gap: 24px; }
   }
+
+  /* ---------- Ubicación de entrega + instructivo ---------- */
+  .ubic-box { border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-top: 16px; background: #fff; }
+  .ubic-box .t { font-weight: 600; font-size: 15px; }
+  .ubic-box .s { font-size: 13px; color: var(--muted-2); margin: 2px 0 10px; }
+  .ubic-box .ubic-btn { margin-top: 0; }
+  .ubic-mapa-w { margin-top: 10px; }
+  .ubic-hint { font-size: 13px; color: #4a352a; background: #f3eeea; border-radius: 8px 8px 0 0; padding: 8px 10px; }
+  .ubic-hint.alerta { background: #fff8ea; color: #6b4c15; }
+  #ubic-mapa { height: 280px; border: 1px solid var(--line); border-top: none; border-radius: 0 0 8px 8px; z-index: 0; }
+  .o-sep { text-align: center; font-size: 12.5px; color: var(--muted-2); margin: 10px 0; }
+  .link-row { display: flex; gap: 8px; }
+  .link-row input { flex: 1; min-width: 0; }
+  .link-row button { flex-shrink: 0; background: var(--wine); color: #fff; border: none; border-radius: 8px; padding: 0 14px; font-family: inherit; font-weight: 600; font-size: 14px; cursor: pointer; }
+  .como-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; background: none; border: none; color: var(--wine); font-family: inherit; font-size: 14px; font-weight: 600; text-decoration: underline; cursor: pointer; padding: 0; }
+  .ins-fondo { position: fixed; inset: 0; background: rgba(30, 18, 12, .55); z-index: 200; display: flex; align-items: flex-end; justify-content: center; }
+  .ins { background: #fff; width: 100%; max-width: 640px; max-height: 92vh; overflow-y: auto; border-radius: 16px 16px 0 0; padding: 18px 16px 24px; }
+  @media (min-width: 700px) { .ins-fondo { align-items: center; } .ins { border-radius: 16px; } }
+  .ins-cab { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .ins-cab h3 { font-size: 20px; flex: 1; }
+  .ins-cab button { background: #f3eeea; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 18px; cursor: pointer; }
+  .ins-tabs { display: flex; gap: 6px; background: #f3eeea; padding: 4px; border-radius: 10px; margin-bottom: 14px; }
+  .ins-tabs button { flex: 1; border: none; background: none; padding: 10px 6px; border-radius: 8px; font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--muted); cursor: pointer; }
+  .ins-tabs button.on { background: #fff; color: var(--wine); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .paso { display: grid; grid-template-columns: 190px 1fr; gap: 14px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+  .paso:first-of-type { border-top: none; }
+  .paso svg { width: 100%; height: auto; display: block; }
+  .paso .n { display: inline-flex; width: 26px; height: 26px; border-radius: 50%; background: var(--wine); color: #fff; font-weight: 600; font-size: 14px; align-items: center; justify-content: center; margin-bottom: 6px; }
+  .paso .tt { display: block; font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+  .paso p { margin: 0; font-size: 13.5px; color: #4a352a; }
+  .ins-nota { background: #fff8ea; border: 1px solid #e8cf9a; color: #6b4c15; border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-top: 10px; }
+  .ins-ok { width: 100%; margin-top: 14px; background: var(--wine); color: #fff; border: none; border-radius: 8px; padding: 13px; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+  @media (max-width: 480px) { .paso { grid-template-columns: 46% 1fr; gap: 10px; } }
 </style>
 </head>
 <body>
@@ -214,9 +248,26 @@
     </div>
 
     <div id="bloque-delivery" class="oculto">
-      <button type="button" class="ubic-btn" id="btn-ubicacion">📍 Usar mi ubicación actual</button>
-      <div class="ubic-ok oculto" id="ubic-ok">✓ Ubicación guardada <a id="ubic-link" target="_blank" rel="noopener">Ver en Google Maps</a><button type="button" id="btn-quitar-ubic">Quitar</button></div>
-      <div class="ubic-err" id="ubic-err"></div>
+      <div class="ubic-box">
+        <div class="t">📍 Ubicación de entrega <span style="color:#b3261e">*</span></div>
+        <div class="s">Así nuestro repartidor llega directo, sin perderse.</div>
+        <div id="ubic-elegir">
+          <button type="button" class="ubic-btn" id="btn-ubicacion">📍 Estoy en el lugar de entrega: usar mi ubicación</button>
+          <div class="o-sep">— o, si es otra dirección —</div>
+          <label for="maps-link" style="font-size:13.5px;font-weight:600">Pega el link de Google Maps</label>
+          <div class="link-row">
+            <input type="url" id="maps-link" placeholder="https://maps.app.goo.gl/…" inputmode="url" autocomplete="off">
+            <button type="button" id="btn-pegar">Pegar</button>
+          </div>
+          <button type="button" class="como-link" id="btn-como">❓ ¿Cómo saco el link de Google Maps? (ver pasos con imágenes)</button>
+        </div>
+        <div class="ubic-ok oculto" id="ubic-ok">✓ <span id="ubic-txt">Ubicación guardada</span> <a id="ubic-link" target="_blank" rel="noopener">Ver en el mapa</a><button type="button" id="btn-quitar-ubic">Cambiar</button></div>
+        <div class="ubic-mapa-w oculto" id="ubic-mapa-w">
+          <div class="ubic-hint" id="ubic-hint">👉 Revisa el mapa: <b>arrastra el pin 📍</b> o <b>toca el mapa</b> para marcar la puerta exacta.</div>
+          <div id="ubic-mapa"></div>
+        </div>
+        <div class="ubic-err" id="ubic-err"></div>
+      </div>
       <div class="field-row">
         <div class="field">
           <label for="distrito">Distrito</label>
@@ -311,6 +362,20 @@
   </footer>
 </div>
 
+
+<div class="ins-fondo oculto" id="ins" role="dialog" aria-modal="true" aria-labelledby="ins-titulo">
+  <div class="ins">
+    <div class="ins-cab"><h3 id="ins-titulo">¿Cómo te enviamos el delivery?</h3><button type="button" id="ins-x" aria-label="Cerrar">✕</button></div>
+    <div class="ins-tabs" id="ins-tabs">
+      <button type="button" data-t="aqui" class="on">📍 Estoy en el lugar</button>
+      <button type="button" data-t="otra">🗺️ Es otra dirección</button>
+    </div>
+    <div id="ins-aqui"></div>
+    <div id="ins-otra" class="oculto"></div>
+    <button type="button" class="ins-ok" id="ins-ok">Entendido</button>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
 <script>
   // =======================================================================
@@ -348,6 +413,7 @@
   let busqueda = '';
   let tipoEntrega = 'recojo';
   let ubicacion = null;         // { lat, lng }
+  let ubicLink = '';            // link de Google Maps pegado por el cliente
 
   // ---------- Catálogo ----------
   async function cargarProductos() {
@@ -480,9 +546,88 @@
   const mapsUrl = (lat, lng) => `https://www.google.com/maps?q=${lat},${lng}`;
 
   function pintarUbicacion() {
-    $('ubic-ok').classList.toggle('oculto', !ubicacion);
-    $('btn-ubicacion').classList.toggle('oculto', !!ubicacion);
-    if (ubicacion) $('ubic-link').href = mapsUrl(ubicacion.lat, ubicacion.lng);
+    const hay = !!(ubicacion || ubicLink);
+    $('ubic-ok').classList.toggle('oculto', !hay);
+    $('ubic-elegir').classList.toggle('oculto', hay);
+    if (hay) {
+      $('ubic-link').href = ubicacion ? mapsUrl(ubicacion.lat, ubicacion.lng) : ubicLink;
+      $('ubic-txt').textContent = ubicacion ? 'Ubicación guardada' : 'Link de Google Maps recibido';
+    }
+    mostrarMapa(hay);
+  }
+
+  // ---------- Mapa para ajustar el punto (OpenStreetMap + Leaflet) ----------
+  const CENTRO_SJL = { lat: -12.0045, lng: -77.0040 };
+  let mapa = null, pinMapa = null, ajustado = false;
+  function mostrarMapa(ver) {
+    $('ubic-mapa-w').classList.toggle('oculto', !ver || !window.L);
+    if (!ver || !window.L) return;
+    const c = ubicacion || CENTRO_SJL, zoom = ubicacion ? 18 : 14;
+    $('ubic-hint').classList.toggle('alerta', !ubicacion);
+    $('ubic-hint').innerHTML = ubicacion
+      ? '👉 Revisa el mapa: <b>arrastra el pin 📍</b> o <b>toca el mapa</b> para marcar la puerta exacta.'
+      : '⚠️ No pudimos leer el punto de tu link. <b>Toca el mapa</b> o <b>arrastra el pin 📍</b> hasta tu dirección (usa + para acercar).';
+    if (!mapa) {
+      mapa = L.map('ubic-mapa', { scrollWheelZoom: false }).setView([c.lat, c.lng], zoom);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(mapa);
+      pinMapa = L.marker([c.lat, c.lng], { draggable: true, autoPan: true }).addTo(mapa);
+      pinMapa.on('dragend', () => moverPin(pinMapa.getLatLng()));
+      mapa.on('click', e => { pinMapa.setLatLng(e.latlng); moverPin(e.latlng); });
+    } else {
+      mapa.setView([c.lat, c.lng], zoom); pinMapa.setLatLng([c.lat, c.lng]);
+    }
+    setTimeout(() => mapa.invalidateSize(), 60);
+  }
+  function moverPin(ll) {
+    ubicacion = { lat: Number(ll.lat.toFixed(6)), lng: Number(ll.lng.toFixed(6)) };
+    ubicLink = '';            // el punto final es el que marcó en el mapa
+    ajustado = true;
+    $('ubic-link').href = mapsUrl(ubicacion.lat, ubicacion.lng);
+    $('ubic-txt').textContent = 'Ubicación marcada en el mapa';
+    $('ubic-hint').classList.remove('alerta');
+    $('ubic-hint').innerHTML = '✓ Punto actualizado. Puedes seguir moviéndolo si hace falta.';
+    completarDireccion(ubicacion.lat, ubicacion.lng);   // solo llena dirección/distrito si están vacíos
+  }
+
+  // ---------- Link de Google Maps pegado ----------
+  function coordsDe(texto) {
+    let t = String(texto || '');
+    try { t = decodeURIComponent(t); } catch (e) {}
+    const pats = [
+      /!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/,
+      /[?&](?:q|query|ll|destination|daddr|center)=(-?\d{1,2}\.\d+),\s*\+?(-?\d{1,3}\.\d+)/,
+      /@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/,
+      /\/place\/(-?\d{1,2}\.\d+),\s*\+?(-?\d{1,3}\.\d+)/,
+      /^\s*(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)\s*$/,
+    ];
+    for (const re of pats) { const m = t.match(re); if (m) { const lat = Number(m[1]), lng = Number(m[2]); if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat: Number(lat.toFixed(6)), lng: Number(lng.toFixed(6)) }; } }
+    return null;
+  }
+  const esLinkMaps = u => /^https?:\/\/(maps\.app\.goo\.gl|goo\.gl\/maps|g\.co\/kgs|(www\.)?google\.[a-z.]+\/maps|maps\.google\.[a-z.]+)/i.test(u);
+  async function leerLink() {
+    const crudo = $('maps-link').value.trim();
+    if (crudo && crudo === leerLink.ultimo && (ubicacion || ubicLink)) return;   // ya procesado (paste + change)
+    leerLink.ultimo = crudo;
+    $('ubic-err').textContent = '';
+    if (!crudo) return;
+    const directo = coordsDe(crudo);
+    const url = (crudo.match(/https?:\/\/\S+/) || [''])[0].replace(/[).,]+$/, '');
+    if (!directo && !esLinkMaps(url)) { $('ubic-err').textContent = 'Ese no parece un link de Google Maps. Revisa los pasos en “¿Cómo saco el link…?”.'; return; }
+    let c = directo || coordsDe(url);
+    if (!c) {
+      // link corto (maps.app.goo.gl): lo abrimos en el servidor para leer las coordenadas
+      $('ubic-err').textContent = 'Leyendo el link…';
+      try {
+        const { data } = await sb.functions.invoke('resolver-mapa', { body: { url } });
+        if (data && data.lat != null) c = { lat: Number(Number(data.lat).toFixed(6)), lng: Number(Number(data.lng).toFixed(6)) };
+      } catch (e) {}
+      $('ubic-err').textContent = '';
+    }
+    ubicLink = url || mapsUrl(c.lat, c.lng);
+    ubicacion = c;
+    pintarUbicacion();
+    if (c) await completarDireccion(c.lat, c.lng);
+    $('ubic-mapa-w').scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   async function completarDireccion(lat, lng) {
@@ -501,20 +646,85 @@
 
   function usarUbicacion() {
     $('ubic-err').textContent = '';
-    if (!navigator.geolocation) { $('ubic-err').textContent = 'Tu navegador no permite compartir ubicación. Escribe tu dirección abajo.'; return; }
+    if (!navigator.geolocation) { $('ubic-err').textContent = 'Tu navegador no permite compartir ubicación. Pega el link de Google Maps.'; return; }
     const b = $('btn-ubicacion'); b.disabled = true; b.textContent = 'Buscando tu ubicación…';
     navigator.geolocation.getCurrentPosition(async pos => {
-      ubicacion = { lat: Number(pos.coords.latitude.toFixed(6)), lng: Number(pos.coords.longitude.toFixed(6)) };
-      b.disabled = false; b.textContent = '📍 Usar mi ubicación actual';
+      ubicacion = { lat: Number(pos.coords.latitude.toFixed(6)), lng: Number(pos.coords.longitude.toFixed(6)) }; ubicLink = '';
+      b.disabled = false; b.textContent = '📍 Estoy en el lugar de entrega: usar mi ubicación';
       pintarUbicacion();
       await completarDireccion(ubicacion.lat, ubicacion.lng);
-      $('referencia').focus();
+      $('ubic-mapa-w').scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, err => {
-      b.disabled = false; b.textContent = '📍 Usar mi ubicación actual';
+      b.disabled = false; b.textContent = '📍 Estoy en el lugar de entrega: usar mi ubicación';
       $('ubic-err').textContent = err.code === 1
-        ? 'No diste permiso de ubicación. Actívalo en tu navegador o escribe tu dirección abajo.'
-        : 'No pudimos obtener tu ubicación. Intenta de nuevo o escribe tu dirección abajo.';
+        ? 'No diste permiso de ubicación. Actívalo (mira “¿Cómo saco el link…?”) o pega el link de Google Maps.'
+        : 'No pudimos obtener tu ubicación. Activa el GPS e inténtalo otra vez, o pega el link de Google Maps.';
     }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+  }
+
+  // ---------- Instructivo con imágenes (dibujos SVG, sin depender de fotos externas) ----------
+  function pintarInstructivo() {
+    if ($('ins-aqui').innerHTML) return;
+    const W = '#7A2E3D';
+    const tel = (pantalla, oscuro) => `<svg viewBox="0 0 150 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" font-family="Work Sans, Arial, sans-serif">
+      <rect x="2" y="2" width="146" height="276" rx="20" fill="#2b2b2b"/><rect x="8" y="12" width="134" height="256" rx="12" fill="${oscuro ? '#f4f4f4' : '#fff'}"/>
+      <rect x="58" y="6" width="34" height="4" rx="2" fill="#555"/>
+      <g>${pantalla}</g></svg>`;
+    const mapa = `<rect x="8" y="12" width="134" height="256" rx="12" fill="#eef1e8"/>
+      <rect x="20" y="70" width="40" height="34" rx="4" fill="#cfe8c4"/><path d="M8 210 C50 190 90 230 142 200 L142 222 C90 250 50 212 8 232Z" fill="#bcdcf2"/>
+      <g stroke="#fff" stroke-width="7" stroke-linecap="round"><path d="M8 130 H142"/><path d="M75 12 V268"/><path d="M8 60 L142 95"/></g>
+      <g stroke="#fff" stroke-width="3.5"><path d="M110 12 V268"/><path d="M38 12 V268"/><path d="M8 170 H142"/></g>
+      <g stroke="#f6d47a" stroke-width="7" stroke-linecap="round"><path d="M8 130 H142"/></g>`;
+    const pin = (x, y) => `<path d="M${x} ${y} c-9 -14 -15 -20 -15 -29 a15 15 0 0 1 30 0 c0 9 -6 15 -15 29z" fill="#e53935" stroke="#a8201c" stroke-width="1.5"/><circle cx="${x}" cy="${y - 29}" r="5.5" fill="#8c1a17"/>`;
+    const marca = (x, y, r) => `<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="#ff1744" stroke-width="3"/><text x="${x + r - 6}" y="${y + r + 14}" font-size="20">👆</text>`;
+    const txt = (x, y, t, o = '') => `<text x="${x}" y="${y}" font-size="8.5" fill="#222" ${o}>${t}</text>`;
+    const web = cont => `<rect x="8" y="12" width="134" height="20" fill="#f1ece9"/><rect x="16" y="16" width="118" height="12" rx="6" fill="#fff"/>${txt(30, 25, '🔒 kadima.pe/pedidos', 'font-size="7" fill="#555"')}
+      <rect x="8" y="32" width="134" height="22" fill="${W}"/>${txt(16, 46, 'Kadima · Pedidos', 'fill="#fff" font-weight="600"')}${cont}`;
+
+    const pasos = l => l.map((p, i) => `<div class="paso">${p.img}<div><span class="n">${i + 1}</span><span class="tt">${p.t}</span><p>${p.d}</p></div></div>`).join('');
+
+    $('ins-aqui').innerHTML = pasos([
+      { t: 'Toca “Estoy en el lugar de entrega”', d: 'Está en el recuadro <i>Ubicación de entrega</i> de esta página. Hazlo cuando estés justo donde quieres recibir el pedido.',
+        img: tel(web(`${txt(16, 74, 'Ubicación de entrega *', 'font-weight="600"')}<rect x="16" y="82" width="118" height="30" rx="6" fill="#fff" stroke="${W}" stroke-dasharray="4 3"/>${txt(24, 100, '📍 Estoy en el lugar…', `fill="${W}" font-weight="600"`)}
+          ${txt(42, 130, '— o —', 'fill="#999"')}<rect x="16" y="140" width="118" height="20" rx="5" fill="#fff" stroke="#ccc"/>` + marca(75, 97, 30))) },
+      { t: 'Elige “Permitir”', d: 'El celular te pregunta si Kadima puede ver tu ubicación. Toca <b>Permitir</b>. Revisa que tu GPS (Ubicación) esté encendido.',
+        img: tel(web(`<rect x="8" y="54" width="134" height="214" fill="#000" opacity=".35"/><rect x="16" y="110" width="118" height="92" rx="10" fill="#fff"/>
+          ${txt(24, 130, 'kadima.pe quiere', 'font-weight="600"')}${txt(24, 142, 'conocer tu ubicación', 'font-weight="600"')}
+          <rect x="22" y="168" width="48" height="22" rx="11" fill="#eee"/>${txt(30, 182, 'Bloquear')}<rect x="78" y="168" width="50" height="22" rx="11" fill="#1a73e8"/>${txt(86, 182, 'Permitir', 'fill="#fff" font-weight="600"')}` + marca(103, 179, 22))) },
+      { t: '¡Listo! Revisa la dirección', d: 'Verás <b>✓ Ubicación guardada</b> y la dirección se llena sola. Agrega una referencia (puerta, color de fachada, piso).',
+        img: tel(web(`${txt(16, 74, 'Ubicación de entrega *', 'font-weight="600"')}<rect x="16" y="82" width="118" height="26" rx="6" fill="#eef8f1" stroke="#b9e0c6"/>${txt(22, 98, '✓ Ubicación guardada', 'fill="#1e6b3a" font-weight="600"')}
+          ${txt(16, 126, 'Dirección', 'fill="#666"')}<rect x="16" y="130" width="118" height="20" rx="5" fill="#fff" stroke="#ccc"/>${txt(21, 143, 'Jr. Los Pinos 245')}
+          ${txt(16, 166, 'Referencia', 'fill="#666"')}<rect x="16" y="170" width="118" height="20" rx="5" fill="#fff" stroke="${W}"/>${txt(21, 183, 'Puerta verde, 2do piso', 'fill="#999"')}`)) },
+    ]) + `<div class="ins-nota"><b>¿No te sale “Permitir” o dice que no diste permiso?</b><br>
+      <b>Android (Chrome):</b> toca el ícono ⚙️ o 🔒 junto a la dirección de la página → <i>Permisos</i> → <i>Ubicación</i> → <i>Permitir</i>.<br>
+      <b>iPhone (Safari):</b> <i>Ajustes</i> → <i>Privacidad y seguridad</i> → <i>Localización</i> (activada) → <i>Safari</i> → <i>Al usar la app</i>.<br>
+      Si igual no funciona, usa la pestaña <b>🗺️ Es otra dirección</b>: sirve también para donde estás ahora.</div>`;
+
+    $('ins-otra').innerHTML = pasos([
+      { t: 'Abre Google Maps y busca la dirección', d: 'Escribe la calle y número arriba, o mueve el mapa con el dedo hasta el lugar de entrega.',
+        img: tel(mapa + `<rect x="14" y="20" width="122" height="24" rx="12" fill="#fff" stroke="#ddd"/><text x="22" y="36" font-size="9">🔍</text>${txt(36, 35, 'Jr. Los Pinos 245, SJL')}` + marca(75, 32, 20)) },
+      { t: 'Mantén presionado el punto exacto', d: 'Deja el dedo apretado sobre la casa o edificio hasta que aparezca un <b>pin rojo</b> 📍. Si te equivocas, vuelve a mantener presionado en otro lugar.',
+        img: tel(mapa + `<circle cx="92" cy="150" r="18" fill="#ff1744" opacity=".15"/><circle cx="92" cy="150" r="9" fill="#ff1744" opacity=".25"/>` + pin(92, 150) + `<text x="88" y="178" font-size="22">👆</text>`) },
+      { t: 'Toca “Compartir”', d: 'Abajo aparece una tarjeta (<i>Pin colocado</i> o el nombre del lugar). Desliza los botones hacia el lado si no lo ves y toca <b>Compartir</b>.',
+        img: tel(mapa + pin(92, 120) + `<rect x="8" y="170" width="134" height="98" rx="12" fill="#fff"/><rect x="62" y="176" width="26" height="3" rx="1.5" fill="#ccc"/>
+          ${txt(16, 196, 'Pin colocado', 'font-size="11" font-weight="600"')}${txt(16, 209, '-12.0254, -76.9987', 'fill="#777" font-size="7.5"')}
+          <rect x="12" y="222" width="46" height="18" rx="9" fill="#1a73e8"/>${txt(35, 234, 'Cómo llegar', 'fill="#fff" font-size="6.5" text-anchor="middle"')}
+          <rect x="61" y="222" width="30" height="18" rx="9" fill="#fff" stroke="#ccc"/>${txt(76, 234, 'Guardar', 'font-size="6.5" text-anchor="middle"')}
+          <rect x="94" y="222" width="44" height="18" rx="9" fill="#fff" stroke="#1a73e8"/>${txt(116, 234, 'Compartir', 'fill="#1a73e8" font-size="6.5" font-weight="600" text-anchor="middle"')}` + marca(116, 231, 17)) },
+      { t: 'Toca “Copiar”', d: 'Se abre el menú para compartir. Toca <b>Copiar</b> (en algunos celulares dice <i>Copiar al portapapeles</i> o es un ícono de dos hojas ⧉).',
+        img: tel(mapa + `<rect x="8" y="12" width="134" height="256" rx="12" fill="#000" opacity=".35"/><rect x="8" y="160" width="134" height="108" rx="12" fill="#fff"/>
+          ${txt(16, 180, 'Compartir', 'font-size="10.5" font-weight="600"')}${txt(16, 193, 'maps.app.goo.gl/AbC12…', 'fill="#777" font-size="7"')}
+          <circle cx="30" cy="220" r="12" fill="#e8eaed"/><rect x="24" y="213" width="9" height="11" rx="1.5" fill="none" stroke="#333" stroke-width="1.5"/><rect x="27" y="216" width="9" height="11" rx="1.5" fill="#e8eaed" stroke="#333" stroke-width="1.5"/>${txt(30, 245, 'Copiar', 'font-size="7" font-weight="600" text-anchor="middle"')}
+          <circle cx="62" cy="220" r="12" fill="#25d366"/>${txt(62, 245, 'WhatsApp', 'font-size="6" text-anchor="middle"')}
+          <circle cx="94" cy="220" r="12" fill="#5b8def"/>${txt(94, 245, 'Mensajes', 'font-size="6" text-anchor="middle"')}
+          <circle cx="124" cy="220" r="12" fill="#e8eaed"/>${txt(124, 245, 'Más', 'font-size="6" text-anchor="middle"')}` + marca(30, 220, 17)) },
+      { t: 'Vuelve aquí y toca “Pegar”', d: 'Regresa a esta página y toca <b>Pegar</b> junto al recuadro (o mantén presionado el recuadro → <i>Pegar</i>). Verás <b>✓ Link recibido</b>.',
+        img: tel(web(`${txt(16, 74, 'Ubicación de entrega *', 'font-weight="600"')}${txt(16, 92, 'Pega el link de Google Maps', 'fill="#555" font-size="7.5"')}
+          <rect x="16" y="98" width="82" height="22" rx="5" fill="#fff" stroke="#ccc"/>${txt(20, 112, 'https://maps.app…', 'font-size="7.5"')}
+          <rect x="102" y="98" width="32" height="22" rx="5" fill="${W}"/>${txt(107, 112, 'Pegar', 'fill="#fff" font-weight="600" font-size="8"')}
+          <rect x="16" y="140" width="118" height="26" rx="6" fill="#eef8f1" stroke="#b9e0c6"/>${txt(22, 156, '✓ Link recibido', 'fill="#1e6b3a" font-weight="600"')}` + marca(118, 109, 18))) },
+    ]) + `<div class="ins-nota"><b>Tip:</b> si el pedido es para otra persona, pídele que te mande su ubicación por WhatsApp desde Google Maps (pasos 2 a 4) y pega aquí ese link.<br>
+      En <b>iPhone</b> los pasos son iguales: mantén presionado → <i>Compartir</i> → <i>Copiar</i>.</div>`;
   }
 
   // ---------- Confirmar ----------
@@ -533,12 +743,13 @@
       referencia: $('referencia').value.trim(),
       lat: tipoEntrega === 'delivery' && ubicacion ? ubicacion.lat : null,
       lng: tipoEntrega === 'delivery' && ubicacion ? ubicacion.lng : null,
-      notas: $('notas').value.trim(),
+      notas: [$('notas').value.trim(), tipoEntrega === 'delivery' && ubicLink && !ubicacion ? 'Ubicación (link): ' + ubicLink : ''].filter(Boolean).join(' · '),
       yape_operacion: $('operacion').value.trim(),
       items: items().map(i => ({ producto_id: i.id, cantidad: i.qty })),
     };
     if (!datos.items.length) return err('Tu carrito está vacío.');
     if (!datos.fecha || !datos.hora) return err('Elige la fecha y la hora.');
+    if (tipoEntrega === 'delivery' && !ubicacion && !ubicLink) { $('bloque-delivery').scrollIntoView({ behavior: 'smooth', block: 'start' }); return err('Falta la ubicación de entrega: usa tu ubicación actual o pega el link de Google Maps.'); }
     if (tipoEntrega === 'delivery' && datos.direccion.length < 5) return err('Escribe la dirección de entrega.');
     if (datos.nombre.length < 3) return err('Escribe tu nombre completo.');
     if (!/^9\d{8}$/.test(tel)) return err('El celular debe tener 9 dígitos y empezar con 9.');
@@ -578,14 +789,14 @@
     if (datos.tipo_entrega === 'delivery') {
       lineas.push(`*Dirección:* ${datos.direccion}${datos.distrito ? ', ' + datos.distrito : ''}`);
       if (datos.referencia) lineas.push(`*Referencia:* ${datos.referencia}`);
-      if (datos.lat != null) lineas.push(`*Ubicación:* ${mapsUrl(datos.lat, datos.lng)}`);
+      if (datos.lat != null || ubicLink) lineas.push(`*Ubicación:* ${ubicLink || mapsUrl(datos.lat, datos.lng)}`);
       lineas.push(`Quedo atento al costo del delivery.`);
     }
     if (datos.notas) lineas.push(`*Indicaciones:* ${datos.notas}`);
     lineas.push(`*Yape N° operación:* ${datos.yape_operacion}`, ``, `Adjunto la captura del Yape.`);
     $('wa-link').href = `https://wa.me/${CONFIG.WHATSAPP_NUMBER}?text=${encodeURIComponent(lineas.join('\n'))}`;
 
-    cart = {}; guardar('carrito', {});
+    cart = {}; guardar('carrito', {}); ubicacion = null; ubicLink = ''; $('maps-link').value = '';
     guardar('cliente', { nombre: datos.nombre, telefono: datos.telefono, distrito: datos.distrito, direccion: datos.direccion, referencia: datos.referencia });
     $('checkout').style.display = 'none';
     $('cart-bar').style.display = 'none';
@@ -604,7 +815,21 @@
   $('btn-ver-pedido').onclick = verPedido;
   $('btn-confirmar').onclick = confirmar;
   $('btn-ubicacion').onclick = usarUbicacion;
-  $('btn-quitar-ubic').onclick = () => { ubicacion = null; pintarUbicacion(); };
+  $('btn-quitar-ubic').onclick = () => { ubicacion = null; ubicLink = ''; leerLink.ultimo = ''; $('maps-link').value = ''; pintarUbicacion(); };
+  $('maps-link').addEventListener('change', leerLink);
+  $('maps-link').addEventListener('paste', () => setTimeout(leerLink, 50));
+  $('btn-pegar').onclick = async () => {
+    try { const t = await navigator.clipboard.readText(); if (t) { $('maps-link').value = t.trim(); return leerLink(); } } catch (e) {}
+    $('maps-link').focus(); $('ubic-err').textContent = 'Mantén presionado el recuadro y elige “Pegar”.';
+  };
+  // instructivo
+  const abrirIns = t => { pintarInstructivo(); tabIns(t || 'aqui'); $('ins').classList.remove('oculto'); document.body.style.overflow = 'hidden'; };
+  const cerrarIns = () => { $('ins').classList.add('oculto'); document.body.style.overflow = ''; };
+  const tabIns = t => { [...$('ins-tabs').children].forEach(b => b.classList.toggle('on', b.dataset.t === t)); $('ins-aqui').classList.toggle('oculto', t !== 'aqui'); $('ins-otra').classList.toggle('oculto', t !== 'otra'); };
+  $('btn-como').onclick = () => abrirIns('otra');
+  $('ins-tabs').onclick = e => { const b = e.target.closest('[data-t]'); if (b) tabIns(b.dataset.t); };
+  $('ins-x').onclick = cerrarIns; $('ins-ok').onclick = cerrarIns;
+  $('ins').onclick = e => { if (e.target === $('ins')) cerrarIns(); };
   $('btn-copiar').onclick = async () => {
     try { await navigator.clipboard.writeText(CONFIG.YAPE_NUMERO.replace(/\s/g, '')); $('btn-copiar').textContent = '¡Copiado!'; }
     catch (e) { $('btn-copiar').textContent = 'Cópialo a mano'; }
