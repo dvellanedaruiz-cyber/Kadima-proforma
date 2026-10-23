@@ -242,10 +242,11 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
       <button data-s="hist">🗂️ Cotizaciones e historial</button>
       <button data-s="mapa">🗺️ Mapa de clientes</button>
       <button data-s="adic">⚙️ Adicionales</button>
+      <button data-s="deliv">🛵 Delivery</button>
     </div>
     <span class="vivo" id="vivo">● conectando</span>
     <span class="usr" id="usr" title="Cambiar de usuario"></span>
-    <span style="font-size:11px;opacity:.7" title="Versión de la app">v23.10-d</span>
+    <span style="font-size:11px;opacity:.7" title="Versión de la app">v23.10-f</span>
   </div>
 
   <!-- ===== CENTRAL ===== -->
@@ -302,6 +303,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
             </div>
             <div id="f-mapa" class="mapa-form"></div>
             <div class="ubi-info" id="ubi-info"></div>
+            <div class="ayuda" id="deliv-calc" style="margin:4px 0 0"></div>
           </div>
           <label>Notas para quien alista (no las ve producción)</label>
           <textarea data-k="notas" rows="2" placeholder="Ej. entregar con vela, cliente pasa a las 4 pm, empaque para regalo"></textarea>
@@ -364,6 +366,43 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
         <div class="error" id="a-error"></div>
       </div>
       <div class="bloque"><table class="t"><thead><tr><th>Adicional</th><th>Grupo</th><th>Enlace</th><th class="n">Costo actual</th><th>Activo</th><th></th></tr></thead><tbody id="a-tabla"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- ===== TARIFA DE DELIVERY ===== -->
+  <div id="s-deliv" class="oculto">
+    <div class="adic">
+      <div class="bloque">
+        <h3>🛵 Tarifa automática de delivery</h3>
+        <p class="ayuda" style="margin:0 0 10px">Se calcula por distancia desde la tienda: <b>costo estimado del InDrive</b> (base + km adicionales) <b>+ margen por tráfico</b> <b>+ IGV</b>, redondeado hacia arriba. La web lo muestra y el cliente lo paga en el mismo Yape. En Nuevo pedido se llena solo (lo puedes cambiar).</p>
+        <div class="chips" id="t-modo" style="margin-bottom:6px"><button data-m="tienda">🏬 Mover la tienda</button><button data-m="probar" class="activa">🎯 Probar un destino</button></div>
+        <div id="t-mapa" class="mapa-form" style="height:340px"></div>
+        <div class="ayuda" id="t-info" style="margin:4px 0 12px"></div>
+        <div class="fila">
+          <div><label>Base InDrive S/</label><input id="t-base" type="number" min="0" step="0.5"></div>
+          <div><label>Km incluidos en la base</label><input id="t-kminc" type="number" min="0" step="0.5"></div>
+          <div><label>S/ por km adicional</label><input id="t-porkm" type="number" min="0" step="0.1"></div>
+          <div><label>Mínimo S/ (sin IGV)</label><input id="t-min" type="number" min="0" step="0.5"></div>
+        </div>
+        <div class="fila">
+          <div><label>Margen por tráfico %</label><input id="t-margen" type="number" min="0" step="1"></div>
+          <div><label>IGV %</label><input id="t-igv" type="number" min="0" step="1"></div>
+          <div><label>Redondear a S/</label><select id="t-red"><option value="0.1">0.10</option><option value="0.5">0.50</option><option value="1">1.00</option></select></div>
+          <div><label>Distancia máxima km</label><input id="t-max" type="number" min="1" step="1"></div>
+          <div><label title="Las calles no van en línea recta: 1.35 = 35% más que la distancia en línea recta">Factor de ruta</label><input id="t-factor" type="number" min="1" step="0.05"></div>
+        </div>
+        <label style="display:flex;gap:8px;align-items:center;margin:4px 0 10px"><input type="checkbox" id="t-activo" style="width:auto"> Cobrar el delivery automáticamente en la web</label>
+        <table class="t" style="margin-bottom:10px"><thead><tr><th>Distancia</th><th class="n">InDrive est.</th><th class="n">+ Margen</th><th class="n">+ IGV</th><th class="n">Precio al cliente</th></tr></thead><tbody id="t-ejemplos"></tbody></table>
+        <div class="acciones-form"><button class="btn" id="t-guardar">💾 Guardar tarifa</button></div>
+        <div class="error" id="t-error"></div>
+      </div>
+      <div class="bloque">
+        <h3>📊 Real vs. tarifa (últimos 60 días)</h3>
+        <p class="ayuda" style="margin:0 0 10px">Compara lo que se pagó al InDrive (se registra al despachar, en la Central) con lo que estimaba la tarifa. Sirve para ajustar la base y el S/ por km.</p>
+        <div id="t-cal-res" class="ayuda" style="margin-bottom:8px"></div>
+        <div style="overflow-x:auto"><table class="t"><thead><tr><th>Pedido</th><th>Fecha</th><th>Distrito</th><th class="n">Km</th><th class="n">Estimado</th><th class="n">Real InDrive</th><th class="n">Cobrado</th><th class="n">Ganancia s/IGV</th></tr></thead><tbody id="t-cal"></tbody></table></div>
+        <div class="acciones-form"><button class="btn-sec oculto" id="t-ajustar"></button></div>
+      </div>
     </div>
   </div>
 </section>
@@ -618,11 +657,12 @@ function irSeccion(s) {
   ocultarAviso();
   st.seccion = s;
   document.querySelectorAll('#secc [data-s]').forEach(b => b.classList.toggle('activa', b.dataset.s === s));
-  ['central', 'nuevo', 'hist', 'mapa', 'adic'].forEach(x => $('s-' + x).classList.toggle('oculto', x !== s));
+  ['central', 'nuevo', 'hist', 'mapa', 'adic', 'deliv'].forEach(x => $('s-' + x).classList.toggle('oculto', x !== s));
   if (s === 'mapa') abrirMapa();
   if (s === 'central') cargarCentral();
   if (s === 'hist') cargarHist();
   if (s === 'adic') pintarAdicionales();
+  if (s === 'deliv') abrirTarifa();
   if (s === 'nuevo' && !st.f) nuevoForm();
   window.scrollTo(0, 0);
 }
@@ -698,8 +738,8 @@ function normWeb(p) {
     tipo_entrega: p.tipo_entrega, cliente: p.cliente_nombre, tel: p.cliente_telefono, direccion: p.direccion, distrito: p.distrito,
     referencia: p.referencia, lat: p.ubicacion_lat, lng: p.ubicacion_lng, notas: p.notas, creado_en: p.creado_en,
     items: (p.pedidos_web_items || []).map(i => ({ desc: i.nombre, cant: i.cantidad, pers: '', fotos: [] })),
-    total: Number(p.total_productos || 0), delivery: p.costo_delivery, pagado: p.pago_validado ? Number(p.total_productos || 0) : 0,
-    yape_op: p.yape_operacion, pago_validado: p.pago_validado, raw: p,
+    total: Number(p.total_productos || 0), delivery: p.costo_delivery, pagado: p.pago_validado ? Number(p.total_productos || 0) + (p.delivery_incluido ? Number(p.costo_delivery || 0) : 0) : 0,
+    yape_op: p.yape_operacion, pago_validado: p.pago_validado, delivIncl: !!p.delivery_incluido, real: p.delivery_costo_real, raw: p,
   };
 }
 function normEnc(p) {
@@ -714,7 +754,7 @@ function normEnc(p) {
     key: 'e' + p.id, origen: 'enc', canal: p.canal, id: p.id, codigo: p.codigo, estado: p.estado, fecha: p.fecha_entrega, hora: p.hora_entrega,
     tipo_entrega: p.tipo_entrega, cliente: p.cliente_nombre, tel: p.cliente_telefono, direccion: p.direccion, distrito: p.distrito,
     referencia: p.referencia, lat: p.ubicacion_lat, lng: p.ubicacion_lng, notas: p.notas, creado_en: p.creado_en, items,
-    total: Number(p.total_productos || 0), delivery: p.costo_delivery, pagado, pagos: p.pedidos_encargo_pagos || [], comps, raw: p,
+    total: Number(p.total_productos || 0), delivery: p.costo_delivery, pagado, pagos: p.pedidos_encargo_pagos || [], comps, real: p.delivery_costo_real, raw: p,
   };
 }
 
@@ -754,7 +794,8 @@ function tarjeta(p, hoy, ahoraMin, nuevo) {
       <div class="${saldo > 0 ? 'debe' : ''}">Saldo<b>${S(saldo)}</b></div>
     </div>
     <div class="pie">${p.origen === 'web' ? `Yape op. ${esc(p.yape_op || '—')}${p.pago_validado ? ' ✓' : ''}` : ([...p.comps.map(x => `🧾 ${x.comprobante} ${S(x.total)}`), ...p.pagos.map(x => `${x.tipo} ${x.metodo} ${S(x.monto)}`)].join(' · ') || 'Sin pagos registrados')}${p.delivery != null ? ` · delivery ${S(p.delivery)}` : ''}</div>
-    ${p.origen === 'web' && p.tipo_entrega === 'delivery' ? `<div class="envio">Costo delivery S/ <input type="number" min="0" step="0.5" data-envio="${p.id}" value="${p.delivery ?? ''}" placeholder="—"></div>` : ''}
+    ${p.origen === 'web' && p.tipo_entrega === 'delivery' ? (p.delivIncl ? `<div class="envio">Delivery cobrado <b>${S(p.delivery)}</b> (incluido en el Yape)</div>` : `<div class="envio">Delivery a cobrar S/ <input type="number" min="0" step="0.5" data-envio="${p.id}" value="${p.delivery ?? ''}" placeholder="—"></div>`) : ''}
+    ${p.tipo_entrega === 'delivery' && ['en_produccion', 'listo', 'entregado'].includes(p.estado) ? filaReal(p) : ''}
     <div class="acc">
       ${ANTERIOR[p.estado] && !(p.origen === 'enc' && p.estado === 'confirmado') ? `<button class="b-sec" data-atras="${p.key}" title="Regresar un paso">↩</button>` : ''}
       ${p.origen === 'enc' ? `<button class="b-sec" data-editar="${p.id}" title="Editar pedido">✏️</button><button class="b-sec" data-pago="${p.id}" title="Cobrar / comprobantes">💵</button><button class="b-sec" data-wa="${p.key}" title="Enviar resumen por WhatsApp">💬</button>` : ''}
@@ -764,6 +805,20 @@ function tarjeta(p, hoy, ahoraMin, nuevo) {
   </div>`;
 }
 
+// costo REAL pagado al InDrive (se registra al despachar)
+function filaReal(p) {
+  const r = p.real == null ? null : Number(p.real), cob = p.delivery == null ? null : Number(p.delivery);
+  const gan = r != null && cob != null ? r2(cob / 1.18 - r) : null;
+  return `<div class="envio">🛵 InDrive real S/ <input type="number" min="0" step="0.1" data-real="${p.key}" value="${r ?? ''}" placeholder="al despachar">
+    ${gan != null ? `<span style="color:${gan >= 0 ? 'var(--ok)' : 'var(--mal)'};font-weight:700" title="Cobrado sin IGV menos lo pagado al InDrive">${gan >= 0 ? '+' : '−'}${S(Math.abs(gan))}</span>` : ''}</div>`;
+}
+async function guardarReal(p, v) {
+  const tabla = p.origen === 'web' ? 'pedidos_web' : 'pedidos_encargo';
+  const cambios = { delivery_costo_real: v, delivery_despachado_en: v == null ? null : new Date().toISOString(), delivery_despachado_por: v == null ? null : (st.usuario?.nombre || null) };
+  const { error } = await sb.from(tabla).update(cambios).eq('id', p.id);
+  if (error) { alert(/delivery_costo_real/.test(error.message) ? 'Falta correr el script 46_delivery_costo_real.sql en Supabase.' : errTxt(error)); return false; }
+  p.real = v; return true;
+}
 async function cambiarEstado(p, estado, extra = {}) {
   const tabla = p.origen === 'web' ? 'pedidos_web' : 'pedidos_encargo';
   const cambios = { estado, actualizado_por: st.usuario?.nombre || null, ...extra };
@@ -782,19 +837,27 @@ function sonar() {
 $('rangos').onclick = e => { const b = e.target.closest('[data-r]'); if (!b) return; st.rango = b.dataset.r; [...$('rangos').children].forEach(x => x.classList.toggle('activa', x === b)); cargarCentral(); };
 $('f-origen').onchange = e => { st.origen = e.target.value; cargarCentral(); };
 $('f-tipo').onchange = e => { st.tipo = e.target.value; cargarCentral(); };
-$('tablero').addEventListener('click', e => {
+$('tablero').addEventListener('click', async e => {
   const pk = k => st.pedidos.find(x => x.key === k);
   const s = e.target.closest('[data-sig]');
   if (s) {
     const p = pk(s.dataset.sig);
     if (p.estado === 'por_validar') {
-      if (!confirm(`¿Confirmas que llegó el Yape de ${S(p.total)} (op. ${p.yape_op})?`)) return;
+      const yapeo = p.total + (p.delivIncl ? Number(p.delivery || 0) : 0);
+      if (!confirm(`¿Confirmas que llegó el Yape de ${S(yapeo)}${p.delivIncl ? ` (productos ${S(p.total)} + delivery ${S(p.delivery)})` : ''} (op. ${p.yape_op})?`)) return;
       return cambiarEstado(p, 'confirmado', { pago_validado: true, pago_validado_por: st.usuario?.nombre || null, pago_validado_en: new Date().toISOString() });
     }
     if (p.estado === 'listo') {
       const saldo = Math.max(p.total + Number(p.delivery || 0) - p.pagado, 0);
       if (p.origen === 'enc' && saldo > 0 && !confirm(`Este pedido tiene saldo pendiente de ${S(saldo)}. ¿Marcarlo como entregado igual?`)) return;
-      if (p.tipo_entrega === 'delivery' && p.delivery == null && !confirm('No se registró el costo del delivery. ¿Marcar como entregado igual?')) return;
+      if (p.tipo_entrega === 'delivery' && p.delivery == null && !confirm('No se registró el costo del delivery que se cobra al cliente. ¿Marcar como entregado igual?')) return;
+      if (p.tipo_entrega === 'delivery' && p.real == null) {
+        const r = prompt(`¿Cuánto se pagó al InDrive por ${p.codigo}? (S/)\nDéjalo vacío si aún no lo sabes.`, '');
+        if (r === null) return;
+        const v = r.trim() === '' ? null : Number(r.replace(',', '.'));
+        if (v != null && !(v >= 0)) return alert('Monto no válido.');
+        if (v != null && !(await guardarReal(p, r2(v)))) return;
+      }
     }
     return cambiarEstado(p, SIGUIENTE[p.estado]);
   }
@@ -812,6 +875,13 @@ $('tablero').addEventListener('click', e => {
   }
 });
 $('tablero').addEventListener('change', async e => {
+  const ir = e.target.closest('[data-real]');
+  if (ir) {
+    const p = st.pedidos.find(x => x.key === ir.dataset.real); if (!p) return;
+    const v = ir.value === '' ? null : r2(Math.max(0, Number(ir.value)));
+    if (await guardarReal(p, v)) { dibujarCentral(); toast(v == null ? 'Costo InDrive borrado' : `InDrive ${p.codigo}: ${S(v)} guardado`); }
+    return;
+  }
   const inp = e.target.closest('[data-envio]'); if (!inp) return;
   const v = inp.value === '' ? null : Math.max(0, Number(inp.value));
   const { error } = await sb.from('pedidos_web').update({ costo_delivery: v, actualizado_por: st.usuario?.nombre || null }).eq('id', inp.dataset.envio);
@@ -1139,7 +1209,7 @@ function pintarResumen() {
     <span class="tot">Total</span><b class="tot">${S(tp + del)}</b>
     ${fc != null ? `<span>Food cost del pedido</span><b class="fc ${fcClase(fc)}">${fc.toFixed(1)}%</b>` : ''}`;
 }
-document.querySelectorAll('#s-nuevo [data-k]').forEach(i => i.addEventListener('input', () => { ocultarAviso(); st.f[i.dataset.k] = i.value; pintarResumen(); }));
+document.querySelectorAll('#s-nuevo [data-k]').forEach(i => i.addEventListener('input', () => { ocultarAviso(); st.f[i.dataset.k] = i.value; if (i.dataset.k === 'costo_delivery') { st.f.delivAuto = false; cotizarFormDelivery(); } pintarResumen(); }));
 $('seg-entrega').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; st.f.tipo_entrega = b.dataset.v; [...$('seg-entrega').children].forEach(x => x.classList.toggle('activa', x === b)); $('f-delivery').classList.toggle('oculto', b.dataset.v !== 'delivery'); pintarResumen(); pintarUbicacion(); };
 $('f-items').onclick = e => {
   const ed = e.target.closest('[data-ed-item]'); if (ed) return abrirCotizador(Number(ed.dataset.edItem));
@@ -1322,7 +1392,143 @@ function pintarUbicacion(centrar) {
     ? `<span class="ubi-ok">✓ ${f.ubicacion_lat}, ${f.ubicacion_lng}</span><a href="https://www.google.com/maps?q=${f.ubicacion_lat},${f.ubicacion_lng}" target="_blank" rel="noopener">Abrir en Google Maps</a><a href="#" id="ubi-quitar" style="color:var(--mal)">quitar</a><span>Puedes arrastrar el pin para corregir.</span>`
     : '<span>Toca el mapa para marcar el punto de entrega.</span>';
   if ($('ubi-quitar')) $('ubi-quitar').onclick = ev => { ev.preventDefault(); f.ubicacion_lat = f.ubicacion_lng = null; f.ubicacion_link = ''; $('ubi-link').value = ''; pintarUbicacion(); };
+  cotizarFormDelivery();
 }
+
+// =====================================================================
+// TARIFA DE DELIVERY (misma fórmula que la función cotizar_delivery de Supabase)
+// =====================================================================
+const st_t = { mapa: null, tienda: null, destino: null, circulo: null, modo: 'probar', t: null };
+const T_CAMPOS = { base: 't-base', km_incluidos: 't-kminc', por_km: 't-porkm', minimo: 't-min', margen_pct: 't-margen', igv_pct: 't-igv', max_km: 't-max', factor_ruta: 't-factor' };
+function calcTarifa(t, lat, lng) {
+  if (!t || t.origen_lat == null || lat == null) return { ok: false, motivo: 'sin_tarifa' };
+  const R = 6371, rad = x => x * Math.PI / 180;
+  const a = Math.sin(rad(lat - t.origen_lat) / 2) ** 2 + Math.cos(rad(t.origen_lat)) * Math.cos(rad(lat)) * Math.sin(rad(lng - t.origen_lng) / 2) ** 2;
+  return calcPorKm(t, Math.round(2 * R * Math.asin(Math.sqrt(a)) * Number(t.factor_ruta) * 10) / 10);
+}
+function calcPorKm(t, km) {
+  if (km > Number(t.max_km)) return { ok: false, motivo: 'fuera_zona', km };
+  const costo = Math.max(Number(t.minimo), Number(t.base) + Math.max(km - Number(t.km_incluidos), 0) * Number(t.por_km));
+  const cm = costo * (1 + Number(t.margen_pct) / 100), ci = cm * (1 + Number(t.igv_pct) / 100);
+  const red = Number(t.redondeo) || 0.5, precio = Math.ceil(Math.round(ci / red * 1e6) / 1e6) * red;
+  return { ok: true, km, costo: r2(costo), margen: r2(cm - costo), igv: r2(ci - cm), precio: r2(precio) };
+}
+function tarifaDelForm() {
+  const t = { ...st_t.t };
+  Object.entries(T_CAMPOS).forEach(([k, id]) => t[k] = Number($(id).value || 0));
+  t.redondeo = Number($('t-red').value); t.activo = $('t-activo').checked;
+  return t;
+}
+async function abrirTarifa() {
+  $('t-error').textContent = '';
+  const { data, error } = await sb.from('delivery_tarifa').select('*').eq('id', 1).maybeSingle();
+  if (error || !data) { $('t-info').innerHTML = `<span style="color:var(--mal)">${error && !/delivery_tarifa/.test(error.message) ? esc(errTxt(error)) : 'Falta correr el script <b>45_delivery_tarifa.sql</b> en Supabase.'}</span>`; return; }
+  st_t.t = data;
+  Object.entries(T_CAMPOS).forEach(([k, id]) => $(id).value = Number(data[k]));
+  $('t-red').value = String(Number(data.redondeo)); $('t-activo').checked = !!data.activo;
+  if (typeof L === 'undefined') return;
+  if (!st_t.mapa) {
+    st_t.mapa = L.map('t-mapa').setView(LIMA, 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(st_t.mapa);
+    st_t.mapa.on('click', e => st_t.modo === 'tienda' || st_t.t.origen_lat == null ? moverTienda(e.latlng) : probarDestino(e.latlng));
+  }
+  if (data.origen_lat == null) elegirModoT('tienda');
+  cargarCalibracion();
+  pintarTarifa(true);
+  setTimeout(() => st_t.mapa.invalidateSize(), 60);
+}
+function elegirModoT(m) { st_t.modo = m; [...$('t-modo').children].forEach(b => b.classList.toggle('activa', b.dataset.m === m)); pintarTarifa(); }
+function moverTienda(ll) { st_t.t.origen_lat = Math.round(ll.lat * 1e6) / 1e6; st_t.t.origen_lng = Math.round(ll.lng * 1e6) / 1e6; pintarTarifa(); }
+function probarDestino(ll) {
+  if (!st_t.destino) st_t.destino = L.marker(ll, { draggable: true, icon: L.divIcon({ className: '', html: '<div style="font-size:28px;line-height:28px;transform:translate(-4px,-24px)">🎯</div>' }) }).addTo(st_t.mapa).on('drag', pintarTarifa);
+  else st_t.destino.setLatLng(ll);
+  pintarTarifa();
+}
+function pintarTarifa(centrar) {
+  if (!st_t.t) return;
+  const t = { ...st_t.t, ...tarifaDelForm(), origen_lat: st_t.t.origen_lat, origen_lng: st_t.t.origen_lng };
+  if (st_t.mapa && t.origen_lat != null) {
+    const o = [t.origen_lat, t.origen_lng];
+    if (!st_t.tienda) st_t.tienda = L.marker(o, { draggable: true, icon: L.divIcon({ className: '', html: '<div style="font-size:30px;line-height:30px;transform:translate(-6px,-26px)">🏬</div>' }) }).addTo(st_t.mapa).on('dragend', e => moverTienda(e.target.getLatLng()));
+    else st_t.tienda.setLatLng(o);
+    if (!st_t.circulo) st_t.circulo = L.circle(o, { radius: 1, color: '#8B0000', weight: 1, fillOpacity: .04 }).addTo(st_t.mapa);
+    st_t.circulo.setLatLng(o).setRadius(t.max_km / (Number(t.factor_ruta) || 1) * 1000);
+    if (centrar) st_t.mapa.setView(o, 13);
+  }
+  let info = t.origen_lat == null ? '<b style="color:var(--mal)">1) Toca el mapa donde está la tienda.</b>'
+    : st_t.modo === 'tienda' ? 'Toca el mapa o arrastra 🏬 para ubicar la tienda. El círculo es la zona máxima.'
+    : 'Toca el mapa (o arrastra 🎯) para ver cuánto pagaría un cliente en ese punto.';
+  if (st_t.destino && t.origen_lat != null) {
+    const ll = st_t.destino.getLatLng(), c = calcTarifa(t, ll.lat, ll.lng);
+    info += c.ok ? ` <b>🎯 ≈ ${c.km} km → InDrive ${S(c.costo)} + margen ${S(c.margen)} + IGV ${S(c.igv)} = <span style="color:var(--rojo);font-size:15px">${S(c.precio)}</span></b>`
+      : ` <b style="color:var(--mal)">🎯 ≈ ${c.km} km: fuera de zona (se coordina por WhatsApp)</b>`;
+  }
+  $('t-info').innerHTML = info;
+  $('t-ejemplos').innerHTML = [1, 2, 3, 4, 5, 7, 10, 12, 15].map(km => { const c = calcPorKm(t, km); return c.ok
+    ? `<tr><td>${km} km</td><td class="n">${S(c.costo)}</td><td class="n">${S(c.margen)}</td><td class="n">${S(c.igv)}</td><td class="n"><b>${S(c.precio)}</b></td></tr>`
+    : `<tr><td>${km} km</td><td class="n" colspan="4" style="color:var(--gris)">fuera de zona</td></tr>`; }).join('');
+}
+async function cargarCalibracion() {
+  const desde = dias(-60);
+  const { data, error } = await sb.from('v_delivery_real').select('*').gte('fecha_entrega', desde).order('fecha_entrega', { ascending: false });
+  if (error) { $('t-cal-res').innerHTML = /v_delivery_real/.test(error.message) ? 'Para ver esta comparación corre <b>46_delivery_costo_real.sql</b>.' : esc(errTxt(error)); $('t-cal').innerHTML = ''; return; }
+  const l = data || [];
+  $('t-cal').innerHTML = l.length ? l.map(x => `<tr><td>${esc(x.codigo)}</td><td>${fechaCorta(x.fecha_entrega)}</td><td>${esc(x.distrito || '')}</td><td class="n">${x.km_est ?? '—'}</td><td class="n">${x.costo_est != null ? S(x.costo_est) : '—'}</td><td class="n"><b>${S(x.costo_real)}</b></td><td class="n">${x.cobrado != null ? S(x.cobrado) : '—'}</td>
+    <td class="n" style="color:${Number(x.ganancia_sin_igv) >= 0 ? 'var(--ok)' : 'var(--mal)'}">${x.ganancia_sin_igv != null ? S(x.ganancia_sin_igv) : '—'}</td></tr>`).join('')
+    : '<tr><td colspan="8" class="vacio">Aún no hay deliveries con costo real registrado.</td></tr>';
+  const c = l.filter(x => x.costo_est != null && Number(x.costo_est) > 0);
+  const sumR = c.reduce((a, x) => a + Number(x.costo_real), 0), sumE = c.reduce((a, x) => a + Number(x.costo_est), 0);
+  const gan = l.reduce((a, x) => a + Number(x.ganancia_sin_igv || 0), 0), perd = l.filter(x => Number(x.ganancia_sin_igv) < 0).length;
+  const ratio = sumE > 0 ? sumR / sumE : null;
+  $('t-cal-res').innerHTML = !l.length ? '' : `${l.length} deliveries · ganancia total sin IGV <b style="color:${gan >= 0 ? 'var(--ok)' : 'var(--mal)'}">${S(gan)}</b>${perd ? ` · <b style="color:var(--mal)">${perd} con pérdida</b>` : ''}`
+    + (ratio ? ` · el InDrive real salió <b>${Math.abs(Math.round((ratio - 1) * 100))}% ${ratio >= 1 ? 'más caro' : 'más barato'}</b> que lo estimado` : '');
+  const b = $('t-ajustar');
+  b.classList.toggle('oculto', !(ratio && c.length >= 5 && Math.abs(ratio - 1) >= 0.05));
+  if (ratio) {
+    b.textContent = `Ajustar base, S/ por km y mínimo × ${ratio.toFixed(2)} (según ${c.length} deliveries)`;
+    b.onclick = () => {
+      if (!confirm(`Se multiplicarán base, S/ por km y mínimo por ${ratio.toFixed(2)}. Revisa la tabla de precios y luego dale "Guardar tarifa". ¿Continuar?`)) return;
+      [['t-base', 0.5], ['t-porkm', 0.1], ['t-min', 0.5]].forEach(([id, paso]) => $(id).value = (Math.round(Number($(id).value) * ratio / paso) * paso).toFixed(2));
+      pintarTarifa(); toast('Valores ajustados: revisa y guarda');
+    };
+  }
+}
+$('t-modo').onclick = e => { const b = e.target.closest('[data-m]'); if (b) elegirModoT(b.dataset.m); };
+[...Object.values(T_CAMPOS), 't-red'].forEach(id => $(id).addEventListener('input', () => pintarTarifa()));
+$('t-guardar').onclick = async () => {
+  const t = tarifaDelForm(); $('t-error').textContent = '';
+  if (st_t.t.origen_lat == null) return $('t-error').textContent = 'Primero marca la tienda en el mapa.';
+  if (!(t.factor_ruta >= 1) || !(t.max_km > 0) || !(t.redondeo > 0)) return $('t-error').textContent = 'Revisa factor de ruta (≥ 1), distancia máxima y redondeo.';
+  const fila = { activo: t.activo, origen_lat: st_t.t.origen_lat, origen_lng: st_t.t.origen_lng, redondeo: t.redondeo, actualizado_por: st.usuario?.nombre || null, actualizado_en: new Date().toISOString() };
+  Object.keys(T_CAMPOS).forEach(k => fila[k] = t[k]);
+  $('t-guardar').disabled = true;
+  const { error } = await sb.from('delivery_tarifa').update(fila).eq('id', 1);
+  $('t-guardar').disabled = false;
+  if (error) return $('t-error').textContent = errTxt(error);
+  Object.assign(st_t.t, fila); toast('Tarifa de delivery guardada');
+};
+
+// costo de delivery automático en Nuevo pedido
+async function cotizarFormDelivery() {
+  const f = st.f; if (!f || f.tipo_entrega !== 'delivery') return;
+  const box = $('deliv-calc');
+  if (f.ubicacion_lat == null) { box.innerHTML = ''; return; }
+  const n = ++cotizarFormDelivery.n;
+  const { data, error } = await sb.rpc('cotizar_delivery', { p_lat: f.ubicacion_lat, p_lng: f.ubicacion_lng });
+  if (n !== cotizarFormDelivery.n || st.f !== f) return;
+  if (error || !data) { box.innerHTML = /cotizar_delivery/.test(error?.message || '') ? 'Para calcular el delivery solo, corre <b>45_delivery_tarifa.sql</b>.' : ''; return; }
+  if (!data.ok) { box.innerHTML = data.motivo === 'fuera_zona' ? `🛵 ≈ ${data.km} km: fuera de zona, cotízalo a mano.` : '🛵 Configura la tarifa en <b>🛵 Delivery</b> para calcularlo solo.'; return; }
+  const vacio = f.costo_delivery === '' || f.costo_delivery == null;
+  if (vacio || f.delivAuto) {
+    f.costo_delivery = data.precio; f.delivAuto = true;
+    const inp = document.querySelector('#s-nuevo [data-k="costo_delivery"]'); if (inp) inp.value = data.precio;
+    pintarResumen();
+  }
+  const distinto = Number(f.costo_delivery) !== Number(data.precio);
+  box.innerHTML = `🛵 ≈ ${data.km} km · InDrive ${S(data.costo)} + margen ${S(data.margen)} + IGV ${S(data.igv)} = <b>${S(data.precio)}</b>${distinto ? ` · <a href="#" id="deliv-usar">usar ${S(data.precio)}</a>` : f.delivAuto ? ' (calculado)' : ''}`;
+  if ($('deliv-usar')) $('deliv-usar').onclick = ev => { ev.preventDefault(); f.delivAuto = false; f.costo_delivery = ''; cotizarFormDelivery(); };
+}
+cotizarFormDelivery.n = 0;
 async function leerLink() {
   const v = $('ubi-link').value.trim(); if (!v) return;
   const c = leerCoordenadas(v);

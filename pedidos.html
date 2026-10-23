@@ -222,7 +222,9 @@
     <div class="section-title">Tu pedido</div>
     <div id="order-lines"></div>
     <div class="order-total"><span>Total productos</span><span>S/ <span id="order-total-amount">0.00</span></span></div>
-    <div class="order-nota" id="nota-delivery-total" style="display:none">+ delivery (se coordina por WhatsApp)</div>
+    <div class="order-total oculto" id="fila-delivery" style="font-size:15px;font-weight:500;padding-top:4px"><span id="lbl-delivery">Delivery</span><span>S/ <span id="delivery-monto">0.00</span></span></div>
+    <div class="order-total oculto" id="fila-total" style="border-top:1px solid var(--line);margin-top:6px"><span>Total a pagar</span><span>S/ <span id="total-pagar">0.00</span></span></div>
+    <div class="order-nota" id="nota-delivery-total" style="display:none">+ delivery: marca tu ubicación abajo y te mostramos el precio</div>
 
     <div class="sub-title">¿Cómo lo recibes?</div>
     <div class="delivery-opts">
@@ -260,11 +262,19 @@
             <button type="button" id="btn-pegar">Pegar</button>
           </div>
           <button type="button" class="como-link" id="btn-como">❓ ¿Cómo saco el link de Google Maps? (ver pasos con imágenes)</button>
+          <div class="o-sep">— o escribe la dirección —</div>
+          <label for="dir-buscar" style="font-size:13.5px;font-weight:600">Calle y número, urbanización o distrito</label>
+          <div class="link-row">
+            <input type="text" id="dir-buscar" placeholder="Ej. Jr. Los Pinos 245, San Juan de Lurigancho" autocomplete="street-address" enterkeyhint="search">
+            <button type="button" id="btn-dir-buscar">Buscar</button>
+          </div>
+          <button type="button" class="como-link" id="btn-manual">🗺️ No la encuentro: marcar en el mapa</button>
         </div>
-        <div class="ubic-ok oculto" id="ubic-ok">✓ <span id="ubic-txt">Ubicación guardada</span> <a id="ubic-link" target="_blank" rel="noopener">Ver en el mapa</a><button type="button" id="btn-quitar-ubic">Cambiar</button></div>
+        <div class="ubic-ok oculto" id="ubic-ok"><span id="ubic-txt">Ubicación guardada</span> <a id="ubic-link" target="_blank" rel="noopener">Ver en el mapa</a><button type="button" id="btn-quitar-ubic">Cambiar</button></div>
         <div class="ubic-mapa-w oculto" id="ubic-mapa-w">
           <div class="ubic-hint" id="ubic-hint">👉 Revisa el mapa: <b>arrastra el pin 📍</b> o <b>toca el mapa</b> para marcar la puerta exacta.</div>
           <div id="ubic-mapa"></div>
+          <button type="button" class="ins-ok" id="btn-conf-ubic" style="margin-top:10px">✓ Confirmar ubicación</button>
         </div>
         <div class="ubic-err" id="ubic-err"></div>
       </div>
@@ -288,7 +298,7 @@
           <input type="text" id="referencia" placeholder="Ej. Frente al parque, puerta verde">
         </div>
       </div>
-      <div class="aviso">🛵 El costo del delivery depende de la distancia. Te lo confirmamos por WhatsApp y se paga aparte.</div>
+      <div class="aviso" id="aviso-delivery">🛵 El costo del delivery depende de la distancia. Marca tu ubicación para verlo; si no se puede calcular, te lo confirmamos por WhatsApp.</div>
     </div>
 
     <div class="sub-title">Tus datos</div>
@@ -414,6 +424,10 @@
   let tipoEntrega = 'recojo';
   let ubicacion = null;         // { lat, lng }
   let ubicLink = '';            // link de Google Maps pegado por el cliente
+  let confirmada = false;       // el cliente confirmó el pin en el mapa (recién ahí se cotiza el delivery)
+  let manual = false;           // marcar a mano en el mapa (sin link ni dirección encontrada)
+  let avisoMapa = '';           // mensaje extra sobre el mapa (ej. dirección no encontrada)
+  let delivery = null;          // cotización: { ok, km, precio } (el servidor la vuelve a calcular al guardar)
 
   // ---------- Catálogo ----------
   async function cargarProductos() {
@@ -495,16 +509,46 @@
         <div class="stepper"><button data-menos="${i.id}">−</button><span>${i.qty}</span><button data-mas="${i.id}">+</button></div>
         <span>S/ ${soles(i.precio * i.qty)}</span>
       </div>`).join('');
-    $('order-total-amount').textContent = soles(total());
-    $('yape-monto').textContent = soles(total());
+    pintarTotales();
   }
+  // total a pagar = productos + delivery (si ya está cotizado)
+  const precioDelivery = () => tipoEntrega === 'delivery' && delivery && delivery.ok ? Number(delivery.precio) : 0;
+  function pintarTotales() {
+    const d = precioDelivery(), esDel = tipoEntrega === 'delivery';
+    $('order-total-amount').textContent = soles(total());
+    $('fila-delivery').classList.toggle('oculto', !d);
+    $('fila-total').classList.toggle('oculto', !d);
+    if (d) { $('delivery-monto').textContent = soles(d); $('lbl-delivery').textContent = `Delivery (≈ ${String(delivery.km).replace('.', ',')} km)`; $('total-pagar').textContent = soles(total() + d); }
+    $('nota-delivery-total').style.display = esDel && !d ? 'block' : 'none';
+    $('nota-delivery-total').textContent = !esDel ? '' : !ubicacion ? '+ delivery: marca tu ubicación abajo y te mostramos el precio'
+      : !confirmada ? '+ delivery: confirma tu ubicación en el mapa y te mostramos el precio'
+      : delivery && delivery.motivo === 'fuera_zona' ? '+ delivery: tu dirección está fuera de nuestra zona habitual; te confirmamos el costo por WhatsApp'
+      : '+ delivery (te confirmamos el costo por WhatsApp)';
+    $('yape-monto').textContent = soles(total() + d);
+    const av = $('aviso-delivery');
+    if (av) av.textContent = d ? `🛵 Delivery a tu ubicación: S/ ${soles(d)} (≈ ${String(delivery.km).replace('.', ',')} km). Ya está sumado al total que yapeas.`
+      : (ubicacion && !confirmada ? '🛵 Confirma tu ubicación en el mapa para ver el costo del delivery.' : '🛵 El costo del delivery depende de la distancia. Marca y confirma tu ubicación para verlo; si no se puede calcular, te lo confirmamos por WhatsApp.');
+  }
+  async function cotizarDelivery() {
+    delivery = null;
+    if (ubicacion && confirmada) {
+      const pedido = ++cotizarDelivery.n;
+      try {
+        const { data, error } = await sb.rpc('cotizar_delivery', { p_lat: ubicacion.lat, p_lng: ubicacion.lng });
+        if (pedido !== cotizarDelivery.n) return;          // llegó una cotización más nueva
+        if (!error && data) delivery = data;
+      } catch (e) {}
+    }
+    pintarTotales();
+  }
+  cotizarDelivery.n = 0;
 
   // ---------- Entrega ----------
   function elegirEntrega(tipo) {
     tipoEntrega = tipo;
     document.querySelectorAll('.delivery-opt').forEach(b => b.classList.toggle('selected', b.dataset.tipo === tipo));
     $('bloque-delivery').classList.toggle('oculto', tipo !== 'delivery');
-    $('nota-delivery-total').style.display = tipo === 'delivery' ? 'block' : 'none';
+    pintarTotales();
     $('lbl-fecha').textContent = tipo === 'delivery' ? 'Fecha de entrega' : 'Fecha de recojo';
     $('lbl-hora').textContent = tipo === 'delivery' ? 'Hora aproximada de entrega' : 'Hora de recojo';
   }
@@ -546,14 +590,25 @@
   const mapsUrl = (lat, lng) => `https://www.google.com/maps?q=${lat},${lng}`;
 
   function pintarUbicacion() {
-    const hay = !!(ubicacion || ubicLink);
+    const hay = !!(ubicacion || ubicLink || manual);
     $('ubic-ok').classList.toggle('oculto', !hay);
     $('ubic-elegir').classList.toggle('oculto', hay);
-    if (hay) {
-      $('ubic-link').href = ubicacion ? mapsUrl(ubicacion.lat, ubicacion.lng) : ubicLink;
-      $('ubic-txt').textContent = ubicacion ? 'Ubicación guardada' : 'Link de Google Maps recibido';
-    }
     mostrarMapa(hay);
+    pintarEstadoUbic();
+    cotizarDelivery();
+  }
+  function pintarEstadoUbic() {
+    const ok = $('ubic-ok');
+    ok.style.background = confirmada ? '' : '#fff8ea'; ok.style.borderColor = confirmada ? '' : '#e8cf9a'; ok.style.color = confirmada ? '' : '#6b4c15';
+    $('ubic-txt').textContent = confirmada ? '✓ Ubicación confirmada' : ubicacion ? 'Falta confirmar la ubicación' : 'Marca el punto en el mapa';
+    $('ubic-link').classList.toggle('oculto', !ubicacion);
+    if (ubicacion) $('ubic-link').href = mapsUrl(ubicacion.lat, ubicacion.lng);
+    $('btn-conf-ubic').classList.toggle('oculto', confirmada || !ubicacion);
+    const h = $('ubic-hint');
+    h.classList.toggle('alerta', !ubicacion);
+    h.innerHTML = confirmada ? '✓ Ubicación confirmada. Si necesitas corregirla, mueve el pin y vuelve a confirmar.'
+      : ubicacion ? `${avisoMapa ? avisoMapa + ' ' : ''}👉 ¿El pin 📍 está en la puerta correcta? Si no, <b>arrástralo</b> o <b>toca el mapa</b>. Luego toca <b>Confirmar ubicación</b>.`
+      : `⚠️ ${avisoMapa || 'No pudimos leer el punto.'} <b>Toca el mapa</b> donde es la entrega (usa + para acercar).`;
   }
 
   // ---------- Mapa para ajustar el punto (OpenStreetMap + Leaflet) ----------
@@ -563,30 +618,55 @@
     $('ubic-mapa-w').classList.toggle('oculto', !ver || !window.L);
     if (!ver || !window.L) return;
     const c = ubicacion || CENTRO_SJL, zoom = ubicacion ? 18 : 14;
-    $('ubic-hint').classList.toggle('alerta', !ubicacion);
-    $('ubic-hint').innerHTML = ubicacion
-      ? '👉 Revisa el mapa: <b>arrastra el pin 📍</b> o <b>toca el mapa</b> para marcar la puerta exacta.'
-      : '⚠️ No pudimos leer el punto de tu link. <b>Toca el mapa</b> o <b>arrastra el pin 📍</b> hasta tu dirección (usa + para acercar).';
     if (!mapa) {
       mapa = L.map('ubic-mapa', { scrollWheelZoom: false }).setView([c.lat, c.lng], zoom);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(mapa);
-      pinMapa = L.marker([c.lat, c.lng], { draggable: true, autoPan: true }).addTo(mapa);
+      pinMapa = L.marker([c.lat, c.lng], { draggable: true, autoPan: true });
+      if (ubicacion) pinMapa.addTo(mapa);
       pinMapa.on('dragend', () => moverPin(pinMapa.getLatLng()));
-      mapa.on('click', e => { pinMapa.setLatLng(e.latlng); moverPin(e.latlng); });
+      mapa.on('click', e => { pinMapa.setLatLng(e.latlng).addTo(mapa); moverPin(e.latlng); });
     } else {
       mapa.setView([c.lat, c.lng], zoom); pinMapa.setLatLng([c.lat, c.lng]);
+      if (ubicacion) pinMapa.addTo(mapa); else pinMapa.remove();
     }
     setTimeout(() => mapa.invalidateSize(), 60);
   }
   function moverPin(ll) {
     ubicacion = { lat: Number(ll.lat.toFixed(6)), lng: Number(ll.lng.toFixed(6)) };
     ubicLink = '';            // el punto final es el que marcó en el mapa
-    ajustado = true;
-    $('ubic-link').href = mapsUrl(ubicacion.lat, ubicacion.lng);
-    $('ubic-txt').textContent = 'Ubicación marcada en el mapa';
-    $('ubic-hint').classList.remove('alerta');
-    $('ubic-hint').innerHTML = '✓ Punto actualizado. Puedes seguir moviéndolo si hace falta.';
+    confirmada = false; avisoMapa = '';
+    pintarEstadoUbic();
+    cotizarDelivery();        // borra el precio anterior hasta que confirme
+  }
+  function confirmarUbic() {
+    if (!ubicacion) return;
+    confirmada = true;
+    pintarEstadoUbic();
     completarDireccion(ubicacion.lat, ubicacion.lng);   // solo llena dirección/distrito si están vacíos
+    cotizarDelivery();
+    $('aviso-delivery').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  // ---------- Dirección escrita → punto en el mapa (OpenStreetMap) ----------
+  async function buscarDireccion() {
+    const q = $('dir-buscar').value.trim();
+    $('ubic-err').textContent = '';
+    if (q.length < 4) { $('ubic-err').textContent = 'Escribe la calle y número (y el distrito).'; return; }
+    const b = $('btn-dir-buscar'); b.disabled = true; b.textContent = 'Buscando…';
+    let c = null;
+    try {
+      const qq = /lima/i.test(q) ? q : q + ', Lima';
+      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=pe&accept-language=es&viewbox=-77.25,-11.70,-76.75,-12.35&bounded=1&q=${encodeURIComponent(qq)}`);
+      const d = r.ok ? await r.json() : [];
+      if (d[0]) c = { lat: Number(Number(d[0].lat).toFixed(6)), lng: Number(Number(d[0].lon).toFixed(6)) };
+    } catch (e) {}
+    b.disabled = false; b.textContent = 'Buscar';
+    if (!$('direccion').value.trim()) $('direccion').value = q;
+    ubicLink = ''; confirmada = false;
+    if (c) { ubicacion = c; manual = false; avisoMapa = 'Ubicamos tu dirección de forma aproximada.'; }
+    else { ubicacion = null; manual = true; avisoMapa = 'No encontramos esa dirección exacta.'; }
+    pintarUbicacion();
+    $('ubic-mapa-w').scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   // ---------- Link de Google Maps pegado ----------
@@ -624,7 +704,8 @@
       $('ubic-err').textContent = '';
     }
     ubicLink = url || mapsUrl(c.lat, c.lng);
-    ubicacion = c;
+    ubicacion = c; confirmada = false; manual = !c;
+    avisoMapa = c ? '' : 'No pudimos leer el punto de tu link.';
     pintarUbicacion();
     if (c) await completarDireccion(c.lat, c.lng);
     $('ubic-mapa-w').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -649,7 +730,7 @@
     if (!navigator.geolocation) { $('ubic-err').textContent = 'Tu navegador no permite compartir ubicación. Pega el link de Google Maps.'; return; }
     const b = $('btn-ubicacion'); b.disabled = true; b.textContent = 'Buscando tu ubicación…';
     navigator.geolocation.getCurrentPosition(async pos => {
-      ubicacion = { lat: Number(pos.coords.latitude.toFixed(6)), lng: Number(pos.coords.longitude.toFixed(6)) }; ubicLink = '';
+      ubicacion = { lat: Number(pos.coords.latitude.toFixed(6)), lng: Number(pos.coords.longitude.toFixed(6)) }; ubicLink = ''; confirmada = false; manual = false; avisoMapa = 'Esta es tu ubicación actual.';
       b.disabled = false; b.textContent = '📍 Estoy en el lugar de entrega: usar mi ubicación';
       pintarUbicacion();
       await completarDireccion(ubicacion.lat, ubicacion.lng);
@@ -749,7 +830,10 @@
     };
     if (!datos.items.length) return err('Tu carrito está vacío.');
     if (!datos.fecha || !datos.hora) return err('Elige la fecha y la hora.');
-    if (tipoEntrega === 'delivery' && !ubicacion && !ubicLink) { $('bloque-delivery').scrollIntoView({ behavior: 'smooth', block: 'start' }); return err('Falta la ubicación de entrega: usa tu ubicación actual o pega el link de Google Maps.'); }
+    if (tipoEntrega === 'delivery' && !(confirmada || (!window.L && ubicLink))) {
+      $('bloque-delivery').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return err(ubicacion ? 'Confirma tu ubicación en el mapa (botón “Confirmar ubicación”).' : 'Falta la ubicación de entrega: usa tu ubicación actual, pega el link de Google Maps o escribe la dirección.');
+    }
     if (tipoEntrega === 'delivery' && datos.direccion.length < 5) return err('Escribe la dirección de entrega.');
     if (datos.nombre.length < 3) return err('Escribe tu nombre completo.');
     if (!/^9\d{8}$/.test(tel)) return err('El celular debe tener 9 dígitos y empezar con 9.');
@@ -763,6 +847,7 @@
       if (/ya no está disponible/.test(msg)) { await cargarProductos(); pintarCategorias(); pintarGrid(); pintarLineas(); actualizarBarra(); }
       return err(msg);
     }
+    datos.delivery = precioDelivery();
     mostrarConfirmacion(data, datos);
   }
 
@@ -775,28 +860,33 @@
       : `Recojo en tienda el ${fechaTxt}, ${horaTxt}.`;
 
     $('codigo-pedido').textContent = res.codigo;
-    $('resumen-entrega').textContent = entregaTxt + ` Total productos: S/ ${soles(res.total)}.`;
+    const dv = datos.tipo_entrega === 'delivery' ? datos.delivery : 0;
+    $('resumen-entrega').textContent = entregaTxt + (dv ? ` Productos S/ ${soles(res.total)} + delivery S/ ${soles(dv)} = S/ ${soles(Number(res.total) + dv)}.` : ` Total productos: S/ ${soles(res.total)}.`);
 
+    // Mensaje sin emojis: cada dato con viñeta "•"
     const lineas = [
-      `Hola Kadima 👋, acabo de hacer un pedido en la web.`,
+      `Hola Kadima, acabo de hacer un pedido en la web.`,
       ``,
-      `*Pedido:* ${res.codigo}`,
-      `*Nombre:* ${datos.nombre}`,
-      ...its.map(i => `• ${i.qty} x ${i.nombre} — S/ ${soles(i.precio * i.qty)}`),
-      `*Total productos:* S/ ${soles(res.total)}`,
-      `*Entrega:* ${entregaTxt}`,
+      `• *Pedido:* ${res.codigo}`,
+      `• *Nombre:* ${datos.nombre}`,
+      `• *Productos:*`,
+      ...its.map(i => `   - ${i.qty} x ${i.nombre} — S/ ${soles(i.precio * i.qty)}`),
+      `• *Total productos:* S/ ${soles(res.total)}`,
+      ...(dv ? [`• *Delivery:* S/ ${soles(dv)}`, `• *Total pagado:* S/ ${soles(Number(res.total) + dv)}`] : []),
+      `• *Entrega:* ${entregaTxt}`,
     ];
     if (datos.tipo_entrega === 'delivery') {
-      lineas.push(`*Dirección:* ${datos.direccion}${datos.distrito ? ', ' + datos.distrito : ''}`);
-      if (datos.referencia) lineas.push(`*Referencia:* ${datos.referencia}`);
-      if (datos.lat != null || ubicLink) lineas.push(`*Ubicación:* ${ubicLink || mapsUrl(datos.lat, datos.lng)}`);
-      lineas.push(`Quedo atento al costo del delivery.`);
+      lineas.push(`• *Dirección:* ${datos.direccion}${datos.distrito ? ', ' + datos.distrito : ''}`);
+      if (datos.referencia) lineas.push(`• *Referencia:* ${datos.referencia}`);
+      if (datos.lat != null || ubicLink) lineas.push(`• *Ubicación:* ${ubicLink || mapsUrl(datos.lat, datos.lng)}`);
     }
-    if (datos.notas) lineas.push(`*Indicaciones:* ${datos.notas}`);
-    lineas.push(`*Yape N° operación:* ${datos.yape_operacion}`, ``, `Adjunto la captura del Yape.`);
+    if (datos.notas) lineas.push(`• *Indicaciones:* ${datos.notas}`);
+    lineas.push(`• *Yape N° operación:* ${datos.yape_operacion}`, ``);
+    if (datos.tipo_entrega === 'delivery' && !dv) lineas.push(`Quedo atento al costo del delivery.`);
+    lineas.push(`Adjunto la captura del Yape.`);
     $('wa-link').href = `https://wa.me/${CONFIG.WHATSAPP_NUMBER}?text=${encodeURIComponent(lineas.join('\n'))}`;
 
-    cart = {}; guardar('carrito', {}); ubicacion = null; ubicLink = ''; $('maps-link').value = '';
+    cart = {}; guardar('carrito', {}); ubicacion = null; ubicLink = ''; delivery = null; confirmada = false; manual = false; $('maps-link').value = '';
     guardar('cliente', { nombre: datos.nombre, telefono: datos.telefono, distrito: datos.distrito, direccion: datos.direccion, referencia: datos.referencia });
     $('checkout').style.display = 'none';
     $('cart-bar').style.display = 'none';
@@ -815,7 +905,11 @@
   $('btn-ver-pedido').onclick = verPedido;
   $('btn-confirmar').onclick = confirmar;
   $('btn-ubicacion').onclick = usarUbicacion;
-  $('btn-quitar-ubic').onclick = () => { ubicacion = null; ubicLink = ''; leerLink.ultimo = ''; $('maps-link').value = ''; pintarUbicacion(); };
+  $('btn-quitar-ubic').onclick = () => { ubicacion = null; ubicLink = ''; confirmada = false; manual = false; avisoMapa = ''; leerLink.ultimo = ''; $('maps-link').value = ''; pintarUbicacion(); };
+  $('btn-conf-ubic').onclick = confirmarUbic;
+  $('btn-dir-buscar').onclick = buscarDireccion;
+  $('dir-buscar').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); buscarDireccion(); } });
+  $('btn-manual').onclick = () => { ubicacion = null; ubicLink = ''; confirmada = false; manual = true; avisoMapa = 'Busca tu calle moviendo el mapa.'; pintarUbicacion(); $('ubic-mapa-w').scrollIntoView({ behavior: 'smooth', block: 'center' }); };
   $('maps-link').addEventListener('change', leerLink);
   $('maps-link').addEventListener('paste', () => setTimeout(leerLink, 50));
   $('btn-pegar').onclick = async () => {
