@@ -243,10 +243,11 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
       <button data-s="mapa">🗺️ Mapa de clientes</button>
       <button data-s="adic">⚙️ Adicionales</button>
       <button data-s="deliv">🛵 Delivery</button>
+      <button data-s="fact">🧾 Factura mensual</button>
     </div>
     <span class="vivo" id="vivo">● conectando</span>
     <span class="usr" id="usr" title="Cambiar de usuario"></span>
-    <span style="font-size:11px;opacity:.7" title="Versión de la app">v23.10-f</span>
+    <span style="font-size:11px;opacity:.7" title="Versión de la app">v23.10-i</span>
   </div>
 
   <!-- ===== CENTRAL ===== -->
@@ -285,6 +286,10 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
             <div style="flex:2"><label>Nombre</label><input data-k="cliente_nombre" placeholder="Nombre del cliente"></div>
             <div><label>DNI / RUC (opcional)</label><input data-k="cliente_doc" inputmode="numeric"></div>
           </div>
+          <div class="fila">
+            <div><label>Facturación</label><select data-k="facturacion"><option value="normal">Normal (se cobra por pedido)</option><option value="mensual">🏫 Factura mensual al crédito</option></select></div>
+            <div id="f-cmen-w" class="oculto"><label>Cliente mensual</label><select id="f-cmen"></select></div>
+          </div>
         </div>
         <div class="bloque">
           <h3>🚚 Entrega</h3>
@@ -295,7 +300,11 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
           <div class="seg" id="seg-entrega" style="margin-bottom:10px"><button data-v="recojo" class="activa">🏬 Recojo en tienda</button><button data-v="delivery">🛵 Delivery</button></div>
           <div id="f-delivery" class="oculto">
             <div class="fila"><div style="flex:2"><label>Dirección</label><input data-k="direccion"></div><div><label>Distrito</label><input data-k="distrito"></div></div>
-            <div class="fila"><div style="flex:2"><label>Referencia</label><input data-k="referencia"></div><div><label>Costo delivery S/</label><input data-k="costo_delivery" type="number" min="0" step="0.5"></div></div>
+            <div class="fila"><div style="flex:2"><label>Referencia</label><input data-k="referencia"></div></div>
+            <div class="fila">
+              <div style="flex:2"><label>Cobro del delivery</label><select data-k="delivery_modo"><option value="al_despachar">Al despachar: costo real del InDrive + IGV</option><option value="fijo">Monto fijo (se cobra desde ya)</option><option value="cliente">🚕 El cliente manda su propio InDrive (no se cobra)</option></select></div>
+              <div id="f-costo-w"><label>Costo delivery S/</label><input data-k="costo_delivery" type="number" min="0" step="0.5"></div>
+            </div>
             <label>📍 Ubicación: pega el link de Google Maps o la ubicación de WhatsApp, o marca el punto en el mapa</label>
             <div class="fila" style="margin-bottom:0">
               <div style="flex:3"><input id="ubi-link" placeholder="https://maps.app.goo.gl/…  ó  -12.0123, -76.9876"></div>
@@ -374,10 +383,14 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
     <div class="adic">
       <div class="bloque">
         <h3>🛵 Tarifa automática de delivery</h3>
-        <p class="ayuda" style="margin:0 0 10px">Se calcula por distancia desde la tienda: <b>costo estimado del InDrive</b> (base + km adicionales) <b>+ margen por tráfico</b> <b>+ IGV</b>, redondeado hacia arriba. La web lo muestra y el cliente lo paga en el mismo Yape. En Nuevo pedido se llena solo (lo puedes cambiar).</p>
+        <p class="ayuda" style="margin:0 0 10px">Precio = <b>InDrive estimado</b> (base + km adicionales) <b>+ recargo hora punta</b> <b>+ margen</b> <b>+ IGV</b>, redondeado hacia arriba. Solo se cobra dentro de las <b>zonas de cobertura</b>. La web lo muestra y el cliente lo paga en el mismo Yape; en Nuevo pedido se llena solo.</p>
         <div class="chips" id="t-modo" style="margin-bottom:6px"><button data-m="tienda">🏬 Mover la tienda</button><button data-m="probar" class="activa">🎯 Probar un destino</button></div>
-        <div id="t-mapa" class="mapa-form" style="height:340px"></div>
-        <div class="ayuda" id="t-info" style="margin:4px 0 12px"></div>
+        <div id="t-mapa" class="mapa-form" style="height:380px"></div>
+        <div class="fila" style="margin:6px 0 0;align-items:end">
+          <div style="max-width:170px"><label>Probar: día de entrega</label><select id="t-pdia"><option value="1">Lunes</option><option value="2">Martes</option><option value="3">Miércoles</option><option value="4">Jueves</option><option value="5">Viernes</option><option value="6">Sábado</option><option value="7">Domingo</option></select></div>
+          <div style="max-width:130px"><label>Hora</label><input id="t-phora" type="time" value="12:00"></div>
+          <div class="ayuda" id="t-info" style="flex:4;margin:0 0 8px"></div>
+        </div>
         <div class="fila">
           <div><label>Base InDrive S/</label><input id="t-base" type="number" min="0" step="0.5"></div>
           <div><label>Km incluidos en la base</label><input id="t-kminc" type="number" min="0" step="0.5"></div>
@@ -385,16 +398,42 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
           <div><label>Mínimo S/ (sin IGV)</label><input id="t-min" type="number" min="0" step="0.5"></div>
         </div>
         <div class="fila">
-          <div><label>Margen por tráfico %</label><input id="t-margen" type="number" min="0" step="1"></div>
+          <div><label>Margen %</label><input id="t-margen" type="number" min="0" step="1"></div>
           <div><label>IGV %</label><input id="t-igv" type="number" min="0" step="1"></div>
           <div><label>Redondear a S/</label><select id="t-red"><option value="0.1">0.10</option><option value="0.5">0.50</option><option value="1">1.00</option></select></div>
-          <div><label>Distancia máxima km</label><input id="t-max" type="number" min="1" step="1"></div>
+          <div><label title="Solo se usa si no hay zonas de cobertura">Distancia máx. km (sin zonas)</label><input id="t-max" type="number" min="1" step="1"></div>
           <div><label title="Las calles no van en línea recta: 1.35 = 35% más que la distancia en línea recta">Factor de ruta</label><input id="t-factor" type="number" min="1" step="0.05"></div>
         </div>
         <label style="display:flex;gap:8px;align-items:center;margin:4px 0 10px"><input type="checkbox" id="t-activo" style="width:auto"> Cobrar el delivery automáticamente en la web</label>
-        <table class="t" style="margin-bottom:10px"><thead><tr><th>Distancia</th><th class="n">InDrive est.</th><th class="n">+ Margen</th><th class="n">+ IGV</th><th class="n">Precio al cliente</th></tr></thead><tbody id="t-ejemplos"></tbody></table>
+
+        <h3 style="margin-top:14px">⏰ Horas punta</h3>
+        <p class="ayuda" style="margin:0 0 8px">Recargo sobre el costo del InDrive según el <b>día y hora de entrega</b> del pedido.</p>
+        <div id="t-horas"></div>
+        <button class="btn-sec" id="t-hora-add" style="margin:6px 0 12px">+ Agregar horario</button>
+
+        <table class="t" style="margin-bottom:10px"><thead><tr><th>Distancia</th><th class="n">InDrive est.</th><th class="n">+ Margen</th><th class="n">+ IGV</th><th class="n">Precio normal</th><th class="n">En hora punta</th></tr></thead><tbody id="t-ejemplos"></tbody></table>
         <div class="acciones-form"><button class="btn" id="t-guardar">💾 Guardar tarifa</button></div>
         <div class="error" id="t-error"></div>
+      </div>
+
+      <div class="bloque">
+        <h3>🗺️ Zonas de cobertura (por distrito)</h3>
+        <p class="ayuda" style="margin:0 0 10px">Agrega cada distrito donde haces delivery. <b>Todo el distrito</b> (ej. SJL, con Mangomarca incluido) o <b>solo hasta X km</b> de la tienda (ej. Santa Anita, El Agustino). Fuera de las zonas, la web dice que se coordina por WhatsApp. Se guardan al instante.</p>
+        <div class="fila" style="align-items:end">
+          <div style="flex:2"><label>Distrito</label><input id="z-buscar" placeholder="Ej. San Juan de Lurigancho, Santa Anita, El Agustino…" list="z-lista"><datalist id="z-lista"><option value="San Juan de Lurigancho"><option value="El Agustino"><option value="Santa Anita"><option value="Ate"><option value="Lurigancho"><option value="San Luis"><option value="La Victoria"><option value="Cercado de Lima"><option value="Rímac"><option value="Independencia"><option value="Comas"><option value="Los Olivos"><option value="San Martín de Porres"></datalist></div>
+          <div style="flex:0 0 auto"><button class="btn-sec" id="z-btn-buscar">🔍 Buscar</button></div>
+        </div>
+        <div id="z-nueva" class="oculto" style="background:var(--fondo);border-radius:10px;padding:10px;margin-bottom:10px">
+          <div id="z-opciones" style="margin-bottom:8px"></div>
+          <div class="fila" style="align-items:end;margin:0">
+            <div><label>Nombre de la zona</label><input id="z-nombre"></div>
+            <div><label>Cobertura</label><select id="z-tipo"><option value="todo">Todo el distrito</option><option value="km">Solo hasta X km de la tienda</option></select></div>
+            <div style="max-width:120px" id="z-km-w" class="oculto"><label>Km máx.</label><input id="z-km" type="number" min="0.5" step="0.5" value="5"></div>
+            <div style="flex:0 0 auto"><button class="btn" id="z-agregar">+ Agregar zona</button></div>
+          </div>
+        </div>
+        <div class="error" id="z-error"></div>
+        <table class="t"><thead><tr><th>Zona</th><th>Cobertura</th><th>Activa</th><th></th></tr></thead><tbody id="z-tabla"></tbody></table>
       </div>
       <div class="bloque">
         <h3>📊 Real vs. tarifa (últimos 60 días)</h3>
@@ -402,6 +441,45 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
         <div id="t-cal-res" class="ayuda" style="margin-bottom:8px"></div>
         <div style="overflow-x:auto"><table class="t"><thead><tr><th>Pedido</th><th>Fecha</th><th>Distrito</th><th class="n">Km</th><th class="n">Estimado</th><th class="n">Real InDrive</th><th class="n">Cobrado</th><th class="n">Ganancia s/IGV</th></tr></thead><tbody id="t-cal"></tbody></table></div>
         <div class="acciones-form"><button class="btn-sec oculto" id="t-ajustar"></button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== FACTURA MENSUAL (colegios / empresas al crédito) ===== -->
+  <div id="s-fact" class="oculto">
+    <div class="adic">
+      <div class="bloque">
+        <h3>🏫 Factura mensual al crédito</h3>
+        <p class="ayuda" style="margin:0 0 10px">Una factura con <b>las tortas pedidas para el mes</b> + <b>los deliveries despachados el mes anterior</b> (costo real del InDrive + IGV). Los pedidos se registran en Nuevo pedido con Facturación = <i>Factura mensual al crédito</i>.</p>
+        <div class="fila" style="align-items:end">
+          <div style="flex:2"><label>Cliente</label><select id="fm-cli"></select></div>
+          <div style="max-width:190px"><label>Mes de las tortas</label><input id="fm-mes" type="month"></div>
+          <div style="flex:0 0 auto"><button class="btn-sec" id="fm-cargar">Cargar</button></div>
+        </div>
+        <div id="fm-cuerpo"></div>
+        <div class="error" id="fm-error"></div>
+        <div id="fm-listo"></div>
+      </div>
+      <div class="bloque">
+        <h3>📄 Facturas mensuales emitidas</h3>
+        <table class="t"><thead><tr><th>Factura</th><th>Fecha</th><th>Cliente</th><th class="n">Total</th><th>SUNAT</th><th></th></tr></thead><tbody id="fm-hist"></tbody></table>
+      </div>
+      <div class="bloque">
+        <h3>👥 Clientes con factura mensual</h3>
+        <div class="fila" style="align-items:end">
+          <div><label>RUC</label><input id="cm-ruc" inputmode="numeric" maxlength="11"></div>
+          <div style="flex:2"><label>Razón social</label><input id="cm-razon"></div>
+          <div><label>Nombre corto</label><input id="cm-corto" placeholder="Ej. Colegio Bertold Brecht"></div>
+        </div>
+        <div class="fila" style="align-items:end">
+          <div style="max-width:130px"><label>Días de crédito</label><input id="cm-dias" type="number" min="1" max="180" value="35"></div>
+          <div><label>Celular contacto</label><input id="cm-tel" inputmode="tel"></div>
+          <div style="flex:2"><label>Dirección de entrega habitual</label><input id="cm-dir"></div>
+          <label style="display:flex;gap:6px;align-items:center;flex:0 0 auto"><input type="checkbox" id="cm-ret" style="width:auto"> Agente de retención</label>
+          <div style="flex:0 0 auto"><button class="btn" id="cm-guardar">+ Agregar</button></div>
+        </div>
+        <div class="error" id="cm-error"></div>
+        <table class="t"><thead><tr><th>Cliente</th><th>RUC</th><th class="n">Crédito</th><th>Retención</th><th>Activo</th></tr></thead><tbody id="cm-tabla"></tbody></table>
       </div>
     </div>
   </div>
@@ -456,8 +534,12 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
     <div id="p-form" style="margin-top:12px">
       <label>Comprobante</label>
       <div class="seg" id="p-docs" style="margin-bottom:10px"><button data-d="nota_venta">Nota de venta</button><button data-d="boleta" class="activa">Boleta</button><button data-d="factura">Factura</button></div>
+      <label>Detalle en el comprobante</label>
+      <div class="seg" id="p-det" style="margin-bottom:10px"><button data-x="resumen" class="activa">Resumido: PEDIDO N°</button><button data-x="detalle">Con detalle de productos</button></div>
       <label>Cobro</label>
       <div class="seg" id="p-tipos" style="margin-bottom:10px"><button data-t="adelanto" class="activa">Adelanto</button><button data-t="saldo">Saldo</button><button data-t="total">Pago total</button></div>
+      <label id="p-reg-w" class="oculto" style="display:flex;gap:8px;align-items:flex-start;background:#eef6ff;border:1px solid #bfd8f7;border-radius:10px;padding:8px 10px;margin:-2px 0 10px;font-weight:400">
+        <input type="checkbox" id="p-reg" style="width:auto;margin-top:3px"><span><b>Comprobante por el TOTAL del pedido</b> (el cliente lo pidió así): incluye todos los productos y el delivery, y descuenta el adelanto <span id="p-reg-docs"></span>. Se cobra solo el saldo.</span></label>
       <div class="fila">
         <div><label id="p-monto-l">Pedido S/</label><input id="p-monto" type="number" min="0" step="0.5"></div>
         <div id="p-deliv-w"><label>Delivery S/</label><input id="p-deliv" type="number" min="0" step="0.5"></div>
@@ -599,6 +681,8 @@ async function cargarEmision() {
     sb.from('canales').select('id,nombre'),
     sb.from('productos').select('id,codigo,nombre').in('codigo', ['SV-900', 'SV-901']),
   ]);
+  const [tf, cm] = await Promise.all([sb.from('delivery_tarifa').select('igv_pct,redondeo').eq('id', 1).maybeSingle(), sb.from('clientes_mensuales').select('*').order('razon_social')]);
+  st.tarifaD = tf.data || null; st.cmen = cm.error ? [] : (cm.data || []);
   st.emi = { disp: d.data || null, caja: c.data || null, canales: k.data || [],
     sv900: (pr.data || []).find(x => x.codigo === 'SV-900')?.id || null, sv901: (pr.data || []).find(x => x.codigo === 'SV-901')?.id || null };
 }
@@ -657,12 +741,13 @@ function irSeccion(s) {
   ocultarAviso();
   st.seccion = s;
   document.querySelectorAll('#secc [data-s]').forEach(b => b.classList.toggle('activa', b.dataset.s === s));
-  ['central', 'nuevo', 'hist', 'mapa', 'adic', 'deliv'].forEach(x => $('s-' + x).classList.toggle('oculto', x !== s));
+  ['central', 'nuevo', 'hist', 'mapa', 'adic', 'deliv', 'fact'].forEach(x => $('s-' + x).classList.toggle('oculto', x !== s));
   if (s === 'mapa') abrirMapa();
   if (s === 'central') cargarCentral();
   if (s === 'hist') cargarHist();
   if (s === 'adic') pintarAdicionales();
   if (s === 'deliv') abrirTarifa();
+  if (s === 'fact') abrirFactMensual();
   if (s === 'nuevo' && !st.f) nuevoForm();
   window.scrollTo(0, 0);
 }
@@ -739,7 +824,8 @@ function normWeb(p) {
     referencia: p.referencia, lat: p.ubicacion_lat, lng: p.ubicacion_lng, notas: p.notas, creado_en: p.creado_en,
     items: (p.pedidos_web_items || []).map(i => ({ desc: i.nombre, cant: i.cantidad, pers: '', fotos: [] })),
     total: Number(p.total_productos || 0), delivery: p.costo_delivery, pagado: p.pago_validado ? Number(p.total_productos || 0) + (p.delivery_incluido ? Number(p.costo_delivery || 0) : 0) : 0,
-    yape_op: p.yape_operacion, pago_validado: p.pago_validado, delivIncl: !!p.delivery_incluido, real: p.delivery_costo_real, raw: p,
+    yape_op: p.yape_operacion, pago_validado: p.pago_validado, delivIncl: !!p.delivery_incluido, real: p.delivery_costo_real,
+    modo: p.delivery_modo || (p.delivery_incluido ? 'fijo' : 'al_despachar'), raw: p,
   };
 }
 function normEnc(p) {
@@ -754,7 +840,8 @@ function normEnc(p) {
     key: 'e' + p.id, origen: 'enc', canal: p.canal, id: p.id, codigo: p.codigo, estado: p.estado, fecha: p.fecha_entrega, hora: p.hora_entrega,
     tipo_entrega: p.tipo_entrega, cliente: p.cliente_nombre, tel: p.cliente_telefono, direccion: p.direccion, distrito: p.distrito,
     referencia: p.referencia, lat: p.ubicacion_lat, lng: p.ubicacion_lng, notas: p.notas, creado_en: p.creado_en, items,
-    total: Number(p.total_productos || 0), delivery: p.costo_delivery, pagado, pagos: p.pedidos_encargo_pagos || [], comps, real: p.delivery_costo_real, raw: p,
+    total: Number(p.total_productos || 0), delivery: p.costo_delivery, pagado, pagos: p.pedidos_encargo_pagos || [], comps, real: p.delivery_costo_real,
+    modo: p.delivery_modo || 'fijo', mensual: p.facturacion === 'mensual', factDoc: p.factura_doc, delivFactDoc: p.delivery_factura_doc, raw: p,
   };
 }
 
@@ -788,17 +875,17 @@ function tarjeta(p, hoy, ahoraMin, nuevo) {
     ${p.tipo_entrega === 'delivery' ? `<div class="dir">📍 ${esc(p.direccion || 'sin dirección')}${p.distrito ? ', ' + esc(p.distrito) : ''}${p.referencia ? `<br><small>${esc(p.referencia)}</small>` : ''}${p.lat != null ? `<br><a class="maps" href="https://www.google.com/maps?q=${p.lat},${p.lng}" target="_blank" rel="noopener">🗺️ Abrir en Google Maps</a>` : ''}</div>` : ''}
     <ul class="its">${items}</ul>
     ${p.notas ? `<div class="nota">📝 ${esc(p.notas)}</div>` : ''}
-    <div class="dinero">
-      <div>Total<b>${S(totDel)}</b></div>
+    ${p.mensual ? `<div class="dinero"><div>Total<b>${S(totDel)}</b></div><div style="flex:2">🏫 Factura mensual<b style="font-size:13px">${p.factDoc ? esc(p.factDoc) : 'por facturar'}</b></div></div>` : `<div class="dinero">
+      <div>Total<b>${S(totDel)}${p.tipo_entrega === 'delivery' && p.modo === 'al_despachar' && p.delivery == null ? '<small style="font-weight:400"> + deliv.</small>' : ''}</b></div>
       <div class="pagado">Pagado<b>${S(p.pagado)}</b></div>
       <div class="${saldo > 0 ? 'debe' : ''}">Saldo<b>${S(saldo)}</b></div>
-    </div>
+    </div>`}
     <div class="pie">${p.origen === 'web' ? `Yape op. ${esc(p.yape_op || '—')}${p.pago_validado ? ' ✓' : ''}` : ([...p.comps.map(x => `🧾 ${x.comprobante} ${S(x.total)}`), ...p.pagos.map(x => `${x.tipo} ${x.metodo} ${S(x.monto)}`)].join(' · ') || 'Sin pagos registrados')}${p.delivery != null ? ` · delivery ${S(p.delivery)}` : ''}</div>
-    ${p.origen === 'web' && p.tipo_entrega === 'delivery' ? (p.delivIncl ? `<div class="envio">Delivery cobrado <b>${S(p.delivery)}</b> (incluido en el Yape)</div>` : `<div class="envio">Delivery a cobrar S/ <input type="number" min="0" step="0.5" data-envio="${p.id}" value="${p.delivery ?? ''}" placeholder="—"></div>`) : ''}
+    ${p.origen === 'web' && p.tipo_entrega === 'delivery' ? (p.delivIncl ? `<div class="envio">Delivery cobrado <b>${S(p.delivery)}</b> (incluido en el Yape)</div>` : p.modo === 'fijo' ? `<div class="envio">Delivery a cobrar S/ <input type="number" min="0" step="0.5" data-envio="${p.id}" value="${p.delivery ?? ''}" placeholder="—"></div>` : '') : ''}
     ${p.tipo_entrega === 'delivery' && ['en_produccion', 'listo', 'entregado'].includes(p.estado) ? filaReal(p) : ''}
     <div class="acc">
       ${ANTERIOR[p.estado] && !(p.origen === 'enc' && p.estado === 'confirmado') ? `<button class="b-sec" data-atras="${p.key}" title="Regresar un paso">↩</button>` : ''}
-      ${p.origen === 'enc' ? `<button class="b-sec" data-editar="${p.id}" title="Editar pedido">✏️</button><button class="b-sec" data-pago="${p.id}" title="Cobrar / comprobantes">💵</button><button class="b-sec" data-wa="${p.key}" title="Enviar resumen por WhatsApp">💬</button>` : ''}
+      ${p.origen === 'enc' ? `<button class="b-sec" data-editar="${p.id}" title="Editar pedido">✏️</button><button class="b-sec" data-pago="${p.id}" title="Cobrar / comprobantes">💵</button><button class="b-sec" data-wa="${p.key}" title="Enviar resumen por WhatsApp">💬</button><button class="b-sec" data-prof="${p.id}" title="Enviar proforma en PDF">📄</button>` : ''}
       ${p.estado === 'por_validar' || (p.origen === 'enc' && p.estado === 'confirmado') ? `<button class="b-sec" data-anular="${p.key}" title="Anular pedido">✕</button>` : ''}
       ${sig ? `<button class="${p.estado === 'por_validar' ? 'b-yape' : 'b-sig'}" data-sig="${p.key}">${txtSig}</button>` : ''}
     </div>
@@ -807,17 +894,34 @@ function tarjeta(p, hoy, ahoraMin, nuevo) {
 
 // costo REAL pagado al InDrive (se registra al despachar)
 function filaReal(p) {
+  const selModo = !p.delivIncl ? `<select data-dmodo="${p.key}" style="width:auto;padding:4px 6px;font-size:12px" title="Cómo se cobra el delivery">
+      <option value="al_despachar" ${p.modo === 'al_despachar' ? 'selected' : ''}>Cobro: real + IGV</option><option value="fijo" ${p.modo === 'fijo' ? 'selected' : ''}>Cobro: monto fijo</option><option value="cliente" ${p.modo === 'cliente' ? 'selected' : ''}>🚕 InDrive del cliente</option></select>` : '';
+  if (p.modo === 'cliente') return `<div class="envio">${selModo}<span>no se cobra delivery</span></div>`;
   const r = p.real == null ? null : Number(p.real), cob = p.delivery == null ? null : Number(p.delivery);
-  const gan = r != null && cob != null ? r2(cob / 1.18 - r) : null;
-  return `<div class="envio">🛵 InDrive real S/ <input type="number" min="0" step="0.1" data-real="${p.key}" value="${r ?? ''}" placeholder="al despachar">
-    ${gan != null ? `<span style="color:${gan >= 0 ? 'var(--ok)' : 'var(--mal)'};font-weight:700" title="Cobrado sin IGV menos lo pagado al InDrive">${gan >= 0 ? '+' : '−'}${S(Math.abs(gan))}</span>` : ''}</div>`;
+  const gan = r != null && cob != null ? r2(cob / (1 + igvPct() / 100) - r) : null;
+  return `<div class="envio" style="flex-wrap:wrap">${selModo}🛵 InDrive real S/ <input type="number" min="0" step="0.1" data-real="${p.key}" value="${r ?? ''}" placeholder="al despachar">
+    ${p.modo === 'al_despachar' && cob != null ? `<span>→ cobro ${S(cob)}${p.delivFactDoc ? ' · ' + esc(p.delivFactDoc) : ''}</span>` : ''}
+    ${gan != null && p.modo !== 'al_despachar' ? `<span style="color:${gan >= 0 ? 'var(--ok)' : 'var(--mal)'};font-weight:700" title="Cobrado sin IGV menos lo pagado al InDrive">${gan >= 0 ? '+' : '−'}${S(Math.abs(gan))}</span>` : ''}</div>`;
+}
+// delivery "al despachar": InDrive real + IGV (redondeado como la tarifa; exacto para factura mensual)
+const igvPct = () => Number(st.tarifaD?.igv_pct ?? 18);
+function cobroDespacho(real, mensual) {
+  const c = real * (1 + igvPct() / 100);
+  if (mensual) return r2(c);
+  const red = Number(st.tarifaD?.redondeo || 0.5);
+  return r2(Math.ceil(Math.round(c / red * 1e6) / 1e6) * red);
 }
 async function guardarReal(p, v) {
   const tabla = p.origen === 'web' ? 'pedidos_web' : 'pedidos_encargo';
   const cambios = { delivery_costo_real: v, delivery_despachado_en: v == null ? null : new Date().toISOString(), delivery_despachado_por: v == null ? null : (st.usuario?.nombre || null) };
+  const cobra = p.modo === 'al_despachar' && !p.delivIncl;
+  if (cobra) {
+    if (p.delivFactDoc) { alert(`El delivery ya está en la factura ${p.delivFactDoc}; no se puede cambiar.`); return false; }
+    cambios.costo_delivery = v == null ? null : cobroDespacho(v, p.mensual);
+  }
   const { error } = await sb.from(tabla).update(cambios).eq('id', p.id);
   if (error) { alert(/delivery_costo_real/.test(error.message) ? 'Falta correr el script 46_delivery_costo_real.sql en Supabase.' : errTxt(error)); return false; }
-  p.real = v; return true;
+  p.real = v; if (cobra) p.delivery = cambios.costo_delivery; return true;
 }
 async function cambiarEstado(p, estado, extra = {}) {
   const tabla = p.origen === 'web' ? 'pedidos_web' : 'pedidos_encargo';
@@ -839,6 +943,7 @@ $('f-origen').onchange = e => { st.origen = e.target.value; cargarCentral(); };
 $('f-tipo').onchange = e => { st.tipo = e.target.value; cargarCentral(); };
 $('tablero').addEventListener('click', async e => {
   const pk = k => st.pedidos.find(x => x.key === k);
+  const pf = e.target.closest('[data-prof]'); if (pf) return enviarProforma(Number(pf.dataset.prof), pf);
   const s = e.target.closest('[data-sig]');
   if (s) {
     const p = pk(s.dataset.sig);
@@ -849,15 +954,17 @@ $('tablero').addEventListener('click', async e => {
     }
     if (p.estado === 'listo') {
       const saldo = Math.max(p.total + Number(p.delivery || 0) - p.pagado, 0);
-      if (p.origen === 'enc' && saldo > 0 && !confirm(`Este pedido tiene saldo pendiente de ${S(saldo)}. ¿Marcarlo como entregado igual?`)) return;
-      if (p.tipo_entrega === 'delivery' && p.delivery == null && !confirm('No se registró el costo del delivery que se cobra al cliente. ¿Marcar como entregado igual?')) return;
-      if (p.tipo_entrega === 'delivery' && p.real == null) {
+      const noCobra = p.modo === 'cliente', alDesp = p.modo === 'al_despachar' && !p.delivIncl;
+      if (p.tipo_entrega === 'delivery' && !noCobra && p.real == null) {
         const r = prompt(`¿Cuánto se pagó al InDrive por ${p.codigo}? (S/)\nDéjalo vacío si aún no lo sabes.`, '');
         if (r === null) return;
         const v = r.trim() === '' ? null : Number(r.replace(',', '.'));
         if (v != null && !(v >= 0)) return alert('Monto no válido.');
         if (v != null && !(await guardarReal(p, r2(v)))) return;
       }
+      const saldo2 = Math.max(p.total + Number(p.delivery || 0) - p.pagado, 0);
+      if (!p.mensual && saldo2 > 0 && !confirm(`Este pedido tiene saldo pendiente de ${S(saldo2)}${alDesp && p.delivery != null ? ` (incluye delivery ${S(p.delivery)})` : ''}. ¿Marcarlo como entregado igual?`)) return;
+      if (p.tipo_entrega === 'delivery' && !noCobra && !alDesp && p.delivery == null && !confirm('No se registró el costo del delivery que se cobra al cliente. ¿Marcar como entregado igual?')) return;
     }
     return cambiarEstado(p, SIGUIENTE[p.estado]);
   }
@@ -875,6 +982,17 @@ $('tablero').addEventListener('click', async e => {
   }
 });
 $('tablero').addEventListener('change', async e => {
+  const dm = e.target.closest('[data-dmodo]');
+  if (dm) {
+    const p = st.pedidos.find(x => x.key === dm.dataset.dmodo); if (!p) return;
+    const cambios = { delivery_modo: dm.value };
+    if (dm.value === 'cliente') cambios.costo_delivery = null;
+    if (dm.value === 'al_despachar') cambios.costo_delivery = p.real != null ? cobroDespacho(Number(p.real), p.mensual) : null;
+    const { error } = await sb.from(p.origen === 'web' ? 'pedidos_web' : 'pedidos_encargo').update(cambios).eq('id', p.id);
+    if (error) { alert(/delivery_modo/.test(error.message) ? `Falta correr ${p.origen === 'web' ? '49_anticipo_web_delivery.sql' : '48_delivery_despacho_mensual.sql'} en Supabase.` : errTxt(error)); return dibujarCentral(); }
+    p.modo = dm.value; if ('costo_delivery' in cambios) p.delivery = cambios.costo_delivery;
+    return dibujarCentral();
+  }
   const ir = e.target.closest('[data-real]');
   if (ir) {
     const p = st.pedidos.find(x => x.key === ir.dataset.real); if (!p) return;
@@ -901,7 +1019,8 @@ async function abrirPago(id, opts = {}) {
   if (pd.error) return alert(errTxt(pd.error));
   const ped = pd.data;
   const v = await sb.from('ventas').select('id,tipo_doc,serie,numero,total,estado,estado_sunat,pdf_url,emitida_en,tipo_cobro,venta_items(descripcion,importe)').eq('pedido_externo', ped.codigo).order('emitida_en');
-  st.cobro = { ped, ventas: v.data || [], manual: man.data || [], doc: 'boleta', tipo: 'adelanto', listos: {},
+  $('p-reg').checked = false;
+  st.cobro = { ped, ventas: v.data || [], manual: man.data || [], doc: 'boleta', tipo: 'adelanto', listos: {}, det: 'resumen', reg: false,
     confirmar: !!opts.confirmar && ped.estado === 'cotizado', confirmado: false, post: opts.post || null };
   $('p-aviso-conf').classList.toggle('oculto', !st.cobro.confirmar);
   $('p-cod').textContent = ped.codigo;
@@ -911,6 +1030,7 @@ async function abrirPago(id, opts = {}) {
   const k = cuentasCobro();
   elegirTipo(k.pagado > 0 && !st.cobro.confirmar ? 'saldo' : 'adelanto');
   elegirDoc((ped.cliente_doc || '').length === 11 ? 'factura' : 'boleta');
+  [...$('p-det').children].forEach(b => b.classList.toggle('activa', b.dataset.x === 'resumen'));
   $('m-pago').classList.remove('oculto');
 }
 function cuentasCobro() {
@@ -948,17 +1068,65 @@ function elegirTipo(t) {
   $('p-monto-l').textContent = t === 'adelanto' ? 'Monto del adelanto S/ (a cuenta del total)' : 'Pedido S/';
   if (t === 'adelanto') { $('p-monto').value = ''; $('p-deliv').value = ''; }
   else { const dv = k.delivCobrado ? 0 : k.del; $('p-deliv').value = dv ? dv.toFixed(2) : ''; $('p-monto').value = Math.max(r2(k.saldo - dv), 0).toFixed(2); }
+  pintarReg();
+  if (c_reg()) aplicarReg();
   calcCobro();
   if (t === 'adelanto') $('p-monto').focus();
 }
+const c_reg = () => !!(st.cobro && st.cobro.reg);
+// con "comprobante por el total": montos = pedido completo y el documento debe ser del mismo tipo que el adelanto
+function aplicarReg() {
+  const c = st.cobro, k = cuentasCobro(), ants = anticiposDe(c);
+  const prod = r2((c.ped.pedidos_encargo_items || []).reduce((a, i) => a + Number(i.precio_unit) * Number(i.cantidad), 0));
+  $('p-monto').value = prod.toFixed(2); $('p-deliv').value = k.del ? k.del.toFixed(2) : '';
+  if (ants[0] && c.doc !== ants[0].tipo_doc) elegirDoc(ants[0].tipo_doc);
+  c.det = 'detalle'; [...$('p-det').children].forEach(x => x.classList.toggle('activa', x.dataset.x === 'detalle'));
+}
+// adelantos con boleta/factura emitidos (se pueden regularizar en el comprobante final)
+const anticiposDe = c => c.ventas.filter(v => v.estado === 'emitida' && v.tipo_cobro === 'adelanto' && v.tipo_doc !== 'nota_venta' && v.estado_sunat !== 'rechazado' && Number(v.total) > 0);
+function pintarReg() {
+  const c = st.cobro, ants = anticiposDe(c);
+  const ver = c.tipo !== 'adelanto' && ants.length > 0;
+  $('p-reg-w').classList.toggle('oculto', !ver);
+  if (!ver) { $('p-reg').checked = false; c.reg = false; }
+  $('p-reg-docs').textContent = ants.map(v => `${CORTO[v.tipo_doc]} ${v.serie}-${String(v.numero).padStart(8, '0')} (${S(v.total)})`).join(', ');
+}
 function montosCobro() {
-  const m = r2($('p-monto').value), d = st.cobro.tipo === 'adelanto' ? 0 : r2($('p-deliv').value), total = r2(m + d);
-  const ret = st.cobro.doc === 'factura' && $('p-ret').checked && total > 700 ? r2(total * 0.03) : 0;
-  return { m, d, total, ret, neto: r2(total - ret) };
+  const c = st.cobro;
+  const m = r2($('p-monto').value), d = c.tipo === 'adelanto' ? 0 : r2($('p-deliv').value);
+  const ant = c.reg ? r2(anticiposDe(c).reduce((a, v) => a + Number(v.total), 0)) : 0;
+  const total = r2(m + d - ant);
+  const ret = c.doc === 'factura' && $('p-ret').checked && total > 700 ? r2(total * 0.03) : 0;
+  return { m, d, ant, total, ret, neto: r2(total - ret) };
 }
 function calcCobro() {
   const x = montosCobro();
-  $('p-calc').innerHTML = `<span>Total del comprobante</span><b class="g">${S(x.total)}</b>${x.ret ? `<span>Retención 3% (la retiene el cliente)</span><b>− ${S(x.ret)}</b><span>Neto a cobrar</span><b class="g">${S(x.neto)}</b>` : ''}`;
+  $('p-calc').innerHTML = `${x.ant ? `<span>Total del pedido</span><b>${S(x.m + x.d)}</b><span>Menos adelanto (regularizado)</span><b>− ${S(x.ant)}</b>` : ''}<span>${x.ant ? 'A pagar ahora' : 'Total del comprobante'}</span><b class="g">${S(x.total)}</b>${x.ret ? `<span>Retención 3% (la retiene el cliente)</span><b>− ${S(x.ret)}</b><span>Neto a cobrar</span><b class="g">${S(x.neto)}</b>` : ''}`;
+}
+$('p-reg').onchange = () => {
+  st.cobro.reg = $('p-reg').checked;
+  if (st.cobro.reg) aplicarReg(); else elegirTipo(st.cobro.tipo);
+  calcCobro();
+};
+$('p-det').onclick = e => { const b = e.target.closest('[data-x]'); if (!b) return; st.cobro.det = b.dataset.x; [...$('p-det').children].forEach(x => x.classList.toggle('activa', x === b)); };
+// líneas del comprobante: resumido ("PEDIDO N° X") o con el detalle de productos
+function lineasComprobante(c, x) {
+  const p = c.ped, items = [], conc = `PEDIDO N° ${p.codigo}`;
+  const its = (p.pedidos_encargo_items || []).slice().sort((a, b) => a.orden - b.orden);
+  const prodTotal = r2(its.reduce((a, i) => a + Number(i.precio_unit) * Number(i.cantidad), 0));
+  if (c.det === 'detalle' && Math.abs(x.m - prodTotal) < 0.01 && its.length) {
+    // pago de todos los productos: una línea por producto
+    its.forEach(i => items.push({ producto_id: st.emi.sv900, cantidad: Number(i.cantidad), precio_unit: Number(i.precio_unit),
+      descripcion: `${i.descripcion}${i.personalizacion ? ' - ' + i.personalizacion : ''} (${conc})`.slice(0, 250) }));
+  } else if (x.m > 0) {
+    // monto parcial (adelanto/saldo): una sola línea, con los productos en el texto si se pidió detalle
+    const det = c.det === 'detalle' ? ': ' + its.map(i => `${Number(i.cantidad)} x ${i.descripcion}`).join('; ') : '';
+    items.push({ producto_id: st.emi.sv900, cantidad: 1, precio_unit: x.m, descripcion: `${conc} (${COBRO[c.tipo]})${det}`.slice(0, 250) });
+  }
+  if (x.d > 0) items.push({ producto_id: st.emi.sv901, cantidad: 1, precio_unit: x.d, descripcion: `DELIVERY ${conc}` });
+  // regularización: cada adelanto se descuenta con una línea negativa "ANTICIPO B003-00000012"
+  if (x.ant > 0) anticiposDe(c).forEach(v => items.push({ producto_id: st.emi.sv900, cantidad: 1, precio_unit: -Number(v.total), descripcion: `ANTICIPO ${v.serie}-${String(v.numero).padStart(8, '0')}` }));
+  return items;
 }
 $('p-docs').onclick = e => { const b = e.target.closest('[data-d]'); if (b) elegirDoc(b.dataset.d); };
 $('p-tipos').onclick = e => { const b = e.target.closest('[data-t]'); if (b) elegirTipo(b.dataset.t); };
@@ -988,7 +1156,12 @@ $('p-ok').onclick = async () => {
   if (!st.emi || !st.emi.disp) return err('No encuentro el equipo de caja con sus series.');
   if (!st.emi.caja) return err('No encuentro la Caja Digital (caja virtual).');
   if (!st.emi.sv900 || (x.d > 0 && !st.emi.sv901)) return err('Faltan los conceptos SV-900 / SV-901 en productos.');
-  if (!(x.total > 0)) return err('Ingresa el monto del pedido y/o del delivery.');
+  if (!(x.total > 0)) return err(x.ant ? 'El adelanto cubre todo el pedido: no hay saldo por cobrar.' : 'Ingresa el monto del pedido y/o del delivery.');
+  if (x.ant) {
+    const ants = anticiposDe(c);
+    if (ants.some(v => v.tipo_doc !== c.doc)) return err(`El comprobante final debe ser del mismo tipo que el adelanto (${CORTO[ants[0].tipo_doc]}).`);
+    if (c.doc === 'factura' && $('p-ret').checked) return err('Con retención no se puede regularizar el anticipo aquí; emite solo el saldo.');
+  }
   const doc = $('p-docnum').value.trim(), nom = $('p-nombre').value.trim();
   if (c.doc === 'factura' && (!/^(10|15|17|20)\d{9}$/.test(doc) || !nom)) return err('Para factura ingresa un RUC válido (11 dígitos) y la razón social.');
   if (c.doc !== 'factura' && doc && !/^\d{8}$/.test(doc)) return err('El DNI debe tener 8 dígitos.');
@@ -999,9 +1172,7 @@ $('p-ok').onclick = async () => {
   const turno = await turnoDigital();
   if (!turno) return err('La Caja Digital no tiene un turno abierto. Ábrelo en la caja (PC digital) y vuelve a intentar.');
   const canal = st.emi.canales.find(z => z.nombre === (p.canal === 'tienda' ? 'Tienda' : 'WhatsApp')) || st.emi.canales[0];
-  const items = [];
-  if (x.m > 0) items.push({ producto_id: st.emi.sv900, cantidad: 1, precio_unit: x.m, descripcion: `PEDIDO N° ${p.codigo} (${COBRO[c.tipo]})` });
-  if (x.d > 0) items.push({ producto_id: st.emi.sv901, cantidad: 1, precio_unit: x.d, descripcion: `DELIVERY PEDIDO N° ${p.codigo}` });
+  const items = lineasComprobante(c, x);
   const payload = {
     id_local: uuid(), emitida_en: new Date().toISOString(), tipo_doc: c.doc,
     dispositivo_id: st.emi.disp.id, caja_id: st.emi.caja.id, canal_id: canal ? canal.id : null, turno_id: turno.id, usuario_id: st.usuario?.id || null,
@@ -1153,6 +1324,57 @@ async function pdfDe(v) {
   return new File([blob], `${v.serie}-${String(v.numero).padStart(8, '0')}.pdf`, { type: 'application/pdf' });
 }
 
+// ===== PROFORMA en PDF (para enviar al cliente por WhatsApp) =====
+const PROFORMA_DIAS = 7;   // validez de la proforma
+async function proformaDe(pid) {
+  const { data: p, error } = await sb.from('pedidos_encargo').select('*, pedidos_encargo_items(*), pedidos_encargo_pagos(monto)').eq('id', pid).single();
+  if (error) throw error;
+  const vp = p.estado === 'cotizado' ? { data: [] } : await sb.from('v_pagos_pedido').select('total').eq('pedido_externo', p.codigo);
+  const pagado = (vp.data || []).reduce((a, x) => a + Number(x.total), 0) + (p.pedidos_encargo_pagos || []).reduce((a, x) => a + Number(x.monto), 0);
+  const its = (p.pedidos_encargo_items || []).sort((a, b) => a.orden - b.orden);
+  const del = p.tipo_entrega === 'delivery' ? Number(p.costo_delivery || 0) : 0;
+  const total = r2(its.reduce((a, i) => a + Number(i.precio_unit) * Number(i.cantidad), 0) + del);
+  const hoy = new Date(), vence = new Date(hoy.getTime() + PROFORMA_DIAS * 864e5);
+  const fF = d => d.toLocaleDateString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric' });
+  const gravada = r2(total / IGV), igv = r2(total - gravada), saldo = Math.max(r2(total - pagado), 0);
+  const entrega = p.tipo_entrega === 'delivery' ? `DELIVERY: ${esc([p.direccion, p.distrito].filter(Boolean).join(', ') || '-')}${p.referencia ? ' (' + esc(p.referencia) + ')' : ''}` : 'RECOJO EN TIENDA';
+  const html = `<div class="a4">
+    <div class="cab"><div class="emp"><b>${EMPRESA.razon}</b><div>KADIMA PASTELERÍA & PANADERÍA<br>${EMPRESA.direccion}<br>${EMPRESA.ubigeo}</div></div>
+      <div class="caja-doc">R.U.C. ${EMPRESA.ruc}<br>PROFORMA<br>N° ${esc(p.codigo)}</div></div>
+    <div class="datos" style="grid-template-columns:30mm 1fr 28mm 44mm">
+      <span class="k">CLIENTE:</span><span>${esc(p.cliente_nombre || '-')}</span><span class="k">F. EMISIÓN:</span><span>${fF(hoy)}</span>
+      <span class="k">DNI / RUC:</span><span>${esc(p.cliente_doc || '-')}</span><span class="k">VÁLIDA HASTA:</span><span>${fF(vence)}</span>
+      <span class="k">CELULAR:</span><span>${esc(p.cliente_telefono || '-')}</span><span class="k">F. ENTREGA:</span><span>${p.fecha_entrega ? fechaCorta(p.fecha_entrega) : 'por definir'}${p.hora_entrega ? ' · ' + hora12(p.hora_entrega) : ''}</span>
+      <span class="k">ENTREGA:</span><span style="grid-column:span 3">${entrega}</span>
+    </div>
+    <table class="items"><thead><tr><th style="width:14mm">Cant.</th><th>Descripción</th><th style="width:32mm">Precio Unit.</th><th style="width:30mm">Importe</th></tr></thead>
+      <tbody>${its.map(i => `<tr><td>${Number(i.cantidad)}</td><td class="d">${esc(i.descripcion)}${i.personalizacion ? `<br><small style="color:#555">${esc(i.personalizacion)}</small>` : ''}</td><td>${SS(i.precio_unit)}</td><td>${SS(Number(i.precio_unit) * Number(i.cantidad))}</td></tr>`).join('')}
+      ${del ? `<tr><td>1</td><td class="d">SERVICIO DE DELIVERY</td><td>${SS(del)}</td><td>${SS(del)}</td></tr>`
+        : p.tipo_entrega === 'delivery' && p.delivery_modo === 'al_despachar' ? `<tr><td>1</td><td class="d">SERVICIO DE DELIVERY (se cobra al despachar: costo real de la movilidad + IGV)</td><td>-</td><td>-</td></tr>` : ''}</tbody></table>
+    <div class="pie"><div class="son">SON: ${letras(total)}</div>
+      <table class="tot">
+        <tr><td class="k">Op. Gravada</td><td>${SS(gravada)}</td></tr><tr><td class="k">IGV 18.00%</td><td>${SS(igv)}</td></tr>
+        <tr><td class="k">Total</td><td>${SS(total)}</td></tr>
+        ${pagado > 0 ? `<tr><td class="k">A cuenta</td><td>${SS(pagado)}</td></tr><tr><td class="k">Saldo</td><td>${SS(saldo)}</td></tr>` : ''}
+      </table></div>
+    <div class="cred"><b>Condiciones</b>• Precios en soles, incluyen IGV.<br>• Proforma válida hasta el ${fF(vence)}, sujeta a disponibilidad de la fecha de entrega.<br>• El pedido se confirma con el pago del adelanto; el comprobante (boleta o factura) se emite al pagar.</div>
+    <div class="legal">Documento informativo. No es un comprobante de pago.</div>
+  </div>`;
+  $('lienzo').innerHTML = html;
+  const blob = await html2pdf().set({ margin: 0, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } })
+    .from($('lienzo').firstElementChild).outputPdf('blob');
+  $('lienzo').innerHTML = '';
+  const f = { ...p, items: its.map(i => ({ descripcion: i.descripcion, personalizacion: i.personalizacion, cantidad: Number(i.cantidad), precio_unit: Number(i.precio_unit) })) };
+  return { file: new File([blob], `Proforma-${p.codigo}.pdf`, { type: 'application/pdf' }), texto: textoWhatsApp(f, pagado) + '\nTe adjunto la proforma en PDF.', tel: p.cliente_telefono };
+}
+async function enviarProforma(pid, btn) {
+  const txt = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Preparando…'; }
+  try { const r = await proformaDe(pid); await compartir(r.file, r.texto, r.tel); }
+  catch (e) { alert('No se pudo armar la proforma: ' + errTxt(e)); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = txt; } }
+}
+
 // =====================================================================
 // NUEVO / EDITAR PEDIDO
 // =====================================================================
@@ -1160,7 +1382,8 @@ function nuevoForm(base = {}) {
   st.f = {
     id: null, codigo: null, estado: null, canal: 'whatsapp', cliente_nombre: '', cliente_telefono: '', cliente_doc: '',
     fecha_entrega: '', hora_entrega: '', tipo_entrega: 'recojo', direccion: '', distrito: '', referencia: '',
-    costo_delivery: '', notas: '', items: [], fotosBorrar: [], ubicacion_lat: null, ubicacion_lng: null, ubicacion_link: '', ...base,
+    costo_delivery: '', notas: '', items: [], fotosBorrar: [], ubicacion_lat: null, ubicacion_lng: null, ubicacion_link: '',
+    delivery_modo: 'al_despachar', facturacion: 'normal', delivery_costo_real: null, ...base,
   };
   pintarForm();
 }
@@ -1174,11 +1397,13 @@ function pintarForm() {
   const ae = $('aviso-ed');
   if (f.id) { ae.classList.remove('oculto'); ae.innerHTML = `✏️ Editando <b>${esc(f.codigo)}</b> (${ESTADOS[f.estado]}) <button class="btn-sec" id="b-salir-ed" style="margin-left:auto">Salir sin guardar</button>`; $('b-salir-ed').onclick = () => { nuevoForm(); }; }
   else ae.classList.add('oculto');
+  pintarModoForm();
   $('b-cotizacion').classList.toggle('oculto', !!f.id && f.estado !== 'cotizado');
   const esNuevoOCot = !f.id || f.estado === 'cotizado';
-  $('b-cobrar-conf').classList.toggle('oculto', !esNuevoOCot);
-  $('b-confirmar').textContent = esNuevoOCot ? '✓ Confirmar sin adelanto' : '💾 Guardar cambios';
-  $('b-confirmar').className = esNuevoOCot ? 'btn-sec' : 'btn';
+  const men = f.facturacion === 'mensual';
+  $('b-cobrar-conf').classList.toggle('oculto', !esNuevoOCot || men);
+  $('b-confirmar').textContent = esNuevoOCot ? (men ? '✓ Confirmar pedido' : '✓ Confirmar sin adelanto') : '💾 Guardar cambios';
+  $('b-confirmar').className = esNuevoOCot && !men ? 'btn-sec' : 'btn';
   $('f-error').textContent = '';
   pintarItems();
 }
@@ -1205,11 +1430,32 @@ function pintarResumen() {
   const fc = tp > 0 && costo > 0 ? costo / (tp / IGV) * 100 : null;
   $('f-resumen').innerHTML = `
     <span>Productos</span><b>${S(tp)}</b>
-    ${f.tipo_entrega === 'delivery' ? `<span>Delivery</span><b>${S(del)}</b>` : ''}
-    <span class="tot">Total</span><b class="tot">${S(tp + del)}</b>
+    ${f.tipo_entrega === 'delivery' ? `<span>Delivery</span><b>${f.delivery_modo === 'cliente' ? 'su InDrive' : f.delivery_modo === 'al_despachar' && !del ? 'al despachar' : S(del)}</b>` : ''}
+    <span class="tot">Total</span><b class="tot">${S(tp + del)}${f.tipo_entrega === 'delivery' && f.delivery_modo === 'al_despachar' && !del ? ' + delivery' : ''}</b>
     ${fc != null ? `<span>Food cost del pedido</span><b class="fc ${fcClase(fc)}">${fc.toFixed(1)}%</b>` : ''}`;
 }
-document.querySelectorAll('#s-nuevo [data-k]').forEach(i => i.addEventListener('input', () => { ocultarAviso(); st.f[i.dataset.k] = i.value; if (i.dataset.k === 'costo_delivery') { st.f.delivAuto = false; cotizarFormDelivery(); } pintarResumen(); }));
+document.querySelectorAll('#s-nuevo [data-k]').forEach(i => i.addEventListener('input', () => { ocultarAviso(); st.f[i.dataset.k] = i.value; if (i.dataset.k === 'costo_delivery') { st.f.delivAuto = false; cotizarFormDelivery(); } if (i.dataset.k === 'fecha_entrega' || i.dataset.k === 'hora_entrega') cotizarFormDelivery();
+  if (i.dataset.k === 'delivery_modo') { if (i.value !== 'fijo' && st.f.delivery_costo_real == null) { st.f.costo_delivery = ''; st.f.delivAuto = false; } pintarModoForm(); cotizarFormDelivery(); }
+  if (i.dataset.k === 'facturacion') { pintarModoForm(); pintarForm(); }
+  pintarResumen(); }));
+// muestra/oculta lo que depende del modo de cobro del delivery y del tipo de facturación
+function pintarModoForm() {
+  const f = st.f; if (!f) return;
+  $('f-costo-w').classList.toggle('oculto', f.delivery_modo !== 'fijo');
+  const men = f.facturacion === 'mensual';
+  $('f-cmen-w').classList.toggle('oculto', !men);
+  if (men) {
+    const l = st.cmen || [];
+    $('f-cmen').innerHTML = '<option value="">— elegir —</option>' + l.filter(c => c.activo).map(c => `<option value="${c.ruc}" ${c.ruc === f.cliente_doc ? 'selected' : ''}>${esc(c.nombre_corto || c.razon_social)}</option>`).join('')
+      + (l.length ? '' : '<option value="" disabled>Agrega clientes en 🧾 Factura mensual</option>');
+  }
+}
+$('f-cmen').onchange = () => {
+  const c = (st.cmen || []).find(x => x.ruc === $('f-cmen').value); if (!c) return;
+  Object.assign(st.f, { cliente_doc: c.ruc, cliente_nombre: c.nombre_corto || c.razon_social, cliente_telefono: c.telefono || st.f.cliente_telefono || '' });
+  if (c.direccion && !st.f.direccion) st.f.direccion = c.direccion;
+  ['cliente_doc', 'cliente_nombre', 'cliente_telefono', 'direccion'].forEach(k => { const i = document.querySelector(`#s-nuevo [data-k="${k}"]`); if (i) i.value = st.f[k] || ''; });
+};
 $('seg-entrega').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; st.f.tipo_entrega = b.dataset.v; [...$('seg-entrega').children].forEach(x => x.classList.toggle('activa', x === b)); $('f-delivery').classList.toggle('oculto', b.dataset.v !== 'delivery'); pintarResumen(); pintarUbicacion(); };
 $('f-items').onclick = e => {
   const ed = e.target.closest('[data-ed-item]'); if (ed) return abrirCotizador(Number(ed.dataset.edItem));
@@ -1231,6 +1477,7 @@ async function guardarPedido(estado, cobrar) {
   if (estado !== 'cotizado' || cobrar) {
     if (!f.cliente_nombre.trim()) return $('f-error').textContent = 'Falta el nombre del cliente.';
     if (!f.fecha_entrega) return $('f-error').textContent = 'Falta la fecha de entrega.';
+    if (f.facturacion === 'mensual' && !/^(10|15|17|20)\d{9}$/.test((f.cliente_doc || '').trim())) return $('f-error').textContent = 'La factura mensual necesita el RUC del cliente (elige el cliente mensual).';
     if (f.tipo_entrega === 'delivery' && !f.direccion.trim() && f.ubicacion_lat == null) return $('f-error').textContent = 'Falta la dirección o la ubicación del delivery.';
     if (f.tipo_entrega === 'delivery' && f.ubicacion_lat == null && !confirm('El delivery no tiene ubicación en el mapa (no saldrá en el mapa de clientes). ¿Guardar igual?')) return;
   }
@@ -1240,7 +1487,7 @@ async function guardarPedido(estado, cobrar) {
       id: f.id, estado, canal: f.canal, cliente_nombre: f.cliente_nombre.trim(), cliente_telefono: f.cliente_telefono.replace(/\D/g, ''), cliente_doc: f.cliente_doc.trim(),
       fecha_entrega: f.fecha_entrega, hora_entrega: f.hora_entrega, tipo_entrega: f.tipo_entrega,
       direccion: f.tipo_entrega === 'delivery' ? f.direccion : null, distrito: f.tipo_entrega === 'delivery' ? f.distrito : null,
-      referencia: f.tipo_entrega === 'delivery' ? f.referencia : null, costo_delivery: f.tipo_entrega === 'delivery' ? f.costo_delivery : '',
+      referencia: f.tipo_entrega === 'delivery' ? f.referencia : null, costo_delivery: f.tipo_entrega === 'delivery' && f.delivery_modo !== 'cliente' ? f.costo_delivery : '',
       ubicacion_lat: f.tipo_entrega === 'delivery' && f.ubicacion_lat != null ? f.ubicacion_lat : '', ubicacion_lng: f.tipo_entrega === 'delivery' && f.ubicacion_lng != null ? f.ubicacion_lng : '',
       ubicacion_link: f.tipo_entrega === 'delivery' ? (f.ubicacion_link || '') : '',
       notas: f.notas, usuario: st.usuario?.nombre || null,
@@ -1249,6 +1496,10 @@ async function guardarPedido(estado, cobrar) {
     const { data, error } = await sb.rpc('guardar_pedido_encargo', { p: payload });
     if (error) throw error;
     const pid = data.id;
+    // modo de cobro del delivery y facturación (columnas del script 48)
+    const ex = await sb.from('pedidos_encargo').update({ delivery_modo: f.tipo_entrega === 'delivery' ? f.delivery_modo : 'fijo', facturacion: f.facturacion }).eq('id', pid);
+    if (ex.error && !/delivery_modo|facturacion/.test(ex.error.message)) throw ex.error;
+    if (ex.error) toast('Corre 48_delivery_despacho_mensual.sql para guardar el modo del delivery');
     // fotos quitadas
     for (const x of f.fotosBorrar) {
       await sb.from('pedidos_encargo_fotos').delete().eq('id', x.id);
@@ -1290,9 +1541,10 @@ function textoWhatsApp(f, adelanto) {
     `*Kadima · ${f.estado === 'cotizado' ? 'Cotización' : 'Pedido'} ${f.codigo}*`,
     ...f.items.map(it => `• ${Number(it.cantidad)} × ${it.descripcion}${it.personalizacion ? ` (${it.personalizacion})` : ''} — S/ ${(it.precio_unit * it.cantidad).toFixed(2)}`),
     f.fecha_entrega ? `⏰ *Entrega:* ${fechaCorta(f.fecha_entrega)}${f.hora_entrega ? ' · ' + hora12(f.hora_entrega) : ''} · ${f.tipo_entrega === 'delivery' ? 'Delivery' : 'Recojo en tienda'}` : '',
-    del ? `*Delivery:* S/ ${del.toFixed(2)}` : '',
+    f.tipo_entrega === 'delivery' && f.delivery_modo === 'cliente' ? '*Delivery:* lo coordinas tú (tu propio InDrive)'
+      : f.tipo_entrega === 'delivery' && f.delivery_modo === 'al_despachar' && !del ? '*Delivery:* se cobra al despachar (costo real del InDrive)' : del ? `*Delivery:* S/ ${del.toFixed(2)}` : '',
     f.tipo_entrega === 'delivery' && f.ubicacion_lat != null ? `*Ubicación:* https://www.google.com/maps?q=${f.ubicacion_lat},${f.ubicacion_lng}` : '',
-    `*Total: S/ ${(tp + del).toFixed(2)}*`,
+    `*Total: S/ ${(tp + del).toFixed(2)}*${f.tipo_entrega === 'delivery' && f.delivery_modo === 'al_despachar' && !del ? ' + delivery' : ''}`,
     adelanto > 0 ? `Pagado: S/ ${adelanto.toFixed(2)} · Saldo: S/ ${Math.max(tp + del - adelanto, 0).toFixed(2)}` : '',
     '¡Gracias por tu pedido! ✨',
   ];
@@ -1312,10 +1564,12 @@ function mostrarGuardado(codigo, estado, resumen, edicion, tel, pid, post, nota)
     ${nota ? `<span style="font-size:13px;color:var(--mal)">${esc(nota)}</span>` : ''}
     <button class="btn-sec" id="b-copiar" style="margin-left:auto">📋 Copiar</button>
     <button class="btn-wa" id="b-wa">💬 Enviar por WhatsApp</button>
+    <button class="btn-wa" id="b-prof">📄 Enviar proforma</button>
     <button class="btn" id="b-cobrar">${estado === 'cotizado' ? '💵 Cobrar adelanto y confirmar' : '💵 Cobrar'}</button>
     <button class="btn-sec" id="b-cerrar-aviso" title="Cerrar">✕</button>`;
   $('b-cobrar').onclick = () => estado === 'cotizado' ? abrirPago(pid, { confirmar: true, post }) : abrirPago(pid);
   $('b-cerrar-aviso').onclick = ocultarAviso;
+  $('b-prof').onclick = () => enviarProforma(pid, $('b-prof'));
   st.avisoGuardado = true;
   $('b-wa').onclick = () => abrirWhatsApp(tel, resumen);
   $('b-copiar').onclick = async () => { try { await navigator.clipboard.writeText(resumen); toast('Copiado'); } catch (e) { prompt('Copia el resumen:', resumen); } };
@@ -1344,6 +1598,7 @@ async function editarPedido(id) {
     cliente_doc: d.cliente_doc || '', fecha_entrega: d.fecha_entrega || '', hora_entrega: (d.hora_entrega || '').slice(0, 5), tipo_entrega: d.tipo_entrega,
     direccion: d.direccion || '', distrito: d.distrito || '', referencia: d.referencia || '', costo_delivery: d.costo_delivery ?? '', notas: d.notas || '',
     ubicacion_lat: d.ubicacion_lat == null ? null : Number(d.ubicacion_lat), ubicacion_lng: d.ubicacion_lng == null ? null : Number(d.ubicacion_lng), ubicacion_link: d.ubicacion_link || '',
+    delivery_modo: d.delivery_modo || 'fijo', facturacion: d.facturacion || 'normal', delivery_costo_real: d.delivery_costo_real ?? null,
     items: itemsDesde(d, false),
   });
 }
@@ -1351,7 +1606,11 @@ async function usarComoBase(id) {
   const d = await cargarPedido(id); if (!d) return;
   await firmar((d.pedidos_encargo_fotos || []).map(f => f.ruta));
   st.f = null; irSeccion('nuevo');
-  nuevoForm({ canal: d.canal, items: itemsDesde(d, true) });
+  const men = d.facturacion === 'mensual';
+  nuevoForm({ canal: d.canal, items: itemsDesde(d, true), facturacion: d.facturacion || 'normal', delivery_modo: d.delivery_modo || 'al_despachar',
+    ...(men ? { cliente_nombre: d.cliente_nombre || '', cliente_telefono: d.cliente_telefono || '', cliente_doc: d.cliente_doc || '', tipo_entrega: d.tipo_entrega,
+      direccion: d.direccion || '', distrito: d.distrito || '', referencia: d.referencia || '', ubicacion_lat: d.ubicacion_lat == null ? null : Number(d.ubicacion_lat),
+      ubicacion_lng: d.ubicacion_lng == null ? null : Number(d.ubicacion_lng), ubicacion_link: d.ubicacion_link || '' } : {}) });
   toast(`Productos de ${d.codigo} cargados. Revisa precios y completa los datos del cliente.`);
 }
 
@@ -1398,20 +1657,49 @@ function pintarUbicacion(centrar) {
 // =====================================================================
 // TARIFA DE DELIVERY (misma fórmula que la función cotizar_delivery de Supabase)
 // =====================================================================
-const st_t = { mapa: null, tienda: null, destino: null, circulo: null, modo: 'probar', t: null };
+const st_t = { mapa: null, tienda: null, destino: null, circulo: null, capaZonas: null, modo: 'probar', t: null, zonas: [], horas: [], cand: [], candCapa: null };
 const T_CAMPOS = { base: 't-base', km_incluidos: 't-kminc', por_km: 't-porkm', minimo: 't-min', margen_pct: 't-margen', igv_pct: 't-igv', max_km: 't-max', factor_ruta: 't-factor' };
-function calcTarifa(t, lat, lng) {
-  if (!t || t.origen_lat == null || lat == null) return { ok: false, motivo: 'sin_tarifa' };
+const DIAS_C = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+const HORAS_DEF = [{ dias: [1, 2, 3, 4, 5], desde: '07:00', hasta: '08:30', recargo_pct: 25 }, { dias: [1, 2, 3, 4, 5], desde: '17:30', hasta: '19:30', recargo_pct: 25 }];
+function enPoligono(lat, lng, g) {
+  if (!g) return false;
+  const polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+  let dentro = false;
+  for (const poly of polys) for (const ring of poly) {
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i], [xj, yj] = ring[j];
+      if ((yi > lat) !== (yj > lat) && lng < (xj - xi) * (lat - yi) / (yj - yi) + xi) dentro = !dentro;
+    }
+  }
+  return dentro;
+}
+function kmDesde(t, lat, lng) {
   const R = 6371, rad = x => x * Math.PI / 180;
   const a = Math.sin(rad(lat - t.origen_lat) / 2) ** 2 + Math.cos(rad(t.origen_lat)) * Math.cos(rad(lat)) * Math.sin(rad(lng - t.origen_lng) / 2) ** 2;
-  return calcPorKm(t, Math.round(2 * R * Math.asin(Math.sqrt(a)) * Number(t.factor_ruta) * 10) / 10);
+  return Math.round(2 * R * Math.asin(Math.sqrt(a)) * Number(t.factor_ruta) * 10) / 10;
 }
-function calcPorKm(t, km) {
-  if (km > Number(t.max_km)) return { ok: false, motivo: 'fuera_zona', km };
+function recargoHora(horas, dia, hora) {
+  if (!dia || !hora) return 0;
+  return (horas || []).reduce((m, h) => (h.dias || []).includes(Number(dia)) && hora >= h.desde && hora < h.hasta ? Math.max(m, Number(h.recargo_pct) || 0) : m, 0);
+}
+function calcTarifa(t, lat, lng, dia, hora) {
+  if (!t || t.origen_lat == null || lat == null) return { ok: false, motivo: 'sin_tarifa' };
+  const km = kmDesde(t, lat, lng);
+  const activas = st_t.zonas.filter(z => z.activo);
+  let zona = null;
+  if (activas.length) {
+    zona = [...activas].sort((a, b) => (a.max_km == null ? -1 : Number(a.max_km)) - (b.max_km == null ? -1 : Number(b.max_km)))
+      .find(z => enPoligono(lat, lng, z.geojson) && (z.max_km == null || km <= Number(z.max_km)));
+    if (!zona) return { ok: false, motivo: 'fuera_zona', km };
+  } else if (km > Number(t.max_km)) return { ok: false, motivo: 'fuera_zona', km };
+  return { ...calcPorKm(t, km, recargoHora(st_t.horas, dia, hora), true), zona: zona && zona.nombre };
+}
+function calcPorKm(t, km, recargo = 0, sinLimite) {
+  if (!sinLimite && !st_t.zonas.some(z => z.activo) && km > Number(t.max_km)) return { ok: false, motivo: 'fuera_zona', km };
   const costo = Math.max(Number(t.minimo), Number(t.base) + Math.max(km - Number(t.km_incluidos), 0) * Number(t.por_km));
-  const cm = costo * (1 + Number(t.margen_pct) / 100), ci = cm * (1 + Number(t.igv_pct) / 100);
+  const cr = costo * (1 + recargo / 100), cm = cr * (1 + Number(t.margen_pct) / 100), ci = cm * (1 + Number(t.igv_pct) / 100);
   const red = Number(t.redondeo) || 0.5, precio = Math.ceil(Math.round(ci / red * 1e6) / 1e6) * red;
-  return { ok: true, km, costo: r2(costo), margen: r2(cm - costo), igv: r2(ci - cm), precio: r2(precio) };
+  return { ok: true, km, costo: r2(costo), recargo: r2(cr - costo), recargo_pct: recargo, margen: r2(cm - cr), igv: r2(ci - cm), precio: r2(precio) };
 }
 function tarifaDelForm() {
   const t = { ...st_t.t };
@@ -1424,50 +1712,308 @@ async function abrirTarifa() {
   const { data, error } = await sb.from('delivery_tarifa').select('*').eq('id', 1).maybeSingle();
   if (error || !data) { $('t-info').innerHTML = `<span style="color:var(--mal)">${error && !/delivery_tarifa/.test(error.message) ? esc(errTxt(error)) : 'Falta correr el script <b>45_delivery_tarifa.sql</b> en Supabase.'}</span>`; return; }
   st_t.t = data;
+  st_t.horas = JSON.parse(JSON.stringify(data.horas_punta || HORAS_DEF));
+  st_t.sinHoras = !('horas_punta' in data);
   Object.entries(T_CAMPOS).forEach(([k, id]) => $(id).value = Number(data[k]));
   $('t-red').value = String(Number(data.redondeo)); $('t-activo').checked = !!data.activo;
-  if (typeof L === 'undefined') return;
-  if (!st_t.mapa) {
+  const hoy = new Date(); $('t-pdia').value = String(hoy.getDay() || 7);
+  const z = await sb.from('delivery_zonas').select('*').order('id');
+  st_t.zonas = z.error ? [] : (z.data || []);
+  st_t.sinZonas = !!z.error;
+  if (typeof L !== 'undefined' && !st_t.mapa) {
     st_t.mapa = L.map('t-mapa').setView(LIMA, 12);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(st_t.mapa);
     st_t.mapa.on('click', e => st_t.modo === 'tienda' || st_t.t.origen_lat == null ? moverTienda(e.latlng) : probarDestino(e.latlng));
   }
   if (data.origen_lat == null) elegirModoT('tienda');
+  pintarHoras(); pintarZonas(); pintarTarifa(true);
+  if (st_t.mapa) setTimeout(() => st_t.mapa.invalidateSize(), 60);
   cargarCalibracion();
-  pintarTarifa(true);
-  setTimeout(() => st_t.mapa.invalidateSize(), 60);
 }
 function elegirModoT(m) { st_t.modo = m; [...$('t-modo').children].forEach(b => b.classList.toggle('activa', b.dataset.m === m)); pintarTarifa(); }
 function moverTienda(ll) { st_t.t.origen_lat = Math.round(ll.lat * 1e6) / 1e6; st_t.t.origen_lng = Math.round(ll.lng * 1e6) / 1e6; pintarTarifa(); }
 function probarDestino(ll) {
-  if (!st_t.destino) st_t.destino = L.marker(ll, { draggable: true, icon: L.divIcon({ className: '', html: '<div style="font-size:28px;line-height:28px;transform:translate(-4px,-24px)">🎯</div>' }) }).addTo(st_t.mapa).on('drag', pintarTarifa);
+  if (!st_t.destino) st_t.destino = L.marker(ll, { draggable: true, icon: L.divIcon({ className: '', html: '<div style="font-size:28px;line-height:28px;transform:translate(-4px,-24px)">🎯</div>' }) }).addTo(st_t.mapa).on('drag', () => pintarTarifa());
   else st_t.destino.setLatLng(ll);
   pintarTarifa();
+}
+function pintarMapaZonas() {
+  if (!st_t.mapa) return;
+  if (st_t.capaZonas) st_t.capaZonas.remove();
+  st_t.capaZonas = L.layerGroup().addTo(st_t.mapa);
+  const t = st_t.t, f = Number($('t-factor').value) || 1;
+  st_t.zonas.filter(z => z.activo).forEach(z => {
+    const lim = z.max_km != null;
+    L.geoJSON(z.geojson, { style: { color: lim ? '#d97706' : '#1e7d3a', weight: 2, fillOpacity: lim ? 0.08 : 0.15 }, interactive: false }).addTo(st_t.capaZonas);
+    if (lim && t.origen_lat != null) L.circle([t.origen_lat, t.origen_lng], { radius: Number(z.max_km) / f * 1000, color: '#d97706', weight: 1.5, dashArray: '6 6', fill: false, interactive: false }).addTo(st_t.capaZonas);
+  });
 }
 function pintarTarifa(centrar) {
   if (!st_t.t) return;
   const t = { ...st_t.t, ...tarifaDelForm(), origen_lat: st_t.t.origen_lat, origen_lng: st_t.t.origen_lng };
+  const hayZonas = st_t.zonas.some(z => z.activo);
   if (st_t.mapa && t.origen_lat != null) {
     const o = [t.origen_lat, t.origen_lng];
-    if (!st_t.tienda) st_t.tienda = L.marker(o, { draggable: true, icon: L.divIcon({ className: '', html: '<div style="font-size:30px;line-height:30px;transform:translate(-6px,-26px)">🏬</div>' }) }).addTo(st_t.mapa).on('dragend', e => moverTienda(e.target.getLatLng()));
+    if (!st_t.tienda) st_t.tienda = L.marker(o, { draggable: true, zIndexOffset: 1000, icon: L.divIcon({ className: '', html: '<div style="font-size:30px;line-height:30px;transform:translate(-6px,-26px)">🏬</div>' }) }).addTo(st_t.mapa).on('dragend', e => moverTienda(e.target.getLatLng()));
     else st_t.tienda.setLatLng(o);
-    if (!st_t.circulo) st_t.circulo = L.circle(o, { radius: 1, color: '#8B0000', weight: 1, fillOpacity: .04 }).addTo(st_t.mapa);
-    st_t.circulo.setLatLng(o).setRadius(t.max_km / (Number(t.factor_ruta) || 1) * 1000);
-    if (centrar) st_t.mapa.setView(o, 13);
+    if (!hayZonas) {
+      if (!st_t.circulo) st_t.circulo = L.circle(o, { radius: 1, color: '#8B0000', weight: 1, fillOpacity: .04, interactive: false }).addTo(st_t.mapa);
+      st_t.circulo.setLatLng(o).setRadius(t.max_km / (Number(t.factor_ruta) || 1) * 1000);
+    } else if (st_t.circulo) { st_t.circulo.remove(); st_t.circulo = null; }
+    if (centrar) st_t.mapa.setView(o, 12);
   }
+  pintarMapaZonas();
   let info = t.origen_lat == null ? '<b style="color:var(--mal)">1) Toca el mapa donde está la tienda.</b>'
-    : st_t.modo === 'tienda' ? 'Toca el mapa o arrastra 🏬 para ubicar la tienda. El círculo es la zona máxima.'
-    : 'Toca el mapa (o arrastra 🎯) para ver cuánto pagaría un cliente en ese punto.';
+    : st_t.modo === 'tienda' ? 'Toca el mapa o arrastra 🏬 para ubicar la tienda.'
+    : `Toca el mapa (o arrastra 🎯) para ver cuánto pagaría un cliente. ${hayZonas ? '🟩 todo el distrito · 🟧 solo hasta X km (línea punteada).' : '<b>Sin zonas:</b> se usa el círculo de distancia máxima.'}`;
   if (st_t.destino && t.origen_lat != null) {
-    const ll = st_t.destino.getLatLng(), c = calcTarifa(t, ll.lat, ll.lng);
-    info += c.ok ? ` <b>🎯 ≈ ${c.km} km → InDrive ${S(c.costo)} + margen ${S(c.margen)} + IGV ${S(c.igv)} = <span style="color:var(--rojo);font-size:15px">${S(c.precio)}</span></b>`
-      : ` <b style="color:var(--mal)">🎯 ≈ ${c.km} km: fuera de zona (se coordina por WhatsApp)</b>`;
+    const ll = st_t.destino.getLatLng(), c = calcTarifa(t, ll.lat, ll.lng, $('t-pdia').value, $('t-phora').value);
+    info += c.ok ? `<br><b>🎯 ${c.zona ? esc(c.zona) + ' · ' : ''}≈ ${c.km} km → InDrive ${S(c.costo)}${c.recargo ? ` + hora punta ${c.recargo_pct}% ${S(c.recargo)}` : ''} + margen ${S(c.margen)} + IGV ${S(c.igv)} = <span style="color:var(--rojo);font-size:15px">${S(c.precio)}</span></b>`
+      : `<br><b style="color:var(--mal)">🎯 ≈ ${c.km} km: fuera de cobertura (se coordina por WhatsApp)</b>`;
   }
   $('t-info').innerHTML = info;
-  $('t-ejemplos').innerHTML = [1, 2, 3, 4, 5, 7, 10, 12, 15].map(km => { const c = calcPorKm(t, km); return c.ok
-    ? `<tr><td>${km} km</td><td class="n">${S(c.costo)}</td><td class="n">${S(c.margen)}</td><td class="n">${S(c.igv)}</td><td class="n"><b>${S(c.precio)}</b></td></tr>`
-    : `<tr><td>${km} km</td><td class="n" colspan="4" style="color:var(--gris)">fuera de zona</td></tr>`; }).join('');
+  const maxPunta = Math.max(0, ...st_t.horas.map(h => Number(h.recargo_pct) || 0));
+  $('t-ejemplos').innerHTML = [1, 2, 3, 4, 5, 7, 10, 12, 15].map(km => { const c = calcPorKm(t, km), p = calcPorKm(t, km, maxPunta); return c.ok
+    ? `<tr><td>${km} km</td><td class="n">${S(c.costo)}</td><td class="n">${S(c.margen)}</td><td class="n">${S(c.igv)}</td><td class="n"><b>${S(c.precio)}</b></td><td class="n">${maxPunta ? S(p.precio) : '—'}</td></tr>`
+    : `<tr><td>${km} km</td><td class="n" colspan="5" style="color:var(--gris)">fuera de zona</td></tr>`; }).join('');
 }
+// ---- horas punta ----
+function pintarHoras() {
+  $('t-horas').innerHTML = st_t.horas.length ? st_t.horas.map((h, i) => `<div class="fila" style="align-items:center;margin-bottom:6px">
+      <div class="chips" style="flex:0 0 auto">${DIAS_C.map((d, k) => `<button data-hd="${i}:${k + 1}" class="${(h.dias || []).includes(k + 1) ? 'activa' : ''}" style="min-width:32px">${d}</button>`).join('')}</div>
+      <div style="max-width:120px"><input type="time" data-hc="${i}:desde" value="${h.desde}"></div><span>a</span>
+      <div style="max-width:120px"><input type="time" data-hc="${i}:hasta" value="${h.hasta}"></div>
+      <div style="max-width:110px;display:flex;align-items:center;gap:4px">+<input type="number" min="0" step="5" data-hc="${i}:recargo_pct" value="${h.recargo_pct}">%</div>
+      <button class="btn-sec" data-hx="${i}" title="Quitar">✕</button></div>`).join('')
+    : '<div class="ayuda">Sin horas punta: el precio es igual a cualquier hora.</div>';
+  if (st_t.sinHoras) $('t-horas').insertAdjacentHTML('afterbegin', '<div class="ayuda" style="color:var(--mal)">Para guardar horas punta corre <b>47_delivery_zonas_horas.sql</b>.</div>');
+}
+$('t-horas').addEventListener('click', e => {
+  const d = e.target.closest('[data-hd]');
+  if (d) { const [i, k] = d.dataset.hd.split(':').map(Number), h = st_t.horas[i]; h.dias = h.dias.includes(k) ? h.dias.filter(x => x !== k) : [...h.dias, k].sort(); pintarHoras(); pintarTarifa(); return; }
+  const x = e.target.closest('[data-hx]'); if (x) { st_t.horas.splice(Number(x.dataset.hx), 1); pintarHoras(); pintarTarifa(); }
+});
+$('t-horas').addEventListener('input', e => {
+  const c = e.target.closest('[data-hc]'); if (!c) return;
+  const [i, k] = c.dataset.hc.split(':'); st_t.horas[Number(i)][k] = k === 'recargo_pct' ? Number(c.value || 0) : c.value; pintarTarifa();
+});
+$('t-hora-add').onclick = () => { st_t.horas.push({ dias: [1, 2, 3, 4, 5], desde: '12:00', hasta: '13:00', recargo_pct: 15 }); pintarHoras(); pintarTarifa(); };
+// ---- zonas por distrito ----
+function pintarZonas() {
+  if (st_t.sinZonas) { $('z-tabla').innerHTML = '<tr><td colspan="4" class="vacio">Para usar zonas corre <b>47_delivery_zonas_horas.sql</b> en Supabase.</td></tr>'; return; }
+  $('z-tabla').innerHTML = st_t.zonas.length ? st_t.zonas.map(z => `<tr><td><b>${esc(z.nombre)}</b></td>
+      <td><select data-zt="${z.id}" style="width:auto"><option value="todo" ${z.max_km == null ? 'selected' : ''}>Todo el distrito</option><option value="km" ${z.max_km != null ? 'selected' : ''}>Hasta X km</option></select>
+        ${z.max_km != null ? `<input type="number" min="0.5" step="0.5" data-zk="${z.id}" value="${Number(z.max_km)}" style="width:80px"> km` : ''}</td>
+      <td><input type="checkbox" data-za="${z.id}" ${z.activo ? 'checked' : ''} style="width:auto"></td>
+      <td><button class="btn-sec" data-zx="${z.id}">✕</button></td></tr>`).join('')
+    : '<tr><td colspan="4" class="vacio">Sin zonas: se cobra hasta la distancia máxima en cualquier dirección. Agrega SJL para empezar.</td></tr>';
+}
+async function buscarZona() {
+  const q = $('z-buscar').value.trim(); $('z-error').textContent = '';
+  if (q.length < 3) return $('z-error').textContent = 'Escribe el nombre del distrito.';
+  $('z-btn-buscar').disabled = true; $('z-btn-buscar').textContent = 'Buscando…';
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&polygon_geojson=1&polygon_threshold=0.0003&countrycodes=pe&limit=6&accept-language=es&q=${encodeURIComponent(/lima/i.test(q) ? q : q + ', Lima')}`);
+    const d = r.ok ? await r.json() : [];
+    st_t.cand = d.filter(x => x.geojson && /Polygon/.test(x.geojson.type));
+  } catch (e) { st_t.cand = []; }
+  $('z-btn-buscar').disabled = false; $('z-btn-buscar').textContent = '🔍 Buscar';
+  if (!st_t.cand.length) { $('z-nueva').classList.add('oculto'); return $('z-error').textContent = 'No encontré el límite de ese distrito. Prueba con el nombre completo (ej. "San Juan de Lurigancho").'; }
+  $('z-opciones').innerHTML = st_t.cand.length > 1 ? `<label>Elige el resultado correcto</label>${st_t.cand.map((c, i) => `<label style="display:flex;gap:6px;font-weight:400"><input type="radio" name="z-c" value="${i}" ${i ? '' : 'checked'} style="width:auto">${esc(c.display_name)}</label>`).join('')}` : `<div class="ayuda">${esc(st_t.cand[0].display_name)}</div>`;
+  $('z-nombre').value = st_t.cand[0].name || q;
+  $('z-nueva').classList.remove('oculto');
+  verCandidato(0);
+}
+function verCandidato(i) {
+  const c = st_t.cand[i]; if (!c || !st_t.mapa) return;
+  if (st_t.candCapa) st_t.candCapa.remove();
+  st_t.candCapa = L.geoJSON(c.geojson, { style: { color: '#2563eb', weight: 3, dashArray: '4 4', fillOpacity: 0.1 }, interactive: false }).addTo(st_t.mapa);
+  st_t.mapa.fitBounds(st_t.candCapa.getBounds(), { padding: [20, 20] });
+  $('z-nombre').value = c.name || $('z-nombre').value;
+}
+$('z-btn-buscar').onclick = buscarZona;
+$('z-buscar').addEventListener('keydown', e => { if (e.key === 'Enter') buscarZona(); });
+$('z-opciones').addEventListener('change', e => { if (e.target.name === 'z-c') verCandidato(Number(e.target.value)); });
+$('z-tipo').onchange = () => $('z-km-w').classList.toggle('oculto', $('z-tipo').value !== 'km');
+$('z-agregar').onclick = async () => {
+  const sel = document.querySelector('input[name="z-c"]:checked'), c = st_t.cand[sel ? Number(sel.value) : 0];
+  const nombre = $('z-nombre').value.trim(); $('z-error').textContent = '';
+  if (!c || !nombre) return $('z-error').textContent = 'Busca el distrito y ponle un nombre.';
+  const max_km = $('z-tipo').value === 'km' ? Number($('z-km').value) : null;
+  if (max_km != null && !(max_km > 0)) return $('z-error').textContent = 'Pon los km máximos.';
+  const { data, error } = await sb.from('delivery_zonas').insert({ nombre, geojson: c.geojson, max_km }).select().single();
+  if (error) return $('z-error').textContent = errTxt(error);
+  st_t.zonas.push(data);
+  if (st_t.candCapa) { st_t.candCapa.remove(); st_t.candCapa = null; }
+  $('z-nueva').classList.add('oculto'); $('z-buscar').value = '';
+  pintarZonas(); pintarTarifa(); toast(`Zona ${nombre} agregada`);
+};
+async function guardarZona(id, cambios) {
+  const { error } = await sb.from('delivery_zonas').update(cambios).eq('id', id);
+  if (error) return alert(errTxt(error));
+  Object.assign(st_t.zonas.find(z => z.id === id), cambios); pintarZonas(); pintarTarifa();
+}
+$('z-tabla').addEventListener('change', e => {
+  const t = e.target.closest('[data-zt]'); if (t) return guardarZona(Number(t.dataset.zt), { max_km: t.value === 'km' ? 5 : null });
+  const k = e.target.closest('[data-zk]'); if (k) return Number(k.value) > 0 && guardarZona(Number(k.dataset.zk), { max_km: Number(k.value) });
+  const a = e.target.closest('[data-za]'); if (a) return guardarZona(Number(a.dataset.za), { activo: a.checked });
+});
+$('z-tabla').addEventListener('click', async e => {
+  const x = e.target.closest('[data-zx]'); if (!x) return;
+  const z = st_t.zonas.find(q => q.id === Number(x.dataset.zx));
+  if (!confirm(`¿Quitar la zona ${z.nombre}?`)) return;
+  const { error } = await sb.from('delivery_zonas').delete().eq('id', z.id);
+  if (error) return alert(errTxt(error));
+  st_t.zonas = st_t.zonas.filter(q => q !== z); pintarZonas(); pintarTarifa();
+});
+['t-pdia', 't-phora'].forEach(id => $(id).addEventListener('input', () => pintarTarifa()));
+// =====================================================================
+// FACTURA MENSUAL AL CRÉDITO (ej. Colegio Bertold Brecht)
+// =====================================================================
+const st_fm = { tortas: [], delivs: [] };
+const mesStr = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+function rangoMes(m) { const [y, mo] = m.split('-').map(Number); const ini = new Date(y, mo - 1, 1), fin = new Date(y, mo, 0); return [fstr(ini), fstr(fin)]; }
+function mesAnterior(m) { const [y, mo] = m.split('-').map(Number); return mesStr(new Date(y, mo - 2, 1)); }
+const nombreMes = m => { const [y, mo] = m.split('-').map(Number); return new Date(y, mo - 1, 1).toLocaleDateString('es-PE', { month: 'long', year: 'numeric' }); };
+const ddmm = f => f ? f.slice(8, 10) + '/' + f.slice(5, 7) : '';
+async function abrirFactMensual() {
+  const cm = await sb.from('clientes_mensuales').select('*').order('razon_social');
+  if (cm.error) { $('fm-cuerpo').innerHTML = `<div class="vacio">${/clientes_mensuales/.test(cm.error.message) ? 'Falta correr el script <b>48_delivery_despacho_mensual.sql</b> en Supabase.' : esc(errTxt(cm.error))}</div>`; return; }
+  st.cmen = cm.data || [];
+  const sel = $('fm-cli').value;
+  $('fm-cli').innerHTML = st.cmen.filter(c => c.activo).map(c => `<option value="${c.ruc}">${esc(c.nombre_corto || c.razon_social)} · ${c.ruc}</option>`).join('') || '<option value="">Primero agrega un cliente abajo</option>';
+  if (sel) $('fm-cli').value = sel;
+  if (!$('fm-mes').value) { const d = new Date(); $('fm-mes').value = mesStr(new Date(d.getFullYear(), d.getMonth() + 1, 1)); }
+  pintarClientesM(); cargarHistFM();
+  if ($('fm-cli').value) cargarFM();
+}
+function pintarClientesM() {
+  $('cm-tabla').innerHTML = st.cmen.length ? st.cmen.map(c => `<tr><td><b>${esc(c.nombre_corto || c.razon_social)}</b><br><small>${esc(c.razon_social)}</small></td><td>${c.ruc}</td>
+      <td class="n"><input type="number" min="1" max="180" data-cmd="${c.id}" value="${c.dias_credito}" style="width:70px"> días</td>
+      <td><input type="checkbox" data-cmr="${c.id}" ${c.agente_retencion ? 'checked' : ''} style="width:auto"></td>
+      <td><input type="checkbox" data-cma="${c.id}" ${c.activo ? 'checked' : ''} style="width:auto"></td></tr>`).join('')
+    : '<tr><td colspan="5" class="vacio">Aún no hay clientes con factura mensual.</td></tr>';
+}
+$('cm-guardar').onclick = async () => {
+  const ruc = $('cm-ruc').value.trim(), razon = $('cm-razon').value.trim(); $('cm-error').textContent = '';
+  if (!/^(10|15|17|20)\d{9}$/.test(ruc)) return $('cm-error').textContent = 'RUC no válido (11 dígitos).';
+  if (!razon) return $('cm-error').textContent = 'Escribe la razón social tal como figura en SUNAT.';
+  const fila = { ruc, razon_social: razon, nombre_corto: $('cm-corto').value.trim() || null, dias_credito: Number($('cm-dias').value || 35), agente_retencion: $('cm-ret').checked,
+    telefono: $('cm-tel').value.replace(/\D/g, '') || null, direccion: $('cm-dir').value.trim() || null };
+  const { error } = await sb.from('clientes_mensuales').insert(fila);
+  if (error) return $('cm-error').textContent = /duplicate|unique/i.test(error.message) ? 'Ese RUC ya está registrado.' : errTxt(error);
+  ['cm-ruc', 'cm-razon', 'cm-corto', 'cm-tel', 'cm-dir'].forEach(i => $(i).value = ''); $('cm-ret').checked = false; $('cm-dias').value = 35;
+  toast('Cliente agregado'); abrirFactMensual();
+};
+$('cm-tabla').addEventListener('change', async e => {
+  const t = e.target, id = Number(t.dataset.cmd || t.dataset.cmr || t.dataset.cma); if (!id) return;
+  const cambios = t.dataset.cmd ? { dias_credito: Number(t.value) } : t.dataset.cmr ? { agente_retencion: t.checked } : { activo: t.checked };
+  const { error } = await sb.from('clientes_mensuales').update(cambios).eq('id', id);
+  if (error) return alert(errTxt(error));
+  Object.assign(st.cmen.find(c => c.id === id), cambios); toast('Guardado');
+});
+async function cargarFM() {
+  const ruc = $('fm-cli').value, mes = $('fm-mes').value; $('fm-error').textContent = ''; $('fm-listo').innerHTML = '';
+  if (!ruc || !mes) return;
+  const [a, b] = rangoMes(mes), [pa, pb] = rangoMes(mesAnterior(mes));
+  const sel = 'id,codigo,estado,fecha_entrega,hora_entrega,tipo_entrega,delivery_modo,costo_delivery,delivery_costo_real,factura_doc,delivery_factura_doc,factura_venta_id,delivery_factura_venta_id,pedidos_encargo_items(orden,descripcion,personalizacion,cantidad,precio_unit)';
+  const [t, d] = await Promise.all([
+    sb.from('pedidos_encargo').select(sel).eq('facturacion', 'mensual').eq('cliente_doc', ruc).gte('fecha_entrega', a).lte('fecha_entrega', b).not('estado', 'in', '(cotizado,anulado)').is('factura_venta_id', null).order('fecha_entrega'),
+    sb.from('pedidos_encargo').select(sel).eq('facturacion', 'mensual').eq('cliente_doc', ruc).eq('tipo_entrega', 'delivery').neq('delivery_modo', 'cliente').gte('fecha_entrega', pa).lte('fecha_entrega', pb).neq('estado', 'anulado').is('delivery_factura_venta_id', null).order('fecha_entrega'),
+  ]);
+  if (t.error || d.error) return $('fm-error').textContent = errTxt(t.error || d.error);
+  st_fm.tortas = (t.data || []).map(p => ({ ...p, sel: true, importe: r2((p.pedidos_encargo_items || []).reduce((s, i) => s + Number(i.precio_unit) * Number(i.cantidad), 0)) }));
+  st_fm.delivs = (d.data || []).map(p => ({ ...p, cobro: p.costo_delivery != null ? Number(p.costo_delivery) : null }))
+    .map(p => ({ ...p, sel: p.cobro != null && p.estado === 'entregado' }));
+  pintarFM();
+}
+function totalesFM() {
+  const c = st.cmen.find(x => x.ruc === $('fm-cli').value) || {};
+  const tt = r2(st_fm.tortas.filter(p => p.sel).reduce((s, p) => s + p.importe, 0)), td = r2(st_fm.delivs.filter(p => p.sel).reduce((s, p) => s + Number(p.cobro || 0), 0));
+  const total = r2(tt + td), ret = c.agente_retencion && total > 700 ? r2(total * 0.03) : 0;
+  const vence = new Date(); vence.setDate(vence.getDate() + Number(c.dias_credito || 35));
+  return { c, tt, td, total, ret, neto: r2(total - ret), vence: fstr(vence) };
+}
+function pintarFM() {
+  const mes = $('fm-mes').value, k = totalesFM();
+  const filaT = (p, i) => `<tr><td><input type="checkbox" data-fmt="${i}" ${p.sel ? 'checked' : ''} style="width:auto"></td><td>${esc(p.codigo)}</td><td>${fechaCorta(p.fecha_entrega)}</td>
+      <td>${(p.pedidos_encargo_items || []).sort((a, b) => a.orden - b.orden).map(it => `${Number(it.cantidad)} × ${esc(it.descripcion)}`).join('<br>')}</td><td class="n">${S(p.importe)}</td></tr>`;
+  const filaD = (p, i) => `<tr><td><input type="checkbox" data-fmd="${i}" ${p.sel ? 'checked' : ''} ${p.cobro == null ? 'disabled' : ''} style="width:auto"></td><td>${esc(p.codigo)}</td><td>${fechaCorta(p.fecha_entrega)}</td>
+      <td>${p.delivery_costo_real != null ? `InDrive ${S(p.delivery_costo_real)}` : '<span style="color:var(--mal)">falta registrar el InDrive real (en la Central)</span>'}${p.estado !== 'entregado' ? ' · <small>aún no entregado</small>' : ''}</td><td class="n">${p.cobro != null ? S(p.cobro) : '—'}</td></tr>`;
+  $('fm-cuerpo').innerHTML = `
+    <h4 style="margin:10px 0 4px">🎂 Tortas para ${nombreMes(mes)} (${st_fm.tortas.length})</h4>
+    <table class="t"><thead><tr><th></th><th>Pedido</th><th>Entrega</th><th>Productos</th><th class="n">Importe</th></tr></thead><tbody>${st_fm.tortas.map(filaT).join('') || '<tr><td colspan="5" class="vacio">No hay pedidos pendientes de facturar con entrega en ese mes.</td></tr>'}</tbody></table>
+    <h4 style="margin:14px 0 4px">🛵 Deliveries de ${nombreMes(mesAnterior(mes))} (${st_fm.delivs.length})</h4>
+    <table class="t"><thead><tr><th></th><th>Pedido</th><th>Entrega</th><th>Costo</th><th class="n">Se cobra (+IGV)</th></tr></thead><tbody>${st_fm.delivs.map(filaD).join('') || '<tr><td colspan="5" class="vacio">No hay deliveries pendientes de ese mes.</td></tr>'}</tbody></table>
+    <div class="resumen" style="margin-top:10px;max-width:420px;margin-left:auto">
+      <span>Tortas</span><b>${S(k.tt)}</b><span>Deliveries</span><b>${S(k.td)}</b><span class="tot">Total factura</span><b class="tot">${S(k.total)}</b>
+      ${k.ret ? `<span>Retención 3% (la retiene el cliente)</span><b>− ${S(k.ret)}</b><span>Neto por cobrar</span><b>${S(k.neto)}</b>` : ''}
+      <span>Crédito</span><b>${k.c.dias_credito || 35} días · vence ${fechaCorta(k.vence)}</b>
+    </div>
+    <div class="acciones-form"><button class="btn" id="fm-emitir" ${k.total > 0 ? '' : 'disabled'}>🧾 Emitir factura al crédito por ${S(k.total)}</button></div>`;
+  $('fm-emitir').onclick = emitirFM;
+}
+$('fm-cuerpo').addEventListener('change', e => {
+  const t = e.target.closest('[data-fmt]'), d = e.target.closest('[data-fmd]');
+  if (t) st_fm.tortas[Number(t.dataset.fmt)].sel = t.checked;
+  if (d) st_fm.delivs[Number(d.dataset.fmd)].sel = d.checked;
+  if (t || d) pintarFM();
+});
+$('fm-cargar').onclick = cargarFM; $('fm-cli').onchange = cargarFM; $('fm-mes').onchange = cargarFM;
+async function emitirFM() {
+  const err = t => { $('fm-error').textContent = t; };
+  const k = totalesFM(), mes = $('fm-mes').value, tortas = st_fm.tortas.filter(p => p.sel), delivs = st_fm.delivs.filter(p => p.sel);
+  err('');
+  if (!st.emi || !st.emi.disp || !st.emi.caja || !st.emi.sv900 || (delivs.length && !st.emi.sv901)) return err('Falta la configuración de emisión (equipo de caja, Caja Digital o conceptos SV-900/SV-901).');
+  if (!(k.total > 0)) return err('Selecciona al menos un pedido o delivery.');
+  if (!confirm(`Emitir FACTURA AL CRÉDITO a ${k.c.razon_social} por ${S(k.total)} (vence ${fechaCorta(k.vence)})?`)) return;
+  const turno = await turnoDigital();
+  if (!turno) return err('La Caja Digital no tiene un turno abierto. Ábrelo en la caja (PC digital) y vuelve a intentar.');
+  const items = [];
+  tortas.forEach(p => (p.pedidos_encargo_items || []).sort((a, b) => a.orden - b.orden).forEach(i => items.push({ producto_id: st.emi.sv900, cantidad: Number(i.cantidad), precio_unit: Number(i.precio_unit),
+    descripcion: `${i.descripcion}${i.personalizacion ? ' - ' + i.personalizacion : ''} (entrega ${ddmm(p.fecha_entrega)}, ${p.codigo})`.slice(0, 250) })));
+  delivs.forEach(p => items.push({ producto_id: st.emi.sv901, cantidad: 1, precio_unit: Number(p.cobro), descripcion: `SERVICIO DE DELIVERY ${ddmm(p.fecha_entrega)} (${p.codigo})` }));
+  const canal = st.emi.canales.find(z => z.nombre === 'WhatsApp') || st.emi.canales[0];
+  const payload = {
+    id_local: uuid(), emitida_en: new Date().toISOString(), tipo_doc: 'factura',
+    dispositivo_id: st.emi.disp.id, caja_id: st.emi.caja.id, canal_id: canal ? canal.id : null, turno_id: turno.id, usuario_id: st.usuario?.id || null,
+    pedido_externo: `FM-${mes}-${k.c.ruc}`, tipo_cobro: 'total', es_anticipo: false,
+    cliente: { num_doc: k.c.ruc, nombre: k.c.razon_social, agente_retencion: !!k.c.agente_retencion },
+    items, contado_credito: 'credito', pagos: [], cuotas: [{ fecha_pago: k.vence, importe: k.neto }],
+  };
+  const b = $('fm-emitir'); b.disabled = true; b.textContent = 'Emitiendo…';
+  try {
+    const { data, error } = await sb.rpc('registrar_venta', { p: payload });
+    if (error) throw error;
+    const v0 = await ventaCompleta(data.venta_id), doc = `${v0.serie}-${String(v0.numero).padStart(8, '0')}`, vid = String(data.venta_id);
+    if (tortas.length) { const u = await sb.from('pedidos_encargo').update({ factura_venta_id: vid, factura_doc: doc }).in('id', tortas.map(p => p.id)); if (u.error) throw u.error; }
+    if (delivs.length) { const u = await sb.from('pedidos_encargo').update({ delivery_factura_venta_id: vid, delivery_factura_doc: doc }).in('id', delivs.map(p => p.id)); if (u.error) throw u.error; }
+    b.textContent = 'Enviando a SUNAT…';
+    const sunat = await enviarSunat(data.venta_id);
+    const v = await ventaCompleta(data.venta_id);
+    $('fm-cuerpo').innerHTML = '';
+    $('fm-listo').innerHTML = `<div class="listo-box">✅ Factura al crédito emitida<div class="n">${doc} · ${S(v.total)}</div>
+      ${v.estado_sunat === 'rechazado' ? `<div style="color:var(--mal);font-weight:700;margin-bottom:8px">✕ Nubefact la rechazó${sunat && sunat.error ? ': ' + esc(sunat.error) : ''}.</div>` : sunat && sunat.error ? `<div class="sin-costo" style="margin-bottom:8px">⚠ Aún no llega a SUNAT (${esc(sunat.error)}). Reenvíala desde Comprobantes.</div>` : ''}
+      <div class="acc3"><button class="btn-sec" id="fm-pdf">📄 Descargar PDF</button><button class="btn-wa" id="fm-wa">💬 Enviar por WhatsApp</button><button class="btn-sec" id="fm-otra">Facturar otro mes</button></div>
+      <div class="ayuda" style="margin-top:6px">El cobro se registra en Comprobantes → Cuentas por cobrar cuando el cliente pague.</div></div>`;
+    $('fm-pdf').onclick = async () => bajar(await pdfDe(v));
+    $('fm-wa').onclick = async () => compartir(await pdfDe(v), `*Kadima · Factura ${doc}*\nTortas de ${nombreMes(mes)}${delivs.length ? ` + deliveries de ${nombreMes(mesAnterior(mes))}` : ''}\n*Total: S/ ${Number(v.total).toFixed(2)}* · crédito ${k.c.dias_credito} días (vence ${fechaCorta(k.vence)})`, k.c.telefono, v.pdf_url);
+    $('fm-otra').onclick = () => { $('fm-listo').innerHTML = ''; cargarFM(); };
+    cargarHistFM();
+  } catch (e) { err(errTxt(e)); b.disabled = false; b.textContent = `🧾 Emitir factura al crédito por ${S(k.total)}`; }
+}
+async function cargarHistFM() {
+  const { data, error } = await sb.from('ventas').select('id,serie,numero,emitida_en,total,estado,estado_sunat,pedido_externo,clientes(nombre)').like('pedido_externo', 'FM-%').order('emitida_en', { ascending: false }).limit(24);
+  if (error) { $('fm-hist').innerHTML = `<tr><td colspan="6" class="vacio">${esc(errTxt(error))}</td></tr>`; return; }
+  $('fm-hist').innerHTML = (data || []).map(v => `<tr><td>${v.serie}-${String(v.numero).padStart(8, '0')}</td><td>${fechaLima(v.emitida_en)}</td><td>${esc(v.clientes?.nombre || '')}</td><td class="n">${S(v.total)}</td>
+      <td>${v.estado === 'anulada' ? '<span class="anul">ANULADA</span>' : `<span class="estado-sunat ${v.estado_sunat}">${v.estado_sunat}</span>`}</td><td><button class="btn-sec" data-fmpdf="${v.id}">📄 PDF</button></td></tr>`).join('')
+    || '<tr><td colspan="6" class="vacio">Aún no hay facturas mensuales.</td></tr>';
+}
+$('fm-hist').addEventListener('click', async e => {
+  const b = e.target.closest('[data-fmpdf]'); if (!b) return;
+  b.disabled = true; try { bajar(await pdfDe(await ventaCompleta(b.dataset.fmpdf))); } catch (x) { alert(errTxt(x)); } b.disabled = false;
+});
+
 async function cargarCalibracion() {
   const desde = dias(-60);
   const { data, error } = await sb.from('v_delivery_real').select('*').gte('fecha_entrega', desde).order('fecha_entrega', { ascending: false });
@@ -1501,6 +2047,10 @@ $('t-guardar').onclick = async () => {
   if (!(t.factor_ruta >= 1) || !(t.max_km > 0) || !(t.redondeo > 0)) return $('t-error').textContent = 'Revisa factor de ruta (≥ 1), distancia máxima y redondeo.';
   const fila = { activo: t.activo, origen_lat: st_t.t.origen_lat, origen_lng: st_t.t.origen_lng, redondeo: t.redondeo, actualizado_por: st.usuario?.nombre || null, actualizado_en: new Date().toISOString() };
   Object.keys(T_CAMPOS).forEach(k => fila[k] = t[k]);
+  if (!st_t.sinHoras) {
+    if (st_t.horas.some(h => !h.dias.length || !h.desde || !h.hasta || h.desde >= h.hasta)) return $('t-error').textContent = 'Revisa las horas punta: cada una necesita días y un “desde” menor que el “hasta”.';
+    fila.horas_punta = st_t.horas.map(h => ({ dias: h.dias, desde: h.desde, hasta: h.hasta, recargo_pct: Number(h.recargo_pct) || 0 }));
+  }
   $('t-guardar').disabled = true;
   const { error } = await sb.from('delivery_tarifa').update(fila).eq('id', 1);
   $('t-guardar').disabled = false;
@@ -1512,12 +2062,20 @@ $('t-guardar').onclick = async () => {
 async function cotizarFormDelivery() {
   const f = st.f; if (!f || f.tipo_entrega !== 'delivery') return;
   const box = $('deliv-calc');
+  if (f.delivery_modo === 'cliente') { box.innerHTML = '🚕 El cliente manda su propio InDrive: no se cobra delivery.'; return; }
   if (f.ubicacion_lat == null) { box.innerHTML = ''; return; }
   const n = ++cotizarFormDelivery.n;
-  const { data, error } = await sb.rpc('cotizar_delivery', { p_lat: f.ubicacion_lat, p_lng: f.ubicacion_lng });
+  const args = { p_lat: f.ubicacion_lat, p_lng: f.ubicacion_lng };
+  if (f.fecha_entrega && f.hora_entrega) { args.p_fecha = f.fecha_entrega; args.p_hora = f.hora_entrega.slice(0, 5); }
+  const { data, error } = await sb.rpc('cotizar_delivery', args);
   if (n !== cotizarFormDelivery.n || st.f !== f) return;
   if (error || !data) { box.innerHTML = /cotizar_delivery/.test(error?.message || '') ? 'Para calcular el delivery solo, corre <b>45_delivery_tarifa.sql</b>.' : ''; return; }
-  if (!data.ok) { box.innerHTML = data.motivo === 'fuera_zona' ? `🛵 ≈ ${data.km} km: fuera de zona, cotízalo a mano.` : '🛵 Configura la tarifa en <b>🛵 Delivery</b> para calcularlo solo.'; return; }
+  if (!data.ok) { box.innerHTML = data.motivo === 'fuera_zona' ? `🛵 ≈ ${data.km} km: fuera de cobertura, cotízalo a mano.` : '🛵 Configura la tarifa en <b>🛵 Delivery</b> para calcularlo solo.'; return; }
+  if (f.delivery_modo === 'cliente') { box.innerHTML = '🚕 El cliente manda su propio InDrive: no se cobra delivery.'; return; }
+  if (f.delivery_modo === 'al_despachar') {
+    box.innerHTML = `🛵 Referencial: ${data.zona ? esc(data.zona) + ' · ' : ''}≈ ${data.km} km, aprox. <b>${S(data.precio)}</b>. Se cobrará el costo real del InDrive + IGV al despachar.`;
+    return;
+  }
   const vacio = f.costo_delivery === '' || f.costo_delivery == null;
   if (vacio || f.delivAuto) {
     f.costo_delivery = data.precio; f.delivAuto = true;
@@ -1525,7 +2083,7 @@ async function cotizarFormDelivery() {
     pintarResumen();
   }
   const distinto = Number(f.costo_delivery) !== Number(data.precio);
-  box.innerHTML = `🛵 ≈ ${data.km} km · InDrive ${S(data.costo)} + margen ${S(data.margen)} + IGV ${S(data.igv)} = <b>${S(data.precio)}</b>${distinto ? ` · <a href="#" id="deliv-usar">usar ${S(data.precio)}</a>` : f.delivAuto ? ' (calculado)' : ''}`;
+  box.innerHTML = `🛵 ${data.zona ? esc(data.zona) + ' · ' : ''}≈ ${data.km} km · InDrive ${S(data.costo)}${Number(data.recargo) > 0 ? ` + hora punta ${data.recargo_pct}% ${S(data.recargo)}` : ''} + margen ${S(data.margen)} + IGV ${S(data.igv)} = <b>${S(data.precio)}</b>${distinto ? ` · <a href="#" id="deliv-usar">usar ${S(data.precio)}</a>` : f.delivAuto ? ' (calculado)' : ''}`;
   if ($('deliv-usar')) $('deliv-usar').onclick = ev => { ev.preventDefault(); f.delivAuto = false; f.costo_delivery = ''; cotizarFormDelivery(); };
 }
 cotizarFormDelivery.n = 0;
@@ -1843,7 +2401,7 @@ function pintarHist() {
       <div class="bot">
         ${esPed ? `<button class="btn" data-hpago="${p.id}">${sal > 0 ? '💵 Cobrar saldo' : '💵 Comprobantes'}</button>` : ''}
         <button class="${esPed ? 'btn-sec' : 'btn'}" data-base="${p.id}">⧉ Usar como base</button>
-        ${p.estado !== 'anulado' ? `<button class="btn-wa" data-hwa="${p.id}">💬 Enviar por WhatsApp</button>` : ''}
+        ${p.estado !== 'anulado' ? `<button class="btn-wa" data-hwa="${p.id}">💬 Enviar por WhatsApp</button><button class="btn-wa" data-hprof="${p.id}">📄 Enviar proforma</button>` : ''}
         ${!['entregado', 'anulado'].includes(p.estado) ? `<button class="btn-sec" data-heditar="${p.id}">${p.estado === 'cotizado' ? '✓ Confirmar / editar' : '✏️ Editar'}</button>` : ''}
         ${p.estado === 'cotizado' ? `<button class="btn-sec" data-hanular="${p.id}">✕ Descartar</button>` : ''}
       </div></div>`;
@@ -1854,6 +2412,7 @@ $('h-tipos').onclick = e => { const b = e.target.closest('[data-k]'); if (!b) re
 $('h-lista').onclick = async e => {
   const b = e.target.closest('[data-base]'); if (b) return usarComoBase(Number(b.dataset.base));
   const hp = e.target.closest('[data-hpago]'); if (hp) return abrirPago(Number(hp.dataset.hpago));
+  const hf = e.target.closest('[data-hprof]'); if (hf) return enviarProforma(Number(hf.dataset.hprof), hf);
   const w = e.target.closest('[data-hwa]');
   if (w) {
     const r = st.hist.find(x => x.id === Number(w.dataset.hwa)); if (!r) return;
