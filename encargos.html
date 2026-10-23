@@ -1,0 +1,1209 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kadima Pedidos</title>
+<meta name="theme-color" content="#8B0000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pedidos">
+<link rel="manifest" href="encargos-manifest.webmanifest">
+<link rel="icon" href="pos-icon-192.png">
+<link rel="apple-touch-icon" href="pos-icon-192.png">
+<style>
+:root{--rojo:#8B0000;--rojo-s:#f7e9e9;--fondo:#f6f4f2;--borde:#e3dfdb;--gris:#6b6b6b;--texto:#1f1f1f;--ok:#1e7d3a;--aviso:#b26a00;--mal:#b00020;--azul:#1f5fbf;--yape:#742284;--wa:#128c4a}
+*{box-sizing:border-box}
+html,body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--fondo);color:var(--texto);font-size:14px}
+button{font:inherit;cursor:pointer;border:none;border-radius:8px}
+input,select,textarea{font:inherit;padding:8px 10px;border:1px solid var(--borde);border-radius:8px;background:#fff;color:inherit;width:100%}
+textarea{resize:vertical}
+label{display:block;font-size:12px;color:var(--gris);margin:0 0 4px;font-weight:600}
+.oculto{display:none!important}
+.btn{background:var(--rojo);color:#fff;padding:10px 16px;font-weight:700}
+.btn-sec{background:#fff;border:1px solid var(--borde);color:var(--texto);padding:9px 14px;font-weight:600}
+.btn-wa{background:var(--wa);color:#fff;padding:9px 14px;font-weight:700}
+.error{color:var(--mal);min-height:18px;margin-top:8px}
+.okmsg{color:var(--ok);font-weight:600}
+.centro{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.tarjeta{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);padding:24px;width:100%;max-width:380px}
+.marca{color:var(--rojo);font-weight:800;font-size:22px;margin:0}.sub{color:var(--gris);margin:4px 0 16px}
+.pin-puntos{display:flex;gap:10px;justify-content:center;margin:10px 0 16px}
+.pin-puntos span{width:14px;height:14px;border-radius:50%;border:2px solid var(--rojo)}.pin-puntos span.lleno{background:var(--rojo)}
+.teclado{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.teclado button{padding:16px;font-size:20px;background:var(--fondo);font-weight:600}
+
+.barra{background:var(--rojo);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:20;flex-wrap:wrap}
+.barra b{font-size:18px}
+.barra .usr{margin-left:auto;font-size:13px;opacity:.9;cursor:pointer}
+.barra .vivo{font-size:12px;font-weight:700;padding:3px 9px;border-radius:12px;background:rgba(255,255,255,.18)}
+.secc{display:flex;gap:6px;flex-wrap:wrap}
+.secc button{background:rgba(255,255,255,.15);color:#fff;padding:8px 14px;font-weight:700}
+.secc button.activa{background:#fff;color:var(--rojo)}
+.secc .n{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:#fff3c4;color:#7a5300;font-size:11px;margin-left:4px}
+
+.sub-barra{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 14px;background:#fff;border-bottom:1px solid var(--borde)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips button{background:var(--fondo);padding:7px 12px;font-weight:600;font-size:13px}
+.chips button.activa{background:var(--rojo);color:#fff}
+.sub-barra select{width:auto}
+
+/* ===== central ===== */
+.tablero{display:grid;grid-template-columns:repeat(4,minmax(270px,1fr));gap:12px;padding:14px;align-items:start;overflow-x:auto}
+.col h3{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--gris);display:flex;justify-content:space-between}
+.col h3 span{background:#fff;border-radius:10px;padding:0 8px;color:var(--texto)}
+.ped{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:10px;border-left:6px solid #bbb;overflow:hidden}
+.ped.por_validar{border-left-color:var(--yape)}.ped.confirmado{border-left-color:var(--azul)}
+.ped.en_produccion{border-left-color:var(--aviso)}.ped.listo{border-left-color:var(--ok)}
+.ped.nuevo{animation:brillo 1.2s ease 3}
+@keyframes brillo{50%{box-shadow:0 0 0 4px #f3c8d0}}
+.ped .c1{display:flex;justify-content:space-between;align-items:baseline;padding:10px 12px 2px;gap:8px}
+.ped .cod{font-weight:800;font-size:17px}
+.ped .cuando{font-weight:800;font-size:15px;text-align:right}
+.ped .cuando.tarde{color:var(--mal)}
+.ped .cli{padding:0 12px;color:var(--gris);font-size:13px}
+.ped .cli a{color:var(--ok);font-weight:600;text-decoration:none}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;margin:6px 0 0 12px;background:#eef3fb;color:var(--azul)}
+.tag.delivery{background:#fff1e0;color:#9a5300}
+.tag.origen{background:#f1ecf7;color:var(--yape)}.tag.origen.enc{background:#e7f6ec;color:var(--wa)}
+.dir{padding:4px 12px 0;font-size:13px}
+.dir .maps{display:inline-block;margin-top:6px;background:#e8f0fb;color:var(--azul);font-weight:700;font-size:13px;padding:5px 10px;border-radius:8px;text-decoration:none}
+.its{padding:6px 12px;margin:0;list-style:none}
+.its li{padding:5px 0;border-top:1px dashed #eee;font-size:15px}
+.its li b{display:inline-block;min-width:30px}
+.its .pers{display:block;font-size:12.5px;color:#7a5300;background:#fff8dd;border-radius:6px;padding:3px 6px;margin-top:3px;white-space:pre-wrap}
+.fotos{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}
+.fotos img{width:58px;height:58px;object-fit:cover;border-radius:8px;cursor:zoom-in;border:1px solid var(--borde);background:#eee}
+.nota{margin:4px 12px 6px;background:#fff3c4;font-weight:600;padding:6px 8px;border-radius:6px;font-size:13px;white-space:pre-wrap}
+.dinero{margin:6px 12px 0;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;font-size:12px;color:var(--gris);text-align:center}
+.dinero div{background:var(--fondo);border-radius:8px;padding:5px 2px}
+.dinero b{display:block;color:var(--texto);font-size:14px}
+.dinero .debe b{color:var(--mal)}.dinero .pagado b{color:var(--ok)}
+.pie{padding:6px 12px 4px;font-size:12.5px;color:var(--gris);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.envio{display:flex;align-items:center;gap:6px;padding:4px 12px 4px;font-size:12.5px;color:var(--gris)}
+.envio input{width:80px;padding:5px 8px}
+.acc{display:flex;gap:6px;padding:8px 12px 12px;flex-wrap:wrap}
+.acc button{flex:1;padding:10px;font-weight:700}
+.b-sig{background:var(--rojo);color:#fff}.b-yape{background:var(--yape);color:#fff}
+.b-sec{background:var(--fondo);color:var(--texto);flex:0 0 auto!important;padding:10px 12px!important}
+.vacio{color:var(--gris);font-size:13px;text-align:center;padding:16px;border:1px dashed var(--borde);border-radius:12px}
+.entregados{padding:0 14px 20px;color:var(--gris);font-size:13px}
+
+/* ===== nuevo pedido ===== */
+.form{display:grid;grid-template-columns:1.25fr 1fr;gap:14px;padding:14px;max-width:1300px;margin:0 auto}
+.bloque{background:#fff;border-radius:14px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.05);margin-bottom:14px}
+.bloque h3{margin:0 0 12px;font-size:15px;display:flex;align-items:center;gap:8px}
+.bloque h3 .der{margin-left:auto}
+.fila{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.fila>div{flex:1;min-width:130px}
+.seg{display:flex;background:var(--fondo);border-radius:10px;padding:3px;gap:3px}
+.seg button{flex:1;background:transparent;padding:8px;font-weight:700;color:var(--gris)}
+.seg button.activa{background:#fff;color:var(--rojo);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.item{border:1px solid var(--borde);border-radius:12px;padding:10px 12px;margin-bottom:8px;display:grid;grid-template-columns:1fr auto;gap:6px}
+.item .t{font-weight:700;font-size:15px}
+.item .d{font-size:12.5px;color:var(--gris)}
+.item .p{text-align:right;font-weight:800}
+.item .p small{display:block;font-weight:600;color:var(--gris);font-size:11.5px}
+.item .acc2{grid-column:1/-1;display:flex;gap:6px}
+.item .acc2 button{padding:6px 10px;font-size:12.5px;font-weight:600;background:var(--fondo)}
+.resumen{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:14px}
+.resumen .tot{font-weight:800;font-size:18px}
+.resumen .saldo{color:var(--mal);font-weight:800}
+.acciones-form{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.aviso-ed{background:#fff3c4;border-radius:10px;padding:8px 12px;margin:14px 14px 0;font-weight:600;display:flex;gap:10px;align-items:center;max-width:1272px}
+@media (min-width:1301px){.aviso-ed{margin:14px auto 0}}
+
+/* ===== modal ===== */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:20px 12px;overflow:auto}
+.caja{background:#fff;border-radius:16px;width:100%;max-width:880px;padding:18px;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+.caja h2{margin:0 0 12px;font-size:18px;display:flex;align-items:center}
+.caja h2 .x{margin-left:auto;background:var(--fondo);width:34px;height:34px;font-size:16px}
+.cot{display:grid;grid-template-columns:1.4fr 1fr;gap:14px}
+.buscador{position:relative}
+.resultados{position:absolute;left:0;right:0;top:100%;background:#fff;border:1px solid var(--borde);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);max-height:280px;overflow:auto;z-index:5}
+.resultados div{padding:8px 10px;display:flex;justify-content:space-between;gap:8px;cursor:pointer;border-bottom:1px solid #f3f0ed}
+.resultados div:hover,.resultados div.foco{background:var(--rojo-s)}
+.resultados small{color:var(--gris)}
+.grupo-ad{margin:8px 0 4px;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--gris);font-weight:700}
+.chip{display:inline-block;background:var(--fondo);border-radius:16px;padding:6px 11px;margin:0 6px 6px 0;font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent}
+.chip:hover{border-color:var(--rojo)}
+.chip small{color:var(--gris);font-weight:500}
+table.t{width:100%;border-collapse:collapse;font-size:13px}
+table.t th{text-align:left;color:var(--gris);font-size:11.5px;font-weight:700;padding:6px 4px;border-bottom:1px solid var(--borde)}
+table.t td{padding:5px 4px;border-bottom:1px solid #f3f0ed;vertical-align:middle}
+table.t .n{text-align:right;white-space:nowrap}
+table.t input,table.t select{padding:5px 6px}
+table.t .x{background:var(--fondo);width:28px;height:28px}
+.sin-costo{color:var(--aviso);font-weight:600}
+.calc{background:var(--fondo);border-radius:12px;padding:12px}
+.calc .k{display:flex;justify-content:space-between;padding:4px 0;font-size:14px}
+.calc .k b{font-size:16px}
+.sug{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0}
+.sug button{background:#fff;border:1px solid var(--borde);padding:8px 4px;font-weight:800;font-size:15px}
+.sug button small{display:block;font-weight:600;font-size:11px;color:var(--gris)}
+.sug button:hover{border-color:var(--rojo)}
+.fc{font-weight:800}.fc.bien{color:var(--ok)}.fc.medio{color:var(--aviso)}.fc.mal{color:var(--mal)}
+.drop{border:2px dashed var(--borde);border-radius:12px;padding:12px;text-align:center;color:var(--gris);font-size:13px}
+.drop.sobre{border-color:var(--rojo);background:var(--rojo-s)}
+.miniaturas{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.miniaturas .m{position:relative}
+.miniaturas img{width:74px;height:74px;object-fit:cover;border-radius:10px;border:1px solid var(--borde)}
+.miniaturas .m button{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;background:var(--mal);color:#fff;font-size:12px;padding:0}
+.ayuda{font-size:12px;color:var(--gris);margin:6px 0 0}
+
+/* ===== historial ===== */
+.hist{padding:14px;max-width:1100px;margin:0 auto}
+.h-item{background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.05);display:grid;grid-template-columns:76px 1fr auto;gap:12px;align-items:start}
+.h-item .ph{width:76px;height:76px;border-radius:10px;background:var(--fondo);object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:28px}
+.h-item .t{font-weight:800}
+.h-item .meta{color:var(--gris);font-size:12.5px;margin-top:2px}
+.h-item ul{margin:6px 0 0;padding-left:18px;font-size:13.5px}
+.h-item .bot{display:flex;flex-direction:column;gap:6px;align-items:stretch;min-width:130px}
+.h-item .bot button{padding:8px 10px;font-weight:700;font-size:13px}
+.est{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;background:var(--fondo);margin-left:6px}
+.est.cotizado{background:#f1ecf7;color:var(--yape)}.est.entregado{background:#e7f6ec;color:var(--ok)}.est.anulado{background:#fde8ea;color:var(--mal)}
+.cmp{font-size:12px;margin-top:4px}
+
+/* ===== adicionales ===== */
+.adic{padding:14px;max-width:1100px;margin:0 auto}
+
+/* ===== visor de fotos ===== */
+.visor{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:80;display:flex;align-items:center;justify-content:center;cursor:zoom-out}
+.visor img{max-width:94vw;max-height:92vh;border-radius:10px}
+
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1f1f1f;color:#fff;padding:10px 16px;border-radius:10px;z-index:90;font-weight:600;max-width:92vw}
+
+@media (max-width:900px){.form,.cot{grid-template-columns:1fr}.tablero{grid-template-columns:repeat(4,85vw)}.h-item{grid-template-columns:60px 1fr}.h-item .ph{width:60px;height:60px}.h-item .bot{grid-column:1/-1;flex-direction:row;flex-wrap:wrap}.h-item .bot button{flex:1}}
+</style>
+</head>
+<body>
+
+<section id="v-login" class="centro oculto">
+  <form class="tarjeta" id="f-login">
+    <p class="marca">KADIMA</p><p class="sub">Pedidos · iniciar sesión</p>
+    <input id="l-email" type="email" placeholder="Correo" required style="margin-bottom:10px">
+    <input id="l-pass" type="password" placeholder="Contraseña" required style="margin-bottom:10px">
+    <button class="btn" style="width:100%">Ingresar</button><div class="error" id="l-error"></div>
+  </form>
+</section>
+<section id="v-pin" class="centro oculto">
+  <div class="tarjeta" style="max-width:340px">
+    <p class="marca">KADIMA</p><p class="sub">Pedidos · Ingresa tu PIN</p>
+    <div class="pin-puntos" id="pin-puntos"></div><div class="teclado" id="teclado"></div>
+    <div class="error" id="pin-error" style="text-align:center"></div>
+  </div>
+</section>
+
+<section id="v-app" class="oculto">
+  <div class="barra">
+    <b>Kadima Pedidos</b>
+    <div class="secc" id="secc">
+      <button data-s="central" class="activa">📋 Central</button>
+      <button data-s="nuevo">➕ Nuevo pedido</button>
+      <button data-s="hist">🗂️ Cotizaciones e historial</button>
+      <button data-s="adic">⚙️ Adicionales</button>
+    </div>
+    <span class="vivo" id="vivo">● conectando</span>
+    <span class="usr" id="usr" title="Cambiar de usuario"></span>
+  </div>
+
+  <!-- ===== CENTRAL ===== -->
+  <div id="s-central">
+    <div class="sub-barra">
+      <div class="chips" id="rangos">
+        <button data-r="hoy" class="activa">Hoy</button><button data-r="manana">Mañana</button>
+        <button data-r="semana">Próx. 7 días</button><button data-r="pend">Todos pendientes</button>
+      </div>
+      <select id="f-origen"><option value="">Todos los canales</option><option value="web">Solo web</option><option value="enc">Solo WhatsApp / tienda</option></select>
+      <select id="f-tipo"><option value="">Recojo y delivery</option><option value="recojo">Solo recojo</option><option value="delivery">Solo delivery</option></select>
+    </div>
+    <div class="tablero" id="tablero"></div>
+    <div class="entregados" id="entregados"></div>
+  </div>
+
+  <!-- ===== NUEVO / EDITAR PEDIDO ===== -->
+  <div id="s-nuevo" class="oculto">
+    <div class="aviso-ed oculto" id="aviso-ed"></div>
+    <div class="form">
+      <div>
+        <div class="bloque">
+          <h3>🎂 Productos <button class="btn der" id="b-agregar">+ Agregar producto</button></h3>
+          <div id="f-items"></div>
+          <p class="ayuda">Cada producto se arma en el cotizador: base + adicionales, con precio sugerido según food cost. El delivery va aparte.</p>
+        </div>
+      </div>
+      <div>
+        <div class="bloque">
+          <h3>👤 Cliente</h3>
+          <div class="fila">
+            <div><label>Canal</label><select data-k="canal"><option value="whatsapp">WhatsApp</option><option value="tienda">Tienda</option><option value="telefono">Teléfono</option><option value="otro">Otro</option></select></div>
+            <div><label>Celular</label><input data-k="cliente_telefono" inputmode="tel" placeholder="987654321"></div>
+          </div>
+          <div class="fila">
+            <div style="flex:2"><label>Nombre</label><input data-k="cliente_nombre" placeholder="Nombre del cliente"></div>
+            <div><label>DNI / RUC (opcional)</label><input data-k="cliente_doc" inputmode="numeric"></div>
+          </div>
+        </div>
+        <div class="bloque">
+          <h3>🚚 Entrega</h3>
+          <div class="fila">
+            <div><label>Fecha</label><input data-k="fecha_entrega" type="date"></div>
+            <div><label>Hora</label><input data-k="hora_entrega" type="time"></div>
+          </div>
+          <div class="seg" id="seg-entrega" style="margin-bottom:10px"><button data-v="recojo" class="activa">🏬 Recojo en tienda</button><button data-v="delivery">🛵 Delivery</button></div>
+          <div id="f-delivery" class="oculto">
+            <div class="fila"><div style="flex:2"><label>Dirección</label><input data-k="direccion"></div><div><label>Distrito</label><input data-k="distrito"></div></div>
+            <div class="fila"><div style="flex:2"><label>Referencia</label><input data-k="referencia"></div><div><label>Costo delivery S/</label><input data-k="costo_delivery" type="number" min="0" step="0.5"></div></div>
+          </div>
+          <label>Notas para quien alista (no las ve producción)</label>
+          <textarea data-k="notas" rows="2" placeholder="Ej. entregar con vela, cliente pasa a las 4 pm, empaque para regalo"></textarea>
+        </div>
+        <div class="bloque">
+          <h3>💵 Pago</h3>
+          <div id="f-adelanto">
+            <div class="fila">
+              <div><label>Adelanto S/</label><input id="ad-monto" type="number" min="0" step="0.5"></div>
+              <div><label>Método</label><select id="ad-metodo"><option value="yape">Yape</option><option value="plin">Plin</option><option value="transferencia">Transferencia</option><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="otro">Otro</option></select></div>
+              <div><label>N° operación</label><input id="ad-op"></div>
+            </div>
+          </div>
+          <p class="ayuda oculto" id="ad-edit">Los pagos de un pedido ya registrado se agregan desde la Central (botón 💵).</p>
+          <div class="resumen" id="f-resumen"></div>
+        </div>
+        <div class="acciones-form">
+          <button class="btn-sec" id="b-limpiar">Limpiar</button>
+          <button class="btn-sec" id="b-cotizacion">💾 Guardar como cotización</button>
+          <button class="btn" id="b-confirmar">✓ Confirmar pedido</button>
+        </div>
+        <div class="error" id="f-error" style="text-align:right"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== HISTORIAL ===== -->
+  <div id="s-hist" class="oculto">
+    <div class="sub-barra">
+      <input id="h-q" placeholder="Buscar: torta, unicornio, chocolate, nombre o celular…" style="max-width:420px">
+      <div class="chips" id="h-tipos"><button data-k="todos" class="activa">Todos</button><button data-k="cotizado">Cotizaciones</button><button data-k="pedidos">Pedidos</button></div>
+    </div>
+    <div class="hist" id="h-lista"></div>
+  </div>
+
+  <!-- ===== ADICIONALES ===== -->
+  <div id="s-adic" class="oculto">
+    <div class="adic">
+      <div class="bloque">
+        <h3>⚙️ Catálogo de adicionales del cotizador</h3>
+        <p class="ayuda" style="margin:0 0 12px">Rellenos, coberturas, decoraciones, toppers y empaques que se suman a una base. Puedes enlazarlos a un insumo o base del maestro (el costo se actualiza solo) o ponerles un costo fijo.</p>
+        <div class="fila">
+          <div style="flex:2"><label>Nombre</label><input id="a-nombre" placeholder="Ej. Relleno de manjar (torta 20 porciones)"></div>
+          <div><label>Grupo</label><select id="a-grupo"><option value="relleno">Relleno</option><option value="cobertura">Cobertura</option><option value="decoracion">Decoración</option><option value="topper">Topper</option><option value="empaque">Empaque</option><option value="otro">Otro</option></select></div>
+        </div>
+        <div class="fila">
+          <div class="buscador" style="flex:2"><label>Insumo o base del maestro (opcional)</label><input id="a-prod" placeholder="Buscar insumo o base…" autocomplete="off"><div class="resultados oculto" id="a-pres"></div></div>
+          <div><label>Cantidad</label><input id="a-cant" type="number" min="0" step="0.001"></div>
+          <div style="max-width:110px"><label>Unidad</label><select id="a-uni"></select></div>
+          <div><label>o Costo fijo S/</label><input id="a-fijo" type="number" min="0" step="0.1"></div>
+        </div>
+        <div class="acciones-form"><button class="btn-sec oculto" id="a-cancelar">Cancelar edición</button><button class="btn" id="a-guardar">Guardar adicional</button></div>
+        <div class="error" id="a-error"></div>
+      </div>
+      <div class="bloque"><table class="t"><thead><tr><th>Adicional</th><th>Grupo</th><th>Enlace</th><th class="n">Costo actual</th><th>Activo</th><th></th></tr></thead><tbody id="a-tabla"></tbody></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== MODAL COTIZADOR ===== -->
+<div class="modal oculto" id="m-cot">
+  <div class="caja">
+    <h2>🧮 Cotizar producto <button class="x" id="c-cerrar">✕</button></h2>
+    <div class="cot">
+      <div>
+        <div class="fila">
+          <div class="buscador" style="flex:2"><label>Producto base (con receta o costo)</label><input id="c-base" placeholder="Buscar: torta chocolate, keke, bizcocho…" autocomplete="off"><div class="resultados oculto" id="c-bres"></div></div>
+          <div style="max-width:140px"><label id="c-bcant-l">Cantidad base</label><input id="c-bcant" type="number" min="0" step="0.01" value="1"></div>
+        </div>
+        <div id="c-base-info" class="ayuda" style="margin:-4px 0 10px"></div>
+        <label>Adicionales (toca para sumar)</label>
+        <div id="c-chips"></div>
+        <div class="fila" style="margin-top:6px">
+          <div class="buscador" style="flex:2"><input id="c-ins" placeholder="+ Insumo o base suelta…" autocomplete="off"><div class="resultados oculto" id="c-ires"></div></div>
+          <button class="btn-sec" id="c-otro" style="flex:0 0 auto">+ Otro costo</button>
+        </div>
+        <table class="t"><thead><tr><th>Componente</th><th class="n">Cant.</th><th>Unid.</th><th class="n">Costo</th><th></th></tr></thead><tbody id="c-lineas"></tbody></table>
+        <div class="fila" style="margin-top:12px">
+          <div style="flex:3"><label>Descripción (la ve producción)</label><input id="c-desc" placeholder="Ej. Torta chocolate 20 porciones con manjar"></div>
+          <div style="max-width:110px"><label>Unidades</label><input id="c-cant" type="number" min="1" step="1" value="1"></div>
+        </div>
+        <label>Personalización para producción</label>
+        <textarea id="c-pers" rows="2" placeholder="Dedicatoria, colores, tema, diseño…"></textarea>
+        <label style="margin-top:10px">Fotos de referencia</label>
+        <div class="drop" id="c-drop">Arrastra fotos aquí, <b>pega con Ctrl+V</b> (desde WhatsApp Web) o <label for="c-file" style="display:inline;color:var(--rojo);cursor:pointer;font-size:13px">elige archivos</label><input id="c-file" type="file" accept="image/*" multiple class="oculto"></div>
+        <div class="miniaturas" id="c-fotos"></div>
+      </div>
+      <div>
+        <div class="calc" id="c-calc"></div>
+        <div style="margin-top:12px"><label>Precio final por unidad (con IGV, sin delivery) S/</label><input id="c-precio" type="number" min="0" step="0.5" style="font-size:18px;font-weight:800"></div>
+        <div id="c-fcreal" style="margin-top:8px"></div>
+        <div class="acciones-form" style="margin-top:14px"><button class="btn" id="c-ok" style="width:100%">Agregar al pedido</button></div>
+        <div class="error" id="c-error"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL PAGO ===== -->
+<div class="modal oculto" id="m-pago">
+  <div class="caja" style="max-width:460px">
+    <h2>💵 Pagos del pedido <span id="p-cod" style="margin-left:6px"></span><button class="x" id="p-cerrar">✕</button></h2>
+    <div id="p-lista"></div>
+    <div class="fila" style="margin-top:10px">
+      <div><label>Tipo</label><select id="p-tipo"><option value="adelanto">Adelanto</option><option value="saldo">Saldo</option><option value="total">Pago total</option></select></div>
+      <div><label>Método</label><select id="p-metodo"><option value="yape">Yape</option><option value="plin">Plin</option><option value="transferencia">Transferencia</option><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="otro">Otro</option></select></div>
+    </div>
+    <div class="fila"><div><label>Monto S/</label><input id="p-monto" type="number" min="0" step="0.5"></div><div><label>N° operación</label><input id="p-op"></div></div>
+    <p class="ayuda" style="margin:0 0 10px">Si cobras en la caja Kadima, usa el código del pedido como "Pedido N°".</p>
+    <button class="btn" id="p-ok" style="width:100%">Registrar pago</button>
+    <div class="error" id="p-error"></div>
+  </div>
+</div>
+
+<div class="visor oculto" id="visor"><img id="visor-img" alt=""></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
+<script>
+// =====================================================================
+// Kadima Pedidos · toma de pedidos (WhatsApp / tienda) + central para alistar
+// =====================================================================
+const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storageKey: 'kadima-pedidos-auth' } });
+// cuentas que pueden entrar a esta app
+const PERMITIDOS = ['admin@kadima.pe', 'caja@kadima.pe'];
+// food cost objetivo del cotizador (precio sugerido = costo ÷ FC, más IGV)
+const FC_MAX = 0.35, FC_MED = 0.325, FC_MIN = 0.30, IGV = 1.18;
+const BUCKET = 'pedidos-fotos';
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const errTxt = e => { const m = (e && (e.message || e.error_description)) || String(e); return /fetch|network/i.test(m) ? 'Sin conexión a internet.' : /Invalid login/i.test(m) ? 'Correo o contraseña incorrectos.' : m; };
+const S = (n, d = 2) => n == null || isNaN(n) ? '—' : 'S/ ' + Number(n).toFixed(d);
+const r2 = n => Math.round(Number(n || 0) * 100) / 100;
+const toast = t => { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2600); };
+const UNI = { Kilo: 'kg', Litro: 'L', Unidad: 'und' };
+const UNIDADES = { Kilo: ['g', 'kg'], Litro: ['ml', 'l'], Unidad: ['und'] };
+const A_BASE = { g: 0.001, kg: 1, ml: 0.001, l: 1, und: 1 };
+const fcClase = p => p == null ? '' : p <= 32.5 ? 'bien' : p <= 38 ? 'medio' : 'mal';
+const GRUPOS = { relleno: 'Rellenos', cobertura: 'Coberturas', decoracion: 'Decoración', topper: 'Toppers', empaque: 'Empaque', otro: 'Otros' };
+const ESTADOS = { cotizado: 'Cotización', confirmado: 'Confirmado', en_produccion: 'En producción', listo: 'Listo', entregado: 'Entregado', anulado: 'Anulado', por_validar: 'Validar Yape' };
+
+const st = {
+  usuario: null, seccion: 'central',
+  productos: [], prodMap: {}, costos: {}, recetaCU: {}, adicionales: [],
+  rango: 'hoy', origen: '', tipo: '', pedidos: [], inicio: new Date(), avisados: new Set(),
+  urls: {}, f: null, ib: null, hist: [], htipo: 'todos', pagoPed: null, adEdit: null, adProd: null,
+};
+
+// ===================== SESIÓN Y PIN =====================
+function vista(id) { ['v-login', 'v-pin', 'v-app'].forEach(v => $(v).classList.toggle('oculto', v !== id)); }
+$('f-login').addEventListener('submit', async ev => {
+  ev.preventDefault(); $('l-error').textContent = '';
+  const { error } = await sb.auth.signInWithPassword({ email: $('l-email').value.trim(), password: $('l-pass').value });
+  if (error) return $('l-error').textContent = errTxt(error);
+  iniciar();
+});
+async function iniciar() {
+  const { data } = await sb.auth.getSession();
+  if (!data.session) return vista('v-login');
+  if (!PERMITIDOS.includes((data.session.user?.email || '').toLowerCase())) {
+    await sb.auth.signOut(); vista('v-login'); return $('l-error').textContent = 'Este usuario no tiene acceso a Pedidos.';
+  }
+  pedirPin();
+}
+let pin = '';
+function pedirPin() { pin = ''; vista('v-pin'); $('pin-error').textContent = ''; dibujarPin(); }
+function dibujarPin() { $('pin-puntos').innerHTML = [0, 1, 2, 3].map(i => `<span class="${i < pin.length ? 'lleno' : ''}"></span>`).join(''); }
+$('teclado').innerHTML = ['1','2','3','4','5','6','7','8','9','⌫','0','OK'].map(t => `<button data-t="${t}">${t}</button>`).join('');
+$('teclado').onclick = e => { const t = e.target.dataset.t; if (!t) return; if (t === '⌫') pin = pin.slice(0, -1); else if (t === 'OK') return validarPin(); else if (pin.length < 6) pin += t; dibujarPin(); if (pin.length === 4) validarPin(); };
+document.addEventListener('keydown', e => {
+  if ($('v-pin').classList.contains('oculto')) return;
+  if (/^[0-9]$/.test(e.key) && pin.length < 6) { pin += e.key; dibujarPin(); if (pin.length === 4) validarPin(); }
+  if (e.key === 'Backspace') { pin = pin.slice(0, -1); dibujarPin(); }
+});
+async function validarPin() {
+  const { data, error } = await sb.from('usuarios').select('id,nombre,rol,pin').eq('activo', true);
+  if (error) { $('pin-error').textContent = errTxt(error); pin = ''; return dibujarPin(); }
+  const u = (data || []).find(x => x.pin === pin);
+  if (!u) { $('pin-error').textContent = 'PIN incorrecto'; pin = ''; return dibujarPin(); }
+  st.usuario = u; abrirApp();
+}
+$('usr').onclick = () => { if (confirm('¿Cambiar de usuario?')) pedirPin(); };
+
+// ===================== FECHAS =====================
+const pad2 = n => String(n).padStart(2, '0');
+const fstr = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const dias = n => { const d = new Date(); d.setDate(d.getDate() + n); return fstr(d); };
+const hora12 = t => { if (!t) return ''; const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${pad2(m)} ${h >= 12 ? 'pm' : 'am'}`; };
+const fechaCorta = f => f ? new Date(f + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric', month: 'short' }) : 'sin fecha';
+
+// ===================== MAESTROS Y COSTOS =====================
+async function cargarMaestros() {
+  const [p, c, r, a] = await Promise.all([
+    sb.from('productos').select('id,codigo,nombre,tipo_item,unidad_medida,precio_venta,afecto_igv,activo').eq('activo', true).order('nombre'),
+    sb.from('v_costos').select('producto_id,costo'),
+    sb.from('v_recetas').select('producto_id,costo_unitario'),
+    sb.from('cotizador_adicionales').select('*').order('grupo').order('nombre'),
+  ]);
+  if (a.error && /cotizador_adicionales/.test(a.error.message)) alert('Falta correr el script 40_pedidos_encargo.sql en Supabase.');
+  st.productos = p.data || []; st.prodMap = {}; st.productos.forEach(x => st.prodMap[x.id] = x);
+  st.costos = {}; (c.data || []).forEach(x => { if (x.costo != null) st.costos[x.producto_id] = Number(x.costo); });
+  st.recetaCU = {}; (r.data || []).forEach(x => { if (x.costo_unitario != null) st.recetaCU[x.producto_id] = Number(x.costo_unitario); });
+  st.adicionales = a.data || [];
+}
+// costo sin IGV por unidad base (kg / L / und) de un producto
+function costoDe(pid) { if (pid == null) return null; if (st.recetaCU[pid] != null) return st.recetaCU[pid]; return st.costos[pid] ?? null; }
+const uniDe = pid => UNI[st.prodMap[pid]?.unidad_medida] || 'und';
+
+// costo de una línea del cotizador; null = falta costo
+function costoLinea(l) {
+  if (l.tipo === 'otro') return Number(l.monto || 0);
+  if (l.tipo === 'adic') {
+    if (l.producto_id) { const c = costoDe(l.producto_id); return c == null ? null : c * Number(l.cantidad || 0) * Number(l.veces || 1); }
+    return Number(l.costo_fijo || 0) * Number(l.veces || 1);
+  }
+  if (l.tipo === 'insumo') { const c = costoDe(l.producto_id); return c == null ? null : c * Number(l.cantidad || 0) * (A_BASE[l.unidad] || 1); }
+  return 0;
+}
+// recalcula el costo unitario de una cotización guardada con los costos de HOY
+function costoCotizacion(cot) {
+  if (!cot || (!cot.base && !(cot.lineas || []).length)) return null;
+  let total = 0, sin = 0;
+  if (cot.base && cot.base.producto_id) { const c = costoDe(cot.base.producto_id); if (c == null) sin++; else total += c * Number(cot.base.cantidad || 1); }
+  (cot.lineas || []).forEach(l => {
+    if (l.tipo === 'adic' && l.adicional_id) { const ad = st.adicionales.find(a => a.id === l.adicional_id); if (ad) l = { ...l, producto_id: ad.producto_id, cantidad: ad.cantidad, costo_fijo: ad.costo_fijo }; }
+    const c = costoLinea(l); if (c == null) sin++; else total += c;
+  });
+  return { total, sin };
+}
+const sugerido = (costo, fc) => costo > 0 ? Math.ceil(costo / fc * IGV) : null;
+
+// ===================== FOTOS =====================
+async function firmar(rutas) {
+  const faltan = [...new Set(rutas)].filter(r => r && !st.urls[r]);
+  if (!faltan.length) return;
+  const { data } = await sb.storage.from(BUCKET).createSignedUrls(faltan, 60 * 60 * 6);
+  (data || []).forEach(d => { if (d.signedUrl) st.urls[d.path] = d.signedUrl; });
+}
+const imgFoto = ruta => st.urls[ruta] ? `<img src="${st.urls[ruta]}" data-zoom="${esc(st.urls[ruta])}" alt="referencia" loading="lazy">` : '';
+async function comprimir(file) {
+  try {
+    const img = await createImageBitmap(file);
+    const k = Math.min(1, 1600 / Math.max(img.width, img.height));
+    const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    const b = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.82));
+    return b || file;
+  } catch (e) { return file; }
+}
+document.addEventListener('click', e => {
+  const z = e.target.closest('[data-zoom]'); if (z) { $('visor-img').src = z.dataset.zoom; $('visor').classList.remove('oculto'); }
+});
+$('visor').onclick = () => $('visor').classList.add('oculto');
+
+// ===================== NAVEGACIÓN =====================
+function irSeccion(s) {
+  st.seccion = s;
+  document.querySelectorAll('#secc [data-s]').forEach(b => b.classList.toggle('activa', b.dataset.s === s));
+  ['central', 'nuevo', 'hist', 'adic'].forEach(x => $('s-' + x).classList.toggle('oculto', x !== s));
+  if (s === 'central') cargarCentral();
+  if (s === 'hist') cargarHist();
+  if (s === 'adic') pintarAdicionales();
+  if (s === 'nuevo' && !st.f) nuevoForm();
+  window.scrollTo(0, 0);
+}
+$('secc').onclick = e => { const b = e.target.closest('[data-s]'); if (b) irSeccion(b.dataset.s); };
+
+async function abrirApp() {
+  vista('v-app'); $('usr').textContent = st.usuario?.nombre || '';
+  await cargarMaestros();
+  irSeccion('central');
+  sb.channel('kadima-pedidos')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos_web' }, () => st.seccion === 'central' && cargarCentral())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos_encargo' }, () => st.seccion === 'central' && cargarCentral())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos_encargo_pagos' }, () => st.seccion === 'central' && cargarCentral())
+    .subscribe(s => { $('vivo').textContent = s === 'SUBSCRIBED' ? '● en vivo' : '● reconectando'; });
+  setInterval(() => st.seccion === 'central' && cargarCentral(), 30000);
+  setInterval(() => st.seccion === 'central' && dibujarCentral(), 60000);
+}
+
+// =====================================================================
+// CENTRAL DE PEDIDOS (web + WhatsApp/tienda) — detalle completo para alistar
+// =====================================================================
+const COLS = [
+  { id: 'por_validar', titulo: '💜 Validar Yape (web)' },
+  { id: 'confirmado', titulo: '📋 Confirmados' },
+  { id: 'en_produccion', titulo: '👩‍🍳 En producción' },
+  { id: 'listo', titulo: '✅ Listos' },
+];
+const SIGUIENTE = { por_validar: 'confirmado', confirmado: 'en_produccion', en_produccion: 'listo', listo: 'entregado' };
+const ANTERIOR = { confirmado: 'por_validar', en_produccion: 'confirmado', listo: 'en_produccion' };
+
+function filtrarRango(q, campoEstado = 'estado') {
+  if (st.rango === 'hoy') q = q.eq('fecha_entrega', dias(0));
+  else if (st.rango === 'manana') q = q.eq('fecha_entrega', dias(1));
+  else if (st.rango === 'semana') q = q.gte('fecha_entrega', dias(0)).lte('fecha_entrega', dias(7));
+  else q = q.neq(campoEstado, 'entregado');
+  if (st.tipo) q = q.eq('tipo_entrega', st.tipo);
+  return q;
+}
+
+async function cargarCentral() {
+  const tareas = [];
+  if (st.origen !== 'enc') tareas.push(filtrarRango(sb.from('pedidos_web').select('*, pedidos_web_items(nombre,cantidad,precio)').neq('estado', 'anulado')));
+  else tareas.push(Promise.resolve({ data: [] }));
+  if (st.origen !== 'web') tareas.push(filtrarRango(sb.from('pedidos_encargo')
+    .select('*, pedidos_encargo_items(*), pedidos_encargo_fotos(id,item_orden,ruta), pedidos_encargo_pagos(id,tipo,metodo,monto,operacion,creado_en,registrado_por)')
+    .not('estado', 'in', '(cotizado,anulado)')));
+  else tareas.push(Promise.resolve({ data: [] }));
+  const [w, e] = await Promise.all(tareas);
+  if (w.error || e.error) {
+    const m = (w.error || e.error).message;
+    $('tablero').innerHTML = `<div class="vacio" style="grid-column:1/-1">${/pedidos_encargo/.test(m) ? 'Falta correr el script <b>40_pedidos_encargo.sql</b> en Supabase.' : esc(errTxt(w.error || e.error))}</div>`;
+    return;
+  }
+  const lista = [...(w.data || []).map(normWeb), ...(e.data || []).map(normEnc)]
+    .sort((a, b) => (a.fecha || '9999').localeCompare(b.fecha || '9999') || (a.hora || '99').localeCompare(b.hora || '99'));
+  await firmar(lista.flatMap(p => p.items.flatMap(i => i.fotos)));
+  const nuevos = lista.filter(p => new Date(p.creado_en) > st.inicio && !st.avisados.has(p.key)).map(p => p.key);
+  nuevos.forEach(k => st.avisados.add(k));
+  st.pedidos = lista;
+  dibujarCentral(nuevos);
+  if (nuevos.length) sonar();
+}
+
+function normWeb(p) {
+  return {
+    key: 'w' + p.id, origen: 'web', id: p.id, codigo: p.codigo, estado: p.estado, fecha: p.fecha_entrega, hora: p.hora_entrega,
+    tipo_entrega: p.tipo_entrega, cliente: p.cliente_nombre, tel: p.cliente_telefono, direccion: p.direccion, distrito: p.distrito,
+    referencia: p.referencia, lat: p.ubicacion_lat, lng: p.ubicacion_lng, notas: p.notas, creado_en: p.creado_en,
+    items: (p.pedidos_web_items || []).map(i => ({ desc: i.nombre, cant: i.cantidad, pers: '', fotos: [] })),
+    total: Number(p.total_productos || 0), delivery: p.costo_delivery, pagado: p.pago_validado ? Number(p.total_productos || 0) : 0,
+    yape_op: p.yape_operacion, pago_validado: p.pago_validado, raw: p,
+  };
+}
+function normEnc(p) {
+  const fotos = p.pedidos_encargo_fotos || [];
+  const items = (p.pedidos_encargo_items || []).sort((a, b) => a.orden - b.orden)
+    .map(i => ({ desc: i.descripcion, cant: i.cantidad, pers: i.personalizacion, fotos: fotos.filter(f => f.item_orden === i.orden).map(f => f.ruta) }));
+  const sueltas = fotos.filter(f => !items.length || f.item_orden == null || !(p.pedidos_encargo_items || []).some(i => i.orden === f.item_orden)).map(f => f.ruta);
+  if (sueltas.length && items[0]) items[0].fotos.push(...sueltas);
+  const pagado = (p.pedidos_encargo_pagos || []).reduce((a, x) => a + Number(x.monto), 0);
+  return {
+    key: 'e' + p.id, origen: 'enc', canal: p.canal, id: p.id, codigo: p.codigo, estado: p.estado, fecha: p.fecha_entrega, hora: p.hora_entrega,
+    tipo_entrega: p.tipo_entrega, cliente: p.cliente_nombre, tel: p.cliente_telefono, direccion: p.direccion, distrito: p.distrito,
+    referencia: p.referencia, notas: p.notas, creado_en: p.creado_en, items,
+    total: Number(p.total_productos || 0), delivery: p.costo_delivery, pagado, pagos: p.pedidos_encargo_pagos || [], raw: p,
+  };
+}
+
+function dibujarCentral(nuevos = []) {
+  const hoy = dias(0), ahoraMin = new Date().getHours() * 60 + new Date().getMinutes();
+  $('tablero').innerHTML = COLS.map(c => {
+    const l = st.pedidos.filter(p => p.estado === c.id);
+    return `<div class="col"><h3>${c.titulo}<span>${l.length}</span></h3>${l.length ? l.map(p => tarjeta(p, hoy, ahoraMin, nuevos.includes(p.key))).join('') : '<div class="vacio">Sin pedidos</div>'}</div>`;
+  }).join('');
+  const ent = st.pedidos.filter(p => p.estado === 'entregado');
+  $('entregados').textContent = ent.length ? `Entregados en este rango: ${ent.map(p => p.codigo).join(', ')}` : '';
+  const pv = st.pedidos.filter(p => p.estado === 'por_validar').length;
+  document.querySelector('#secc [data-s="central"]').innerHTML = '📋 Central' + (pv ? `<span class="n">${pv}</span>` : '');
+}
+
+function tarjeta(p, hoy, ahoraMin, nuevo) {
+  const [hh, mm] = (p.hora || '00:00').split(':').map(Number);
+  const tarde = p.fecha && (p.fecha < hoy || (p.fecha === hoy && hh * 60 + mm < ahoraMin && p.estado !== 'listo'));
+  const cuando = (p.fecha === hoy ? '' : fechaCorta(p.fecha) + ' · ') + (hora12(p.hora) || 'sin hora');
+  const tel = (p.tel || '').replace(/\D/g, '');
+  const items = p.items.map(i => `<li><b>${Number(i.cant)}×</b> ${esc(i.desc)}${i.pers ? `<span class="pers">✏️ ${esc(i.pers)}</span>` : ''}${i.fotos.length ? `<div class="fotos">${i.fotos.map(imgFoto).join('')}</div>` : ''}</li>`).join('');
+  const totDel = p.total + Number(p.delivery || 0), saldo = Math.max(totDel - p.pagado, 0);
+  const sig = SIGUIENTE[p.estado];
+  const txtSig = { por_validar: '✓ Yape recibido', confirmado: 'A producción', en_produccion: 'Listo', listo: 'Entregado' }[p.estado];
+  const origen = p.origen === 'web' ? '<span class="tag origen">🌐 Web</span>' : `<span class="tag origen enc">${{ whatsapp: '💬 WhatsApp', tienda: '🏪 Tienda', telefono: '📞 Teléfono', otro: '✳️ Otro' }[p.canal] || '💬'}</span>`;
+  return `
+  <div class="ped ${p.estado} ${nuevo ? 'nuevo' : ''}">
+    <div class="c1"><span class="cod">${esc(p.codigo)}</span><span class="cuando ${tarde ? 'tarde' : ''}">${esc(cuando)}</span></div>
+    <div class="cli">${esc(p.cliente || 'Sin nombre')}${tel ? ` · <a href="https://wa.me/51${tel}" target="_blank" rel="noopener">${esc(p.tel)}</a>` : ''}</div>
+    ${origen}<span class="tag ${p.tipo_entrega}">${p.tipo_entrega === 'delivery' ? '🛵 Delivery' : '🏬 Recojo'}</span>
+    ${p.tipo_entrega === 'delivery' ? `<div class="dir">📍 ${esc(p.direccion || 'sin dirección')}${p.distrito ? ', ' + esc(p.distrito) : ''}${p.referencia ? `<br><small>${esc(p.referencia)}</small>` : ''}${p.lat != null ? `<br><a class="maps" href="https://www.google.com/maps?q=${p.lat},${p.lng}" target="_blank" rel="noopener">🗺️ Abrir en Google Maps</a>` : ''}</div>` : ''}
+    <ul class="its">${items}</ul>
+    ${p.notas ? `<div class="nota">📝 ${esc(p.notas)}</div>` : ''}
+    <div class="dinero">
+      <div>Total<b>${S(totDel)}</b></div>
+      <div class="pagado">Pagado<b>${S(p.pagado)}</b></div>
+      <div class="${saldo > 0 ? 'debe' : ''}">Saldo<b>${S(saldo)}</b></div>
+    </div>
+    <div class="pie">${p.origen === 'web' ? `Yape op. ${esc(p.yape_op || '—')}${p.pago_validado ? ' ✓' : ''}` : (p.pagos.length ? p.pagos.map(x => `${x.tipo} ${x.metodo} ${S(x.monto)}`).join(' · ') : 'Sin pagos registrados')}${p.delivery != null ? ` · delivery ${S(p.delivery)}` : ''}</div>
+    ${p.origen === 'web' && p.tipo_entrega === 'delivery' ? `<div class="envio">Costo delivery S/ <input type="number" min="0" step="0.5" data-envio="${p.id}" value="${p.delivery ?? ''}" placeholder="—"></div>` : ''}
+    <div class="acc">
+      ${ANTERIOR[p.estado] && !(p.origen === 'enc' && p.estado === 'confirmado') ? `<button class="b-sec" data-atras="${p.key}" title="Regresar un paso">↩</button>` : ''}
+      ${p.origen === 'enc' ? `<button class="b-sec" data-editar="${p.id}" title="Editar pedido">✏️</button><button class="b-sec" data-pago="${p.id}" title="Pagos">💵</button>` : ''}
+      ${p.estado === 'por_validar' || (p.origen === 'enc' && p.estado === 'confirmado') ? `<button class="b-sec" data-anular="${p.key}" title="Anular pedido">✕</button>` : ''}
+      ${sig ? `<button class="${p.estado === 'por_validar' ? 'b-yape' : 'b-sig'}" data-sig="${p.key}">${txtSig}</button>` : ''}
+    </div>
+  </div>`;
+}
+
+async function cambiarEstado(p, estado, extra = {}) {
+  const tabla = p.origen === 'web' ? 'pedidos_web' : 'pedidos_encargo';
+  const cambios = { estado, actualizado_por: st.usuario?.nombre || null, ...extra };
+  if (p.origen === 'enc') cambios.actualizado_en = new Date().toISOString();
+  const { error } = await sb.from(tabla).update(cambios).eq('id', p.id);
+  if (error) return alert(errTxt(error));
+  p.estado = estado; dibujarCentral();
+}
+function sonar() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.25].forEach(t => { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = 880; o.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(0.2, ctx.currentTime + t); o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.18); });
+  } catch (e) {}
+}
+
+$('rangos').onclick = e => { const b = e.target.closest('[data-r]'); if (!b) return; st.rango = b.dataset.r; [...$('rangos').children].forEach(x => x.classList.toggle('activa', x === b)); cargarCentral(); };
+$('f-origen').onchange = e => { st.origen = e.target.value; cargarCentral(); };
+$('f-tipo').onchange = e => { st.tipo = e.target.value; cargarCentral(); };
+$('tablero').addEventListener('click', e => {
+  const pk = k => st.pedidos.find(x => x.key === k);
+  const s = e.target.closest('[data-sig]');
+  if (s) {
+    const p = pk(s.dataset.sig);
+    if (p.estado === 'por_validar') {
+      if (!confirm(`¿Confirmas que llegó el Yape de ${S(p.total)} (op. ${p.yape_op})?`)) return;
+      return cambiarEstado(p, 'confirmado', { pago_validado: true, pago_validado_por: st.usuario?.nombre || null, pago_validado_en: new Date().toISOString() });
+    }
+    if (p.estado === 'listo') {
+      const saldo = Math.max(p.total + Number(p.delivery || 0) - p.pagado, 0);
+      if (p.origen === 'enc' && saldo > 0 && !confirm(`Este pedido tiene saldo pendiente de ${S(saldo)}. ¿Marcarlo como entregado igual?`)) return;
+      if (p.tipo_entrega === 'delivery' && p.delivery == null && !confirm('No se registró el costo del delivery. ¿Marcar como entregado igual?')) return;
+    }
+    return cambiarEstado(p, SIGUIENTE[p.estado]);
+  }
+  const a = e.target.closest('[data-atras]');
+  if (a) { const p = pk(a.dataset.atras); return cambiarEstado(p, ANTERIOR[p.estado], p.origen === 'web' && p.estado === 'confirmado' ? { pago_validado: false, pago_validado_por: null, pago_validado_en: null } : {}); }
+  const x = e.target.closest('[data-anular]');
+  if (x && confirm('¿Anular este pedido?')) return cambiarEstado(pk(x.dataset.anular), 'anulado');
+  const ed = e.target.closest('[data-editar]'); if (ed) return editarPedido(Number(ed.dataset.editar));
+  const pg = e.target.closest('[data-pago]'); if (pg) return abrirPago(Number(pg.dataset.pago));
+});
+$('tablero').addEventListener('change', async e => {
+  const inp = e.target.closest('[data-envio]'); if (!inp) return;
+  const v = inp.value === '' ? null : Math.max(0, Number(inp.value));
+  const { error } = await sb.from('pedidos_web').update({ costo_delivery: v, actualizado_por: st.usuario?.nombre || null }).eq('id', inp.dataset.envio);
+  if (error) return alert(errTxt(error));
+  const p = st.pedidos.find(x => x.key === 'w' + inp.dataset.envio); if (p) p.delivery = v;
+  inp.style.borderColor = 'var(--ok)'; setTimeout(() => inp.style.borderColor = '', 1200);
+});
+
+// ===================== PAGOS =====================
+async function abrirPago(id) {
+  st.pagoPed = id; $('p-error').textContent = ''; $('p-op').value = '';
+  const { data, error } = await sb.from('v_pedidos_encargo').select('codigo,total_con_delivery,pagado,saldo').eq('id', id).single();
+  if (error) return alert(errTxt(error));
+  const pg = await sb.from('pedidos_encargo_pagos').select('*').eq('pedido_id', id).order('creado_en');
+  $('p-cod').textContent = data.codigo;
+  $('p-lista').innerHTML = `<div class="resumen" style="margin-bottom:8px"><span>Total con delivery</span><b>${S(data.total_con_delivery)}</b><span>Pagado</span><b>${S(data.pagado)}</b><span>Saldo</span><b class="saldo">${S(data.saldo)}</b></div>` +
+    ((pg.data || []).length ? `<table class="t"><tbody>${pg.data.map(x => `<tr><td>${new Date(x.creado_en).toLocaleDateString('es-PE')}</td><td>${x.tipo} · ${x.metodo}${x.operacion ? ' · op. ' + esc(x.operacion) : ''}</td><td class="n">${S(x.monto)}</td><td><button class="x" data-borrar-pago="${x.id}" title="Borrar pago">✕</button></td></tr>`).join('')}</tbody></table>` : '<p class="ayuda">Aún no hay pagos.</p>');
+  $('p-monto').value = data.saldo > 0 ? Number(data.saldo).toFixed(2) : '';
+  $('p-tipo').value = Number(data.pagado) > 0 ? 'saldo' : 'adelanto';
+  $('m-pago').classList.remove('oculto');
+}
+$('p-cerrar').onclick = () => $('m-pago').classList.add('oculto');
+$('p-lista').onclick = async e => {
+  const b = e.target.closest('[data-borrar-pago]'); if (!b || !confirm('¿Borrar este pago?')) return;
+  const { error } = await sb.from('pedidos_encargo_pagos').delete().eq('id', Number(b.dataset.borrarPago));
+  if (error) return $('p-error').textContent = errTxt(error);
+  abrirPago(st.pagoPed); cargarCentral();
+};
+$('p-ok').onclick = async () => {
+  const monto = r2($('p-monto').value);
+  if (!(monto > 0)) return $('p-error').textContent = 'Ingresa el monto.';
+  $('p-ok').disabled = true;
+  const { error } = await sb.from('pedidos_encargo_pagos').insert({ pedido_id: st.pagoPed, tipo: $('p-tipo').value, metodo: $('p-metodo').value, monto, operacion: $('p-op').value.trim() || null, registrado_por: st.usuario?.nombre || null });
+  $('p-ok').disabled = false;
+  if (error) return $('p-error').textContent = errTxt(error);
+  $('m-pago').classList.add('oculto'); toast('Pago registrado'); cargarCentral();
+};
+
+// =====================================================================
+// NUEVO / EDITAR PEDIDO
+// =====================================================================
+function nuevoForm(base = {}) {
+  st.f = {
+    id: null, codigo: null, estado: null, canal: 'whatsapp', cliente_nombre: '', cliente_telefono: '', cliente_doc: '',
+    fecha_entrega: '', hora_entrega: '', tipo_entrega: 'recojo', direccion: '', distrito: '', referencia: '',
+    costo_delivery: '', notas: '', items: [], fotosBorrar: [], ...base,
+  };
+  pintarForm();
+}
+function pintarForm() {
+  const f = st.f;
+  document.querySelectorAll('#s-nuevo [data-k]').forEach(i => { i.value = f[i.dataset.k] ?? ''; });
+  [...$('seg-entrega').children].forEach(b => b.classList.toggle('activa', b.dataset.v === f.tipo_entrega));
+  $('f-delivery').classList.toggle('oculto', f.tipo_entrega !== 'delivery');
+  $('f-adelanto').classList.toggle('oculto', !!f.id); $('ad-edit').classList.toggle('oculto', !f.id);
+  if (!f.id) { $('ad-monto').value = ''; $('ad-op').value = ''; $('ad-metodo').value = 'yape'; }
+  const ae = $('aviso-ed');
+  if (f.id) { ae.classList.remove('oculto'); ae.innerHTML = `✏️ Editando <b>${esc(f.codigo)}</b> (${ESTADOS[f.estado]}) <button class="btn-sec" id="b-salir-ed" style="margin-left:auto">Salir sin guardar</button>`; $('b-salir-ed').onclick = () => { nuevoForm(); }; }
+  else ae.classList.add('oculto');
+  $('b-cotizacion').classList.toggle('oculto', !!f.id && f.estado !== 'cotizado');
+  $('b-confirmar').textContent = f.id ? (f.estado === 'cotizado' ? '✓ Confirmar pedido' : '💾 Guardar cambios') : '✓ Confirmar pedido';
+  $('f-error').textContent = '';
+  pintarItems();
+}
+function pintarItems() {
+  const f = st.f;
+  $('f-items').innerHTML = f.items.length ? f.items.map((it, i) => {
+    const fc = it.costo_unit && it.precio_unit ? it.costo_unit / (it.precio_unit / IGV) * 100 : null;
+    const nf = (it.fotosExistentes || []).length + (it.fotosNuevas || []).length;
+    return `<div class="item">
+      <div><div class="t">${Number(it.cantidad)} × ${esc(it.descripcion)}</div>
+        ${it.personalizacion ? `<div class="d">✏️ ${esc(it.personalizacion)}</div>` : ''}
+        <div class="d">Costo insumos ${S(it.costo_unit)} c/u${fc != null ? ` · <span class="fc ${fcClase(fc)}">FC ${fc.toFixed(1)}%</span>` : ''}${nf ? ` · 📷 ${nf} foto(s)` : ''}</div></div>
+      <div class="p">${S(it.precio_unit * it.cantidad)}<small>${S(it.precio_unit)} c/u</small></div>
+      <div class="acc2"><button data-ed-item="${i}">✏️ Editar / recotizar</button><button data-dup-item="${i}">⧉ Duplicar</button><button data-del-item="${i}">✕ Quitar</button></div>
+    </div>`;
+  }).join('') : '<div class="vacio">Aún no hay productos. Usa “+ Agregar producto”.</div>';
+  pintarResumen();
+}
+function pintarResumen() {
+  const f = st.f;
+  const tp = f.items.reduce((a, it) => a + it.precio_unit * it.cantidad, 0);
+  const del = f.tipo_entrega === 'delivery' ? Number(f.costo_delivery || 0) : 0;
+  const ad = f.id ? 0 : Number($('ad-monto').value || 0);
+  const costo = f.items.reduce((a, it) => a + Number(it.costo_unit || 0) * it.cantidad, 0);
+  const fc = tp > 0 && costo > 0 ? costo / (tp / IGV) * 100 : null;
+  $('f-resumen').innerHTML = `
+    <span>Productos</span><b>${S(tp)}</b>
+    ${f.tipo_entrega === 'delivery' ? `<span>Delivery</span><b>${S(del)}</b>` : ''}
+    <span class="tot">Total</span><b class="tot">${S(tp + del)}</b>
+    ${!f.id ? `<span>Adelanto</span><b>${S(ad)}</b><span>Saldo</span><b class="saldo">${S(Math.max(tp + del - ad, 0))}</b>` : ''}
+    ${fc != null ? `<span>Food cost del pedido</span><b class="fc ${fcClase(fc)}">${fc.toFixed(1)}%</b>` : ''}`;
+}
+document.querySelectorAll('#s-nuevo [data-k]').forEach(i => i.addEventListener('input', () => { st.f[i.dataset.k] = i.value; pintarResumen(); }));
+$('ad-monto').oninput = pintarResumen;
+$('seg-entrega').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; st.f.tipo_entrega = b.dataset.v; [...$('seg-entrega').children].forEach(x => x.classList.toggle('activa', x === b)); $('f-delivery').classList.toggle('oculto', b.dataset.v !== 'delivery'); pintarResumen(); };
+$('f-items').onclick = e => {
+  const ed = e.target.closest('[data-ed-item]'); if (ed) return abrirCotizador(Number(ed.dataset.edItem));
+  const du = e.target.closest('[data-dup-item]');
+  if (du) { const it = st.f.items[Number(du.dataset.dupItem)]; st.f.items.splice(Number(du.dataset.dupItem) + 1, 0, { ...JSON.parse(JSON.stringify({ ...it, fotosNuevas: [] })), fotosNuevas: [...(it.fotosNuevas || [])], fotosExistentes: (it.fotosExistentes || []).map(x => ({ ruta: x.ruta, copia: true })) }); return pintarItems(); }
+  const de = e.target.closest('[data-del-item]');
+  if (de && confirm('¿Quitar este producto del pedido?')) { const it = st.f.items.splice(Number(de.dataset.delItem), 1)[0]; (it.fotosExistentes || []).forEach(x => x.id && st.f.fotosBorrar.push(x)); pintarItems(); }
+};
+$('b-agregar').onclick = () => abrirCotizador(null);
+$('b-limpiar').onclick = () => { if (!st.f.items.length || confirm('¿Borrar todo lo ingresado?')) nuevoForm(); };
+$('b-cotizacion').onclick = () => guardarPedido('cotizado');
+$('b-confirmar').onclick = () => guardarPedido(st.f.id && st.f.estado !== 'cotizado' ? st.f.estado : 'confirmado');
+
+async function guardarPedido(estado) {
+  const f = st.f; $('f-error').textContent = '';
+  if (!f.items.length) return $('f-error').textContent = 'Agrega al menos un producto.';
+  if (estado !== 'cotizado') {
+    if (!f.cliente_nombre.trim()) return $('f-error').textContent = 'Falta el nombre del cliente.';
+    if (!f.fecha_entrega) return $('f-error').textContent = 'Falta la fecha de entrega.';
+    if (f.tipo_entrega === 'delivery' && !f.direccion.trim()) return $('f-error').textContent = 'Falta la dirección del delivery.';
+  }
+  const adelanto = f.id ? 0 : r2($('ad-monto').value);
+  const btns = [$('b-cotizacion'), $('b-confirmar')]; btns.forEach(b => b.disabled = true);
+  try {
+    const payload = {
+      id: f.id, estado, canal: f.canal, cliente_nombre: f.cliente_nombre.trim(), cliente_telefono: f.cliente_telefono.replace(/\D/g, ''), cliente_doc: f.cliente_doc.trim(),
+      fecha_entrega: f.fecha_entrega, hora_entrega: f.hora_entrega, tipo_entrega: f.tipo_entrega,
+      direccion: f.tipo_entrega === 'delivery' ? f.direccion : null, distrito: f.tipo_entrega === 'delivery' ? f.distrito : null,
+      referencia: f.tipo_entrega === 'delivery' ? f.referencia : null, costo_delivery: f.tipo_entrega === 'delivery' ? f.costo_delivery : '',
+      notas: f.notas, usuario: st.usuario?.nombre || null,
+      items: f.items.map((it, i) => ({ orden: i + 1, producto_id: it.producto_id || null, descripcion: it.descripcion, personalizacion: it.personalizacion || '', cantidad: it.cantidad, precio_unit: it.precio_unit, costo_unit: it.costo_unit ?? '', cotizacion: it.cotizacion || {} })),
+    };
+    const { data, error } = await sb.rpc('guardar_pedido_encargo', { p: payload });
+    if (error) throw error;
+    const pid = data.id;
+    // fotos quitadas
+    for (const x of f.fotosBorrar) {
+      await sb.from('pedidos_encargo_fotos').delete().eq('id', x.id);
+      const { count } = await sb.from('pedidos_encargo_fotos').select('id', { count: 'exact', head: true }).eq('ruta', x.ruta);
+      if (!count) await sb.storage.from(BUCKET).remove([x.ruta]);
+    }
+    // fotos existentes (reordenadas o copiadas del historial) y nuevas
+    for (let i = 0; i < f.items.length; i++) {
+      const it = f.items[i], orden = i + 1;
+      for (const x of it.fotosExistentes || []) {
+        if (x.copia || !x.id) await sb.from('pedidos_encargo_fotos').insert({ pedido_id: pid, item_orden: orden, ruta: x.ruta });
+        else if (x.item_orden !== orden) await sb.from('pedidos_encargo_fotos').update({ item_orden: orden }).eq('id', x.id);
+      }
+      let k = 0;
+      for (const file of it.fotosNuevas || []) {
+        const blob = await comprimir(file);
+        const ext = blob.type === 'image/jpeg' ? 'jpg' : ((file.name || '').split('.').pop() || 'jpg').toLowerCase();
+        const ruta = `${pid}/${orden}-${Date.now()}-${k++}.${ext}`;
+        const up = await sb.storage.from(BUCKET).upload(ruta, blob, { contentType: blob.type || 'image/jpeg', upsert: false });
+        if (up.error) { toast('No se pudo subir una foto: ' + errTxt(up.error)); continue; }
+        await sb.from('pedidos_encargo_fotos').insert({ pedido_id: pid, item_orden: orden, ruta });
+      }
+    }
+    if (adelanto > 0) {
+      const pg = await sb.from('pedidos_encargo_pagos').insert({ pedido_id: pid, tipo: 'adelanto', metodo: $('ad-metodo').value, monto: adelanto, operacion: $('ad-op').value.trim() || null, registrado_por: st.usuario?.nombre || null });
+      if (pg.error) toast('El pedido se guardó, pero no el adelanto: ' + errTxt(pg.error));
+    }
+    const resumen = textoWhatsApp({ ...f, codigo: data.codigo, estado }, adelanto);
+    const fueEdicion = !!f.id;
+    nuevoForm();
+    mostrarGuardado(data.codigo, estado, resumen, fueEdicion);
+  } catch (e) {
+    $('f-error').textContent = errTxt(e);
+  } finally { btns.forEach(b => b.disabled = false); }
+}
+function textoWhatsApp(f, adelanto) {
+  const tp = f.items.reduce((a, it) => a + it.precio_unit * it.cantidad, 0);
+  const del = f.tipo_entrega === 'delivery' ? Number(f.costo_delivery || 0) : 0;
+  const l = [
+    `*Kadima · ${f.estado === 'cotizado' ? 'Cotización' : 'Pedido'} ${f.codigo}*`,
+    ...f.items.map(it => `• ${Number(it.cantidad)} × ${it.descripcion}${it.personalizacion ? ` (${it.personalizacion})` : ''} — S/ ${(it.precio_unit * it.cantidad).toFixed(2)}`),
+    f.fecha_entrega ? `📅 ${fechaCorta(f.fecha_entrega)}${f.hora_entrega ? ' · ' + hora12(f.hora_entrega) : ''} · ${f.tipo_entrega === 'delivery' ? 'Delivery' : 'Recojo en tienda'}` : '',
+    del ? `🛵 Delivery: S/ ${del.toFixed(2)}` : '',
+    `*Total: S/ ${(tp + del).toFixed(2)}*`,
+    adelanto > 0 ? `Adelanto: S/ ${adelanto.toFixed(2)} · Saldo: S/ ${Math.max(tp + del - adelanto, 0).toFixed(2)}` : '',
+  ];
+  return l.filter(Boolean).join('\n');
+}
+function mostrarGuardado(codigo, estado, resumen, edicion) {
+  const ae = $('aviso-ed'); ae.classList.remove('oculto');
+  ae.innerHTML = `✅ ${edicion ? 'Cambios guardados en' : estado === 'cotizado' ? 'Cotización guardada:' : 'Pedido registrado:'} <b>${esc(codigo)}</b>
+    <button class="btn-wa" id="b-copiar" style="margin-left:auto">📋 Copiar resumen para WhatsApp</button>`;
+  $('b-copiar').onclick = async () => { try { await navigator.clipboard.writeText(resumen); toast('Copiado. Pégalo en el chat del cliente.'); } catch (e) { prompt('Copia el resumen:', resumen); } };
+}
+
+async function cargarPedido(id) {
+  const { data, error } = await sb.from('pedidos_encargo').select('*, pedidos_encargo_items(*), pedidos_encargo_fotos(id,item_orden,ruta)').eq('id', id).single();
+  if (error) { alert(errTxt(error)); return null; }
+  return data;
+}
+function itemsDesde(d, copiar) {
+  const fotos = d.pedidos_encargo_fotos || [];
+  return (d.pedidos_encargo_items || []).sort((a, b) => a.orden - b.orden).map(i => ({
+    producto_id: i.producto_id, descripcion: i.descripcion, personalizacion: i.personalizacion || '', cantidad: Number(i.cantidad),
+    precio_unit: Number(i.precio_unit), costo_unit: i.costo_unit == null ? null : Number(i.costo_unit), cotizacion: i.cotizacion || {},
+    fotosNuevas: [], fotosExistentes: fotos.filter(f => f.item_orden === i.orden).map(f => copiar ? { ruta: f.ruta, copia: true } : { ...f }),
+  }));
+}
+async function editarPedido(id) {
+  const d = await cargarPedido(id); if (!d) return;
+  await firmar((d.pedidos_encargo_fotos || []).map(f => f.ruta));
+  st.f = null; irSeccion('nuevo');
+  nuevoForm({
+    id: d.id, codigo: d.codigo, estado: d.estado, canal: d.canal, cliente_nombre: d.cliente_nombre || '', cliente_telefono: d.cliente_telefono || '',
+    cliente_doc: d.cliente_doc || '', fecha_entrega: d.fecha_entrega || '', hora_entrega: (d.hora_entrega || '').slice(0, 5), tipo_entrega: d.tipo_entrega,
+    direccion: d.direccion || '', distrito: d.distrito || '', referencia: d.referencia || '', costo_delivery: d.costo_delivery ?? '', notas: d.notas || '',
+    items: itemsDesde(d, false),
+  });
+}
+async function usarComoBase(id) {
+  const d = await cargarPedido(id); if (!d) return;
+  await firmar((d.pedidos_encargo_fotos || []).map(f => f.ruta));
+  st.f = null; irSeccion('nuevo');
+  nuevoForm({ canal: d.canal, items: itemsDesde(d, true) });
+  toast(`Productos de ${d.codigo} cargados. Revisa precios y completa los datos del cliente.`);
+}
+
+// =====================================================================
+// COTIZADOR (base + adicionales)
+// =====================================================================
+function abrirCotizador(idx) {
+  const it = idx != null ? st.f.items[idx] : null;
+  const cot = it?.cotizacion || {};
+  st.ib = {
+    idx, base: cot.base ? { ...cot.base } : (it?.producto_id ? { producto_id: it.producto_id, cantidad: 1 } : null),
+    lineas: (cot.lineas || []).map(l => ({ ...l })),
+    descripcion: it?.descripcion || '', descAuto: !it, personalizacion: it?.personalizacion || '', cantidad: it?.cantidad || 1,
+    precio: it ? it.precio_unit : '', precioManual: !!it,
+    fotosNuevas: [...(it?.fotosNuevas || [])], fotosExistentes: [...(it?.fotosExistentes || [])], fotosQuitadas: [],
+  };
+  $('c-error').textContent = ''; $('c-base').value = ''; $('c-ins').value = '';
+  $('c-pers').value = st.ib.personalizacion; $('c-cant').value = st.ib.cantidad;
+  pintarChips(); pintarCot(); pintarFotosCot();
+  $('m-cot').classList.remove('oculto');
+  setTimeout(() => (st.ib.base ? $('c-pers') : $('c-base')).focus(), 50);
+}
+function cerrarCot() { $('m-cot').classList.add('oculto'); st.ib = null; }
+$('c-cerrar').onclick = cerrarCot;
+
+function buscador(inp, res, filtro, elegir) {
+  let enc = [], foco = 0;
+  inp.oninput = () => {
+    const q = inp.value.trim().toLowerCase(); if (q.length < 2) return res.classList.add('oculto');
+    enc = st.productos.filter(p => filtro(p) && (p.nombre.toLowerCase().includes(q) || (p.codigo || '').toLowerCase().includes(q))).slice(0, 15); foco = 0;
+    res.innerHTML = enc.map((p, i) => { const c = costoDe(p.id); return `<div data-p="${p.id}" class="${i ? '' : 'foco'}"><span>${esc(p.nombre)} <small>${esc(p.codigo || '')}</small></span><small>${c != null ? S(c) + '/' + UNI[p.unidad_medida] : 'sin costo'}</small></div>`; }).join('') || '<div>Sin resultados</div>';
+    res.classList.remove('oculto');
+  };
+  inp.onkeydown = e => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); foco = Math.max(0, Math.min(enc.length - 1, foco + (e.key === 'ArrowDown' ? 1 : -1))); [...res.children].forEach((d, i) => d.classList.toggle('foco', i === foco)); }
+    if (e.key === 'Enter' && enc[foco]) { e.preventDefault(); listo(enc[foco].id); }
+    if (e.key === 'Escape') res.classList.add('oculto');
+  };
+  res.onclick = e => { const d = e.target.closest('[data-p]'); if (d) listo(Number(d.dataset.p)); };
+  function listo(id) { inp.value = ''; res.classList.add('oculto'); elegir(id); }
+}
+buscador($('c-base'), $('c-bres'), p => ['producto_terminado', 'intermedio', 'plato'].includes(p.tipo_item), id => {
+  st.ib.base = { producto_id: id, cantidad: 1 };
+  const p = st.prodMap[id];
+  if (!st.ib.precioManual && !st.ib.lineas.length && p.precio_venta) st.ib.precio = Number(p.precio_venta);
+  pintarCot();
+});
+buscador($('c-ins'), $('c-ires'), p => ['insumo', 'intermedio', 'paqueteria', 'producto_terminado', 'mercaderia'].includes(p.tipo_item), id => {
+  const p = st.prodMap[id];
+  st.ib.lineas.push({ tipo: 'insumo', producto_id: id, nombre: p.nombre, cantidad: '', unidad: UNIDADES[p.unidad_medida]?.[0] || 'und' });
+  pintarCot();
+  const c = $('c-lineas').querySelectorAll('.l-c'); if (c.length) c[c.length - 1].focus();
+});
+$('c-otro').onclick = () => { st.ib.lineas.push({ tipo: 'otro', nombre: '', monto: '' }); pintarCot(); const c = $('c-lineas').querySelectorAll('.l-n'); if (c.length) c[c.length - 1].focus(); };
+
+function pintarChips() {
+  const act = st.adicionales.filter(a => a.activo);
+  if (!act.length) { $('c-chips').innerHTML = '<p class="ayuda" style="margin:0 0 6px">Aún no hay adicionales. Créalos en ⚙️ Adicionales, o agrega insumos sueltos aquí abajo.</p>'; return; }
+  const g = {}; act.forEach(a => (g[a.grupo] = g[a.grupo] || []).push(a));
+  $('c-chips').innerHTML = Object.keys(GRUPOS).filter(k => g[k]).map(k => `<div class="grupo-ad">${GRUPOS[k]}</div>` +
+    g[k].map(a => { const c = costoLinea({ tipo: 'adic', producto_id: a.producto_id, cantidad: a.cantidad, costo_fijo: a.costo_fijo, veces: 1 }); return `<span class="chip" data-ad="${a.id}">${esc(a.nombre)} <small>${c == null ? 'sin costo' : S(c)}</small></span>`; }).join('')).join('');
+}
+$('c-chips').onclick = e => {
+  const c = e.target.closest('[data-ad]'); if (!c) return;
+  const a = st.adicionales.find(x => x.id === Number(c.dataset.ad));
+  const ya = st.ib.lineas.find(l => l.tipo === 'adic' && l.adicional_id === a.id);
+  if (ya) ya.veces = Number(ya.veces || 1) + 1;
+  else st.ib.lineas.push({ tipo: 'adic', adicional_id: a.id, nombre: a.nombre, producto_id: a.producto_id, cantidad: a.cantidad == null ? null : Number(a.cantidad), costo_fijo: a.costo_fijo == null ? null : Number(a.costo_fijo), veces: 1 });
+  pintarCot();
+};
+
+function calcCot() {
+  const ib = st.ib; let total = 0, sin = 0;
+  const bc = ib.base ? costoDe(ib.base.producto_id) : null;
+  if (ib.base) { if (bc == null) sin++; else total += bc * Number(ib.base.cantidad || 0); }
+  const lc = ib.lineas.map(l => { const c = costoLinea(l); if (c == null) sin++; else total += c; return c; });
+  return { total, sin, bc, lc };
+}
+function descAuto() {
+  const ib = st.ib, partes = [];
+  if (ib.base) partes.push(st.prodMap[ib.base.producto_id]?.nombre || '');
+  ib.lineas.filter(l => l.tipo !== 'otro' || l.nombre).forEach(l => partes.push((l.veces > 1 ? l.veces + '× ' : '') + (l.nombre || '')));
+  return partes.filter(Boolean).join(' + ');
+}
+function pintarCot() {
+  const ib = st.ib, k = calcCot();
+  // base
+  if (ib.base) {
+    const p = st.prodMap[ib.base.producto_id];
+    $('c-bcant').value = ib.base.cantidad; $('c-bcant-l').textContent = `Cantidad (${UNI[p?.unidad_medida] || 'und'})`;
+    $('c-base-info').innerHTML = `Base: <b>${esc(p?.nombre || 'producto')}</b> · ${k.bc == null ? '<span class="sin-costo">sin costo (falta receta o costo)</span>' : S(k.bc) + '/' + (UNI[p?.unidad_medida] || 'und')}${p?.precio_venta ? ` · precio de carta ${S(p.precio_venta)}` : ''} <a href="#" id="c-quitar-base" style="color:var(--mal)">quitar</a>`;
+    $('c-quitar-base').onclick = ev => { ev.preventDefault(); ib.base = null; pintarCot(); };
+  } else { $('c-base-info').textContent = 'Sin base: el producto se arma solo con adicionales / insumos.'; $('c-bcant-l').textContent = 'Cantidad base'; }
+  $('c-bcant').disabled = !ib.base;
+  // líneas
+  $('c-lineas').innerHTML = ib.lineas.map((l, i) => {
+    const c = k.lc[i];
+    let cant = '', uni = '';
+    if (l.tipo === 'adic') { cant = `<input class="l-v" data-i="${i}" type="number" min="1" step="1" value="${l.veces || 1}" style="width:64px">`; uni = l.producto_id ? `× ${Number(l.cantidad)} ${uniDe(l.producto_id)}` : '× fijo'; }
+    if (l.tipo === 'insumo') { const p = st.prodMap[l.producto_id]; cant = `<input class="l-c" data-i="${i}" type="number" min="0" step="0.001" value="${l.cantidad}" style="width:84px">`; uni = `<select class="l-u" data-i="${i}">${(UNIDADES[p?.unidad_medida] || ['und']).map(u => `<option ${u === l.unidad ? 'selected' : ''}>${u}</option>`).join('')}</select>`; }
+    if (l.tipo === 'otro') { cant = '—'; uni = ''; }
+    const nombre = l.tipo === 'otro' ? `<input class="l-n" data-i="${i}" value="${esc(l.nombre)}" placeholder="Ej. topper comprado">` : `${esc(l.nombre)}${l.tipo === 'adic' ? ' <small style="color:#999">adicional</small>' : ''}`;
+    const costo = l.tipo === 'otro' ? `<input class="l-m" data-i="${i}" type="number" min="0" step="0.1" value="${l.monto}" style="width:80px" placeholder="S/">` : (c == null ? '<span class="sin-costo">sin costo</span>' : S(c));
+    return `<tr><td>${nombre}</td><td class="n">${cant}</td><td>${uni}</td><td class="n">${costo}</td><td><button class="x" data-q="${i}">✕</button></td></tr>`;
+  }).join('') || '<tr><td colspan="5" class="ayuda" style="padding:8px 4px">Sin adicionales.</td></tr>';
+  if (ib.descAuto) ib.descripcion = descAuto();
+  $('c-desc').value = ib.descripcion;
+  pintarCalc(k);
+}
+function pintarCalc(k = calcCot()) {
+  const ib = st.ib, cu = k.total;
+  const s35 = sugerido(cu, FC_MAX), s32 = sugerido(cu, FC_MED), s30 = sugerido(cu, FC_MIN);
+  if (!ib.precioManual && s32 && !(ib.base && !ib.lineas.length && st.prodMap[ib.base.producto_id]?.precio_venta)) ib.precio = s32;
+  $('c-calc').innerHTML = `
+    <div class="k"><span>Costo de insumos por unidad <small>(sin IGV)</small></span><b>${S(cu)}</b></div>
+    ${k.sin ? `<div class="sin-costo" style="font-size:12.5px">⚠ ${k.sin} componente(s) sin costo: el precio sugerido saldrá bajo.</div>` : ''}
+    <div style="margin-top:8px;font-size:12px;color:var(--gris);font-weight:700">PRECIO SUGERIDO POR UNIDAD (con IGV, sin delivery)</div>
+    <div class="sug">
+      <button data-sug="${s35 || ''}">${s35 ? 'S/ ' + s35 : '—'}<small>FC 35% · mínimo</small></button>
+      <button data-sug="${s32 || ''}">${s32 ? 'S/ ' + s32 : '—'}<small>FC 32.5%</small></button>
+      <button data-sug="${s30 || ''}">${s30 ? 'S/ ' + s30 : '—'}<small>FC 30%</small></button>
+    </div>
+    <div class="ayuda" style="margin:0">Precio = costo ÷ food cost × 1.18 (IGV), redondeado al sol.</div>`;
+  $('c-precio').value = ib.precio === '' || ib.precio == null ? '' : ib.precio;
+  pintarFcReal(cu);
+}
+function pintarFcReal(cu = calcCot().total) {
+  const pr = Number($('c-precio').value || 0), n = Number($('c-cant').value || 1);
+  const fc = pr > 0 && cu > 0 ? cu / (pr / IGV) * 100 : null;
+  $('c-fcreal').innerHTML = pr > 0 ? `Food cost con este precio: <span class="fc ${fcClase(fc)}">${fc == null ? '—' : fc.toFixed(1) + '%'}</span>${n > 1 ? ` · Subtotal ${n} und: <b>${S(pr * n)}</b>` : ''}${fc != null && fc > 35 ? '<div class="sin-costo" style="margin-top:4px">Por encima del 35%: el precio está bajo para el costo.</div>' : ''}` : '';
+}
+$('c-calc').onclick = e => { const b = e.target.closest('[data-sug]'); if (!b || !b.dataset.sug) return; st.ib.precio = Number(b.dataset.sug); st.ib.precioManual = true; $('c-precio').value = st.ib.precio; pintarFcReal(); };
+$('c-precio').oninput = () => { st.ib.precio = $('c-precio').value === '' ? '' : Number($('c-precio').value); st.ib.precioManual = true; pintarFcReal(); };
+$('c-cant').oninput = () => { st.ib.cantidad = Math.max(1, Number($('c-cant').value || 1)); pintarFcReal(); };
+$('c-bcant').oninput = () => { if (st.ib.base) { st.ib.base.cantidad = Number($('c-bcant').value || 0); const k = calcCot(); pintarCalc(k); } };
+$('c-desc').oninput = () => { st.ib.descripcion = $('c-desc').value; st.ib.descAuto = false; };
+$('c-pers').oninput = () => { st.ib.personalizacion = $('c-pers').value; };
+$('c-lineas').addEventListener('input', e => {
+  const i = e.target.dataset.i; if (i === undefined) return; const l = st.ib.lineas[i];
+  if (e.target.classList.contains('l-c')) l.cantidad = e.target.value;
+  if (e.target.classList.contains('l-v')) l.veces = Math.max(1, Number(e.target.value || 1));
+  if (e.target.classList.contains('l-m')) l.monto = e.target.value;
+  if (e.target.classList.contains('l-n')) { l.nombre = e.target.value; if (st.ib.descAuto) { st.ib.descripcion = descAuto(); $('c-desc').value = st.ib.descripcion; } return; }
+  const k = calcCot(); const tr = e.target.closest('tr');
+  if (l.tipo !== 'otro') tr.children[3].innerHTML = k.lc[i] == null ? '<span class="sin-costo">sin costo</span>' : S(k.lc[i]);
+  if (st.ib.descAuto) { st.ib.descripcion = descAuto(); $('c-desc').value = st.ib.descripcion; }
+  pintarCalc(k);
+});
+$('c-lineas').addEventListener('change', e => { const i = e.target.dataset.i; if (i !== undefined && e.target.classList.contains('l-u')) { st.ib.lineas[i].unidad = e.target.value; pintarCot(); } });
+$('c-lineas').addEventListener('click', e => { const q = e.target.dataset.q; if (q !== undefined) { st.ib.lineas.splice(Number(q), 1); pintarCot(); } });
+
+// fotos del cotizador
+function agregarFotos(files) { const imgs = [...files].filter(f => f.type.startsWith('image/')); if (!imgs.length) return; st.ib.fotosNuevas.push(...imgs); pintarFotosCot(); }
+function pintarFotosCot() {
+  const ib = st.ib;
+  ib._obj = (ib._obj || []); ib._obj.forEach(u => URL.revokeObjectURL(u)); ib._obj = [];
+  $('c-fotos').innerHTML = [
+    ...ib.fotosExistentes.map((x, i) => `<div class="m"><img src="${st.urls[x.ruta] || ''}" data-zoom="${esc(st.urls[x.ruta] || '')}" alt=""><button data-qe="${i}">✕</button></div>`),
+    ...ib.fotosNuevas.map((f, i) => { const u = URL.createObjectURL(f); ib._obj.push(u); return `<div class="m"><img src="${u}" data-zoom="${u}" alt=""><button data-qn="${i}">✕</button></div>`; }),
+  ].join('');
+}
+$('c-fotos').onclick = e => {
+  const qe = e.target.closest('[data-qe]'); if (qe) { const x = st.ib.fotosExistentes.splice(Number(qe.dataset.qe), 1)[0]; if (x.id) st.ib.fotosQuitadas.push(x); pintarFotosCot(); e.stopPropagation(); return; }
+  const qn = e.target.closest('[data-qn]'); if (qn) { st.ib.fotosNuevas.splice(Number(qn.dataset.qn), 1); pintarFotosCot(); e.stopPropagation(); }
+};
+$('c-file').onchange = e => { agregarFotos(e.target.files); e.target.value = ''; };
+['dragenter', 'dragover'].forEach(t => $('c-drop').addEventListener(t, e => { e.preventDefault(); $('c-drop').classList.add('sobre'); }));
+['dragleave', 'drop'].forEach(t => $('c-drop').addEventListener(t, e => { e.preventDefault(); $('c-drop').classList.remove('sobre'); }));
+$('c-drop').addEventListener('drop', e => agregarFotos(e.dataTransfer.files));
+document.addEventListener('paste', e => { if (!st.ib || $('m-cot').classList.contains('oculto')) return; const fs = [...(e.clipboardData?.files || [])]; if (fs.length) { e.preventDefault(); agregarFotos(fs); toast('Foto pegada'); } });
+
+$('c-ok').onclick = () => {
+  const ib = st.ib, k = calcCot(); $('c-error').textContent = '';
+  if (!ib.base && !ib.lineas.length) return $('c-error').textContent = 'Elige una base o agrega al menos un componente.';
+  if (ib.lineas.some(l => l.tipo === 'insumo' && !(Number(l.cantidad) > 0))) return $('c-error').textContent = 'Cada insumo suelto necesita cantidad.';
+  if (ib.lineas.some(l => l.tipo === 'otro' && (!l.nombre.trim() || !(Number(l.monto) > 0)))) return $('c-error').textContent = 'Completa nombre y monto de “otro costo”.';
+  const desc = (ib.descripcion || '').trim(); if (!desc) return $('c-error').textContent = 'Escribe la descripción.';
+  const precio = Number($('c-precio').value || 0); if (!(precio > 0)) return $('c-error').textContent = 'Pon el precio final por unidad.';
+  const item = {
+    producto_id: ib.base?.producto_id || null, descripcion: desc, personalizacion: (ib.personalizacion || '').trim(),
+    cantidad: Math.max(1, Number($('c-cant').value || 1)), precio_unit: r2(precio), costo_unit: k.total > 0 ? Math.round(k.total * 10000) / 10000 : null,
+    cotizacion: { base: ib.base ? { producto_id: ib.base.producto_id, nombre: st.prodMap[ib.base.producto_id]?.nombre, cantidad: Number(ib.base.cantidad) } : null,
+      lineas: ib.lineas.map(l => ({ ...l })), costo_unit: k.total, fecha: dias(0) },
+    fotosNuevas: ib.fotosNuevas, fotosExistentes: ib.fotosExistentes,
+  };
+  ib.fotosQuitadas.forEach(x => st.f.fotosBorrar.push(x));
+  if (ib.idx != null) st.f.items[ib.idx] = item; else st.f.items.push(item);
+  cerrarCot(); pintarItems();
+};
+
+// =====================================================================
+// COTIZACIONES E HISTORIAL (se arma solo con lo que se registra)
+// =====================================================================
+async function cargarHist() {
+  $('h-lista').innerHTML = '<div class="vacio">Cargando…</div>';
+  const { data, error } = await sb.from('pedidos_encargo').select('*, pedidos_encargo_items(*), pedidos_encargo_fotos(id,item_orden,ruta)').order('creado_en', { ascending: false }).limit(400);
+  if (error) return $('h-lista').innerHTML = `<div class="vacio">${/pedidos_encargo/.test(error.message) ? 'Falta correr el script <b>40_pedidos_encargo.sql</b> en Supabase.' : esc(errTxt(error))}</div>`;
+  st.hist = data || [];
+  await firmar(st.hist.map(p => (p.pedidos_encargo_fotos || [])[0]?.ruta).filter(Boolean));
+  pintarHist();
+}
+function pintarHist() {
+  const q = $('h-q').value.trim().toLowerCase();
+  const l = st.hist.filter(p => {
+    if (st.htipo === 'cotizado' && p.estado !== 'cotizado') return false;
+    if (st.htipo === 'pedidos' && ['cotizado', 'anulado'].includes(p.estado)) return false;
+    if (!q) return true;
+    const txt = [p.codigo, p.cliente_nombre, p.cliente_telefono, ...(p.pedidos_encargo_items || []).flatMap(i => [i.descripcion, i.personalizacion])].join(' ').toLowerCase();
+    return q.split(/\s+/).every(w => txt.includes(w));
+  });
+  $('h-lista').innerHTML = l.length ? l.map(p => {
+    const its = (p.pedidos_encargo_items || []).sort((a, b) => a.orden - b.orden);
+    const foto = (p.pedidos_encargo_fotos || [])[0];
+    return `<div class="h-item">
+      ${foto && st.urls[foto.ruta] ? `<img class="ph" src="${st.urls[foto.ruta]}" data-zoom="${esc(st.urls[foto.ruta])}" alt="">` : '<div class="ph">🎂</div>'}
+      <div><div class="t">${esc(p.codigo)}<span class="est ${p.estado}">${ESTADOS[p.estado]}</span></div>
+        <div class="meta">${esc(p.cliente_nombre || 'Sin nombre')}${p.cliente_telefono ? ' · ' + esc(p.cliente_telefono) : ''} · ${p.fecha_entrega ? 'entrega ' + fechaCorta(p.fecha_entrega) : 'registrado ' + new Date(p.creado_en).toLocaleDateString('es-PE')} · ${S(p.total_productos)}</div>
+        <ul>${its.map(i => {
+          const hoy = costoCotizacion(i.cotizacion), antes = i.costo_unit == null ? null : Number(i.costo_unit);
+          const cmp = hoy && hoy.total > 0 && antes ? (() => { const d = (hoy.total - antes) / antes * 100; const sug = sugerido(hoy.total, FC_MED); return `<div class="cmp">Costo entonces ${S(antes)} → hoy ${S(hoy.total)} <b style="color:${Math.abs(d) < 3 ? 'var(--gris)' : d > 0 ? 'var(--mal)' : 'var(--ok)'}">(${d > 0 ? '+' : ''}${d.toFixed(1)}%)</b> · precio sugerido hoy S/ ${sug}</div>`; })() : '';
+          return `<li>${Number(i.cantidad)} × ${esc(i.descripcion)} — ${S(i.precio_unit)} c/u${i.personalizacion ? ` <small style="color:#7a5300">✏️ ${esc(i.personalizacion)}</small>` : ''}${cmp}</li>`;
+        }).join('')}</ul></div>
+      <div class="bot">
+        <button class="btn" data-base="${p.id}">⧉ Usar como base</button>
+        ${!['entregado', 'anulado'].includes(p.estado) ? `<button class="btn-sec" data-heditar="${p.id}">${p.estado === 'cotizado' ? '✓ Confirmar / editar' : '✏️ Editar'}</button>` : ''}
+        ${p.estado === 'cotizado' ? `<button class="btn-sec" data-hanular="${p.id}">✕ Descartar</button>` : ''}
+      </div></div>`;
+  }).join('') : '<div class="vacio">Sin resultados. El historial se arma solo con los pedidos y cotizaciones que registres.</div>';
+}
+$('h-q').oninput = pintarHist;
+$('h-tipos').onclick = e => { const b = e.target.closest('[data-k]'); if (!b) return; st.htipo = b.dataset.k; [...$('h-tipos').children].forEach(x => x.classList.toggle('activa', x === b)); pintarHist(); };
+$('h-lista').onclick = async e => {
+  const b = e.target.closest('[data-base]'); if (b) return usarComoBase(Number(b.dataset.base));
+  const ed = e.target.closest('[data-heditar]'); if (ed) return editarPedido(Number(ed.dataset.heditar));
+  const an = e.target.closest('[data-hanular]');
+  if (an && confirm('¿Descartar esta cotización? Seguirá en el historial como anulada.')) {
+    const { error } = await sb.from('pedidos_encargo').update({ estado: 'anulado', actualizado_por: st.usuario?.nombre || null, actualizado_en: new Date().toISOString() }).eq('id', Number(an.dataset.hanular));
+    if (error) return alert(errTxt(error)); cargarHist();
+  }
+};
+
+// =====================================================================
+// ADICIONALES DEL COTIZADOR
+// =====================================================================
+function pintarAdicionales() {
+  $('a-tabla').innerHTML = st.adicionales.length ? st.adicionales.map(a => {
+    const c = costoLinea({ tipo: 'adic', producto_id: a.producto_id, cantidad: a.cantidad, costo_fijo: a.costo_fijo, veces: 1 });
+    const enl = a.producto_id ? `${esc(st.prodMap[a.producto_id]?.nombre || 'producto #' + a.producto_id)} · ${Number(a.cantidad)} ${uniDe(a.producto_id)}` : `Costo fijo ${S(a.costo_fijo)}`;
+    return `<tr><td><b>${esc(a.nombre)}</b></td><td>${GRUPOS[a.grupo]}</td><td>${enl}</td><td class="n">${c == null ? '<span class="sin-costo">sin costo</span>' : S(c)}</td>
+      <td><input type="checkbox" data-aact="${a.id}" ${a.activo ? 'checked' : ''} style="width:auto"></td>
+      <td style="white-space:nowrap"><button class="x" data-aed="${a.id}" title="Editar">✏️</button> <button class="x" data-adel="${a.id}" title="Borrar">✕</button></td></tr>`;
+  }).join('') : '<tr><td colspan="6" class="ayuda" style="padding:10px">Aún no hay adicionales.</td></tr>';
+}
+function unidadesAdic() {
+  const p = st.adProd ? st.prodMap[st.adProd] : null;
+  $('a-uni').innerHTML = (p ? UNIDADES[p.unidad_medida] : ['und']).map(u => `<option>${u}</option>`).join('');
+}
+buscador($('a-prod'), $('a-pres'), p => ['insumo', 'intermedio', 'paqueteria', 'producto_terminado', 'mercaderia'].includes(p.tipo_item), id => {
+  st.adProd = id; $('a-prod').value = st.prodMap[id].nombre; unidadesAdic();
+  if (!$('a-nombre').value) $('a-nombre').value = st.prodMap[id].nombre;
+});
+$('a-prod').addEventListener('input', () => { if (!$('a-prod').value) { st.adProd = null; unidadesAdic(); } });
+function limpiarAdic() { st.adEdit = null; st.adProd = null; ['a-nombre', 'a-prod', 'a-cant', 'a-fijo'].forEach(i => $(i).value = ''); $('a-grupo').value = 'relleno'; unidadesAdic(); $('a-cancelar').classList.add('oculto'); $('a-error').textContent = ''; }
+$('a-cancelar').onclick = limpiarAdic;
+$('a-guardar').onclick = async () => {
+  $('a-error').textContent = '';
+  const nombre = $('a-nombre').value.trim(); if (!nombre) return $('a-error').textContent = 'Escribe el nombre.';
+  const cant = Number($('a-cant').value || 0), fijo = $('a-fijo').value === '' ? null : Number($('a-fijo').value);
+  if (st.adProd && !(cant > 0)) return $('a-error').textContent = 'Pon la cantidad del insumo.';
+  if (!st.adProd && !(fijo > 0)) return $('a-error').textContent = 'Elige un insumo con cantidad, o pon un costo fijo.';
+  const reg = { nombre, grupo: $('a-grupo').value, producto_id: st.adProd || null, cantidad: st.adProd ? cant * (A_BASE[$('a-uni').value] || 1) : null, costo_fijo: st.adProd ? null : fijo };
+  const r = st.adEdit ? await sb.from('cotizador_adicionales').update(reg).eq('id', st.adEdit) : await sb.from('cotizador_adicionales').insert(reg);
+  if (r.error) return $('a-error').textContent = errTxt(r.error);
+  await cargarMaestros(); limpiarAdic(); pintarAdicionales(); toast('Adicional guardado');
+};
+$('a-tabla').onclick = async e => {
+  const ed = e.target.closest('[data-aed]');
+  if (ed) {
+    const a = st.adicionales.find(x => x.id === Number(ed.dataset.aed)); st.adEdit = a.id; st.adProd = a.producto_id;
+    $('a-nombre').value = a.nombre; $('a-grupo').value = a.grupo; $('a-prod').value = a.producto_id ? st.prodMap[a.producto_id]?.nombre || '' : '';
+    unidadesAdic(); const u = a.producto_id ? (UNIDADES[st.prodMap[a.producto_id]?.unidad_medida] || ['und'])[1] || 'und' : 'und';
+    $('a-uni').value = u; $('a-cant').value = a.cantidad == null ? '' : Number(a.cantidad) / (A_BASE[u] || 1); $('a-fijo').value = a.costo_fijo ?? '';
+    $('a-cancelar').classList.remove('oculto'); window.scrollTo(0, 0); return;
+  }
+  const d = e.target.closest('[data-adel]');
+  if (d && confirm('¿Borrar este adicional? Las cotizaciones guardadas no cambian.')) {
+    const { error } = await sb.from('cotizador_adicionales').delete().eq('id', Number(d.dataset.adel));
+    if (error) return alert(errTxt(error)); await cargarMaestros(); pintarAdicionales();
+  }
+};
+$('a-tabla').onchange = async e => {
+  const c = e.target.closest('[data-aact]'); if (!c) return;
+  const { error } = await sb.from('cotizador_adicionales').update({ activo: c.checked }).eq('id', Number(c.dataset.aact));
+  if (error) return alert(errTxt(error)); await cargarMaestros();
+};
+unidadesAdic();
+
+iniciar();
+</script>
+</body>
+</html>
