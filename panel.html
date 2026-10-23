@@ -1369,12 +1369,25 @@ function clima() {
 
 function pCaja(d) {
   const t = d.turnos || [], an = d.anuladas || [];
+  // ventas de caja y cobros de pedidos separados por turno (vista v_turnos_ventas)
+  const ids = t.map(x => x.id).filter(x => x != null), claveTV = ids.join(',');
+  if (ids.length && st.tvtKey !== claveTV) {
+    st.tvtKey = claveTV; st.tvt = null;
+    sb.from('v_turnos_ventas').select('*').in('turno_id', ids).then(({ data, error }) => {
+      st.tvt = error ? 'error' : Object.fromEntries((data || []).map(r => [r.turno_id, r]));
+      if (st.tab === 'caja' && st.tvtKey === claveTV) pintar();
+    });
+  }
+  const tv = st.tvt && st.tvt !== 'error' ? st.tvt : null;
+  const vCaja = x => tv ? num((tv[x.id] || {}).ventas_caja) : null;
+  const pedidosDe = x => tv ? num((tv[x.id] || {}).pedidos_total) : num(x.pedidos);
+  const conPedidos = t.filter(x => pedidosDe(x) > 0);
   const fila = x => {
     const esperado = num(x.inicial) + num(x.efectivo);
     const dif = x.contado === null || x.contado === undefined ? null : num(x.contado) - esperado;
     const tag = x.estado !== 'cerrado' ? '<span class="tag av">Abierto</span>' : dif === null ? '<span class="tag">Sin conteo</span>' : Math.abs(dif) < 0.5 ? '<span class="tag ok">Cuadra</span>' : `<span class="tag mal">${dif > 0 ? 'Sobra' : 'Falta'}</span>`;
     return `<tr><td>${fh(x.abierto_en)}</td><td>${esc(x.turno || '—')}</td><td>${esc(x.caja)}</td><td>${esc(x.cajero || '—')}</td>
-      <td class="n">${S(x.ventas)}</td><td class="n">${S(x.efectivo)}</td><td class="n">${S(x.pedidos)}</td>
+      <td class="n">${vCaja(x) === null ? (st.tvt === 'error' ? S(x.ventas) : '…') : S(vCaja(x))}</td><td class="n">${S(x.efectivo)}</td>
       <td class="n">${dif === null ? '—' : `<span class="${Math.abs(dif) < 0.5 ? '' : dif > 0 ? 'pos' : 'neg'}">${S(dif)}</span>`}</td><td>${tag}</td><td class="n">${x.anuladas || 0}</td></tr>`;
   };
   const difs = t.filter(x => x.estado === 'cerrado' && x.contado !== null).map(x => num(x.contado) - num(x.inicial) - num(x.efectivo));
@@ -1386,8 +1399,12 @@ function pCaja(d) {
       ${kpi('Anulaciones', an.length, S(an.reduce((a, x) => a + num(x.total), 0)))}
     </div>
     <div class="grid">${caja('c12', 'Cuadre por turno', t.length ? `<div class="scroll"><table class="t">
-      <tr><th>Apertura</th><th>Turno</th><th>Caja</th><th>Cajero</th><th class="n">Ventas</th><th class="n">Efectivo</th><th class="n">Pedidos</th><th class="n">Diferencia</th><th></th><th class="n">Anul.</th></tr>
-      ${t.map(fila).join('')}</table></div>` : vacio('No hay turnos en este periodo'), 'Diferencia = efectivo contado − (fondo inicial + ventas en efectivo). Los cobros de pedidos van aparte.')}</div>
+      <tr><th>Apertura</th><th>Turno</th><th>Caja</th><th>Cajero</th><th class="n">Ventas</th><th class="n">Efectivo</th><th class="n">Diferencia</th><th></th><th class="n">Anul.</th></tr>
+      ${t.map(fila).join('')}</table></div>` : vacio('No hay turnos en este periodo'), 'Solo ventas de caja. Diferencia = efectivo contado − (fondo inicial + ventas en efectivo).' + (st.tvt === 'error' ? ' <b>Falta correr 47_caja_sin_pedidos.sql: la columna Ventas aún puede incluir pedidos.</b>' : ''))}</div>
+    ${conPedidos.length ? `<div class="grid">${caja('c12', 'Cobros de pedidos (no entran al cuadre de caja)', `<div class="scroll"><table class="t">
+      <tr><th>Turno</th><th>Caja</th><th class="n">Cobros</th><th class="n">Total cobrado</th></tr>
+      ${conPedidos.map(x => `<tr><td>${fh(x.abierto_en)} · ${esc(x.turno || '—')}</td><td>${esc(x.caja)}</td><td class="n">${tv ? num((tv[x.id] || {}).pedidos_n) : '—'}</td><td class="n">${S(pedidosDe(x))}</td></tr>`).join('')}
+      <tr><td colspan="3"><b>Total</b></td><td class="n"><b>${S(conPedidos.reduce((a, x) => a + pedidosDe(x), 0))}</b></td></tr></table></div>`, 'Adelantos y saldos de pedidos. Se cuadran en la app de Pedidos, aparte del cierre de la cajera.')}</div>` : ''}
     <div class="grid">${caja('c12', 'Comprobantes anulados', an.length ? `<div class="scroll"><table class="t">
       <tr><th>Fecha</th><th>Comprobante</th><th class="n">Total</th><th>Motivo</th></tr>
       ${an.map(x => `<tr><td>${fh(x.fecha)}</td><td>${esc(x.comprobante)}</td><td class="n">${S(x.total)}</td><td>${esc(x.justificacion || x.motivo || '')}</td></tr>`).join('')}</table></div>` : vacio('Sin anulaciones'))}</div>`;
