@@ -10,6 +10,7 @@
 <link rel="manifest" href="encargos-manifest.webmanifest">
 <link rel="icon" href="pos-icon-192.png">
 <link rel="apple-touch-icon" href="pos-icon-192.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
 <style>
 :root{--rojo:#8B0000;--rojo-s:#f7e9e9;--fondo:#f6f4f2;--borde:#e3dfdb;--gris:#6b6b6b;--texto:#1f1f1f;--ok:#1e7d3a;--aviso:#b26a00;--mal:#b00020;--azul:#1f5fbf;--yape:#742284;--wa:#128c4a}
 *{box-sizing:border-box}
@@ -169,6 +170,46 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
 .visor{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:80;display:flex;align-items:center;justify-content:center;cursor:zoom-out}
 .visor img{max-width:94vw;max-height:92vh;border-radius:10px}
 
+#lienzo{position:fixed;left:-10000px;top:0}
+.a4{width:210mm;min-height:290mm;padding:14mm 12mm;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:9.5pt}
+.a4 .cab{display:flex;justify-content:space-between;gap:10mm}
+.a4 .emp b{font-size:12pt}
+.a4 .emp div{font-size:7.5pt;line-height:1.35}
+.a4 .caja-doc{border:1px solid #999;padding:4mm 6mm;text-align:center;min-width:62mm;font-weight:700;font-size:11pt;line-height:1.9}
+.a4 .datos{display:grid;grid-template-columns:32mm 1fr 22mm 30mm;row-gap:2mm;margin:8mm 0 3mm;font-size:8pt}
+.a4 .datos .k{font-weight:700}
+.a4 table.items{width:100%;border-collapse:collapse;font-size:8pt}
+.a4 .items th{border:1px solid #999;padding:1.5mm;font-weight:700}
+.a4 .items td{border-left:1px solid #999;border-right:1px solid #999;padding:1.2mm 2mm;text-align:center}
+.a4 .items tr:last-child td{border-bottom:1px solid #999}
+.a4 .items td.d{text-align:left}
+.a4 .pie{display:flex;justify-content:space-between;align-items:flex-start;margin-top:3mm;font-size:8pt}
+.a4 .pie .son{font-weight:700}
+.a4 table.tot{border-collapse:collapse;font-size:8pt;width:72mm}
+.a4 .tot td{border:1px solid #999;padding:1.8mm 2mm}
+.a4 .tot td.k{font-weight:700;text-align:center;width:45mm}
+.a4 .legal{border-top:1px solid #444;border-bottom:1px solid #444;margin-top:8mm;padding:5mm 0;text-align:center;font-size:8pt;line-height:1.6}
+.a4 .legal svg{width:26mm;height:26mm;margin-top:2mm}
+.a4 .cred{margin-top:5mm;font-size:8pt;border:1px solid #999;padding:3mm 4mm}
+.a4 .cred b{display:block;margin-bottom:1.5mm}
+.a4 .marca{color:#b00020;font-weight:700;font-size:10pt;margin-top:2mm}
+.comp{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid #f1ede9;font-size:13px;flex-wrap:wrap}
+.comp .nm{font-weight:700}.comp .der{margin-left:auto;display:flex;gap:6px;align-items:center}
+.comp button{padding:6px 10px;font-weight:600;font-size:12.5px;background:var(--fondo)}
+.comp .anul{color:var(--mal);font-weight:700}
+.estado-sunat{font-size:11px;font-weight:700;padding:1px 7px;border-radius:8px;background:var(--fondo)}
+.estado-sunat.aceptado{background:#e7f6ec;color:var(--ok)}.estado-sunat.pendiente{background:#fff3c4;color:#7a5300}.estado-sunat.rechazado{background:#fde8ea;color:var(--mal)}
+.p-calc{background:var(--fondo);border-radius:10px;padding:10px 12px;margin:10px 0;display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-size:14px}
+.p-calc b.g{font-size:17px}
+.listo-box{background:#e7f6ec;border-radius:12px;padding:14px;text-align:center}
+.listo-box .n{font-size:20px;font-weight:800;color:var(--ok);margin:4px 0 10px}
+.listo-box .acc3{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.mapa-form{height:240px;border-radius:12px;border:1px solid var(--borde);margin:6px 0 4px;z-index:1}
+.ubi-info{font-size:12.5px;color:var(--gris);display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.ubi-info a{color:var(--azul);font-weight:700;text-decoration:none}
+.ubi-ok{color:var(--ok);font-weight:700}
+#s-mapa .mapa-grande{height:calc(100vh - 128px);min-height:420px}
+.mapa-stats{font-size:13px;color:var(--gris);margin-left:auto}
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1f1f1f;color:#fff;padding:10px 16px;border-radius:10px;z-index:90;font-weight:600;max-width:92vw}
 
 @media (max-width:900px){.form,.cot{grid-template-columns:1fr}.tablero{grid-template-columns:repeat(4,85vw)}.h-item{grid-template-columns:60px 1fr}.h-item .ph{width:60px;height:60px}.h-item .bot{grid-column:1/-1;flex-direction:row;flex-wrap:wrap}.h-item .bot button{flex:1}}
@@ -199,6 +240,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
       <button data-s="central" class="activa">📋 Central</button>
       <button data-s="nuevo">➕ Nuevo pedido</button>
       <button data-s="hist">🗂️ Cotizaciones e historial</button>
+      <button data-s="mapa">🗺️ Mapa de clientes</button>
       <button data-s="adic">⚙️ Adicionales</button>
     </div>
     <span class="vivo" id="vivo">● conectando</span>
@@ -252,20 +294,20 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
           <div id="f-delivery" class="oculto">
             <div class="fila"><div style="flex:2"><label>Dirección</label><input data-k="direccion"></div><div><label>Distrito</label><input data-k="distrito"></div></div>
             <div class="fila"><div style="flex:2"><label>Referencia</label><input data-k="referencia"></div><div><label>Costo delivery S/</label><input data-k="costo_delivery" type="number" min="0" step="0.5"></div></div>
+            <label>📍 Ubicación: pega el link de Google Maps o la ubicación de WhatsApp, o marca el punto en el mapa</label>
+            <div class="fila" style="margin-bottom:0">
+              <div style="flex:3"><input id="ubi-link" placeholder="https://maps.app.goo.gl/…  ó  -12.0123, -76.9876"></div>
+              <div style="flex:2"><input id="ubi-buscar" placeholder="o busca la dirección y Enter"></div>
+            </div>
+            <div id="f-mapa" class="mapa-form"></div>
+            <div class="ubi-info" id="ubi-info"></div>
           </div>
           <label>Notas para quien alista (no las ve producción)</label>
           <textarea data-k="notas" rows="2" placeholder="Ej. entregar con vela, cliente pasa a las 4 pm, empaque para regalo"></textarea>
         </div>
         <div class="bloque">
           <h3>💵 Pago</h3>
-          <div id="f-adelanto">
-            <div class="fila">
-              <div><label>Adelanto S/</label><input id="ad-monto" type="number" min="0" step="0.5"></div>
-              <div><label>Método</label><select id="ad-metodo"><option value="yape">Yape</option><option value="plin">Plin</option><option value="transferencia">Transferencia</option><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="otro">Otro</option></select></div>
-              <div><label>N° operación</label><input id="ad-op"></div>
-            </div>
-          </div>
-          <p class="ayuda oculto" id="ad-edit">Los pagos de un pedido ya registrado se agregan desde la Central (botón 💵).</p>
+          <p class="ayuda" style="margin:0 0 10px">El adelanto se cobra después de confirmar, con <b>💵 Cobrar</b>: emite nota de venta, boleta o factura.</p>
           <div class="resumen" id="f-resumen"></div>
         </div>
         <div class="acciones-form">
@@ -285,6 +327,19 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
       <div class="chips" id="h-tipos"><button data-k="todos" class="activa">Todos</button><button data-k="cotizado">Cotizaciones</button><button data-k="pedidos">Pedidos</button></div>
     </div>
     <div class="hist" id="h-lista"></div>
+  </div>
+
+  <!-- ===== MAPA DE CALOR ===== -->
+  <div id="s-mapa" class="oculto">
+    <div class="sub-barra">
+      <div class="chips" id="mp-rango"><button data-d="30">30 días</button><button data-d="90" class="activa">90 días</button><button data-d="365">12 meses</button><button data-d="0">Todo</button></div>
+      <select id="mp-canal"><option value="">Todos los canales</option><option value="web">Web</option><option value="whatsapp">WhatsApp</option><option value="tienda">Tienda</option></select>
+      <select id="mp-peso"><option value="n">Intensidad: N° de pedidos</option><option value="s">Intensidad: monto vendido</option></select>
+      <div class="chips" id="mp-vista"><button data-v="calor" class="activa">🔥 Calor</button><button data-v="puntos">📍 Puntos</button></div>
+      <button class="btn-sec" id="mp-csv">📥 CSV para MyMaps</button>
+      <span class="mapa-stats" id="mp-stats"></span>
+    </div>
+    <div id="mp-mapa" class="mapa-grande"></div>
   </div>
 
   <!-- ===== ADICIONALES ===== -->
@@ -350,25 +405,47 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
   </div>
 </div>
 
-<!-- ===== MODAL PAGO ===== -->
+<!-- ===== MODAL COBRO / COMPROBANTE ===== -->
 <div class="modal oculto" id="m-pago">
-  <div class="caja" style="max-width:460px">
-    <h2>💵 Pagos del pedido <span id="p-cod" style="margin-left:6px"></span><button class="x" id="p-cerrar">✕</button></h2>
-    <div id="p-lista"></div>
-    <div class="fila" style="margin-top:10px">
-      <div><label>Tipo</label><select id="p-tipo"><option value="adelanto">Adelanto</option><option value="saldo">Saldo</option><option value="total">Pago total</option></select></div>
-      <div><label>Método</label><select id="p-metodo"><option value="yape">Yape</option><option value="plin">Plin</option><option value="transferencia">Transferencia</option><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="otro">Otro</option></select></div>
+  <div class="caja" style="max-width:640px">
+    <h2>💵 Cobrar pedido <span id="p-cod" style="margin-left:6px"></span><button class="x" id="p-cerrar">✕</button></h2>
+    <div class="resumen" id="p-resumen" style="margin-bottom:6px"></div>
+    <div id="p-comps"></div>
+    <div id="p-form" style="margin-top:12px">
+      <label>Comprobante</label>
+      <div class="seg" id="p-docs" style="margin-bottom:10px"><button data-d="nota_venta">Nota de venta</button><button data-d="boleta" class="activa">Boleta</button><button data-d="factura">Factura</button></div>
+      <label>Cobro</label>
+      <div class="seg" id="p-tipos" style="margin-bottom:10px"><button data-t="adelanto" class="activa">Adelanto</button><button data-t="saldo">Saldo</button><button data-t="total">Pago total</button></div>
+      <div class="fila">
+        <div><label>Pedido S/</label><input id="p-monto" type="number" min="0" step="0.5"></div>
+        <div><label>Delivery S/</label><input id="p-deliv" type="number" min="0" step="0.5"></div>
+      </div>
+      <div class="fila">
+        <div><label>Método de pago</label><select id="p-metodo"><option value="yape">Yape</option><option value="plin">Plin</option><option value="transferencia">Transferencia</option><option value="efectivo">Efectivo</option><option value="visa">Visa</option><option value="mastercard">Mastercard</option></select></div>
+        <div><label>N° operación</label><input id="p-op"></div>
+      </div>
+      <div class="fila">
+        <div><label id="p-doc-l">DNI (opcional)</label><input id="p-docnum" inputmode="numeric"></div>
+        <div style="flex:2"><label id="p-nom-l">Nombre</label><input id="p-nombre"></div>
+      </div>
+      <label class="oculto" id="p-ret-w" style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--texto)"><input type="checkbox" id="p-ret" style="width:auto"> El cliente es agente de retención (3% en facturas mayores a S/ 700)</label>
+      <div class="p-calc" id="p-calc"></div>
+      <button class="btn" id="p-ok" style="width:100%">Emitir comprobante</button>
+      <div class="error" id="p-error"></div>
+      <p class="ayuda">Se emite con la serie de la Caja Digital y queda en su turno, pero el cierre de caja lo muestra aparte (no entra al cuadre de la cajera). El detalle del pedido no va al comprobante: solo “PEDIDO N° …” y “DELIVERY PEDIDO N° …”.</p>
     </div>
-    <div class="fila"><div><label>Monto S/</label><input id="p-monto" type="number" min="0" step="0.5"></div><div><label>N° operación</label><input id="p-op"></div></div>
-    <p class="ayuda" style="margin:0 0 10px">Si cobras en la caja Kadima, usa el código del pedido como "Pedido N°".</p>
-    <button class="btn" id="p-ok" style="width:100%">Registrar pago</button>
-    <div class="error" id="p-error"></div>
+    <div id="p-listo" class="oculto"></div>
   </div>
 </div>
+<div id="lienzo"></div>
 
 <div class="visor oculto" id="visor"><img id="visor-img" alt=""></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 <script>
 // =====================================================================
 // Kadima Pedidos · toma de pedidos (WhatsApp / tienda) + central para alistar
@@ -400,7 +477,18 @@ const st = {
   productos: [], prodMap: {}, costos: {}, recetaCU: {}, adicionales: [],
   rango: 'hoy', origen: '', tipo: '', pedidos: [], inicio: new Date(), avisados: new Set(),
   urls: {}, f: null, ib: null, hist: [], htipo: 'todos', pagoPed: null, adEdit: null, adProd: null,
+  emi: null, cobro: null, pagosComp: {},
 };
+// datos del comprobante (mismos de Comprobantes)
+const EMPRESA = {
+  razon: 'INVERSIONES LA SONESTA S.A.C.', ruc: '20535962236',
+  direccion: 'AV. PROCERES DE LA INDEPENDEN MZA. K2 LOTE. 3A URB. CANTO REY 2DA ETAPA (1ER PISO)',
+  ubigeo: 'LIMA - LIMA - SAN JUAN DE LURIGANCHO', local: 'SAN MARTIN', telefono: '',
+  consulta: 'www.nubefact.com/20535962236', resolucion: '034-005-0005315'
+};
+const NOMBRE_DOC = { boleta: 'BOLETA DE VENTA ELECTRONICA', factura: 'FACTURA ELECTRONICA', nota_venta: 'NOTA DE VENTA' };
+const CORTO = { boleta: 'Boleta', factura: 'Factura', nota_venta: 'Nota de venta' };
+const COBRO = { adelanto: 'ADELANTO', saldo: 'SALDO', total: 'PAGO' };
 
 // ===================== SESIÓN Y PIN =====================
 function vista(id) { ['v-login', 'v-pin', 'v-app'].forEach(v => $(v).classList.toggle('oculto', v !== id)); }
@@ -457,6 +545,19 @@ async function cargarMaestros() {
   st.costos = {}; (c.data || []).forEach(x => { if (x.costo != null) st.costos[x.producto_id] = Number(x.costo); });
   st.recetaCU = {}; (r.data || []).forEach(x => { if (x.costo_unitario != null) st.recetaCU[x.producto_id] = Number(x.costo_unitario); });
   st.adicionales = a.data || [];
+  await cargarEmision();
+}
+// equipo de la Caja Digital (misma serie que la caja), Caja Digital, canales y conceptos SV-900 / SV-901
+// Los cobros llevan "tipo_cobro", por eso el cierre de caja los muestra aparte y no entran al cuadre.
+async function cargarEmision() {
+  const [d, c, k, pr] = await Promise.all([
+    sb.from('dispositivos').select('*').eq('rol', 'digital').eq('activo', true).order('id').limit(1).maybeSingle(),
+    sb.from('cajas').select('*').eq('tipo', 'virtual').eq('activo', true).order('id').limit(1).maybeSingle(),
+    sb.from('canales').select('id,nombre'),
+    sb.from('productos').select('id,codigo,nombre').in('codigo', ['SV-900', 'SV-901']),
+  ]);
+  st.emi = { disp: d.data || null, caja: c.data || null, canales: k.data || [],
+    sv900: (pr.data || []).find(x => x.codigo === 'SV-900')?.id || null, sv901: (pr.data || []).find(x => x.codigo === 'SV-901')?.id || null };
 }
 // costo sin IGV por unidad base (kg / L / und) de un producto
 function costoDe(pid) { if (pid == null) return null; if (st.recetaCU[pid] != null) return st.recetaCU[pid]; return st.costos[pid] ?? null; }
@@ -512,7 +613,8 @@ $('visor').onclick = () => $('visor').classList.add('oculto');
 function irSeccion(s) {
   st.seccion = s;
   document.querySelectorAll('#secc [data-s]').forEach(b => b.classList.toggle('activa', b.dataset.s === s));
-  ['central', 'nuevo', 'hist', 'adic'].forEach(x => $('s-' + x).classList.toggle('oculto', x !== s));
+  ['central', 'nuevo', 'hist', 'mapa', 'adic'].forEach(x => $('s-' + x).classList.toggle('oculto', x !== s));
+  if (s === 'mapa') abrirMapa();
   if (s === 'central') cargarCentral();
   if (s === 'hist') cargarHist();
   if (s === 'adic') pintarAdicionales();
@@ -569,6 +671,12 @@ async function cargarCentral() {
     $('tablero').innerHTML = `<div class="vacio" style="grid-column:1/-1">${/pedidos_encargo/.test(m) ? 'Falta correr el script <b>40_pedidos_encargo.sql</b> en Supabase.' : esc(errTxt(w.error || e.error))}</div>`;
     return;
   }
+  st.pagosComp = {};
+  const cods = (e.data || []).map(p => p.codigo);
+  if (cods.length) {
+    const vp = await sb.from('v_pagos_pedido').select('pedido_externo,total,comprobante,tipo_cobro').in('pedido_externo', cods);
+    (vp.data || []).forEach(x => (st.pagosComp[x.pedido_externo] = st.pagosComp[x.pedido_externo] || []).push(x));
+  }
   const lista = [...(w.data || []).map(normWeb), ...(e.data || []).map(normEnc)]
     .sort((a, b) => (a.fecha || '9999').localeCompare(b.fecha || '9999') || (a.hora || '99').localeCompare(b.hora || '99'));
   await firmar(lista.flatMap(p => p.items.flatMap(i => i.fotos)));
@@ -595,12 +703,13 @@ function normEnc(p) {
     .map(i => ({ desc: i.descripcion, cant: i.cantidad, pers: i.personalizacion, fotos: fotos.filter(f => f.item_orden === i.orden).map(f => f.ruta) }));
   const sueltas = fotos.filter(f => !items.length || f.item_orden == null || !(p.pedidos_encargo_items || []).some(i => i.orden === f.item_orden)).map(f => f.ruta);
   if (sueltas.length && items[0]) items[0].fotos.push(...sueltas);
-  const pagado = (p.pedidos_encargo_pagos || []).reduce((a, x) => a + Number(x.monto), 0);
+  const comps = st.pagosComp[p.codigo] || [];
+  const pagado = (p.pedidos_encargo_pagos || []).reduce((a, x) => a + Number(x.monto), 0) + comps.reduce((a, x) => a + Number(x.total), 0);
   return {
     key: 'e' + p.id, origen: 'enc', canal: p.canal, id: p.id, codigo: p.codigo, estado: p.estado, fecha: p.fecha_entrega, hora: p.hora_entrega,
     tipo_entrega: p.tipo_entrega, cliente: p.cliente_nombre, tel: p.cliente_telefono, direccion: p.direccion, distrito: p.distrito,
-    referencia: p.referencia, notas: p.notas, creado_en: p.creado_en, items,
-    total: Number(p.total_productos || 0), delivery: p.costo_delivery, pagado, pagos: p.pedidos_encargo_pagos || [], raw: p,
+    referencia: p.referencia, lat: p.ubicacion_lat, lng: p.ubicacion_lng, notas: p.notas, creado_en: p.creado_en, items,
+    total: Number(p.total_productos || 0), delivery: p.costo_delivery, pagado, pagos: p.pedidos_encargo_pagos || [], comps, raw: p,
   };
 }
 
@@ -639,11 +748,11 @@ function tarjeta(p, hoy, ahoraMin, nuevo) {
       <div class="pagado">Pagado<b>${S(p.pagado)}</b></div>
       <div class="${saldo > 0 ? 'debe' : ''}">Saldo<b>${S(saldo)}</b></div>
     </div>
-    <div class="pie">${p.origen === 'web' ? `Yape op. ${esc(p.yape_op || '—')}${p.pago_validado ? ' ✓' : ''}` : (p.pagos.length ? p.pagos.map(x => `${x.tipo} ${x.metodo} ${S(x.monto)}`).join(' · ') : 'Sin pagos registrados')}${p.delivery != null ? ` · delivery ${S(p.delivery)}` : ''}</div>
+    <div class="pie">${p.origen === 'web' ? `Yape op. ${esc(p.yape_op || '—')}${p.pago_validado ? ' ✓' : ''}` : ([...p.comps.map(x => `🧾 ${x.comprobante} ${S(x.total)}`), ...p.pagos.map(x => `${x.tipo} ${x.metodo} ${S(x.monto)}`)].join(' · ') || 'Sin pagos registrados')}${p.delivery != null ? ` · delivery ${S(p.delivery)}` : ''}</div>
     ${p.origen === 'web' && p.tipo_entrega === 'delivery' ? `<div class="envio">Costo delivery S/ <input type="number" min="0" step="0.5" data-envio="${p.id}" value="${p.delivery ?? ''}" placeholder="—"></div>` : ''}
     <div class="acc">
       ${ANTERIOR[p.estado] && !(p.origen === 'enc' && p.estado === 'confirmado') ? `<button class="b-sec" data-atras="${p.key}" title="Regresar un paso">↩</button>` : ''}
-      ${p.origen === 'enc' ? `<button class="b-sec" data-editar="${p.id}" title="Editar pedido">✏️</button><button class="b-sec" data-pago="${p.id}" title="Pagos">💵</button>` : ''}
+      ${p.origen === 'enc' ? `<button class="b-sec" data-editar="${p.id}" title="Editar pedido">✏️</button><button class="b-sec" data-pago="${p.id}" title="Cobrar / comprobantes">💵</button><button class="b-sec" data-wa="${p.key}" title="Enviar resumen por WhatsApp">💬</button>` : ''}
       ${p.estado === 'por_validar' || (p.origen === 'enc' && p.estado === 'confirmado') ? `<button class="b-sec" data-anular="${p.key}" title="Anular pedido">✕</button>` : ''}
       ${sig ? `<button class="${p.estado === 'por_validar' ? 'b-yape' : 'b-sig'}" data-sig="${p.key}">${txtSig}</button>` : ''}
     </div>
@@ -690,6 +799,12 @@ $('tablero').addEventListener('click', e => {
   if (x && confirm('¿Anular este pedido?')) return cambiarEstado(pk(x.dataset.anular), 'anulado');
   const ed = e.target.closest('[data-editar]'); if (ed) return editarPedido(Number(ed.dataset.editar));
   const pg = e.target.closest('[data-pago]'); if (pg) return abrirPago(Number(pg.dataset.pago));
+  const wa = e.target.closest('[data-wa]');
+  if (wa) {
+    const p = pk(wa.dataset.wa), r = p.raw;
+    const f = { ...r, items: (r.pedidos_encargo_items || []).sort((a, b) => a.orden - b.orden).map(i => ({ descripcion: i.descripcion, personalizacion: i.personalizacion, cantidad: Number(i.cantidad), precio_unit: Number(i.precio_unit) })) };
+    return abrirWhatsApp(r.cliente_telefono, textoWhatsApp(f, p.pagado));
+  }
 });
 $('tablero').addEventListener('change', async e => {
   const inp = e.target.closest('[data-envio]'); if (!inp) return;
@@ -700,35 +815,235 @@ $('tablero').addEventListener('change', async e => {
   inp.style.borderColor = 'var(--ok)'; setTimeout(() => inp.style.borderColor = '', 1200);
 });
 
-// ===================== PAGOS =====================
+// ===================== COBRO CON COMPROBANTE =====================
+const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
 async function abrirPago(id) {
   st.pagoPed = id; $('p-error').textContent = ''; $('p-op').value = '';
-  const { data, error } = await sb.from('v_pedidos_encargo').select('codigo,total_con_delivery,pagado,saldo').eq('id', id).single();
-  if (error) return alert(errTxt(error));
-  const pg = await sb.from('pedidos_encargo_pagos').select('*').eq('pedido_id', id).order('creado_en');
-  $('p-cod').textContent = data.codigo;
-  $('p-lista').innerHTML = `<div class="resumen" style="margin-bottom:8px"><span>Total con delivery</span><b>${S(data.total_con_delivery)}</b><span>Pagado</span><b>${S(data.pagado)}</b><span>Saldo</span><b class="saldo">${S(data.saldo)}</b></div>` +
-    ((pg.data || []).length ? `<table class="t"><tbody>${pg.data.map(x => `<tr><td>${new Date(x.creado_en).toLocaleDateString('es-PE')}</td><td>${x.tipo} · ${x.metodo}${x.operacion ? ' · op. ' + esc(x.operacion) : ''}</td><td class="n">${S(x.monto)}</td><td><button class="x" data-borrar-pago="${x.id}" title="Borrar pago">✕</button></td></tr>`).join('')}</tbody></table>` : '<p class="ayuda">Aún no hay pagos.</p>');
-  $('p-monto').value = data.saldo > 0 ? Number(data.saldo).toFixed(2) : '';
-  $('p-tipo').value = Number(data.pagado) > 0 ? 'saldo' : 'adelanto';
+  const [pd, vt, man] = await Promise.all([
+    sb.from('pedidos_encargo').select('*, pedidos_encargo_items(*)').eq('id', id).single(),
+    null, sb.from('pedidos_encargo_pagos').select('*').eq('pedido_id', id).order('creado_en'),
+  ]);
+  if (pd.error) return alert(errTxt(pd.error));
+  const ped = pd.data;
+  const v = await sb.from('ventas').select('id,tipo_doc,serie,numero,total,estado,estado_sunat,pdf_url,emitida_en,tipo_cobro,venta_items(descripcion,importe)').eq('pedido_externo', ped.codigo).order('emitida_en');
+  st.cobro = { ped, ventas: v.data || [], manual: man.data || [], doc: 'boleta', tipo: 'adelanto', listos: {} };
+  $('p-cod').textContent = ped.codigo;
+  $('p-form').classList.remove('oculto'); $('p-listo').classList.add('oculto');
+  $('p-docnum').value = ped.cliente_doc || ''; $('p-nombre').value = ped.cliente_nombre || ''; $('p-ret').checked = false;
+  pintarCobro();
+  const k = cuentasCobro();
+  elegirTipo(k.pagado > 0 ? 'saldo' : 'adelanto');
+  elegirDoc((ped.cliente_doc || '').length === 11 ? 'factura' : 'boleta');
   $('m-pago').classList.remove('oculto');
 }
-$('p-cerrar').onclick = () => $('m-pago').classList.add('oculto');
-$('p-lista').onclick = async e => {
-  const b = e.target.closest('[data-borrar-pago]'); if (!b || !confirm('¿Borrar este pago?')) return;
-  const { error } = await sb.from('pedidos_encargo_pagos').delete().eq('id', Number(b.dataset.borrarPago));
-  if (error) return $('p-error').textContent = errTxt(error);
-  abrirPago(st.pagoPed); cargarCentral();
-};
+function cuentasCobro() {
+  const c = st.cobro, p = c.ped;
+  const emitidas = c.ventas.filter(v => v.estado === 'emitida');
+  const pagado = emitidas.reduce((a, v) => a + Number(v.total), 0) + c.manual.reduce((a, x) => a + Number(x.monto), 0);
+  const del = p.tipo_entrega === 'delivery' ? Number(p.costo_delivery || 0) : 0;
+  const total = Number(p.total_productos || 0) + del;
+  const delivCobrado = emitidas.some(v => (v.venta_items || []).some(i => /^DELIVERY PEDIDO/i.test(i.descripcion || '')));
+  return { pagado, del, total, saldo: Math.max(r2(total - pagado), 0), delivCobrado };
+}
+function pintarCobro() {
+  const c = st.cobro, k = cuentasCobro();
+  $('p-resumen').innerHTML = `<span>Productos</span><b>${S(c.ped.total_productos)}</b>${k.del ? `<span>Delivery</span><b>${S(k.del)}</b>` : ''}<span class="tot">Total</span><b class="tot">${S(k.total)}</b><span>Pagado</span><b style="color:var(--ok)">${S(k.pagado)}</b><span>Saldo</span><b class="saldo">${S(k.saldo)}</b>`;
+  $('p-comps').innerHTML = (c.ventas.length || c.manual.length) ? `<div style="font-weight:700;font-size:13px;margin-top:6px">Comprobantes y pagos</div>` +
+    c.ventas.map(v => `<div class="comp"><span class="nm">${CORTO[v.tipo_doc]} ${v.serie}-${String(v.numero).padStart(8, '0')}</span>
+      <span>${COBRO[v.tipo_cobro] ? COBRO[v.tipo_cobro].toLowerCase() : ''} · ${S(v.total)}</span>
+      ${v.estado === 'anulada' ? '<span class="anul">ANULADA</span>' : v.tipo_doc !== 'nota_venta' ? `<span class="estado-sunat ${v.estado_sunat}">${v.estado_sunat}</span>` : ''}
+      ${v.estado === 'emitida' ? `<span class="der"><button data-vpdf="${v.id}">📄 PDF</button><button data-vwa="${v.id}">${c.listos[v.id] ? '💬 Enviar' : '💬 WhatsApp'}</button></span>` : ''}</div>`).join('') +
+    c.manual.map(x => `<div class="comp"><span class="nm">Pago sin comprobante</span><span>${x.tipo} · ${x.metodo} · ${S(x.monto)}</span></div>`).join('')
+    : '';
+}
+function elegirDoc(d) {
+  st.cobro.doc = d; [...$('p-docs').children].forEach(b => b.classList.toggle('activa', b.dataset.d === d));
+  $('p-doc-l').textContent = d === 'factura' ? 'RUC' : 'DNI (opcional)';
+  $('p-nom-l').textContent = d === 'factura' ? 'Razón social' : 'Nombre';
+  $('p-ret-w').classList.toggle('oculto', d !== 'factura');
+  calcCobro();
+}
+function elegirTipo(t) {
+  st.cobro.tipo = t; [...$('p-tipos').children].forEach(b => b.classList.toggle('activa', b.dataset.t === t));
+  const k = cuentasCobro();
+  if (t === 'adelanto') { $('p-monto').value = ''; $('p-deliv').value = ''; }
+  else { const dv = k.delivCobrado ? 0 : k.del; $('p-deliv').value = dv ? dv.toFixed(2) : ''; $('p-monto').value = Math.max(r2(k.saldo - dv), 0).toFixed(2); }
+  calcCobro();
+  if (t === 'adelanto') $('p-monto').focus();
+}
+function montosCobro() {
+  const m = r2($('p-monto').value), d = r2($('p-deliv').value), total = r2(m + d);
+  const ret = st.cobro.doc === 'factura' && $('p-ret').checked && total > 700 ? r2(total * 0.03) : 0;
+  return { m, d, total, ret, neto: r2(total - ret) };
+}
+function calcCobro() {
+  const x = montosCobro();
+  $('p-calc').innerHTML = `<span>Total del comprobante</span><b class="g">${S(x.total)}</b>${x.ret ? `<span>Retención 3% (la retiene el cliente)</span><b>− ${S(x.ret)}</b><span>Neto a cobrar</span><b class="g">${S(x.neto)}</b>` : ''}`;
+}
+$('p-docs').onclick = e => { const b = e.target.closest('[data-d]'); if (b) elegirDoc(b.dataset.d); };
+$('p-tipos').onclick = e => { const b = e.target.closest('[data-t]'); if (b) elegirTipo(b.dataset.t); };
+['p-monto', 'p-deliv'].forEach(i => $(i).oninput = calcCobro); $('p-ret').onchange = calcCobro;
+$('p-cerrar').onclick = () => { $('m-pago').classList.add('oculto'); if (st.seccion === 'central') cargarCentral(); };
+
+async function turnoDigital() {
+  const { data } = await sb.from('turnos_caja').select('id').eq('caja_id', st.emi.caja.id).eq('estado', 'abierto').order('abierto_en', { ascending: false }).limit(1).maybeSingle();
+  return data;
+}
 $('p-ok').onclick = async () => {
-  const monto = r2($('p-monto').value);
-  if (!(monto > 0)) return $('p-error').textContent = 'Ingresa el monto.';
-  $('p-ok').disabled = true;
-  const { error } = await sb.from('pedidos_encargo_pagos').insert({ pedido_id: st.pagoPed, tipo: $('p-tipo').value, metodo: $('p-metodo').value, monto, operacion: $('p-op').value.trim() || null, registrado_por: st.usuario?.nombre || null });
-  $('p-ok').disabled = false;
-  if (error) return $('p-error').textContent = errTxt(error);
-  $('m-pago').classList.add('oculto'); toast('Pago registrado'); cargarCentral();
+  const err = t => { $('p-error').textContent = t; };
+  err('');
+  const c = st.cobro, p = c.ped, x = montosCobro();
+  if (!st.emi || !st.emi.disp) return err('No encuentro el equipo de la Caja Digital (rol digital) con sus series.');
+  if (!st.emi.caja) return err('No encuentro la Caja Digital (caja virtual).');
+  if (!st.emi.sv900 || (x.d > 0 && !st.emi.sv901)) return err('Faltan los conceptos SV-900 / SV-901 en productos.');
+  if (!(x.total > 0)) return err('Ingresa el monto del pedido y/o del delivery.');
+  const doc = $('p-docnum').value.trim(), nom = $('p-nombre').value.trim();
+  if (c.doc === 'factura' && (!/^(10|15|17|20)\d{9}$/.test(doc) || !nom)) return err('Para factura ingresa un RUC válido (11 dígitos) y la razón social.');
+  if (c.doc !== 'factura' && doc && !/^\d{8}$/.test(doc)) return err('El DNI debe tener 8 dígitos.');
+  if (doc && !nom) return err('Ingresa el nombre del cliente.');
+  if (c.doc === 'boleta' && x.total >= 700 && !doc) return err('Boletas de S/ 700 o más necesitan el DNI del cliente (regla SUNAT).');
+  const k = cuentasCobro();
+  if (x.total > k.saldo + 0.01 && !confirm(`El monto (${S(x.total)}) es mayor al saldo pendiente (${S(k.saldo)}). ¿Emitir igual?`)) return;
+  const turno = await turnoDigital();
+  if (!turno) return err('La Caja Digital no tiene un turno abierto. Ábrelo en la caja (PC digital) y vuelve a intentar.');
+  const canal = st.emi.canales.find(z => z.nombre === (p.canal === 'tienda' ? 'Tienda' : 'WhatsApp')) || st.emi.canales[0];
+  const items = [];
+  if (x.m > 0) items.push({ producto_id: st.emi.sv900, cantidad: 1, precio_unit: x.m, descripcion: `PEDIDO N° ${p.codigo} (${COBRO[c.tipo]})` });
+  if (x.d > 0) items.push({ producto_id: st.emi.sv901, cantidad: 1, precio_unit: x.d, descripcion: `DELIVERY PEDIDO N° ${p.codigo}` });
+  const payload = {
+    id_local: uuid(), emitida_en: new Date().toISOString(), tipo_doc: c.doc,
+    dispositivo_id: st.emi.disp.id, caja_id: st.emi.caja.id, canal_id: canal ? canal.id : null, turno_id: turno.id, usuario_id: st.usuario?.id || null,
+    pedido_externo: p.codigo, tipo_cobro: c.tipo, es_anticipo: c.tipo === 'adelanto',
+    cliente: { num_doc: doc, nombre: nom, ...(c.doc === 'factura' ? { agente_retencion: $('p-ret').checked } : {}) },
+    items, contado_credito: 'contado',
+    pagos: [{ metodo: $('p-metodo').value, monto: x.neto, referencia: $('p-op').value.trim() || null }],
+  };
+  $('p-ok').disabled = true; $('p-ok').textContent = 'Emitiendo…';
+  try {
+    const { data, error } = await sb.rpc('registrar_venta', { p: payload });
+    if (error) throw error;
+    let sunat = null;
+    if (c.doc !== 'nota_venta') { $('p-ok').textContent = 'Enviando a SUNAT…'; sunat = await enviarSunat(data.venta_id); }
+    // guardar el DNI/RUC en el pedido para la próxima vez
+    if (doc && doc !== (p.cliente_doc || '')) await sb.from('pedidos_encargo').update({ cliente_doc: doc }).eq('id', p.id);
+    await mostrarEmitido(data.venta_id, sunat);
+  } catch (e) { err(errTxt(e)); }
+  finally { $('p-ok').disabled = false; $('p-ok').textContent = 'Emitir comprobante'; }
 };
+async function enviarSunat(ventaId) {
+  try {
+    const llamada = sb.functions.invoke('nubefact', { body: { venta_id: ventaId, accion: 'enviar' } });
+    const tiempo = new Promise(r => setTimeout(() => r({ data: null, error: { message: 'tardó demasiado' } }), 15000));
+    const { data, error } = await Promise.race([llamada, tiempo]);
+    if (error) return { error: error.message || 'sin respuesta' };
+    return data;
+  } catch (e) { return { error: String(e.message || e) }; }
+}
+async function ventaCompleta(id) {
+  const { data, error } = await sb.from('ventas').select('*, clientes(tipo_doc,num_doc,nombre,direccion), venta_items(descripcion,cantidad,precio_unit,importe,productos(unidad_medida))').eq('id', id).single();
+  if (error) throw error;
+  return data;
+}
+async function mostrarEmitido(ventaId, sunat) {
+  const v = await ventaCompleta(ventaId);
+  const v2 = await sb.from('ventas').select('id,tipo_doc,serie,numero,total,estado,estado_sunat,pdf_url,emitida_en,tipo_cobro,venta_items(descripcion,importe)').eq('pedido_externo', st.cobro.ped.codigo).order('emitida_en');
+  st.cobro.ventas = v2.data || st.cobro.ventas;
+  pintarCobro();
+  $('p-form').classList.add('oculto'); $('p-listo').classList.remove('oculto');
+  $('p-listo').innerHTML = `<div class="listo-box">✅ Comprobante emitido<div class="n">${CORTO[v.tipo_doc]} ${v.serie}-${String(v.numero).padStart(8, '0')} · ${S(v.total)}</div>
+    ${sunat && sunat.error ? `<div class="sin-costo" style="margin-bottom:8px">⚠ SUNAT/Nubefact: ${esc(sunat.error)}. Quedó pendiente; la caja lo reintenta.</div>` : ''}
+    <div class="acc3"><button class="btn-sec" id="l-pdf">📄 Descargar PDF</button><button class="btn-wa" id="l-wa" disabled>⏳ Preparando PDF…</button><button class="btn-sec" id="l-otro">Emitir otro</button></div></div>`;
+  $('l-otro').onclick = () => { $('p-listo').classList.add('oculto'); $('p-form').classList.remove('oculto'); elegirTipo('saldo'); };
+  const archivo = await pdfDe(v);
+  st.cobro.listos[v.id] = archivo;
+  $('l-pdf').onclick = () => bajar(archivo);
+  $('l-wa').disabled = false; $('l-wa').textContent = '💬 Enviar por WhatsApp';
+  $('l-wa').onclick = () => compartir(archivo, textoComprobante(v), st.cobro.ped.cliente_telefono, v.pdf_url);
+}
+$('p-comps').onclick = async e => {
+  const bp = e.target.closest('[data-vpdf]'), bw = e.target.closest('[data-vwa]'); if (!bp && !bw) return;
+  const id = Number((bp || bw).dataset.vpdf || (bp || bw).dataset.vwa);
+  let f = st.cobro.listos[id];
+  const btn = bp || bw;
+  if (!f) { btn.disabled = true; btn.textContent = '⏳'; try { const v = await ventaCompleta(id); f = st.cobro.listos[id] = await pdfDe(v); st.cobro.vcache = { ...(st.cobro.vcache || {}), [id]: v }; } catch (er) { btn.disabled = false; return alert(errTxt(er)); } btn.disabled = false; }
+  if (bp) { pintarCobro(); return bajar(f); }
+  // el menú Compartir necesita un clic "fresco": si el PDF recién se generó, se pide un segundo clic
+  if (btn.textContent !== '💬 Enviar') { pintarCobro(); return toast('PDF listo: toca “💬 Enviar”'); }
+  const v = (st.cobro.vcache || {})[id] || await ventaCompleta(id);
+  compartir(f, textoComprobante(v), st.cobro.ped.cliente_telefono, v.pdf_url);
+};
+function textoComprobante(v) {
+  const p = st.cobro.ped, k = cuentasCobro();
+  const f = { ...p, items: (p.pedidos_encargo_items || []).sort((a, b) => a.orden - b.orden).map(i => ({ descripcion: i.descripcion, personalizacion: i.personalizacion, cantidad: Number(i.cantidad), precio_unit: Number(i.precio_unit) })) };
+  return textoWhatsApp(f, k.pagado) + `\n🧾 ${CORTO[v.tipo_doc]} ${v.serie}-${String(v.numero).padStart(8, '0')}: S/ ${Number(v.total).toFixed(2)}`;
+}
+function bajar(file) { const u = URL.createObjectURL(file); const a = document.createElement('a'); a.href = u; a.download = file.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000); }
+async function compartir(file, texto, tel, pdfUrl) {
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], text: texto }); return; }
+    catch (e) { if (e.name === 'AbortError') return; }
+  }
+  bajar(file);
+  abrirWhatsApp(tel, texto + (pdfUrl ? `\nComprobante: ${pdfUrl}` : ''));
+  toast('PDF descargado: arrástralo al chat de WhatsApp');
+}
+
+// ===== PDF A4 del comprobante (mismo formato que Comprobantes) =====
+const SS = n => 'S/ ' + Number(n || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const nroDoc = v => `${v.serie} - ${String(v.numero).padStart(8, '0')}`;
+const fechaLima = iso => new Date(iso).toLocaleDateString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric' });
+function letras(n) {
+  const U = ['','UNO','DOS','TRES','CUATRO','CINCO','SEIS','SIETE','OCHO','NUEVE','DIEZ','ONCE','DOCE','TRECE','CATORCE','QUINCE','DIECISEIS','DIECISIETE','DIECIOCHO','DIECINUEVE','VEINTE','VEINTIUNO','VEINTIDOS','VEINTITRES','VEINTICUATRO','VEINTICINCO','VEINTISEIS','VEINTISIETE','VEINTIOCHO','VEINTINUEVE'];
+  const D = ['','','','TREINTA','CUARENTA','CINCUENTA','SESENTA','SETENTA','OCHENTA','NOVENTA'];
+  const C = ['','CIENTO','DOSCIENTOS','TRESCIENTOS','CUATROCIENTOS','QUINIENTOS','SEISCIENTOS','SETECIENTOS','OCHOCIENTOS','NOVECIENTOS'];
+  const menos1000 = x => { if (x === 0) return ''; if (x === 100) return 'CIEN'; const c = Math.floor(x / 100), r = x % 100; const t = r < 30 ? U[r] : D[Math.floor(r / 10)] + (r % 10 ? ' Y ' + U[r % 10] : ''); return [C[c], t].filter(Boolean).join(' '); };
+  const entero = Math.floor(n), cent = Math.round((n - entero) * 100);
+  let txt;
+  if (entero === 0) txt = 'CERO';
+  else { const mill = Math.floor(entero / 1e6), mil = Math.floor((entero % 1e6) / 1000), r = entero % 1000;
+    txt = [mill ? (mill === 1 ? 'UN MILLON' : menos1000(mill) + ' MILLONES') : '', mil ? (mil === 1 ? 'MIL' : menos1000(mil) + ' MIL') : '', menos1000(r)].filter(Boolean).join(' '); }
+  return `${txt.replace(/UNO$/, 'UN')} Y ${String(cent).padStart(2, '0')}/100 SOLES`;
+}
+function qrDe(v) {
+  const tipo = v.tipo_doc === 'factura' ? '01' : '03', c = v.clientes || {};
+  const texto = v.cadena_qr || [EMPRESA.ruc, tipo, v.serie, v.numero, Number(v.igv).toFixed(2), Number(v.total).toFixed(2), fechaLima(v.emitida_en),
+    c.tipo_doc === 'RUC' ? '6' : c.tipo_doc === 'DNI' ? '1' : '-', c.num_doc && c.tipo_doc !== 'SIN_DOC' ? c.num_doc : '-', v.codigo_hash || ''].join('|');
+  try { const q = qrcode(0, 'M'); q.addData(texto); q.make(); return q.createSvgTag({ cellSize: 3, margin: 0 }); } catch (e) { return ''; }
+}
+function armarA4(v) {
+  const c = v.clientes && v.clientes.tipo_doc !== 'SIN_DOC' && v.clientes.num_doc !== '00000000' ? v.clientes : null;
+  const interna = v.tipo_doc === 'nota_venta', ret = Number(v.retencion_monto || 0), neto = Number(v.total) - ret;
+  const unidad = u => u === 'Kilo' ? 'KGM' : u === 'Litro' ? 'LTR' : 'NIU';
+  return `<div class="a4">
+    <div class="cab"><div class="emp"><b>${EMPRESA.razon}</b><div>${EMPRESA.direccion}<br>${EMPRESA.ubigeo}<br>${EMPRESA.local}${EMPRESA.telefono ? '<br>Telf: ' + EMPRESA.telefono : ''}</div></div>
+      <div class="caja-doc">R.U.C. ${EMPRESA.ruc}<br>${NOMBRE_DOC[v.tipo_doc]}<br>Nro. ${nroDoc(v)}</div></div>
+    <div class="datos">
+      <span class="k">NOMBRE / R. SOCIAL:</span><span>${c ? esc(c.nombre) : 'CLIENTES VARIOS'}</span><span class="k">F. EMISIÓN:</span><span>${fechaLima(v.emitida_en)}</span>
+      <span class="k">DNI / RUC:</span><span>${c ? esc(c.num_doc) : '-'}</span><span class="k">MONEDA:</span><span>SOLES</span>
+      <span class="k">DIRECCIÓN:</span><span>${c && c.direccion ? esc(c.direccion) : '-'}</span><span class="k">F. VCTO:</span><span>-</span>
+      <span class="k">FORMA DE PAGO:</span><span>${interna ? '-' : 'CONTADO'}</span><span></span><span></span>
+    </div>
+    <table class="items"><thead><tr><th style="width:14mm">Cant.</th><th style="width:14mm">Unid.</th><th>Descripción</th><th style="width:34mm">Valor Venta Unit</th><th style="width:30mm">Importe</th></tr></thead>
+      <tbody>${(v.venta_items || []).map(i => `<tr><td>${Number(i.cantidad)}</td><td>${unidad(i.productos && i.productos.unidad_medida)}</td><td class="d">${esc(i.descripcion)}</td><td>${SS(i.precio_unit)}</td><td>${SS(i.importe)}</td></tr>`).join('')}</tbody></table>
+    <div class="pie"><div class="son">SON: ${letras(Number(v.total))}</div>
+      <table class="tot">
+        <tr><td class="k">Total Gravado</td><td>${SS(v.op_gravada)}</td></tr><tr><td class="k">IGV 18.00%</td><td>${SS(v.igv)}</td></tr>
+        <tr><td class="k">Importe Total</td><td>${SS(v.total)}</td></tr>
+        ${ret > 0 ? `<tr><td class="k">Retención IGV 3%</td><td>${SS(ret)}</td></tr><tr><td class="k">Neto a pagar</td><td>${SS(neto)}</td></tr>` : ''}
+      </table></div>
+    ${ret > 0 ? `<div class="cred"><b>Operación sujeta a retención del IGV</b>Base imponible de la retención: ${SS(v.total)} · Porcentaje: 3% · Monto de la retención: ${SS(ret)}</div>` : ''}
+    <div class="legal">${interna ? 'Documento interno. No es un comprobante de pago.'
+      : `Representación impresa del comprobante Electrónico puede ser consultada en ${EMPRESA.consulta}<br>AUTORIZADO MEDIANTE RESOLUCIÓN DE INTENDENCIA - N°. ${EMPRESA.resolucion}/SUNAT.${v.codigo_hash ? '<br>Resumen: ' + esc(v.codigo_hash) : ''}<br>${qrDe(v)}`}
+      ${v.estado === 'anulada' ? '<div class="marca">COMPROBANTE ANULADO</div>' : ''}</div>
+  </div>`;
+}
+async function pdfDe(v) {
+  $('lienzo').innerHTML = armarA4(v);
+  const blob = await html2pdf().set({ margin: 0, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } })
+    .from($('lienzo').firstElementChild).outputPdf('blob');
+  $('lienzo').innerHTML = '';
+  return new File([blob], `${v.serie}-${String(v.numero).padStart(8, '0')}.pdf`, { type: 'application/pdf' });
+}
 
 // =====================================================================
 // NUEVO / EDITAR PEDIDO
@@ -737,7 +1052,7 @@ function nuevoForm(base = {}) {
   st.f = {
     id: null, codigo: null, estado: null, canal: 'whatsapp', cliente_nombre: '', cliente_telefono: '', cliente_doc: '',
     fecha_entrega: '', hora_entrega: '', tipo_entrega: 'recojo', direccion: '', distrito: '', referencia: '',
-    costo_delivery: '', notas: '', items: [], fotosBorrar: [], ...base,
+    costo_delivery: '', notas: '', items: [], fotosBorrar: [], ubicacion_lat: null, ubicacion_lng: null, ubicacion_link: '', ...base,
   };
   pintarForm();
 }
@@ -746,8 +1061,8 @@ function pintarForm() {
   document.querySelectorAll('#s-nuevo [data-k]').forEach(i => { i.value = f[i.dataset.k] ?? ''; });
   [...$('seg-entrega').children].forEach(b => b.classList.toggle('activa', b.dataset.v === f.tipo_entrega));
   $('f-delivery').classList.toggle('oculto', f.tipo_entrega !== 'delivery');
-  $('f-adelanto').classList.toggle('oculto', !!f.id); $('ad-edit').classList.toggle('oculto', !f.id);
-  if (!f.id) { $('ad-monto').value = ''; $('ad-op').value = ''; $('ad-metodo').value = 'yape'; }
+  $('ubi-link').value = f.ubicacion_link || ''; $('ubi-buscar').value = '';
+  pintarUbicacion();
   const ae = $('aviso-ed');
   if (f.id) { ae.classList.remove('oculto'); ae.innerHTML = `✏️ Editando <b>${esc(f.codigo)}</b> (${ESTADOS[f.estado]}) <button class="btn-sec" id="b-salir-ed" style="margin-left:auto">Salir sin guardar</button>`; $('b-salir-ed').onclick = () => { nuevoForm(); }; }
   else ae.classList.add('oculto');
@@ -775,19 +1090,16 @@ function pintarResumen() {
   const f = st.f;
   const tp = f.items.reduce((a, it) => a + it.precio_unit * it.cantidad, 0);
   const del = f.tipo_entrega === 'delivery' ? Number(f.costo_delivery || 0) : 0;
-  const ad = f.id ? 0 : Number($('ad-monto').value || 0);
   const costo = f.items.reduce((a, it) => a + Number(it.costo_unit || 0) * it.cantidad, 0);
   const fc = tp > 0 && costo > 0 ? costo / (tp / IGV) * 100 : null;
   $('f-resumen').innerHTML = `
     <span>Productos</span><b>${S(tp)}</b>
     ${f.tipo_entrega === 'delivery' ? `<span>Delivery</span><b>${S(del)}</b>` : ''}
     <span class="tot">Total</span><b class="tot">${S(tp + del)}</b>
-    ${!f.id ? `<span>Adelanto</span><b>${S(ad)}</b><span>Saldo</span><b class="saldo">${S(Math.max(tp + del - ad, 0))}</b>` : ''}
     ${fc != null ? `<span>Food cost del pedido</span><b class="fc ${fcClase(fc)}">${fc.toFixed(1)}%</b>` : ''}`;
 }
 document.querySelectorAll('#s-nuevo [data-k]').forEach(i => i.addEventListener('input', () => { st.f[i.dataset.k] = i.value; pintarResumen(); }));
-$('ad-monto').oninput = pintarResumen;
-$('seg-entrega').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; st.f.tipo_entrega = b.dataset.v; [...$('seg-entrega').children].forEach(x => x.classList.toggle('activa', x === b)); $('f-delivery').classList.toggle('oculto', b.dataset.v !== 'delivery'); pintarResumen(); };
+$('seg-entrega').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; st.f.tipo_entrega = b.dataset.v; [...$('seg-entrega').children].forEach(x => x.classList.toggle('activa', x === b)); $('f-delivery').classList.toggle('oculto', b.dataset.v !== 'delivery'); pintarResumen(); pintarUbicacion(); };
 $('f-items').onclick = e => {
   const ed = e.target.closest('[data-ed-item]'); if (ed) return abrirCotizador(Number(ed.dataset.edItem));
   const du = e.target.closest('[data-dup-item]');
@@ -806,9 +1118,9 @@ async function guardarPedido(estado) {
   if (estado !== 'cotizado') {
     if (!f.cliente_nombre.trim()) return $('f-error').textContent = 'Falta el nombre del cliente.';
     if (!f.fecha_entrega) return $('f-error').textContent = 'Falta la fecha de entrega.';
-    if (f.tipo_entrega === 'delivery' && !f.direccion.trim()) return $('f-error').textContent = 'Falta la dirección del delivery.';
+    if (f.tipo_entrega === 'delivery' && !f.direccion.trim() && f.ubicacion_lat == null) return $('f-error').textContent = 'Falta la dirección o la ubicación del delivery.';
+    if (f.tipo_entrega === 'delivery' && f.ubicacion_lat == null && !confirm('El delivery no tiene ubicación en el mapa (no saldrá en el mapa de clientes). ¿Guardar igual?')) return;
   }
-  const adelanto = f.id ? 0 : r2($('ad-monto').value);
   const btns = [$('b-cotizacion'), $('b-confirmar')]; btns.forEach(b => b.disabled = true);
   try {
     const payload = {
@@ -816,6 +1128,8 @@ async function guardarPedido(estado) {
       fecha_entrega: f.fecha_entrega, hora_entrega: f.hora_entrega, tipo_entrega: f.tipo_entrega,
       direccion: f.tipo_entrega === 'delivery' ? f.direccion : null, distrito: f.tipo_entrega === 'delivery' ? f.distrito : null,
       referencia: f.tipo_entrega === 'delivery' ? f.referencia : null, costo_delivery: f.tipo_entrega === 'delivery' ? f.costo_delivery : '',
+      ubicacion_lat: f.tipo_entrega === 'delivery' && f.ubicacion_lat != null ? f.ubicacion_lat : '', ubicacion_lng: f.tipo_entrega === 'delivery' && f.ubicacion_lng != null ? f.ubicacion_lng : '',
+      ubicacion_link: f.tipo_entrega === 'delivery' ? (f.ubicacion_link || '') : '',
       notas: f.notas, usuario: st.usuario?.nombre || null,
       items: f.items.map((it, i) => ({ orden: i + 1, producto_id: it.producto_id || null, descripcion: it.descripcion, personalizacion: it.personalizacion || '', cantidad: it.cantidad, precio_unit: it.precio_unit, costo_unit: it.costo_unit ?? '', cotizacion: it.cotizacion || {} })),
     };
@@ -845,14 +1159,10 @@ async function guardarPedido(estado) {
         await sb.from('pedidos_encargo_fotos').insert({ pedido_id: pid, item_orden: orden, ruta });
       }
     }
-    if (adelanto > 0) {
-      const pg = await sb.from('pedidos_encargo_pagos').insert({ pedido_id: pid, tipo: 'adelanto', metodo: $('ad-metodo').value, monto: adelanto, operacion: $('ad-op').value.trim() || null, registrado_por: st.usuario?.nombre || null });
-      if (pg.error) toast('El pedido se guardó, pero no el adelanto: ' + errTxt(pg.error));
-    }
-    const resumen = textoWhatsApp({ ...f, codigo: data.codigo, estado }, adelanto);
-    const fueEdicion = !!f.id;
+    const resumen = textoWhatsApp({ ...f, codigo: data.codigo, estado }, 0);
+    const fueEdicion = !!f.id, tel = f.cliente_telefono;
     nuevoForm();
-    mostrarGuardado(data.codigo, estado, resumen, fueEdicion);
+    mostrarGuardado(data.codigo, estado, resumen, fueEdicion, tel, pid);
   } catch (e) {
     $('f-error').textContent = errTxt(e);
   } finally { btns.forEach(b => b.disabled = false); }
@@ -865,16 +1175,29 @@ function textoWhatsApp(f, adelanto) {
     ...f.items.map(it => `• ${Number(it.cantidad)} × ${it.descripcion}${it.personalizacion ? ` (${it.personalizacion})` : ''} — S/ ${(it.precio_unit * it.cantidad).toFixed(2)}`),
     f.fecha_entrega ? `📅 ${fechaCorta(f.fecha_entrega)}${f.hora_entrega ? ' · ' + hora12(f.hora_entrega) : ''} · ${f.tipo_entrega === 'delivery' ? 'Delivery' : 'Recojo en tienda'}` : '',
     del ? `🛵 Delivery: S/ ${del.toFixed(2)}` : '',
+    f.tipo_entrega === 'delivery' && f.ubicacion_lat != null ? `📍 https://www.google.com/maps?q=${f.ubicacion_lat},${f.ubicacion_lng}` : '',
     `*Total: S/ ${(tp + del).toFixed(2)}*`,
-    adelanto > 0 ? `Adelanto: S/ ${adelanto.toFixed(2)} · Saldo: S/ ${Math.max(tp + del - adelanto, 0).toFixed(2)}` : '',
+    adelanto > 0 ? `Pagado: S/ ${adelanto.toFixed(2)} · Saldo: S/ ${Math.max(tp + del - adelanto, 0).toFixed(2)}` : '',
+    '¡Gracias por tu pedido! 🧁',
   ];
   return l.filter(Boolean).join('\n');
 }
-function mostrarGuardado(codigo, estado, resumen, edicion) {
+// abre WhatsApp (app o web) con el chat del cliente y el mensaje ya escrito
+function abrirWhatsApp(tel, texto) {
+  const n = String(tel || '').replace(/\D/g, '');
+  const num = n.length === 9 ? '51' + n : n;
+  window.open(`https://wa.me/${num}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
+}
+function mostrarGuardado(codigo, estado, resumen, edicion, tel, pid) {
   const ae = $('aviso-ed'); ae.classList.remove('oculto');
   ae.innerHTML = `✅ ${edicion ? 'Cambios guardados en' : estado === 'cotizado' ? 'Cotización guardada:' : 'Pedido registrado:'} <b>${esc(codigo)}</b>
-    <button class="btn-wa" id="b-copiar" style="margin-left:auto">📋 Copiar resumen para WhatsApp</button>`;
-  $('b-copiar').onclick = async () => { try { await navigator.clipboard.writeText(resumen); toast('Copiado. Pégalo en el chat del cliente.'); } catch (e) { prompt('Copia el resumen:', resumen); } };
+    <button class="btn-sec" id="b-copiar" style="margin-left:auto">📋 Copiar</button>
+    <button class="btn-wa" id="b-wa">💬 Enviar por WhatsApp</button>
+    ${estado !== 'cotizado' ? '<button class="btn" id="b-cobrar">💵 Cobrar adelanto</button>' : ''}`;
+  if ($('b-cobrar')) $('b-cobrar').onclick = () => abrirPago(pid);
+  $('b-wa').onclick = () => abrirWhatsApp(tel, resumen);
+  $('b-copiar').onclick = async () => { try { await navigator.clipboard.writeText(resumen); toast('Copiado'); } catch (e) { prompt('Copia el resumen:', resumen); } };
+  if (!String(tel || '').replace(/\D/g, '')) $('b-wa').title = 'Sin celular: WhatsApp te pedirá elegir el chat';
 }
 
 async function cargarPedido(id) {
@@ -898,6 +1221,7 @@ async function editarPedido(id) {
     id: d.id, codigo: d.codigo, estado: d.estado, canal: d.canal, cliente_nombre: d.cliente_nombre || '', cliente_telefono: d.cliente_telefono || '',
     cliente_doc: d.cliente_doc || '', fecha_entrega: d.fecha_entrega || '', hora_entrega: (d.hora_entrega || '').slice(0, 5), tipo_entrega: d.tipo_entrega,
     direccion: d.direccion || '', distrito: d.distrito || '', referencia: d.referencia || '', costo_delivery: d.costo_delivery ?? '', notas: d.notas || '',
+    ubicacion_lat: d.ubicacion_lat == null ? null : Number(d.ubicacion_lat), ubicacion_lng: d.ubicacion_lng == null ? null : Number(d.ubicacion_lng), ubicacion_link: d.ubicacion_link || '',
     items: itemsDesde(d, false),
   });
 }
@@ -908,6 +1232,120 @@ async function usarComoBase(id) {
   nuevoForm({ canal: d.canal, items: itemsDesde(d, true) });
   toast(`Productos de ${d.codigo} cargados. Revisa precios y completa los datos del cliente.`);
 }
+
+// =====================================================================
+// UBICACIÓN DEL DELIVERY (link de Google Maps, coordenadas o punto en el mapa)
+// =====================================================================
+const LIMA = [-12.0, -77.0];
+function leerCoordenadas(texto) {
+  let t = String(texto || ''); try { t = decodeURIComponent(t); } catch (e) {}
+  const pats = [/!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/, /[?&](?:q|query|ll|destination|daddr|center)=(-?\d{1,2}\.\d+),\s*\+?(-?\d{1,3}\.\d+)/,
+    /@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/, /\/place\/(-?\d{1,2}\.\d+),\s*\+?(-?\d{1,3}\.\d+)/, /^\s*(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)\s*$/];
+  for (const p of pats) { const m = t.match(p); if (m) { const lat = Number(m[1]), lng = Number(m[2]); if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng }; } }
+  return null;
+}
+const st_map = { form: null, pin: null, grande: null, capa: null, datos: [] };
+function fijarUbicacion(lat, lng, link) {
+  st.f.ubicacion_lat = Math.round(lat * 1e7) / 1e7; st.f.ubicacion_lng = Math.round(lng * 1e7) / 1e7;
+  st.f.ubicacion_link = link || `https://www.google.com/maps?q=${st.f.ubicacion_lat},${st.f.ubicacion_lng}`;
+  $('ubi-link').value = st.f.ubicacion_link;
+  pintarUbicacion(true);
+}
+function pintarUbicacion(centrar) {
+  const f = st.f; if (!f || f.tipo_entrega !== 'delivery' || typeof L === 'undefined') return;
+  if (!st_map.form) {
+    st_map.form = L.map('f-mapa', { zoomControl: true }).setView(LIMA, 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(st_map.form);
+    st_map.form.on('click', e => fijarUbicacion(e.latlng.lat, e.latlng.lng));
+  }
+  setTimeout(() => st_map.form.invalidateSize(), 50);
+  const tiene = f.ubicacion_lat != null;
+  if (tiene) {
+    const ll = [f.ubicacion_lat, f.ubicacion_lng];
+    if (!st_map.pin) { st_map.pin = L.marker(ll, { draggable: true }).addTo(st_map.form); st_map.pin.on('dragend', ev => { const p = ev.target.getLatLng(); fijarUbicacion(p.lat, p.lng); }); }
+    else st_map.pin.setLatLng(ll);
+    if (centrar !== false) st_map.form.setView(ll, Math.max(st_map.form.getZoom(), 16));
+  } else if (st_map.pin) { st_map.form.removeLayer(st_map.pin); st_map.pin = null; st_map.form.setView(LIMA, 12); }
+  $('ubi-info').innerHTML = tiene
+    ? `<span class="ubi-ok">✓ ${f.ubicacion_lat}, ${f.ubicacion_lng}</span><a href="https://www.google.com/maps?q=${f.ubicacion_lat},${f.ubicacion_lng}" target="_blank" rel="noopener">Abrir en Google Maps</a><a href="#" id="ubi-quitar" style="color:var(--mal)">quitar</a><span>Puedes arrastrar el pin para corregir.</span>`
+    : '<span>Toca el mapa para marcar el punto de entrega.</span>';
+  if ($('ubi-quitar')) $('ubi-quitar').onclick = ev => { ev.preventDefault(); f.ubicacion_lat = f.ubicacion_lng = null; f.ubicacion_link = ''; $('ubi-link').value = ''; pintarUbicacion(); };
+}
+async function leerLink() {
+  const v = $('ubi-link').value.trim(); if (!v) return;
+  const c = leerCoordenadas(v);
+  if (c) return fijarUbicacion(c.lat, c.lng, /^https?:/i.test(v) ? v : null);
+  if (/goo\.gl|g\.co\//i.test(v)) {
+    $('ubi-info').innerHTML = '<span>⏳ Leyendo el link…</span>';
+    try {
+      const { data, error } = await sb.functions.invoke('resolver-mapa', { body: { url: v } });
+      if (!error && data && data.lat != null) return fijarUbicacion(data.lat, data.lng, v);
+    } catch (e) {}
+    $('ubi-info').innerHTML = '<span class="sin-costo">No pude leer ese link corto. Ábrelo, copia el link largo de la barra del navegador, o marca el punto en el mapa.</span>';
+    return;
+  }
+  $('ubi-info').innerHTML = '<span class="sin-costo">Ese texto no trae coordenadas. Pega un link de Google Maps o marca el punto en el mapa.</span>';
+}
+$('ubi-link').addEventListener('change', leerLink);
+$('ubi-link').addEventListener('paste', () => setTimeout(leerLink, 30));
+$('ubi-buscar').addEventListener('keydown', async e => {
+  if (e.key !== 'Enter') return; e.preventDefault();
+  const q = $('ubi-buscar').value.trim(); if (q.length < 3) return;
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=pe&q=${encodeURIComponent(q + (/lima/i.test(q) ? '' : ', Lima'))}`, { headers: { 'Accept-Language': 'es' } });
+    const j = await r.json();
+    if (!j.length) return toast('No encontré esa dirección. Marca el punto en el mapa.');
+    st_map.form.setView([Number(j[0].lat), Number(j[0].lon)], 17);
+    toast('Zona encontrada: toca el punto exacto de entrega');
+  } catch (er) { toast('No se pudo buscar la dirección'); }
+});
+
+// =====================================================================
+// MAPA DE CLIENTES (calor / puntos) — deliveries web + WhatsApp/tienda
+// =====================================================================
+const mp = { dias: 90, canal: '', peso: 'n', vista: 'calor' };
+async function abrirMapa() {
+  if (typeof L === 'undefined') return $('mp-stats').textContent = 'No cargó el mapa (sin internet).';
+  if (!st_map.grande) {
+    st_map.grande = L.map('mp-mapa').setView(LIMA, 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(st_map.grande);
+  }
+  setTimeout(() => st_map.grande.invalidateSize(), 60);
+  let q = sb.from('v_mapa_delivery').select('*');
+  if (mp.dias) q = q.gte('fecha_entrega', dias(-mp.dias));
+  if (mp.canal) q = q.eq('canal', mp.canal);
+  const { data, error } = await q.limit(5000);
+  if (error) return $('mp-stats').textContent = /v_mapa_delivery/.test(error.message) ? 'Falta correr 44_ubicaciones_mapa.sql en Supabase.' : errTxt(error);
+  st_map.datos = (data || []).filter(x => x.lat != null && x.lng != null);
+  pintarMapa(true);
+}
+function pintarMapa(encuadrar) {
+  const m = st_map.grande, d = st_map.datos; if (!m) return;
+  if (st_map.capa) { m.removeLayer(st_map.capa); st_map.capa = null; }
+  const maxS = Math.max(1, ...d.map(x => Number(x.total || 0)));
+  if (mp.vista === 'calor' && L.heatLayer) {
+    st_map.capa = L.heatLayer(d.map(x => [Number(x.lat), Number(x.lng), mp.peso === 's' ? Math.max(0.15, Number(x.total || 0) / maxS) : 0.6]), { radius: 26, blur: 20, maxZoom: 15, minOpacity: 0.35 }).addTo(m);
+  } else {
+    st_map.capa = L.layerGroup(d.map(x => L.circleMarker([Number(x.lat), Number(x.lng)], { radius: mp.peso === 's' ? 5 + 10 * Number(x.total || 0) / maxS : 7, color: '#8B0000', weight: 1, fillColor: x.origen === 'web' ? '#742284' : '#d1495b', fillOpacity: 0.7 })
+      .bindPopup(`<b>${esc(x.codigo)}</b><br>${x.fecha_entrega ? fechaCorta(x.fecha_entrega) : ''} · ${esc(x.canal)}<br>${esc(x.distrito || '')}<br>${S(x.total)}`))).addTo(m);
+  }
+  if (encuadrar && d.length) m.fitBounds(L.latLngBounds(d.map(x => [Number(x.lat), Number(x.lng)])).pad(0.15), { maxZoom: 15 });
+  const tot = d.reduce((a, x) => a + Number(x.total || 0), 0);
+  const porDist = {}; d.forEach(x => { const k = (x.distrito || 'Sin distrito').trim(); porDist[k] = (porDist[k] || 0) + 1; });
+  const top = Object.entries(porDist).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, n]) => `${k} (${n})`).join(', ');
+  $('mp-stats').textContent = d.length ? `${d.length} deliveries · ${S(tot)}${top ? ' · más pedidos: ' + top : ''}` : 'Aún no hay deliveries con ubicación en este rango.';
+}
+$('mp-rango').onclick = e => { const b = e.target.closest('[data-d]'); if (!b) return; mp.dias = Number(b.dataset.d); [...$('mp-rango').children].forEach(x => x.classList.toggle('activa', x === b)); abrirMapa(); };
+$('mp-vista').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; mp.vista = b.dataset.v; [...$('mp-vista').children].forEach(x => x.classList.toggle('activa', x === b)); pintarMapa(false); };
+$('mp-canal').onchange = e => { mp.canal = e.target.value; abrirMapa(); };
+$('mp-peso').onchange = e => { mp.peso = e.target.value; pintarMapa(false); };
+$('mp-csv').onclick = () => {
+  const d = st_map.datos; if (!d.length) return toast('No hay puntos para exportar');
+  const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const filas = [['Pedido', 'Latitud', 'Longitud', 'Fecha', 'Canal', 'Distrito', 'Total'], ...d.map(x => [x.codigo, x.lat, x.lng, x.fecha_entrega, x.canal, x.distrito, Number(x.total || 0).toFixed(2)])];
+  const blob = new Blob(['﻿' + filas.map(f => f.map(q).join(',')).join('\n')], { type: 'text/csv;charset=utf-8' });
+  bajar(new File([blob], `kadima_deliveries_${dias(0)}.csv`, { type: 'text/csv' }));
+};
 
 // =====================================================================
 // COTIZADOR (base + adicionales)
