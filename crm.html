@@ -10,6 +10,7 @@
 <link rel="manifest" href="crm-manifest.webmanifest">
 <link rel="icon" href="pos-icon-192.png">
 <link rel="apple-touch-icon" href="pos-icon-192.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
 <style>
 :root{--rojo:#8B0000;--rojo-s:#f7e9e9;--fondo:#f6f4f2;--borde:#e3dfdb;--gris:#6b6b6b;--texto:#1f1f1f;--ok:#1e7d3a;--aviso:#b26a00;--mal:#b00020;--azul:#1f5fbf;--yape:#742284;--wa:#128c4a}
 *{box-sizing:border-box}
@@ -195,6 +196,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
       <button data-s="fechas">🎂 Fechas especiales</button>
       <button data-s="cot">📝 Cotizaciones</button>
       <button data-s="camp">📣 Campañas</button>
+      <button data-s="mapa">🗺️ Mapa de clientes</button>
     </div>
     <span class="usr" id="usr" title="Cambiar de usuario"></span>
     <span style="font-size:11px;opacity:.7">v1.0</span>
@@ -240,6 +242,19 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
     </div>
     <div class="lst" id="q-lista"></div>
     <div class="bloque" style="margin-top:14px"><h3>¿Por qué se pierden? (últimos 90 días)</h3><div class="barras" id="q-motivos"></div></div>
+  </div>
+
+  <!-- ===== MAPA DE CLIENTES ===== -->
+  <div id="s-mapa" class="pag oculto">
+    <div class="sub-barra">
+      <div class="chips" id="mp-rango"><button data-d="30">30 días</button><button data-d="90" class="activa">90 días</button><button data-d="365">12 meses</button><button data-d="0">Todo</button></div>
+      <select id="mp-canal"><option value="">Todos los canales</option><option value="web">Web</option><option value="whatsapp">WhatsApp</option><option value="tienda">Tienda</option></select>
+      <select id="mp-peso"><option value="n">Intensidad: N° de pedidos</option><option value="s">Intensidad: monto vendido</option></select>
+      <div class="chips" id="mp-vista"><button data-v="calor" class="activa">🔥 Calor</button><button data-v="puntos">📍 Puntos</button></div>
+      <button class="btn-sec" id="mp-csv">📥 CSV para MyMaps</button>
+      <span class="mapa-stats" id="mp-stats"></span>
+    </div>
+    <div id="mp-mapa" class="mapa-grande"></div>
   </div>
 
   <!-- ===== CAMPAÑAS ===== -->
@@ -337,6 +352,8 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <script>
 // =====================================================================
 // Kadima CRM · clientes, fechas especiales, cotizaciones y campañas
@@ -414,7 +431,8 @@ function abrirApp() {
 function irSeccion(s) {
   st.sec = s;
   document.querySelectorAll('#secc [data-s]').forEach(b => b.classList.toggle('activa', b.dataset.s === s));
-  ['cli', 'fechas', 'cot', 'camp'].forEach(x => $('s-' + x).classList.toggle('oculto', x !== s));
+  ['cli', 'fechas', 'cot', 'camp', 'mapa'].forEach(x => $('s-' + x).classList.toggle('oculto', x !== s));
+  if (s === 'mapa') abrirMapa();
   if (s === 'cli') cargarClientes();
   if (s === 'fechas') cargarFechas();
   if (s === 'cot') cargarCots();
@@ -734,6 +752,60 @@ $('k-lista').onclick = async e => {
   const c = st.clientes.find(x => x.id === Number(b.dataset.kw)); if (!c) return;
   window.open(waURL(c.telefono, plantilla(msg, { nombre: primerNombre(c.nombre) })), '_blank');
   if (await registrarContacto(c.id, 'campana', nom, msg.slice(0, 200))) { enviadosCamp.add(c.id); b.outerHTML = '<span class="ok-tag">✓ Enviado</span>'; }
+};
+
+// =====================================================================
+// MAPA DE CLIENTES (calor / puntos) — deliveries web + WhatsApp/tienda
+// (antes estaba en la app de Pedidos; lee la vista v_mapa_delivery, sin nombres ni teléfonos)
+// =====================================================================
+const MAPA_CENTRO = [-12.0, -77.0];
+const st_map = { grande: null, capa: null, datos: [] };
+const mp = { dias: 90, canal: '', peso: 'n', vista: 'calor' };
+const diasISO = n => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+async function abrirMapa() {
+  if (typeof L === 'undefined') return $('mp-stats').textContent = 'No cargó el mapa (sin internet).';
+  if (!st_map.grande) {
+    st_map.grande = L.map('mp-mapa').setView(MAPA_CENTRO, 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(st_map.grande);
+  }
+  setTimeout(() => st_map.grande.invalidateSize(), 60);
+  $('mp-stats').textContent = 'Cargando…';
+  let q = sb.from('v_mapa_delivery').select('*');
+  if (mp.dias) q = q.gte('fecha_entrega', diasISO(-mp.dias));
+  if (mp.canal) q = q.eq('canal', mp.canal);
+  const { data, error } = await q.limit(5000);
+  if (error) return $('mp-stats').textContent = /v_mapa_delivery/.test(error.message) ? 'Falta correr 44_ubicaciones_mapa.sql en Supabase.' : errTxt(error);
+  st_map.datos = (data || []).filter(x => x.lat != null && x.lng != null);
+  pintarMapa(true);
+}
+function pintarMapa(encuadrar) {
+  const m = st_map.grande, d = st_map.datos; if (!m) return;
+  if (st_map.capa) { m.removeLayer(st_map.capa); st_map.capa = null; }
+  const maxS = Math.max(1, ...d.map(x => Number(x.total || 0)));
+  if (mp.vista === 'calor' && L.heatLayer) {
+    st_map.capa = L.heatLayer(d.map(x => [Number(x.lat), Number(x.lng), mp.peso === 's' ? Math.max(0.15, Number(x.total || 0) / maxS) : 0.6]), { radius: 26, blur: 20, maxZoom: 15, minOpacity: 0.35 }).addTo(m);
+  } else {
+    st_map.capa = L.layerGroup(d.map(x => L.circleMarker([Number(x.lat), Number(x.lng)], { radius: mp.peso === 's' ? 5 + 10 * Number(x.total || 0) / maxS : 7, color: '#8B0000', weight: 1, fillColor: x.origen === 'web' ? '#742284' : '#d1495b', fillOpacity: 0.7 })
+      .bindPopup(`<b>${esc(x.codigo)}</b><br>${x.fecha_entrega ? fechaCorta(x.fecha_entrega) : ''} · ${esc(x.canal)}<br>${esc(x.distrito || '')}<br>${S(x.total)}`))).addTo(m);
+  }
+  if (encuadrar && d.length) m.fitBounds(L.latLngBounds(d.map(x => [Number(x.lat), Number(x.lng)])).pad(0.15), { maxZoom: 15 });
+  const tot = d.reduce((a, x) => a + Number(x.total || 0), 0);
+  const porDist = {}; d.forEach(x => { const k = (x.distrito || 'Sin distrito').trim(); porDist[k] = (porDist[k] || 0) + 1; });
+  const top = Object.entries(porDist).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, n]) => `${k} (${n})`).join(', ');
+  $('mp-stats').textContent = d.length ? `${d.length} deliveries · ${S(tot)}${top ? ' · más pedidos: ' + top : ''}` : 'Aún no hay deliveries con ubicación en este rango.';
+}
+$('mp-rango').onclick = e => { const b = e.target.closest('[data-d]'); if (!b) return; mp.dias = Number(b.dataset.d); [...$('mp-rango').children].forEach(x => x.classList.toggle('activa', x === b)); abrirMapa(); };
+$('mp-vista').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; mp.vista = b.dataset.v; [...$('mp-vista').children].forEach(x => x.classList.toggle('activa', x === b)); pintarMapa(false); };
+$('mp-canal').onchange = e => { mp.canal = e.target.value; abrirMapa(); };
+$('mp-peso').onchange = e => { mp.peso = e.target.value; pintarMapa(false); };
+$('mp-csv').onclick = () => {
+  const d = st_map.datos; if (!d.length) return toast('No hay puntos para exportar');
+  const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const filas = [['Pedido', 'Latitud', 'Longitud', 'Fecha', 'Canal', 'Distrito', 'Total'], ...d.map(x => [x.codigo, x.lat, x.lng, x.fecha_entrega, x.canal, x.distrito, Number(x.total || 0).toFixed(2)])];
+  const blob = new Blob(['﻿' + filas.map(f => f.map(q).join(',')).join('\n')], { type: 'text/csv;charset=utf-8' });
+  const u = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = u; a.download = `kadima_deliveries_${diasISO(0)}.csv`; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 2000);
 };
 
 iniciar();
