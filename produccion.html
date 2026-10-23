@@ -63,6 +63,8 @@ input{font:inherit;padding:10px;border:1px solid var(--borde);border-radius:8px;
 .mini img{width:64px;height:64px;object-fit:cover;border-radius:8px;cursor:zoom-in;border:2px solid transparent}
 .txt .nom{font-size:22px;font-weight:800;line-height:1.25}
 .txt .nom b{color:var(--rojo);margin-right:8px}
+.comp{margin:6px 0 0;padding-left:20px;font-size:16px;line-height:1.45;color:#333}
+.comp li::marker{color:#8B0000}
 .pers{display:block;font-size:17px;font-weight:700;color:#5c3d00;background:#fff3c4;border-radius:10px;padding:8px 11px;margin-top:8px;white-space:pre-wrap}
 .nota{margin-top:10px;background:#fff3c4;font-weight:600;padding:6px 9px;border-radius:8px;font-size:14px}
 .hecho button{display:flex;align-items:center;gap:10px;background:#e7f6ec;color:var(--ok);font-weight:800;font-size:17px;padding:12px 18px;border:2px solid #bfe3cb}
@@ -122,6 +124,21 @@ input{font:inherit;padding:10px;border:1px solid var(--borde);border-radius:8px;
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
 <script>
+// componentes del cotizador (base + adicionales + insumos) para que producción sepa qué lleva
+function componentes(cot) {
+  if (!cot) return [];
+  const n = x => { const v = Number(x); return v % 1 ? String(Math.round(v * 1000) / 1000) : String(v); };
+  const l = [];
+  if (cot.base && cot.base.nombre) l.push(`Base: ${cot.base.nombre}${Number(cot.base.cantidad) && Number(cot.base.cantidad) !== 1 ? ' × ' + n(cot.base.cantidad) : ''}`);
+  (cot.lineas || []).forEach(x => {
+    if (!x || !x.nombre) return;
+    if (x.tipo === 'adic') l.push(`${x.nombre}${Number(x.veces) > 1 ? ' × ' + n(x.veces) : ''}`);
+    else if (x.tipo === 'insumo') l.push(`${x.nombre}${x.cantidad ? ` · ${n(x.cantidad)} ${x.unidad || ''}` : ''}`);
+    else if (x.tipo === 'otro') l.push(x.nombre);
+  });
+  return l;
+}
+
 // =====================================================================
 // Kadima Producción · lista de lo que hay que hacer (web + WhatsApp/tienda)
 // Marcar "Hecho" pasa el pedido a "listo" y lo saca de la lista.
@@ -194,7 +211,7 @@ async function cargar() {
   const estados = st.hechos ? ['listo'] : PENDIENTES;
   const [w, e] = await Promise.all([
     rango(sb.from('pedidos_web').select('id,codigo,estado,fecha_entrega,hora_entrega,tipo_entrega,notas,creado_en,pedidos_web_items(nombre,cantidad)').in('estado', estados)),
-    rango(sb.from('pedidos_encargo').select('id,codigo,estado,fecha_entrega,hora_entrega,tipo_entrega,creado_en,pedidos_encargo_items(orden,descripcion,personalizacion,cantidad),pedidos_encargo_fotos(item_orden,ruta)').in('estado', estados)),
+    rango(sb.from('pedidos_encargo').select('id,codigo,estado,fecha_entrega,hora_entrega,tipo_entrega,creado_en,pedidos_encargo_items(orden,descripcion,personalizacion,cantidad,cotizacion),pedidos_encargo_fotos(item_orden,ruta)').in('estado', estados)),
   ]);
   if (w.error || e.error) { $('lista').innerHTML = `<div class="vacio">${esc(errTxt(w.error || e.error))}</div>`; return; }
   const lista = [
@@ -203,7 +220,7 @@ async function cargar() {
     ...(e.data || []).map(p => {
       const its = (p.pedidos_encargo_items || []).sort((a, b) => a.orden - b.orden);
       const fotos = p.pedidos_encargo_fotos || [];
-      const items = its.map(i => ({ desc: i.descripcion, cant: Number(i.cantidad), pers: i.personalizacion, fotos: fotos.filter(f => f.item_orden === i.orden).map(f => f.ruta) }));
+      const items = its.map(i => ({ desc: i.descripcion, cant: Number(i.cantidad), pers: i.personalizacion, comp: componentes(i.cotizacion), fotos: fotos.filter(f => f.item_orden === i.orden).map(f => f.ruta) }));
       // fotos sin producto asignado: van al primero
       const sueltas = fotos.filter(f => !its.some(i => i.orden === f.item_orden)).map(f => f.ruta);
       if (sueltas.length && items[0]) items[0].fotos.push(...sueltas);
@@ -247,7 +264,7 @@ function fila(p, hoy, ahora, nuevo) {
       : '🎂';
     return `<div class="prod ${urls.length ? '' : 'sin'}">
       <div><div class="foto">${foto}</div>${urls.length > 1 ? `<div class="mini">${urls.map((u, k) => `<img src="${u}" data-ver="${p.key}" data-it="${n}" data-i="${k}" alt="">`).join('')}</div>` : ''}</div>
-      <div class="txt"><div class="nom"><b>${i.cant}×</b>${esc(i.desc)}</div>${i.pers ? `<span class="pers">✏️ ${esc(i.pers)}</span>` : ''}</div>
+      <div class="txt"><div class="nom"><b>${i.cant}×</b>${esc(i.desc)}</div>${i.comp && i.comp.length ? `<ul class="comp">${i.comp.map(c => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}${i.pers ? `<span class="pers">✏️ ${esc(i.pers)}</span>` : ''}</div>
     </div>`;
   }).join('');
   return `<div class="ped ${st.hechos ? 'hecha' : ''} ${nuevo ? 'nuevo' : ''}" id="f-${p.key}">

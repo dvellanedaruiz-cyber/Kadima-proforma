@@ -234,11 +234,7 @@
       </button>
       <button type="button" class="delivery-opt" data-tipo="delivery">
         <div class="d-title">🛵 Delivery</div>
-        <div class="d-note">Lo enviamos por InDrive; pagas el costo real del envío al recibir</div>
-      </button>
-      <button type="button" class="delivery-opt" data-tipo="movilidad">
-        <div class="d-title">🚕 Envío mi movilidad</div>
-        <div class="d-note">Tú pides tu InDrive o taxi y lo recoge en tienda</div>
+        <div class="d-note">Lo enviamos por InDrive</div>
       </button>
     </div>
 
@@ -304,8 +300,6 @@
       </div>
       <div class="aviso" id="aviso-delivery">🛵 El costo del delivery depende de la distancia. Marca tu ubicación para verlo; si no se puede calcular, te lo confirmamos por WhatsApp.</div>
     </div>
-
-    <div class="aviso oculto" id="aviso-movilidad" style="margin-top:12px">🚕 Tu InDrive o taxi recoge el pedido en la tienda (Mz K2 Lt. 3A, San Juan de Lurigancho) a la hora que elijas. El pago del envío lo coordinas con tu conductor.</div>
 
     <div class="sub-title">Tus datos</div>
     <div class="field-row">
@@ -558,10 +552,8 @@
     tipoEntrega = tipo;
     document.querySelectorAll('.delivery-opt').forEach(b => b.classList.toggle('selected', b.dataset.tipo === tipo));
     $('bloque-delivery').classList.toggle('oculto', tipo !== 'delivery');
-    $('aviso-movilidad').classList.toggle('oculto', tipo !== 'movilidad');
     pintarTotales();
     $('lbl-fecha').textContent = tipo === 'delivery' ? 'Fecha de entrega' : 'Fecha de recojo';
-    if (tipo === 'movilidad') $('lbl-hora').textContent = 'Hora en que llega tu movilidad';
     $('lbl-hora').textContent = tipo === 'delivery' ? 'Hora aproximada de entrega' : 'Hora de recojo';
   }
 
@@ -829,7 +821,7 @@
     const datos = {
       nombre: $('nombre').value.trim(),
       telefono: tel,
-      tipo_entrega: tipoEntrega === 'movilidad' ? 'recojo' : tipoEntrega,
+      tipo_entrega: tipoEntrega,
       fecha: $('fecha').value,
       hora: $('hora').value,
       distrito: $('distrito').value.trim(),
@@ -837,7 +829,7 @@
       referencia: $('referencia').value.trim(),
       lat: tipoEntrega === 'delivery' && ubicacion ? ubicacion.lat : null,
       lng: tipoEntrega === 'delivery' && ubicacion ? ubicacion.lng : null,
-      notas: [tipoEntrega === 'movilidad' ? 'ENVÍA SU PROPIA MOVILIDAD (InDrive/taxi del cliente)' : '', $('notas').value.trim(), tipoEntrega === 'delivery' && ubicLink && !ubicacion ? 'Ubicación (link): ' + ubicLink : ''].filter(Boolean).join(' · '),
+      notas: [$('notas').value.trim(), tipoEntrega === 'delivery' && ubicLink && !ubicacion ? 'Ubicación (link): ' + ubicLink : ''].filter(Boolean).join(' · '),
       yape_operacion: $('operacion').value.trim(),
       items: items().map(i => ({ producto_id: i.id, cantidad: i.qty })),
     };
@@ -870,7 +862,7 @@
     const horaTxt = etiquetaHora(Number(datos.hora.slice(0, 2)) * 60 + Number(datos.hora.slice(3, 5)));
     const entregaTxt = datos.tipo_entrega === 'delivery'
       ? `Delivery el ${fechaTxt}, ${horaTxt} aprox.`
-      : `Recojo en tienda el ${fechaTxt}, ${horaTxt}${/PROPIA MOVILIDAD/.test(datos.notas) ? ' (envío mi propia movilidad)' : ''}.`;
+      : `Recojo en tienda el ${fechaTxt}, ${horaTxt}.`;
 
     $('codigo-pedido').textContent = res.codigo;
     const dv = datos.tipo_entrega === 'delivery' ? datos.delivery : 0;

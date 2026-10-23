@@ -247,7 +247,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
     </div>
     <span class="vivo" id="vivo">● conectando</span>
     <span class="usr" id="usr" title="Cambiar de usuario"></span>
-    <span style="font-size:11px;opacity:.7" title="Versión de la app">v23.10-i</span>
+    <span style="font-size:11px;opacity:.7" title="Versión de la app">v23.10-j</span>
   </div>
 
   <!-- ===== CENTRAL ===== -->
@@ -831,7 +831,7 @@ function normWeb(p) {
 function normEnc(p) {
   const fotos = p.pedidos_encargo_fotos || [];
   const items = (p.pedidos_encargo_items || []).sort((a, b) => a.orden - b.orden)
-    .map(i => ({ desc: i.descripcion, cant: i.cantidad, pers: i.personalizacion, fotos: fotos.filter(f => f.item_orden === i.orden).map(f => f.ruta) }));
+    .map(i => ({ desc: i.descripcion, cant: i.cantidad, pers: i.personalizacion, comp: componentes(i.cotizacion), fotos: fotos.filter(f => f.item_orden === i.orden).map(f => f.ruta) }));
   const sueltas = fotos.filter(f => !items.length || f.item_orden == null || !(p.pedidos_encargo_items || []).some(i => i.orden === f.item_orden)).map(f => f.ruta);
   if (sueltas.length && items[0]) items[0].fotos.push(...sueltas);
   const comps = st.pagosComp[p.codigo] || [];
@@ -862,7 +862,7 @@ function tarjeta(p, hoy, ahoraMin, nuevo) {
   const tarde = p.fecha && (p.fecha < hoy || (p.fecha === hoy && hh * 60 + mm < ahoraMin && p.estado !== 'listo'));
   const cuando = (p.fecha === hoy ? '' : fechaCorta(p.fecha) + ' · ') + (hora12(p.hora) || 'sin hora');
   const tel = (p.tel || '').replace(/\D/g, '');
-  const items = p.items.map(i => `<li><b>${Number(i.cant)}×</b> ${esc(i.desc)}${i.pers ? `<span class="pers">✏️ ${esc(i.pers)}</span>` : ''}${i.fotos.length ? `<div class="fotos">${i.fotos.map(imgFoto).join('')}</div>` : ''}</li>`).join('');
+  const items = p.items.map(i => `<li><b>${Number(i.cant)}×</b> ${esc(i.desc)}${i.comp && i.comp.length ? `<span style="display:block;font-size:12px;color:var(--gris)">${i.comp.map(esc).join(' · ')}</span>` : ''}${i.pers ? `<span class="pers">✏️ ${esc(i.pers)}</span>` : ''}${i.fotos.length ? `<div class="fotos">${i.fotos.map(imgFoto).join('')}</div>` : ''}</li>`).join('');
   const totDel = p.total + Number(p.delivery || 0), saldo = Math.max(totDel - p.pagado, 0);
   const sig = SIGUIENTE[p.estado];
   const txtSig = { por_validar: '✓ Yape recibido', confirmado: 'A producción', en_produccion: 'Listo', listo: 'Entregado' }[p.estado];
@@ -885,7 +885,7 @@ function tarjeta(p, hoy, ahoraMin, nuevo) {
     ${p.tipo_entrega === 'delivery' && ['en_produccion', 'listo', 'entregado'].includes(p.estado) ? filaReal(p) : ''}
     <div class="acc">
       ${ANTERIOR[p.estado] && !(p.origen === 'enc' && p.estado === 'confirmado') ? `<button class="b-sec" data-atras="${p.key}" title="Regresar un paso">↩</button>` : ''}
-      ${p.origen === 'enc' ? `<button class="b-sec" data-editar="${p.id}" title="Editar pedido">✏️</button><button class="b-sec" data-pago="${p.id}" title="Cobrar / comprobantes">💵</button><button class="b-sec" data-wa="${p.key}" title="Enviar resumen por WhatsApp">💬</button><button class="b-sec" data-prof="${p.id}" title="Enviar proforma en PDF">📄</button>` : ''}
+      ${p.origen === 'enc' ? `<button class="b-sec" data-editar="${p.id}" title="Editar pedido">✏️</button><button class="b-sec" data-pago="${p.id}" title="Cobrar / comprobantes">💵</button><button class="b-sec" data-wa="${p.key}" title="Enviar resumen por WhatsApp">💬</button><button class="b-sec" data-prof="${p.id}" title="Enviar proforma en PDF">📄</button><button class="b-sec" data-profd="${p.id}" title="Descargar proforma">📥</button>` : ''}
       ${p.estado === 'por_validar' || (p.origen === 'enc' && p.estado === 'confirmado') ? `<button class="b-sec" data-anular="${p.key}" title="Anular pedido">✕</button>` : ''}
       ${sig ? `<button class="${p.estado === 'por_validar' ? 'b-yape' : 'b-sig'}" data-sig="${p.key}">${txtSig}</button>` : ''}
     </div>
@@ -944,6 +944,7 @@ $('f-tipo').onchange = e => { st.tipo = e.target.value; cargarCentral(); };
 $('tablero').addEventListener('click', async e => {
   const pk = k => st.pedidos.find(x => x.key === k);
   const pf = e.target.closest('[data-prof]'); if (pf) return enviarProforma(Number(pf.dataset.prof), pf);
+  const pd = e.target.closest('[data-profd]'); if (pd) return descargarProforma(Number(pd.dataset.profd), pd);
   const s = e.target.closest('[data-sig]');
   if (s) {
     const p = pk(s.dataset.sig);
@@ -1324,6 +1325,20 @@ async function pdfDe(v) {
   return new File([blob], `${v.serie}-${String(v.numero).padStart(8, '0')}.pdf`, { type: 'application/pdf' });
 }
 
+// componentes del cotizador (base + adicionales + insumos), para alistado y producción
+function componentes(cot) {
+  if (!cot) return [];
+  const n = x => { const v = Number(x); return v % 1 ? String(Math.round(v * 1000) / 1000) : String(v); };
+  const l = [];
+  if (cot.base && cot.base.nombre) l.push(`Base: ${cot.base.nombre}${Number(cot.base.cantidad) && Number(cot.base.cantidad) !== 1 ? ' × ' + n(cot.base.cantidad) : ''}`);
+  (cot.lineas || []).forEach(x => {
+    if (!x || !x.nombre) return;
+    if (x.tipo === 'adic') l.push(`${x.nombre}${Number(x.veces) > 1 ? ' × ' + n(x.veces) : ''}`);
+    else if (x.tipo === 'insumo') l.push(`${x.nombre}${x.cantidad ? ` · ${n(x.cantidad)} ${x.unidad || ''}` : ''}`);
+    else if (x.tipo === 'otro') l.push(x.nombre);
+  });
+  return l;
+}
 // ===== PROFORMA en PDF (para enviar al cliente por WhatsApp) =====
 const PROFORMA_DIAS = 7;   // validez de la proforma
 async function proformaDe(pid) {
@@ -1366,6 +1381,13 @@ async function proformaDe(pid) {
   $('lienzo').innerHTML = '';
   const f = { ...p, items: its.map(i => ({ descripcion: i.descripcion, personalizacion: i.personalizacion, cantidad: Number(i.cantidad), precio_unit: Number(i.precio_unit) })) };
   return { file: new File([blob], `Proforma-${p.codigo}.pdf`, { type: 'application/pdf' }), texto: textoWhatsApp(f, pagado) + '\nTe adjunto la proforma en PDF.', tel: p.cliente_telefono };
+}
+async function descargarProforma(pid, btn) {
+  const txt = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Preparando…'; }
+  try { const r = await proformaDe(pid); bajar(r.file); }
+  catch (e) { alert('No se pudo armar la proforma: ' + errTxt(e)); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = txt; } }
 }
 async function enviarProforma(pid, btn) {
   const txt = btn ? btn.textContent : '';
@@ -1564,12 +1586,14 @@ function mostrarGuardado(codigo, estado, resumen, edicion, tel, pid, post, nota)
     ${nota ? `<span style="font-size:13px;color:var(--mal)">${esc(nota)}</span>` : ''}
     <button class="btn-sec" id="b-copiar" style="margin-left:auto">📋 Copiar</button>
     <button class="btn-wa" id="b-wa">💬 Enviar por WhatsApp</button>
+    <button class="btn-sec" id="b-profd">📥 Descargar proforma</button>
     <button class="btn-wa" id="b-prof">📄 Enviar proforma</button>
     <button class="btn" id="b-cobrar">${estado === 'cotizado' ? '💵 Cobrar adelanto y confirmar' : '💵 Cobrar'}</button>
     <button class="btn-sec" id="b-cerrar-aviso" title="Cerrar">✕</button>`;
   $('b-cobrar').onclick = () => estado === 'cotizado' ? abrirPago(pid, { confirmar: true, post }) : abrirPago(pid);
   $('b-cerrar-aviso').onclick = ocultarAviso;
   $('b-prof').onclick = () => enviarProforma(pid, $('b-prof'));
+  $('b-profd').onclick = () => descargarProforma(pid, $('b-profd'));
   st.avisoGuardado = true;
   $('b-wa').onclick = () => abrirWhatsApp(tel, resumen);
   $('b-copiar').onclick = async () => { try { await navigator.clipboard.writeText(resumen); toast('Copiado'); } catch (e) { prompt('Copia el resumen:', resumen); } };
@@ -2401,7 +2425,7 @@ function pintarHist() {
       <div class="bot">
         ${esPed ? `<button class="btn" data-hpago="${p.id}">${sal > 0 ? '💵 Cobrar saldo' : '💵 Comprobantes'}</button>` : ''}
         <button class="${esPed ? 'btn-sec' : 'btn'}" data-base="${p.id}">⧉ Usar como base</button>
-        ${p.estado !== 'anulado' ? `<button class="btn-wa" data-hwa="${p.id}">💬 Enviar por WhatsApp</button><button class="btn-wa" data-hprof="${p.id}">📄 Enviar proforma</button>` : ''}
+        ${p.estado !== 'anulado' ? `<button class="btn-wa" data-hwa="${p.id}">💬 Enviar por WhatsApp</button><button class="btn-wa" data-hprof="${p.id}">📄 Enviar proforma</button><button class="btn-sec" data-hprofd="${p.id}">📥 Descargar proforma</button>` : ''}
         ${!['entregado', 'anulado'].includes(p.estado) ? `<button class="btn-sec" data-heditar="${p.id}">${p.estado === 'cotizado' ? '✓ Confirmar / editar' : '✏️ Editar'}</button>` : ''}
         ${p.estado === 'cotizado' ? `<button class="btn-sec" data-hanular="${p.id}">✕ Descartar</button>` : ''}
       </div></div>`;
@@ -2413,6 +2437,7 @@ $('h-lista').onclick = async e => {
   const b = e.target.closest('[data-base]'); if (b) return usarComoBase(Number(b.dataset.base));
   const hp = e.target.closest('[data-hpago]'); if (hp) return abrirPago(Number(hp.dataset.hpago));
   const hf = e.target.closest('[data-hprof]'); if (hf) return enviarProforma(Number(hf.dataset.hprof), hf);
+  const hd = e.target.closest('[data-hprofd]'); if (hd) return descargarProforma(Number(hd.dataset.hprofd), hd);
   const w = e.target.closest('[data-hwa]');
   if (w) {
     const r = st.hist.find(x => x.id === Number(w.dataset.hwa)); if (!r) return;
