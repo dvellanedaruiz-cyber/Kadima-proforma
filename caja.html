@@ -1376,10 +1376,18 @@ $('b-cerrar').onclick = async () => {
   const totalVentas = r2(validas.reduce((a, v) => a + Number(v.total), 0));
   resumenCierre.efectivoEsperado = r2(Number(st.turno.monto_inicial) + (porMetodo.efectivo || 0));
   $('ci-sub').textContent = `${st.caja.nombre} · ${st.turno.nombre || 'Turno'} · ${validas.length} ventas · ${S(totalVentas)}`;
+  // tarjeta junta lo nuevo (tarjeta) y lo antiguo (visa / mastercard)
+  const pTarjeta = r2((porMetodo.tarjeta || 0) + (porMetodo.visa || 0) + (porMetodo.mastercard || 0));
+  const otros = ['plin', 'transferencia'].filter(m => porMetodo[m]);
   $('ci-tabla').innerHTML =
     `<tr><td>Efectivo inicial</td><td>${S(st.turno.monto_inicial)}</td></tr>` +
-    Object.keys(NOMBRES_METODO).filter(m => porMetodo[m]).map(m => `<tr><td>${NOMBRES_METODO[m]}</td><td>${S(porMetodo[m])}</td></tr>`).join('') +
-    `<tr><td><b>Efectivo que debería haber</b></td><td>${S(resumenCierre.efectivoEsperado)}</td></tr>` +
+    `<tr><td>Ventas en efectivo</td><td>${S(porMetodo.efectivo || 0)}</td></tr>` +
+    `<tr><td><b>Efectivo que debería haber</b></td><td><b>${S(resumenCierre.efectivoEsperado)}</b></td></tr>` +
+    `<tr><td colspan="2" style="padding-top:12px;color:var(--gris);font-size:12px">OTROS MEDIOS (no van en el cajón)</td></tr>` +
+    `<tr><td>Yape</td><td>${S(porMetodo.yape || 0)}</td></tr>` +
+    `<tr><td>Tarjeta</td><td>${S(pTarjeta)}</td></tr>` +
+    otros.map(m => `<tr><td>${NOMBRES_METODO[m]}</td><td>${S(porMetodo[m])}</td></tr>`).join('') +
+    `<tr><td><b>Total vendido</b></td><td><b>${S(totalVentas)}</b></td></tr>` +
     (credito.length ? `<tr><td>Facturas al crédito (por cobrar)</td><td>${credito.length} · ${S(credito.reduce((a, v) => a + Number(v.total) - Number(v.retencion_monto), 0))}</td></tr>` : '') +
     (retenido > 0 ? `<tr><td>Retenciones 3% (las paga el cliente a SUNAT)</td><td>${S(retenido)}</td></tr>` : '') +
     (anuladas.length ? `<tr><td>Ventas anuladas (no suman)</td><td>${anuladas.length} · ${S(anuladas.reduce((a, v) => a + Number(v.total), 0))}</td></tr>` : '');
