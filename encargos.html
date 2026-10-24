@@ -221,6 +221,9 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1f1f1f;color:#fff;padding:10px 16px;border-radius:10px;z-index:90;font-weight:600;max-width:92vw}
 
 @media (max-width:900px){.form,.cot{grid-template-columns:1fr}.tablero{grid-template-columns:repeat(4,85vw)}.h-item{grid-template-columns:60px 1fr}.h-item .ph{width:60px;height:60px}.h-item .bot{grid-column:1/-1;flex-direction:row;flex-wrap:wrap}.h-item .bot button{flex:1}}
+.modo-del{display:inline-block;padding:4px 10px;border-radius:999px;background:#fff4e5;color:#9a5b00;font-size:12px;font-weight:700;margin-right:6px}
+.lbl-real{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600}
+.lbl-real input{width:90px}
 </style>
 </head>
 <body>
@@ -912,7 +915,7 @@ function tarjeta(p, hoy, ahoraMin, nuevo) {
     ${origen}<span class="tag ${p.tipo_entrega}">${p.tipo_entrega === 'delivery' ? '🛵 Delivery' : '🏬 Recojo'}</span>${!p.mensual && saldo > 0 ? `<span class="tag saldo">Saldo ${S(saldo)}</span>` : '<span class="tag pagado">✓ Pagado</span>'}
     <div class="res">${resumen || 'Sin productos'}</div>
     <div class="cuerpo">
-    ${p.tipo_entrega === 'delivery' ? `<div class="dir">📍 ${esc(p.direccion || 'sin dirección')}${p.distrito ? ', ' + esc(p.distrito) : ''}${p.referencia ? `<br><small>${esc(p.referencia)}</small>` : ''}${p.lat != null ? `<br><a class="maps" href="https://www.google.com/maps?q=${p.lat},${p.lng}" target="_blank" rel="noopener">🗺️ Abrir en Google Maps</a>` : ''}</div>` : ''}
+    ${p.tipo_entrega === 'delivery' ? `<div class="dir">📍 ${p.direccion ? esc(p.direccion) : p.lat != null ? 'Dirección en Google Maps' : 'sin dirección'}${p.distrito ? ', ' + esc(p.distrito) : ''}${p.referencia ? `<br><small>${esc(p.referencia)}</small>` : ''}${p.lat != null ? `<br><a class="maps" href="https://www.google.com/maps?q=${p.lat},${p.lng}" target="_blank" rel="noopener">🗺️ Abrir en Google Maps</a>` : ''}</div>` : ''}
     <ul class="its">${items}</ul>
     ${p.notas ? `<div class="nota">📝 ${esc(p.notas)}</div>` : ''}
     ${p.mensual ? `<div class="dinero"><div>Total<b>${S(totDel)}</b></div><div style="flex:2">🏫 Factura mensual<b style="font-size:13px">${p.factDoc ? esc(p.factDoc) : 'por facturar'}</b></div></div>` : `<div class="dinero">
@@ -926,7 +929,7 @@ function tarjeta(p, hoy, ahoraMin, nuevo) {
     ${p.estado === 'por_validar' || (p.origen === 'enc' && p.estado === 'confirmado') ? `<button class="b-link" data-anular="${p.key}">✕ Anular pedido</button>` : ''}
     </div>
     <div class="acc">
-      ${p.origen === 'enc' ? `<button class="b-sec" data-editar="${p.id}" title="Editar pedido">✏️ <span>Editar</span></button><button class="b-sec" data-pago="${p.id}" title="Cobrar / comprobantes">💵 <span>Cobrar</span></button>` : ''}
+      ${p.origen === 'enc' ? `${p.estado === 'confirmado' ? `<button class="b-sec" data-editar="${p.id}" title="Editar pedido">✏️ <span>Editar</span></button>` : ''}<button class="b-sec" data-pago="${p.id}" title="Cobrar / comprobantes">💵 <span>Cobrar</span></button>` : ''}
       <button class="b-sec" data-wa="${p.key}" title="Enviar resumen por WhatsApp">💬 <span>WhatsApp</span></button>
       <button class="b-sec" data-comanda="${p.key}" title="Imprimir comanda (ticketera 80 mm)">🖨️ <span>Comanda</span></button>
       ${sig && txtSig ? `<button class="${p.estado === 'por_validar' ? 'b-yape' : 'b-sig'}" data-sig="${p.key}">${txtSig}</button>` : ''}
@@ -969,12 +972,13 @@ function imprimirComanda(p) {
 
 // costo REAL pagado al InDrive (se registra al despachar)
 function filaReal(p) {
-  const selModo = !p.delivIncl ? `<select data-dmodo="${p.key}" style="width:auto;padding:4px 6px;font-size:12px" title="Cómo se cobra el delivery">
-      <option value="al_despachar" ${p.modo === 'al_despachar' ? 'selected' : ''}>Cobro: real + IGV</option><option value="fijo" ${p.modo === 'fijo' ? 'selected' : ''}>Cobro: monto fijo</option><option value="cliente" ${p.modo === 'cliente' ? 'selected' : ''}>🚕 InDrive del cliente</option></select>` : '';
+  // el modo de cobro solo se cambia con ✏️ Editar; aquí solo se muestra
+  const nomModo = { al_despachar: 'Cobro: costo real + IGV', fijo: 'Cobro: monto fijo', cliente: '🚕 InDrive del cliente' }[p.modo] || 'Cobro: monto fijo';
+  const selModo = !p.delivIncl ? `<span class="modo-del" title="Para cambiarlo usa ✏️ Editar">${nomModo}</span>` : '';
   if (p.modo === 'cliente') return `<div class="envio">${selModo}<span>no se cobra delivery</span></div>`;
   const r = p.real == null ? null : Number(p.real), cob = p.delivery == null ? null : Number(p.delivery);
   const gan = r != null && cob != null ? r2(cob / (1 + igvPct() / 100) - r) : null;
-  return `<div class="envio" style="flex-wrap:wrap">${selModo}🛵 InDrive real S/ <input type="number" min="0" step="0.1" data-real="${p.key}" value="${r ?? ''}" placeholder="al despachar">
+  return `<div class="envio" style="flex-wrap:wrap">${selModo}<label class="lbl-real">🛵 Pagado al InDrive (al despachar) S/ <input type="number" min="0" step="0.1" data-real="${p.key}" value="${r ?? ''}" placeholder="0.00"></label>
     ${p.modo === 'al_despachar' && cob != null ? `<span>→ cobro ${S(cob)}${p.delivFactDoc ? ' · ' + esc(p.delivFactDoc) : ''}</span>` : ''}
     ${gan != null && p.modo !== 'al_despachar' ? `<span style="color:${gan >= 0 ? 'var(--ok)' : 'var(--mal)'};font-weight:700" title="Cobrado sin IGV menos lo pagado al InDrive">${gan >= 0 ? '+' : '−'}${S(Math.abs(gan))}</span>` : ''}</div>`;
 }
