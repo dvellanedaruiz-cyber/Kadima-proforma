@@ -155,6 +155,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
 .h-item{background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.05);display:grid;grid-template-columns:76px 1fr auto;gap:12px;align-items:start}
 .h-item .ph{width:76px;height:76px;border-radius:10px;background:var(--fondo);object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:28px}
 .h-item .t{font-weight:800}
+.h-item .h-ent{margin-left:10px;font-size:14px;font-weight:800;color:var(--rojo);background:#fbeeee;border-radius:8px;padding:2px 9px}
 .h-item .meta{color:var(--gris);font-size:12.5px;margin-top:2px}
 .h-item ul{margin:6px 0 0;padding-left:18px;font-size:13.5px}
 .h-item .bot{display:flex;flex-direction:column;gap:6px;align-items:stretch;min-width:130px}
@@ -671,6 +672,7 @@ const pad2 = n => String(n).padStart(2, '0');
 const fstr = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 const dias = n => { const d = new Date(); d.setDate(d.getDate() + n); return fstr(d); };
 const hora12 = t => { if (!t) return ''; const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${pad2(m)} ${h >= 12 ? 'pm' : 'am'}`; };
+const horaCorta = t => { const [h, m] = String(t).split(':').map(Number); return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'pm' : 'am'}`; };
 const fechaCorta = f => f ? new Date(f + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric', month: 'short' }) : 'sin fecha';
 
 // ===================== MAESTROS Y COSTOS =====================
@@ -2492,18 +2494,14 @@ function pintarHist() {
     const pag = r2((st.hpag || {})[p.codigo] || 0), sal = Math.max(r2(totalP - pag), 0);
     return `<div class="h-item">
       ${foto && st.urls[foto.ruta] ? `<img class="ph" src="${st.urls[foto.ruta]}" data-zoom="${esc(st.urls[foto.ruta])}" alt="">` : '<div class="ph">🎂</div>'}
-      <div><div class="t">${esc(p.codigo)}<span class="est ${p.estado}">${ESTADOS[p.estado]}</span></div>
-        <div class="meta">${esc(p.cliente_nombre || 'Sin nombre')}${p.cliente_telefono ? ' · ' + esc(p.cliente_telefono) : ''} · ${p.fecha_entrega ? 'entrega ' + fechaCorta(p.fecha_entrega) : 'registrado ' + new Date(p.creado_en).toLocaleDateString('es-PE')} · Total ${S(totalP)}</div>
+      <div><div class="t">${esc(p.codigo)}${p.fecha_entrega ? `<span class="h-ent">📅 ${fechaCorta(p.fecha_entrega)}${p.hora_entrega ? ' · ' + horaCorta(p.hora_entrega) : ''}</span>` : ''}<span class="est ${p.estado}">${ESTADOS[p.estado]}</span></div>
+        <div class="meta">${esc(p.cliente_nombre || 'Sin nombre')}${p.cliente_telefono ? ' · ' + esc(p.cliente_telefono) : ''}${p.fecha_entrega ? '' : ' · registrado ' + new Date(p.creado_en).toLocaleDateString('es-PE')} · Total ${S(totalP)}</div>
         ${esPed ? `<div class="meta" style="font-weight:700">Pagado <span style="color:var(--ok)">${S(pag)}</span> · Saldo <span style="color:${sal > 0 ? 'var(--mal)' : 'var(--ok)'}">${sal > 0 ? S(sal) : 'S/ 0.00 ✓'}</span></div>` : ''}
-        <ul>${its.map(i => {
-          const hoy = costoCotizacion(i.cotizacion), antes = i.costo_unit == null ? null : Number(i.costo_unit);
-          const cmp = hoy && hoy.total > 0 && antes ? (() => { const d = (hoy.total - antes) / antes * 100; const sug = sugerido(hoy.total, FC_MED); return `<div class="cmp">Costo entonces ${S(antes)} → hoy ${S(hoy.total)} <b style="color:${Math.abs(d) < 3 ? 'var(--gris)' : d > 0 ? 'var(--mal)' : 'var(--ok)'}">(${d > 0 ? '+' : ''}${d.toFixed(1)}%)</b> · precio sugerido hoy S/ ${sug}</div>`; })() : '';
-          return `<li>${Number(i.cantidad)} × ${esc(i.descripcion)} — ${S(i.precio_unit)} c/u${i.personalizacion ? ` <small style="color:#7a5300">✏️ ${esc(i.personalizacion)}</small>` : ''}${cmp}</li>`;
-        }).join('')}</ul></div>
+        <ul>${its.map(i => `<li>${Number(i.cantidad)} × ${esc(i.descripcion)} — ${S(i.precio_unit)} c/u${i.personalizacion ? ` <small style="color:#7a5300">✏️ ${esc(i.personalizacion)}</small>` : ''}</li>`).join('')}</ul></div>
       <div class="bot">
         ${esPed ? `<button class="btn" data-hpago="${p.id}">${sal > 0 ? '💵 Cobrar saldo' : '💵 Comprobantes'}</button>` : ''}
         <button class="${esPed ? 'btn-sec' : 'btn'}" data-base="${p.id}">⧉ Usar como base</button>
-        ${p.estado !== 'anulado' ? `<button class="btn-wa" data-hwa="${p.id}">💬 Enviar por WhatsApp</button><button class="btn-wa" data-hprof="${p.id}">📄 Enviar proforma</button><button class="btn-sec" data-hprofd="${p.id}">📥 Descargar proforma</button>` : ''}
+        ${p.estado !== 'anulado' ? `<button class="btn-wa" data-hwa="${p.id}">💬 Enviar por WhatsApp</button><button class="btn-sec" data-hprofd="${p.id}">📥 Descargar proforma</button>` : ''}
         ${!['entregado', 'anulado'].includes(p.estado) ? `<button class="btn-sec" data-heditar="${p.id}">${p.estado === 'cotizado' ? '✓ Confirmar / editar' : '✏️ Editar'}</button>` : ''}
         ${p.estado === 'cotizado' ? `<button class="btn-sec" data-hanular="${p.id}">✕ Descartar</button>` : ''}
       </div></div>`;
