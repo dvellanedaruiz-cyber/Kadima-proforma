@@ -36,6 +36,31 @@ input{font:inherit;padding:10px;border:1px solid var(--borde);border-radius:8px;
 .barra .usr{font-size:13px;opacity:.9;cursor:pointer}
 #b-hechos{background:rgba(255,255,255,.15);color:#fff;padding:8px 13px;font-weight:700}
 #b-hechos.activa{background:#fff;color:var(--ok)}
+#b-sel{background:rgba(255,255,255,.15);color:#fff;padding:8px 13px;font-weight:700}
+#b-sel span{display:inline-block;min-width:22px;padding:0 6px;border-radius:10px;background:#fff3c4;color:#7a5300;font-size:13px;margin-left:4px}
+#b-sel.activa{background:#fff;color:var(--rojo)}
+.sel-barra{max-width:1500px;margin:12px auto 0;padding:0 14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.seg2{display:flex;background:#fff;border-radius:10px;padding:3px;gap:3px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.seg2 button{background:transparent;padding:9px 14px;font-weight:800;color:var(--gris)}
+.seg2 button.activa{background:var(--rojo);color:#fff}
+.sel-ayuda{font-size:13px;color:var(--gris)}
+.entrega{font-size:13px;color:var(--gris);font-weight:700}
+.ped.en_produccion{border-left:6px solid #e0a458}
+.hecho button.trabajar{display:flex;align-items:center;gap:8px;background:#fff7e8;color:#9a5300;font-weight:800;font-size:15px;padding:10px 14px;border:2px solid #f0d5a8}
+.hecho button.trabajar .caja{width:22px;height:22px;border-radius:6px;border:2px solid #c98a2b;background:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:15px;color:#fff}
+.hecho button.trabajar:hover{background:#f6e2c2;color:#9a5300}.hecho button.trabajar.on{background:#e0a458;color:#fff;border-color:#e0a458}.hecho button.trabajar.on .caja{background:#9a5300;border-color:#fff}
+.top .acc{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.consol{background:#fff;border-radius:14px;box-shadow:0 1px 5px rgba(0,0,0,.07);overflow:hidden}
+.consol .fila-c{display:grid;grid-template-columns:130px 1fr;gap:14px;padding:14px 18px;border-top:1px solid #f0ece8;align-items:start}
+.consol .fila-c:first-child{border-top:0}
+.consol .tot{font-size:34px;font-weight:900;color:var(--rojo);line-height:1}
+.consol .tot small{display:block;font-size:12px;color:var(--gris);font-weight:700;margin-top:4px}
+.consol .nom{font-size:22px;font-weight:800}
+.consol .det{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.consol .det span{background:var(--fondo);border-radius:8px;padding:4px 9px;font-size:13px;font-weight:600}
+.consol .notas{margin-top:8px;font-size:14px;color:#5c3d00}
+.consol .notas div{background:#fff3c4;border-radius:8px;padding:5px 9px;margin-top:4px}
+@media (max-width:700px){.consol .fila-c{grid-template-columns:80px 1fr}.consol .tot{font-size:26px}.consol .nom{font-size:17px}.top .acc{margin-left:0;width:100%}.top .acc button{flex:1;justify-content:center}}
 
 /* ===== lista ===== */
 .lista{max-width:1500px;margin:0 auto;padding:14px}
@@ -105,14 +130,19 @@ input{font:inherit;padding:10px;border:1px solid var(--borde);border-radius:8px;
     <b>Producción</b>
     <div class="grupo" id="rangos">
       <button data-r="hoy" class="activa">Hoy</button><button data-r="manana">Mañana</button>
-      <button data-r="semana">Próx. 7 días</button><button data-r="todo">Todo</button>
+      <button data-r="tres">3 días</button><button data-r="semana">Próx. 7 días</button><button data-r="todo">Todo</button>
     </div>
+    <button id="b-sel">👩‍🍳 Seleccionados <span id="n-sel">0</span></button>
     <button id="b-hechos">☑ Ver hechos</button>
     <div class="der">
       <div class="grupo"><button id="z-menos" title="Letra más chica">A−</button><button id="z-mas" title="Letra más grande (TV)">A+</button></div>
       <span class="vivo" id="vivo">● conectando</span>
       <span class="usr" id="usr" title="Cambiar de usuario"></span>
     </div>
+  </div>
+  <div class="sel-barra oculto" id="sel-barra">
+    <div class="seg2" id="sel-modo"><button data-m="consol" class="activa">🧮 Consolidado (total a preparar)</button><button data-m="pedido">📋 Por pedido</button></div>
+    <span class="sel-ayuda">Pedidos que producción marcó para trabajar. La hora es la de <b>listo</b> (1 h antes de la entrega).</span>
   </div>
   <div class="lista" id="lista"></div>
 </section>
@@ -156,7 +186,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&
 const errTxt = e => { const m = (e && (e.message || e.error_description)) || String(e); return /fetch|network/i.test(m) ? 'Sin conexión a internet.' : /Invalid login/i.test(m) ? 'Correo o contraseña incorrectos.' : m; };
 const leer = k => { try { return localStorage.getItem('kprod_' + k); } catch (e) { return null; } };
 const guardar = (k, v) => { try { localStorage.setItem('kprod_' + k, v); } catch (e) {} };
-const st = { usuario: null, rango: 'hoy', hechos: false, pedidos: [], urls: {}, inicio: new Date(), avisados: new Set(), zoom: Number(leer('zoom') || 1), visor: { fotos: [], i: 0 } };
+const st = { usuario: null, rango: 'hoy', hechos: false, sel: false, selModo: leer('selmodo') || 'consol', pedidos: [], urls: {}, inicio: new Date(), avisados: new Set(), zoom: Number(leer('zoom') || 1), visor: { fotos: [], i: 0 } };
 
 // ===== sesión =====
 function vista(id) { ['v-login', 'v-pin', 'v-app'].forEach(v => $(v).classList.toggle('oculto', v !== id)); }
@@ -197,21 +227,27 @@ const pad2 = n => String(n).padStart(2, '0');
 const fstr = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 const dias = n => { const d = new Date(); d.setDate(d.getDate() + n); return fstr(d); };
 const hora12 = t => { if (!t) return 'sin hora'; const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${pad2(m)} ${h >= 12 ? 'pm' : 'am'}`; };
+// producción trabaja con la hora de LISTO: 1 hora antes de la entrega (tiempo para entregar o enviar)
+const MARGEN_MIN = 60;
+const horaListo = t => { if (!t) return null; const [h, m] = t.split(':').map(Number); const x = Math.max(0, h * 60 + m - MARGEN_MIN); return `${pad2(Math.floor(x / 60))}:${pad2(x % 60)}`; };
 const fechaLarga = f => f === dias(0) ? 'Hoy' : f === dias(1) ? 'Mañana' : new Date(f + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
 
 // ===== datos (solo lo que producción necesita) =====
 function rango(q) {
   if (st.rango === 'hoy') q = q.eq('fecha_entrega', dias(0));
   else if (st.rango === 'manana') q = q.eq('fecha_entrega', dias(1));
+  else if (st.rango === 'tres') q = q.gte('fecha_entrega', dias(0)).lte('fecha_entrega', dias(2));
   else if (st.rango === 'semana') q = q.gte('fecha_entrega', dias(0)).lte('fecha_entrega', dias(7));
   else if (st.hechos) q = q.gte('fecha_entrega', dias(-7));   // "Todo" en hechos: solo la última semana
   return q;
 }
 async function cargar() {
-  const estados = st.hechos ? ['listo'] : PENDIENTES;
+  const estados = st.hechos ? ['listo'] : st.sel ? ['en_produccion'] : PENDIENTES;
+  const filtro = q => st.sel ? q : rango(q);   // seleccionados: todos, sin importar la fecha
+  contarSel();
   const [w, e] = await Promise.all([
-    rango(sb.from('pedidos_web').select('id,codigo,estado,fecha_entrega,hora_entrega,tipo_entrega,notas,creado_en,pedidos_web_items(nombre,cantidad)').in('estado', estados)),
-    rango(sb.from('pedidos_encargo').select('id,codigo,estado,fecha_entrega,hora_entrega,tipo_entrega,creado_en,pedidos_encargo_items(orden,descripcion,personalizacion,cantidad,cotizacion),pedidos_encargo_fotos(item_orden,ruta)').in('estado', estados)),
+    filtro(sb.from('pedidos_web').select('id,codigo,estado,fecha_entrega,hora_entrega,tipo_entrega,notas,creado_en,pedidos_web_items(nombre,cantidad)').in('estado', estados)),
+    filtro(sb.from('pedidos_encargo').select('id,codigo,estado,fecha_entrega,hora_entrega,tipo_entrega,creado_en,pedidos_encargo_items(orden,descripcion,personalizacion,cantidad,cotizacion),pedidos_encargo_fotos(item_orden,ruta)').in('estado', estados)),
   ]);
   if (w.error || e.error) { $('lista').innerHTML = `<div class="vacio">${esc(errTxt(w.error || e.error))}</div>`; return; }
   const lista = [
@@ -231,18 +267,26 @@ async function cargar() {
     : (a.fecha || '').localeCompare(b.fecha || '') || (a.hora || '99').localeCompare(b.hora || '99'));
   const faltan = [...new Set(lista.flatMap(p => p.items.flatMap(i => i.fotos)))].filter(r => !st.urls[r]);
   if (faltan.length) { const { data } = await sb.storage.from(BUCKET).createSignedUrls(faltan, 60 * 60 * 6); (data || []).forEach(d => { if (d.signedUrl) st.urls[d.path] = d.signedUrl; }); }
-  const nuevos = st.hechos ? [] : lista.filter(p => new Date(p.creado) > st.inicio && !st.avisados.has(p.key)).map(p => p.key);
+  const nuevos = st.hechos || st.sel ? [] : lista.filter(p => new Date(p.creado) > st.inicio && !st.avisados.has(p.key)).map(p => p.key);
   nuevos.forEach(k => st.avisados.add(k));
   st.pedidos = lista; dibujar(nuevos);
   if (nuevos.length) sonar();
 }
 
 // ===== lista =====
+async function contarSel() {
+  const [a, b] = await Promise.all([
+    sb.from('pedidos_web').select('id').eq('estado', 'en_produccion'),
+    sb.from('pedidos_encargo').select('id').eq('estado', 'en_produccion'),
+  ]);
+  $('n-sel').textContent = (a.data || []).length + (b.data || []).length;
+}
 function dibujar(nuevos = []) {
   if (!st.pedidos.length) {
-    $('lista').innerHTML = `<div class="vacio">${st.hechos ? 'Aún no hay pedidos marcados como hechos en este rango.' : '🎉 No hay nada pendiente por hacer en este rango.'}</div>`;
+    $('lista').innerHTML = `<div class="vacio">${st.hechos ? 'Aún no hay pedidos marcados como hechos en este rango.' : st.sel ? 'Aún no hay pedidos seleccionados. En la lista, marca <b>👩‍🍳 Trabajar</b> en los pedidos que van a preparar.' : '🎉 No hay nada pendiente por hacer en este rango.'}</div>`;
     return;
   }
+  if (st.sel && st.selModo === 'consol') return dibujarConsolidado();
   const hoy = dias(0), ahora = new Date().getHours() * 60 + new Date().getMinutes();
   let fechaAnt = null, html = '';
   st.pedidos.forEach(p => {
@@ -252,11 +296,13 @@ function dibujar(nuevos = []) {
   $('lista').innerHTML = html;
 }
 function fila(p, hoy, ahora, nuevo) {
-  const [h, m] = (p.hora || '23:59').split(':').map(Number);
+  const hl = horaListo(p.hora);
+  const [h, m] = (hl || '23:59').split(':').map(Number);
   const tarde = !st.hechos && (p.fecha < hoy || (p.fecha === hoy && h * 60 + m < ahora));
+  const sel = p.estado === 'en_produccion';
   const boton = st.hechos
     ? `<span class="marca-hecho">✓ Hecho</span> <button class="deshacer" data-deshacer="${p.key}">↩ Volver a pendientes</button>`
-    : `<button data-hecho="${p.key}"><span class="caja"></span>Marcar como hecho</button>`;
+    : `<button class="trabajar ${sel ? 'on' : ''}" data-trabajar="${p.key}" title="Marcar que este pedido se va a trabajar"><span class="caja">${sel ? '✓' : ''}</span>${sel ? 'Trabajando' : 'Trabajar'}</button><button data-hecho="${p.key}"><span class="caja"></span>Marcar como hecho</button>`;
   const prods = p.items.map((i, n) => {
     const urls = i.fotos.map(r => st.urls[r]).filter(Boolean);
     const foto = urls.length
@@ -267,11 +313,33 @@ function fila(p, hoy, ahora, nuevo) {
       <div class="txt"><div class="nom"><b>${i.cant}×</b>${esc(i.desc)}</div>${i.comp && i.comp.length ? `<ul class="comp">${i.comp.map(c => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}${i.pers ? `<span class="pers">✏️ ${esc(i.pers)}</span>` : ''}</div>
     </div>`;
   }).join('');
-  return `<div class="ped ${st.hechos ? 'hecha' : ''} ${nuevo ? 'nuevo' : ''}" id="f-${p.key}">
-    <div class="top"><span class="hora ${tarde ? 'tarde' : ''}">${hora12(p.hora)}</span><span class="ent ${p.tipo}">${p.tipo === 'delivery' ? '🛵 Delivery' : '🏬 Recojo'}</span><span class="cod">${esc(p.codigo)}</span><div class="hecho">${boton}</div></div>
+  return `<div class="ped ${st.hechos ? 'hecha' : ''} ${sel && !st.hechos ? 'en_produccion' : ''} ${nuevo ? 'nuevo' : ''}" id="f-${p.key}">
+    <div class="top"><span class="hora ${tarde ? 'tarde' : ''}">${p.hora ? 'Listo ' + hora12(hl) : 'sin hora'}</span>${p.hora ? `<span class="entrega">entrega ${hora12(p.hora)}</span>` : ''}<span class="ent ${p.tipo}">${p.tipo === 'delivery' ? '🛵 Delivery' : '🏬 Recojo'}</span><span class="cod">${esc(p.codigo)}</span><div class="hecho acc">${boton}</div></div>
     ${prods}
     ${p.nota ? `<div class="nota">📝 ${esc(p.nota)}</div>` : ''}
   </div>`;
+}
+// suma lo mismo de distintos pedidos para sacar lotes: "70 empanadas de pollo · 100 alfajores"
+function dibujarConsolidado() {
+  const norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+  const grupos = new Map();
+  st.pedidos.forEach(p => p.items.forEach(i => {
+    const k = norm(i.desc) + '|' + (i.comp || []).map(norm).join(';');
+    if (!grupos.has(k)) grupos.set(k, { desc: i.desc, comp: i.comp || [], total: 0, det: [], notas: [] });
+    const g = grupos.get(k); g.total += Number(i.cant) || 0;
+    const hl = horaListo(p.hora);
+    g.det.push(`${esc(p.codigo)} · ${fechaLarga(p.fecha)}${hl ? ' ' + hora12(hl) : ''} · <b>${i.cant}</b>`);
+    if (i.pers) g.notas.push(`<b>${esc(p.codigo)}</b> (${i.cant}): ${esc(i.pers)}`);
+  }));
+  const lista = [...grupos.values()].sort((a, b) => b.total - a.total || a.desc.localeCompare(b.desc));
+  const nPed = st.pedidos.length, nUni = lista.reduce((a, g) => a + g.total, 0);
+  $('lista').innerHTML = `<div class="dia">${lista.length} producto(s) · ${nUni} unidades · de ${nPed} pedido(s)</div>
+    <div class="consol">${lista.map(g => `<div class="fila-c">
+      <div class="tot">${g.total}<small>${g.det.length > 1 ? 'en ' + g.det.length + ' pedidos' : '1 pedido'}</small></div>
+      <div><div class="nom">${esc(g.desc)}</div>${g.comp.length ? `<ul class="comp">${g.comp.map(c => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
+        <div class="det">${g.det.map(d => `<span>${d}</span>`).join('')}</div>
+        ${g.notas.length ? `<div class="notas">${g.notas.map(n => `<div>✏️ ${n}</div>`).join('')}</div>` : ''}</div>
+    </div>`).join('')}</div>`;
 }
 async function cambiar(p, estado) {
   const tabla = p.origen === 'web' ? 'pedidos_web' : 'pedidos_encargo';
@@ -283,6 +351,16 @@ async function cambiar(p, estado) {
 }
 $('lista').onclick = async e => {
   const v = e.target.closest('[data-ver]'); if (v) return abrirVisor(v.dataset.ver, Number(v.dataset.it), Number(v.dataset.i));
+  const t = e.target.closest('[data-trabajar]');
+  if (t) {
+    const p = st.pedidos.find(x => x.key === t.dataset.trabajar); if (!p) return;
+    const nuevo = p.estado === 'en_produccion' ? 'confirmado' : 'en_produccion';
+    t.disabled = true;
+    if (!(await cambiar(p, nuevo))) { t.disabled = false; return; }
+    p.estado = nuevo; contarSel();
+    if (st.sel && nuevo !== 'en_produccion') st.pedidos = st.pedidos.filter(x => x.key !== p.key);
+    return dibujar();
+  }
   const b = e.target.closest('[data-hecho], [data-deshacer]'); if (!b) return;
   const key = b.dataset.hecho || b.dataset.deshacer, p = st.pedidos.find(x => x.key === key);
   b.disabled = true;
@@ -316,12 +394,20 @@ function sonar() {
 
 // ===== controles =====
 $('rangos').onclick = e => { const b = e.target.closest('[data-r]'); if (!b) return; st.rango = b.dataset.r; [...$('rangos').children].forEach(x => x.classList.toggle('activa', x === b)); cargar(); };
-$('b-hechos').onclick = () => { st.hechos = !st.hechos; $('b-hechos').classList.toggle('activa', st.hechos); $('b-hechos').textContent = st.hechos ? '← Volver a pendientes' : '☑ Ver hechos'; cargar(); };
+function modoSel(on) {
+  st.sel = on; $('b-sel').classList.toggle('activa', on); $('sel-barra').classList.toggle('oculto', !on);
+  $('rangos').classList.toggle('oculto', on);
+  if (on && st.hechos) { st.hechos = false; $('b-hechos').classList.remove('activa'); $('b-hechos').textContent = '☑ Ver hechos'; }
+}
+$('b-sel').onclick = () => { modoSel(!st.sel); cargar(); };
+$('sel-modo').onclick = e => { const b = e.target.closest('[data-m]'); if (!b) return; st.selModo = b.dataset.m; guardar('selmodo', st.selModo); [...$('sel-modo').children].forEach(x => x.classList.toggle('activa', x === b)); dibujar(); };
+$('b-hechos').onclick = () => { if (st.sel) modoSel(false); st.hechos = !st.hechos; $('b-hechos').classList.toggle('activa', st.hechos); $('b-hechos').textContent = st.hechos ? '← Volver a pendientes' : '☑ Ver hechos'; cargar(); };
 function aplicarZoom() { document.body.style.zoom = st.zoom; guardar('zoom', st.zoom); }
 $('z-mas').onclick = () => { st.zoom = Math.min(2, Math.round((st.zoom + 0.1) * 10) / 10); aplicarZoom(); };
 $('z-menos').onclick = () => { st.zoom = Math.max(0.7, Math.round((st.zoom - 0.1) * 10) / 10); aplicarZoom(); };
 
 function abrirApp() {
+  [...$('sel-modo').children].forEach(x => x.classList.toggle('activa', x.dataset.m === st.selModo));
   vista('v-app'); $('usr').textContent = st.usuario?.nombre || ''; aplicarZoom();
   cargar();
   sb.channel('kadima-produccion')

@@ -272,7 +272,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
         <div class="bloque">
           <h3>🎂 Productos <button class="btn der" id="b-agregar">+ Agregar producto</button></h3>
           <div id="f-items"></div>
-          <p class="ayuda">Cada producto se arma en el cotizador: base + adicionales, con precio sugerido según food cost. El delivery va aparte.</p>
+          <p class="ayuda">⚡ <b>Producto rápido</b>: eliges el producto y escribes el detalle (relleno, pisos, colores…). 🧮 <b>Cotizar</b>: base + componentes con precio sugerido según food cost. El delivery va aparte.</p>
         </div>
       </div>
       <div>
@@ -494,9 +494,18 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
 <!-- ===== MODAL COTIZADOR ===== -->
 <div class="modal oculto" id="m-cot">
   <div class="caja">
-    <h2>🧮 Cotizar producto <button class="x" id="c-cerrar">✕</button></h2>
+    <h2><span id="c-titulo">🧮 Cotizar producto</span> <button class="x" id="c-cerrar">✕</button></h2>
+    <div class="seg" id="c-modo" style="margin-bottom:12px">
+      <button data-m="rapido">⚡ Producto rápido (producto + detalle)</button>
+      <button data-m="cotizar">🧮 Cotizar (base + componentes)</button>
+    </div>
     <div class="cot">
       <div>
+        <div id="c-rapido" class="oculto">
+          <div class="buscador"><label>Producto</label><input id="c-prod" placeholder="Buscar: torta personalizada, empanadas, alfajores…" autocomplete="off"><div class="resultados oculto" id="c-pres"></div></div>
+          <div id="c-prod-info" class="ayuda" style="margin:4px 0 10px">Elige un producto de la carta o escribe el nombre directo en la descripción.</div>
+        </div>
+        <div id="c-cotizar">
         <div class="fila">
           <div class="buscador" style="flex:2"><label>Producto base (con receta o costo)</label><input id="c-base" placeholder="Buscar: torta chocolate, keke, bizcocho…" autocomplete="off"><div class="resultados oculto" id="c-bres"></div></div>
           <div style="max-width:140px"><label id="c-bcant-l">Cantidad base</label><input id="c-bcant" type="number" min="0" step="0.01" value="1"></div>
@@ -509,11 +518,12 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
           <button class="btn-sec" id="c-otro" style="flex:0 0 auto">+ Otro costo</button>
         </div>
         <table class="t"><thead><tr><th>Componente</th><th class="n">Cant.</th><th>Unid.</th><th class="n">Costo</th><th></th></tr></thead><tbody id="c-lineas"></tbody></table>
+        </div>
         <div class="fila" style="margin-top:12px">
-          <div style="flex:3"><label>Descripción (la ve producción)</label><input id="c-desc" placeholder="Ej. Torta chocolate 20 porciones con manjar"></div>
+          <div style="flex:3"><label id="c-desc-l">Descripción (la ve producción)</label><input id="c-desc" placeholder="Ej. Torta chocolate 20 porciones con manjar"></div>
           <div style="max-width:110px"><label>Unidades</label><input id="c-cant" type="number" min="1" step="1" value="1"></div>
         </div>
-        <label>Personalización para producción</label>
+        <label id="c-pers-l">Personalización para producción</label>
         <textarea id="c-pers" rows="2" placeholder="Dedicatoria, colores, tema, diseño…"></textarea>
         <label style="margin-top:10px">Fotos de referencia</label>
         <div class="drop" id="c-drop">Arrastra fotos aquí, <b>pega con Ctrl+V</b> (desde WhatsApp Web) o <label for="c-file" style="display:inline;color:var(--rojo);cursor:pointer;font-size:13px">elige archivos</label><input id="c-file" type="file" accept="image/*" multiple class="oculto"></div>
@@ -521,6 +531,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
       </div>
       <div>
         <div class="calc" id="c-calc"></div>
+        <div class="calc oculto" id="c-calc-r"></div>
         <div style="margin-top:12px"><label>Precio final por unidad (con IGV, sin delivery) S/</label><input id="c-precio" type="number" min="0" step="0.5" style="font-size:18px;font-weight:800"></div>
         <div id="c-fcreal" style="margin-top:8px"></div>
         <div class="acciones-form" style="margin-top:14px"><button class="btn" id="c-ok" style="width:100%">Agregar al pedido</button></div>
@@ -2218,12 +2229,46 @@ function abrirCotizador(idx) {
     precio: it ? it.precio_unit : '', precioManual: !!it,
     fotosNuevas: [...(it?.fotosNuevas || [])], fotosExistentes: [...(it?.fotosExistentes || [])], fotosQuitadas: [],
   };
-  $('c-error').textContent = ''; $('c-base').value = ''; $('c-ins').value = '';
+  // modo: rápido (producto + detalle) o cotizar (base + componentes)
+  st.ib.modo = it ? ((cot.base || (cot.lineas || []).length) ? 'cotizar' : 'rapido') : 'rapido';
+  st.ib.prod = st.ib.modo === 'rapido' ? (it?.producto_id || null) : null;
+  $('c-error').textContent = ''; $('c-base').value = ''; $('c-ins').value = ''; $('c-prod').value = '';
   $('c-pers').value = st.ib.personalizacion; $('c-cant').value = st.ib.cantidad;
-  pintarChips(); pintarCot(); pintarFotosCot();
+  pintarChips(); pintarCot(); pintarFotosCot(); ponerModo(st.ib.modo);
   $('m-cot').classList.remove('oculto');
-  setTimeout(() => (st.ib.base ? $('c-pers') : $('c-base')).focus(), 50);
+  setTimeout(() => (st.ib.modo === 'rapido' ? (st.ib.prod ? $('c-pers') : $('c-prod')) : st.ib.base ? $('c-pers') : $('c-base')).focus(), 50);
 }
+function ponerModo(m) {
+  const ib = st.ib; ib.modo = m; const r = m === 'rapido';
+  [...$('c-modo').children].forEach(b => b.classList.toggle('activa', b.dataset.m === m));
+  $('c-rapido').classList.toggle('oculto', !r); $('c-cotizar').classList.toggle('oculto', r);
+  $('c-calc').classList.toggle('oculto', r); $('c-calc-r').classList.toggle('oculto', !r); $('c-fcreal').classList.toggle('oculto', r);
+  $('c-titulo').textContent = r ? '⚡ Producto rápido' : '🧮 Cotizar producto';
+  $('c-desc-l').textContent = r ? 'Producto (la ve producción)' : 'Descripción (la ve producción)';
+  $('c-pers-l').textContent = r ? 'Detalle / observaciones para producción' : 'Personalización para producción';
+  $('c-pers').placeholder = r ? 'Ej. Queque de vainilla, 2 pisos, relleno manjar y fresa, cobertura chantilly, colores rosado y dorado, dedicatoria "Feliz 15 Ana"' : 'Dedicatoria, colores, tema, diseño…';
+  $('c-pers').rows = r ? 4 : 2;
+  if (r) pintarRapido(); else pintarCot();
+}
+$('c-modo').onclick = e => { const b = e.target.closest('[data-m]'); if (b && st.ib) ponerModo(b.dataset.m); };
+function pintarRapido() {
+  const ib = st.ib, p = ib.prod ? st.prodMap[ib.prod] : null;
+  $('c-prod-info').innerHTML = p
+    ? `Producto: <b>${esc(p.nombre)}</b>${p.codigo ? ' · ' + esc(p.codigo) : ''}${p.precio_venta ? ` · precio de carta <b>${S(p.precio_venta)}</b>` : ' · sin precio en carta'} <a href="#" id="c-quitar-prod">quitar</a>`
+    : 'Elige un producto de la carta o escribe el nombre directo en “Producto”.';
+  if (p) $('c-quitar-prod').onclick = ev => { ev.preventDefault(); ib.prod = null; pintarRapido(); };
+  $('c-desc').value = ib.descripcion || '';
+  $('c-precio').value = ib.precio === '' || ib.precio == null ? '' : ib.precio;
+  const c = p ? costoDe(p.id) : null;
+  $('c-calc-r').innerHTML = `<div class="k"><span>Pedido rápido</span><b>${p ? esc(p.codigo || '') : 'libre'}</b></div>
+    <div class="ayuda" style="margin:6px 0 0">Sin cotizar: el precio es el de carta o el que acuerdes con el cliente. Producción ve el producto, el detalle y las fotos.${c != null ? `<br>Costo registrado del producto: <b>${S(c)}</b>/und.` : ''}</div>`;
+}
+buscador($('c-prod'), $('c-pres'), p => ['producto_terminado', 'plato', 'mercaderia', 'intermedio'].includes(p.tipo_item), id => {
+  const ib = st.ib, p = st.prodMap[id];
+  ib.prod = id; ib.descripcion = p.nombre; ib.descAuto = false;
+  if (!ib.precioManual && p.precio_venta) ib.precio = Number(p.precio_venta);
+  pintarRapido(); $('c-pers').focus();
+});
 function cerrarCot() { $('m-cot').classList.add('oculto'); st.ib = null; }
 $('c-cerrar').onclick = cerrarCot;
 
@@ -2374,7 +2419,22 @@ $('c-drop').addEventListener('drop', e => agregarFotos(e.dataTransfer.files));
 document.addEventListener('paste', e => { if (!st.ib || $('m-cot').classList.contains('oculto')) return; const fs = [...(e.clipboardData?.files || [])]; if (fs.length) { e.preventDefault(); agregarFotos(fs); toast('Foto pegada'); } });
 
 $('c-ok').onclick = () => {
-  const ib = st.ib, k = calcCot(); $('c-error').textContent = '';
+  const ib = st.ib; $('c-error').textContent = '';
+  if (ib.modo === 'rapido') {
+    const desc = ($('c-desc').value || '').trim(); if (!desc) return $('c-error').textContent = 'Elige el producto o escribe su nombre.';
+    const precio = Number($('c-precio').value || 0); if (!(precio > 0)) return $('c-error').textContent = 'Pon el precio por unidad.';
+    const cu = ib.prod ? costoDe(ib.prod) : null;
+    const item = {
+      producto_id: ib.prod || null, descripcion: desc, personalizacion: (ib.personalizacion || '').trim(),
+      cantidad: Math.max(1, Number($('c-cant').value || 1)), precio_unit: r2(precio), costo_unit: cu != null && cu > 0 ? Math.round(cu * 10000) / 10000 : null,
+      cotizacion: { modo: 'rapido', fecha: dias(0) },
+      fotosNuevas: ib.fotosNuevas, fotosExistentes: ib.fotosExistentes,
+    };
+    ib.fotosQuitadas.forEach(x => st.f.fotosBorrar.push(x));
+    if (ib.idx != null) st.f.items[ib.idx] = item; else st.f.items.push(item);
+    return cerrarCot(), pintarItems();
+  }
+  const k = calcCot();
   if (!ib.base && !ib.lineas.length) return $('c-error').textContent = 'Elige una base o agrega al menos un componente.';
   if (ib.lineas.some(l => l.tipo === 'insumo' && !(Number(l.cantidad) > 0))) return $('c-error').textContent = 'Cada insumo suelto necesita cantidad.';
   if (ib.lineas.some(l => l.tipo === 'otro' && (!l.nombre.trim() || !(Number(l.monto) > 0)))) return $('c-error').textContent = 'Completa nombre y monto de “otro costo”.';
