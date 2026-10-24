@@ -45,6 +45,8 @@ input{font:inherit;padding:10px;border:1px solid var(--borde);border-radius:8px;
 .seg2 button.activa{background:var(--rojo);color:#fff}
 .sel-ayuda{font-size:13px;color:var(--gris)}
 .entrega{font-size:13px;color:var(--gris);font-weight:700}
+.fecha-t{font-size:20px;font-weight:900;background:#fbeeee;color:var(--rojo);border-radius:10px;padding:2px 10px}.fecha-t.tarde{background:#fde4e4;color:var(--mal)}
+@media (max-width:700px){.fecha-t{font-size:16px}}
 .ped.en_produccion{border-left:6px solid #e0a458}
 .hecho button.trabajar{display:flex;align-items:center;gap:8px;background:#fff7e8;color:#9a5300;font-weight:800;font-size:15px;padding:10px 14px;border:2px solid #f0d5a8}
 .hecho button.trabajar .caja{width:22px;height:22px;border-radius:6px;border:2px solid #c98a2b;background:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:15px;color:#fff}
@@ -230,6 +232,7 @@ const hora12 = t => { if (!t) return 'sin hora'; const [h, m] = t.split(':').map
 // producción trabaja con la hora de LISTO: 1 hora antes de la entrega (tiempo para entregar o enviar)
 const MARGEN_MIN = 60;
 const horaListo = t => { if (!t) return null; const [h, m] = t.split(':').map(Number); const x = Math.max(0, h * 60 + m - MARGEN_MIN); return `${pad2(Math.floor(x / 60))}:${pad2(x % 60)}`; };
+const fechaCorta = f => !f ? 'sin fecha' : (f === dias(0) ? 'Hoy, ' : f === dias(1) ? 'Mañana, ' : '') + new Date(f + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric', month: 'short' });
 const fechaLarga = f => f === dias(0) ? 'Hoy' : f === dias(1) ? 'Mañana' : new Date(f + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
 
 // ===== datos (solo lo que producción necesita) =====
@@ -314,7 +317,7 @@ function fila(p, hoy, ahora, nuevo) {
     </div>`;
   }).join('');
   return `<div class="ped ${st.hechos ? 'hecha' : ''} ${sel && !st.hechos ? 'en_produccion' : ''} ${nuevo ? 'nuevo' : ''}" id="f-${p.key}">
-    <div class="top"><span class="hora ${tarde ? 'tarde' : ''}">${p.hora ? 'Listo ' + hora12(hl) : 'sin hora'}</span>${p.hora ? `<span class="entrega">entrega ${hora12(p.hora)}</span>` : ''}<span class="ent ${p.tipo}">${p.tipo === 'delivery' ? '🛵 Delivery' : '🏬 Recojo'}</span><span class="cod">${esc(p.codigo)}</span><div class="hecho acc">${boton}</div></div>
+    <div class="top"><span class="fecha-t ${tarde ? 'tarde' : ''}">📅 ${fechaCorta(p.fecha)}</span><span class="hora ${tarde ? 'tarde' : ''}">${p.hora ? 'Listo ' + hora12(hl) : 'sin hora'}</span>${p.hora ? `<span class="entrega">entrega ${hora12(p.hora)}</span>` : ''}<span class="ent ${p.tipo}">${p.tipo === 'delivery' ? '🛵 Delivery' : '🏬 Recojo'}</span><span class="cod">${esc(p.codigo)}</span><div class="hecho acc">${boton}</div></div>
     ${prods}
     ${p.nota ? `<div class="nota">📝 ${esc(p.nota)}</div>` : ''}
   </div>`;
