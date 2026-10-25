@@ -83,6 +83,10 @@ input,select,textarea{font:inherit;padding:10px 12px;border:1px solid var(--bord
 .prod{background:var(--fondo);border-radius:12px;padding:10px;text-align:left;min-height:72px;display:flex;flex-direction:column;justify-content:space-between}
 .prod b{font-size:14px;line-height:1.2}.prod span{font-weight:800;color:var(--rojo)}
 .prod.coc b::after{content:' 🍳';font-size:12px}
+.prod{position:relative}
+.prod .star{position:absolute;top:6px;right:8px;font-size:18px;line-height:1}
+.prods.editfav .prod{outline:2px dashed #f2a900;outline-offset:-2px}
+.cats .editar{background:#fff3c4;color:#6b4c15}
 .envio{border-top:2px solid var(--borde);margin-top:8px;padding-top:8px;max-height:45%;overflow:auto}
 .envio .ln{display:grid;grid-template-columns:auto 1fr auto;gap:6px;align-items:center;padding:4px 0}
 .envio .ln .qq{display:flex;gap:4px;align-items:center}
@@ -145,7 +149,7 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
     <button id="b-unir">🔗 Unir mesas</button>
     <button id="b-editar">✎ Editar plano</button>
     <span class="usr" id="usr" title="Cambiar de usuario"></span>
-    <span style="font-size:11px;opacity:.7">v1.0</span>
+    <span style="font-size:11px;opacity:.7">v1.2</span>
   </div>
   <div class="leyenda"><span><i style="background:#fff;border:1px solid var(--borde)"></i>Libre</span><span><i style="background:var(--rojo)"></i>Ocupada</span><span><i style="background:var(--ok)"></i>Hay platos listos para servir</span><span>🔗 Mesas unidas</span></div>
   <div class="aviso-modo oculto" id="aviso-modo"></div>
@@ -202,7 +206,7 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
       <div style="flex:2"><label id="cb-nom-l">Nombre</label><input id="cb-nom"></div>
     </div>
     <div class="fila">
-      <div><label>Método de pago</label><select id="cb-met"><option value="efectivo">Efectivo</option><option value="yape">Yape</option><option value="plin">Plin</option><option value="visa">Tarjeta Visa</option><option value="mastercard">Tarjeta Mastercard</option><option value="transferencia">Transferencia</option></select></div>
+      <div><label>Método de pago</label><select id="cb-met"><option value="efectivo">Efectivo</option><option value="yape">Yape</option><option value="tarjeta">Tarjeta</option></select></div>
       <div id="cb-rec-w"><label>Recibido S/</label><input id="cb-rec" type="number" min="0" step="0.1" inputmode="decimal"></div>
       <div id="cb-op-w" class="oculto"><label>N° operación</label><input id="cb-op"></div>
     </div>
@@ -299,7 +303,7 @@ async function abrirApp() {
     // la caja de tienda: sus series, su caja física y el canal Tienda (la venta de mesa entra al turno abierto de esa caja)
     const [d, prods, cats, canales] = await Promise.all([
       sb.from('dispositivos').select('*').eq('rol', 'caja').eq('activo', true).order('id').limit(1).single(),
-      sb.from('productos').select('id,codigo,nombre,precio_venta,precio_libre,categoria_id,area_preparacion,favorito').eq('vendible', true).eq('activo', true).order('nombre'),
+      sb.from('productos').select('*').eq('vendible', true).eq('activo', true).order('nombre'),
       sb.from('categorias').select('id,nombre,categoria_principal').order('nombre'),
       sb.from('canales').select('id,nombre').order('id'),
     ]);
@@ -309,7 +313,10 @@ async function abrirApp() {
     if (c.error) throw c.error;
     st.caja = c.data;
     st.canal = (canales.data || []).find(x => /^tienda$/i.test(x.nombre)) || (canales.data || [])[0];
+    if (prods.error) throw prods.error;
     st.productos = (prods.data || []).filter(p => !['SV-900', 'SV-901'].includes(p.codigo));
+    st.favCol = st.productos.length && 'favorito_mesa' in st.productos[0];   // favoritos propios de Mesas (script 55)
+    if (st.cat === 'todas' && st.productos.some(esFav)) st.cat = 'fav';
     const usadas = new Set(st.productos.map(p => p.categoria_id));
     st.categorias = (cats.data || []).filter(x => usadas.has(x.id));
   } catch (e) { $('g-error').textContent = errTxt(e); }
@@ -491,31 +498,46 @@ function tabMovil(t) {
   $('col-cuenta').classList.toggle('oculto-movil', t !== 'cuenta'); $('col-agregar').classList.toggle('oculto-movil', t !== 'agregar');
 }
 // --- catálogo
+const esFav = p => !!(st.favCol ? p.favorito_mesa : p.favorito);
 const principalDe = c => (c && (c.categoria_principal || c.nombre)) || 'Otros';
 const catDe = id => st.categorias.find(c => c.id === id);
 function pintarCats() {
   const pr = [...new Set(st.productos.map(p => principalDe(catDe(p.categoria_id))))].sort((a, b) => a.localeCompare(b, 'es'));
   const b = (k, t) => `<button data-c="${esc(k)}" class="${st.cat === k ? 'activa' : ''}">${esc(t)}</button>`;
-  $('dm-cats').innerHTML = (st.productos.some(p => p.favorito) ? b('fav', '⭐ Favoritos') : '') + b('todas', 'Todas') + pr.map(p => b('p:' + p, p)).join('');
+  $('dm-cats').innerHTML = b('fav', '⭐ Favoritos') + b('todas', 'Todas') + pr.map(p => b('p:' + p, p)).join('')
+    + `<button class="editar" id="b-editfav">${st.editFav ? '✓ Listo' : '✎ Editar favoritos'}</button>`;
 }
 function pintarProds() {
   const q = $('dm-buscar').value.trim().toLowerCase();
   const l = st.productos.filter(p => (!q || p.nombre.toLowerCase().includes(q) || String(p.codigo || '').toLowerCase().includes(q))
-    && (q || st.cat === 'todas' || (st.cat === 'fav' ? p.favorito : principalDe(catDe(p.categoria_id)) === st.cat.slice(2))));
-  $('dm-prods').innerHTML = l.slice(0, 200).map(p => `<button class="prod ${p.area_preparacion === 'cocina' ? 'coc' : ''}" data-p="${p.id}"><b>${esc(p.nombre)}</b><span>${p.precio_libre ? 'precio libre' : S(p.precio_venta)}</span></button>`).join('')
-    || '<p style="color:var(--gris)">Sin productos.</p>';
+    && (q || st.cat === 'todas' || (st.cat === 'fav' ? (st.editFav || esFav(p)) : principalDe(catDe(p.categoria_id)) === st.cat.slice(2))));
+  $('dm-prods').classList.toggle('editfav', !!st.editFav);
+  $('dm-prods').innerHTML = l.slice(0, 300).map(p => `<button class="prod ${p.area_preparacion === 'cocina' ? 'coc' : ''}" data-p="${p.id}">${st.editFav || esFav(p) ? `<span class="star">${esFav(p) ? '⭐' : '☆'}</span>` : ''}<b>${esc(p.nombre)}</b><span>${p.precio_libre ? 'precio libre' : S(p.precio_venta)}</span></button>`).join('')
+    || `<p style="color:var(--gris)">${st.cat === 'fav' ? 'Aún no hay favoritos. Toca "✎ Editar favoritos" y marca con ⭐ los productos que más piden en mesa.' : 'Sin productos.'}</p>`;
 }
-$('dm-cats').onclick = e => { const b = e.target.closest('[data-c]'); if (!b) return; st.cat = b.dataset.c; pintarCats(); pintarProds(); };
+$('dm-cats').onclick = e => {
+  if (e.target.closest('#b-editfav')) { st.editFav = !st.editFav; if (st.editFav && !$('dm-buscar').value) st.cat = 'todas'; pintarCats(); return pintarProds(); }
+  const b = e.target.closest('[data-c]'); if (!b) return; st.cat = b.dataset.c; pintarCats(); pintarProds();
+};
 $('dm-buscar').oninput = pintarProds;
 $('dm-prods').onclick = e => {
   const b = e.target.closest('[data-p]'); if (!b) return;
   const p = st.productos.find(x => x.id === Number(b.dataset.p));
+  if (st.editFav) return alternarFav(p);
   let precio = Number(p.precio_venta || 0);
   if (p.precio_libre || !(precio > 0)) { const v = prompt(`Precio de ${p.nombre} (S/):`); if (v === null) return; precio = Number(String(v).replace(',', '.')); if (!(precio > 0)) return; }
   const l = st.envio.find(x => x.producto_id === p.id && x.precio_unit === precio && !x.nota);
   if (l) l.cantidad += 1; else st.envio.push({ producto_id: p.id, nombre: p.nombre, precio_unit: precio, cantidad: 1, nota: '', area: p.area_preparacion });
   pintarEnvio();
 };
+// marcar / desmarcar favorito (lo ven todos los equipos de Mesas)
+async function alternarFav(p) {
+  const col = st.favCol ? 'favorito_mesa' : 'favorito', nuevo = !esFav(p);
+  if (!st.favCol && !confirm('Falta correr 55_favoritos_mesa.sql: por ahora se usarían los mismos favoritos de la caja. ¿Continuar?')) return;
+  p[col] = nuevo; pintarProds();
+  const { error } = await sb.from('productos').update({ [col]: nuevo }).eq('id', p.id);
+  if (error) { p[col] = !nuevo; pintarProds(); alert(errTxt(error)); }
+}
 function pintarEnvio() {
   $('dm-envio').classList.toggle('oculto', !st.envio.length);
   const tot = st.envio.reduce((a, l) => a + l.cantidad * l.precio_unit, 0);
