@@ -8,6 +8,14 @@
 <link rel="manifest" href="almacen-manifest.webmanifest">
 <link rel="icon" href="pos-icon-192.png">
 <style>
+.switch{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--gris);cursor:pointer;user-select:none}
+.switch input{display:none}.switch i{width:34px;height:20px;border-radius:20px;background:#ccc;position:relative;transition:.2s;flex-shrink:0}
+.switch i:after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s}
+.switch input:checked+i{background:var(--rojo)}.switch input:checked+i:after{left:16px}
+.lote{display:inline-block;border:1px solid;border-radius:20px;padding:2px 8px;font-size:12px;font-weight:600;margin:2px 4px 2px 0;cursor:pointer;white-space:nowrap}
+.punto{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.resumen-ant{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;font-size:13px}.resumen-ant b{font-size:15px}
+.vu td input{width:80px;text-align:right}
 :root{--rojo:#8B0000;--fondo:#f6f4f2;--borde:#e3dfdb;--gris:#6b6b6b;--texto:#1f1f1f;--ok:#1e7d3a;--aviso:#b26a00;--mal:#b00020}
 *{box-sizing:border-box}
 body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--fondo);color:var(--texto);font-size:14px}
@@ -196,7 +204,7 @@ function tabsDisponibles() {
   t.push(['merma', 'Merma']);
   if (a.tipo === 'venta') t.push(['porcionar', 'Porcionar']);
   t.push(['conteo', 'Conteo / cierre'], ['kardex', 'Kardex']);
-  if (['admin','almacen'].includes(st.usuario.rol)) t.push(['inicial', 'Inventario inicial']);
+  if (['admin','almacen'].includes(st.usuario.rol)) t.push(['inicial', 'Inventario inicial'], ['vida', 'Vida útil']);
   return t;
 }
 async function cambiarAlmacen() {
@@ -208,7 +216,7 @@ async function cambiarAlmacen() {
   abrirTab(st.tab);
 }
 $('tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (!b) return; st.tab = b.dataset.tab; [...$('tabs').children].forEach(x => x.classList.toggle('activa', x === b)); abrirTab(st.tab); };
-function abrirTab(t) { ({ stock: tabStock, compra: tabCompra, traslado: tabTraslado, produccion: tabProduccion, merma: tabMerma, porcionar: tabPorcionar, conteo: tabConteo, kardex: tabKardex, inicial: tabInicial })[t](); }
+function abrirTab(t) { ({ stock: tabStock, compra: tabCompra, traslado: tabTraslado, produccion: tabProduccion, merma: tabMerma, porcionar: tabPorcionar, conteo: tabConteo, kardex: tabKardex, inicial: tabInicial, vida: tabVida })[t](); }
 
 // ===== Buscador de productos + líneas reutilizable =====
 // opciones: { tipos: [...], precio: bool, stock: bool }
@@ -277,23 +285,115 @@ async function tabStock() {
       <div class="chips" id="s-tipos">${[['', 'Todos'], ['insumo', 'Insumos'], ['intermedio', 'Bases'], ['producto_terminado', 'Terminados'], ['paqueteria', 'Paquetería'], ['mercaderia', 'Mercadería']].map(([k, n]) => `<button data-k="${k}" class="${st.filtroTipo === k ? 'activa' : ''}">${n}</button>`).join('')}</div>
       <div class="campo" style="max-width:320px"><input id="s-q" placeholder="Buscar producto o código"></div>
       <label style="display:flex;gap:6px;align-items:center;font-size:13px;color:var(--gris)"><input type="checkbox" id="s-cero" style="width:auto"> Mostrar en cero</label>
+      <label class="switch" title="Muestra cuántos días lleva cada lote en este almacén"><input type="checkbox" id="s-ant"><i></i>🚦 Antigüedad</label>
+      <label class="switch oculto" id="s-rev-l"><input type="checkbox" id="s-rev"><i></i>Solo por revisar</label>
     </div>
-    <div style="overflow:auto;max-height:70vh"><table class="t"><thead><tr><th>Código</th><th>Producto</th><th>Tipo</th><th class="n">Stock</th><th class="n">Costo unit.</th><th class="n">Valorizado</th><th class="n">Actualizado</th></tr></thead><tbody id="s-filas"><tr><td colspan="7" class="vacio">Cargando…</td></tr></tbody></table></div>
+    <div class="resumen-ant oculto" id="s-res"></div>
+    <div style="overflow:auto;max-height:70vh"><table class="t"><thead id="s-head"></thead><tbody id="s-filas"><tr><td colspan="7" class="vacio">Cargando…</td></tr></tbody></table></div>
     <div class="total" id="s-total"></div>
     <p class="ayuda" style="margin-top:10px">Costo de insumos = promedio ponderado sin IGV. Terminados y bases = costo de su receta (sin receta aparece —). Toca un producto para ver su kardex.</p></div>`;
   const { data, error } = await sb.from('v_stock').select('*').eq('almacen_id', st.alm.id).order('nombre');
   if (error) return $('s-filas').innerHTML = `<tr><td colspan="7" class="error">${esc(errTxt(error))}</td></tr>`;
+  let capas = null; // antigüedad por producto (solo si el switch está activo)
+  async function cargarCapas() {
+    const r = await sb.rpc('stock_antiguedad', { p_almacen: st.alm.id });
+    if (r.error) { capas = {}; $('s-res').innerHTML = `<span class="error">No se pudo calcular la antigüedad: ${esc(errTxt(r.error))}. ¿Corriste el script 57?</span>`; return; }
+    capas = {}; (r.data || []).forEach(c => (capas[c.producto_id] = capas[c.producto_id] || []).push(c));
+  }
+  const peor = id => { const cs = capas && capas[id]; if (!cs) return null; return cs.reduce((a, c) => (ORDEN_ANT[c.estado] > ORDEN_ANT[a.estado] ? c : a), cs[0]); };
   const pintar = () => {
-    const q = $('s-q').value.trim().toLowerCase(), cero = $('s-cero').checked;
-    const f = data.filter(r => (!st.filtroTipo || r.tipo_item === st.filtroTipo) && (cero || Number(r.cantidad) !== 0) && (!q || r.nombre.toLowerCase().includes(q) || r.codigo.toLowerCase().includes(q)));
-    $('s-filas').innerHTML = f.map(r => `<tr class="clic" data-p="${r.producto_id}"><td>${r.codigo}</td><td>${esc(r.nombre)}</td><td>${tipoTag(r.tipo_item)}</td>
-      <td class="n ${Number(r.cantidad) < 0 ? 'neg' : ''}">${C(r.cantidad, r.unidad_medida)}</td><td class="n">${r.costo_unitario == null ? '—' : S(r.costo_unitario)}</td>
-      <td class="n">${S(r.valorizado)}</td><td class="n" style="color:#999;font-size:12px">${fh(r.actualizado_en)}</td></tr>`).join('') || '<tr><td colspan="7" class="vacio">Sin productos con ese filtro.</td></tr>';
+    const q = $('s-q').value.trim().toLowerCase(), cero = $('s-cero').checked, ant = $('s-ant').checked && capas, rev = ant && $('s-rev').checked;
+    $('s-head').innerHTML = `<tr><th>Código</th><th>Producto</th><th>Tipo</th><th class="n">Stock</th>${ant ? '<th>Antigüedad (lotes)</th>' : ''}<th class="n">Costo unit.</th><th class="n">Valorizado</th><th class="n">Actualizado</th></tr>`;
+    const f = data.filter(r => (!st.filtroTipo || r.tipo_item === st.filtroTipo) && (cero || Number(r.cantidad) !== 0) && (!q || r.nombre.toLowerCase().includes(q) || r.codigo.toLowerCase().includes(q))
+      && (!rev || ['amarillo', 'rojo'].includes((peor(r.producto_id) || {}).estado)));
+    $('s-filas').innerHTML = f.map(r => { const w = ant ? peor(r.producto_id) : null;
+      return `<tr class="clic" data-p="${r.producto_id}"><td>${r.codigo}</td><td>${esc(r.nombre)}</td><td>${tipoTag(r.tipo_item)}</td>
+      <td class="n ${Number(r.cantidad) < 0 ? 'neg' : ''}">${w ? `<span class="punto" style="background:${colorAnt(w).c}"></span>` : ''}${C(r.cantidad, r.unidad_medida)}</td>
+      ${ant ? `<td>${(capas[r.producto_id] || []).map((c, i) => { const k = colorAnt(c); return `<span class="lote" data-lp="${r.producto_id}" data-li="${i}" style="color:${k.c};border-color:${k.c};background:${k.f}" title="${c.ingreso ? 'Ingresó ' + fh(c.ingreso) : 'Sin fecha de ingreso en los últimos 180 días'}">${C(c.cantidad)} · ${diasTxt(c.dias)}</span>`; }).join('')}</td>` : ''}
+      <td class="n">${r.costo_unitario == null ? '—' : S(r.costo_unitario)}</td>
+      <td class="n">${S(r.valorizado)}</td><td class="n" style="color:#999;font-size:12px">${fh(r.actualizado_en)}</td></tr>`; }).join('') || `<tr><td colspan="${ant ? 8 : 7}" class="vacio">${rev ? '✓ Nada por revisar.' : 'Sin productos con ese filtro.'}</td></tr>`;
     $('s-total').innerHTML = `<span>${f.length} productos</span><span>Valorizado <b>${S(f.reduce((a, r) => a + Number(r.valorizado || 0), 0))}</b></span>`;
+    if (ant) {
+      const n = { rojo: 0, amarillo: 0, verde: 0, sin_config: 0 };
+      data.filter(r => Number(r.cantidad) > 0).forEach(r => { const w = peor(r.producto_id); if (w) n[w.estado]++; });
+      $('s-res').innerHTML = `<span>🔴 <b>${n.rojo}</b> por desechar</span><span>🟡 <b>${n.amarillo}</b> por revisar</span><span>🟢 <b>${n.verde}</b> óptimos</span>${n.sin_config ? `<span style="color:var(--gris)">⚪ ${n.sin_config} sin vida útil configurada${['admin','almacen'].includes(st.usuario.rol) ? ' (pestaña Vida útil)' : ''}</span>` : ''}`;
+    }
   };
+  const activarAnt = async () => {
+    const on = $('s-ant').checked; guardar('stock_ant', on);
+    $('s-res').classList.toggle('oculto', !on); $('s-rev-l').classList.toggle('oculto', !on);
+    if (on && !capas) { $('s-res').innerHTML = 'Calculando antigüedad…'; await cargarCapas(); }
+    pintar();
+  };
+  $('s-ant').checked = !!leer('stock_ant'); $('s-ant').onchange = activarAnt; $('s-rev').onchange = pintar;
   $('s-tipos').onclick = e => { const k = e.target.dataset.k; if (k === undefined) return; st.filtroTipo = k; [...$('s-tipos').children].forEach(b => b.classList.toggle('activa', b.dataset.k === k)); pintar(); };
   $('s-q').oninput = pintar; $('s-cero').onchange = pintar;
-  $('s-filas').onclick = e => { const tr = e.target.closest('[data-p]'); if (!tr) return; st.kardexProd = Number(tr.dataset.p); irTab('kardex'); };
+  $('s-filas').onclick = e => {
+    const lt = e.target.closest('[data-lp]');
+    if (lt) { const pid = Number(lt.dataset.lp); return revisarLote(data.find(r => r.producto_id === pid), capas[pid][Number(lt.dataset.li)]); }
+    const tr = e.target.closest('[data-p]'); if (!tr) return; st.kardexProd = Number(tr.dataset.p); irTab('kardex'); };
+  if ($('s-ant').checked) activarAnt(); else pintar();
+}
+// ===== SEMÁFORO DE ANTIGÜEDAD =====
+const ORDEN_ANT = { sin_config: 0, verde: 1, amarillo: 2, rojo: 3 };
+const diasTxt = d => d == null ? '+180 d' : d === 0 ? 'hoy' : d === 1 ? '1 día' : d + ' días';
+// el color va cambiando con los días: verde (nuevo) → amarillo (día de alerta) → rojo (día límite)
+function colorAnt(c) {
+  if (c.estado === 'sin_config') return { c: '#8a8a8a', f: '#f2f2f2' };
+  if (c.dias == null) return { c: 'hsl(0,75%,40%)', f: 'hsla(0,75%,45%,.12)' };
+  const a = c.dias_alerta ?? Math.max(1, Math.round((c.dias_limite || 2) / 2)), l = Math.max(c.dias_limite ?? a * 2, a + 1);
+  const h = c.dias <= a ? 130 - 85 * (c.dias / a) : Math.max(0, 45 - 45 * ((c.dias - a) / (l - a)));
+  return { c: `hsl(${h.toFixed(0)},75%,${h > 60 ? 32 : 38}%)`, f: `hsla(${h.toFixed(0)},75%,45%,.12)` };
+}
+function revisarLote(r, c) {
+  const u = r.unidad_medida, k = colorAnt(c);
+  const lim = c.dias_limite != null ? ` · límite ${c.dias_limite} d` : '', al = c.dias_alerta != null ? `alerta ${c.dias_alerta} d` : '';
+  modal(`<h3 style="margin-top:0">${esc(r.nombre)}</h3>
+    <p><span class="lote" style="color:${k.c};border-color:${k.c};background:${k.f};cursor:default">${C(c.cantidad, u)} · ${diasTxt(c.dias)}</span></p>
+    <p class="ayuda">${c.ingreso ? 'Ingresó el ' + fh(c.ingreso) : 'No hay ingreso registrado en los últimos 180 días'}${al || lim ? ' · ' + al + lim : ''}.<br>Revisa estas unidades. Si ya no están óptimas, dalas de baja.</p>
+    <div class="fila"><div class="campo" style="max-width:150px"><label>Cantidad a desechar</label><input id="rl-cant" type="number" step="0.001" min="0" value="${Number(c.cantidad)}"></div>
+    <div class="campo"><label>Motivo</label><input id="rl-mot" value="Vencido"></div></div>
+    <div class="error" id="rl-err"></div>
+    <div class="fila" style="margin-top:12px;justify-content:flex-end"><button class="btn-sec" id="rl-ok2">✓ Sigue óptimo</button><button class="btn" id="rl-ok">Registrar merma</button></div>`);
+  $('rl-ok2').onclick = cerrarModal;
+  $('rl-ok').onclick = async () => {
+    const n = Number($('rl-cant').value);
+    if (!(n > 0)) return $('rl-err').textContent = 'Ingresa la cantidad.';
+    $('rl-ok').disabled = true;
+    const { error } = await sb.rpc('registrar_merma', { p: { almacen_id: st.alm.id, motivo: $('rl-mot').value || 'Vencido', usuario_id: st.usuario.id, items: [{ producto_id: r.producto_id, cantidad: n }] } });
+    $('rl-ok').disabled = false;
+    if (error) return $('rl-err').textContent = errTxt(error);
+    cerrarModal(); tabStock();
+  };
+}
+// ===== VIDA ÚTIL (días de alerta por producto) =====
+async function tabVida() {
+  $('main').innerHTML = `<div class="bloque"><h3>Vida útil por producto</h3>
+    <p class="ayuda">Cuántos días puede estar cada producto en el almacén. <b>Alerta</b>: desde ese día se pone amarillo (revisar). <b>Límite</b>: desde ese día se pone rojo (desechar y registrar merma). En medio, el color va cambiando solo.<br>Ejemplo empanadas: alerta 2 · límite 4. Déjalo vacío si el producto no necesita control.</p>
+    <div class="fila" style="margin-bottom:10px"><div class="campo" style="max-width:320px"><input id="v-q" placeholder="Buscar producto"></div>
+      <label class="switch"><input type="checkbox" id="v-sin"><i></i>Solo sin configurar</label></div>
+    <div style="overflow:auto;max-height:70vh"><table class="t vu"><thead><tr><th>Código</th><th>Producto</th><th>Tipo</th><th class="n">🟡 Alerta (días)</th><th class="n">🔴 Límite (días)</th><th></th></tr></thead><tbody id="v-filas"><tr><td colspan="6" class="vacio">Cargando…</td></tr></tbody></table></div></div>`;
+  const { data, error } = await sb.from('productos').select('id,codigo,nombre,tipo_item,dias_alerta,dias_limite').eq('activo', true).in('tipo_item', ['producto_terminado', 'intermedio', 'mercaderia', 'insumo']).order('nombre');
+  if (error) return $('v-filas').innerHTML = `<tr><td colspan="6" class="error">${esc(errTxt(error))} — ¿corriste el script 57?</td></tr>`;
+  const pintar = () => {
+    const q = $('v-q').value.trim().toLowerCase(), sin = $('v-sin').checked;
+    const f = data.filter(p => (!q || p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q)) && (!sin || (p.dias_alerta == null && p.dias_limite == null)))
+      .sort((a, b) => (a.tipo_item === 'insumo') - (b.tipo_item === 'insumo') || a.nombre.localeCompare(b.nombre));
+    $('v-filas').innerHTML = f.map(p => `<tr data-v="${p.id}"><td>${p.codigo}</td><td>${esc(p.nombre)}</td><td>${tipoTag(p.tipo_item)}</td>
+      <td class="n"><input type="number" min="0" step="1" data-c="dias_alerta" value="${p.dias_alerta ?? ''}"></td>
+      <td class="n"><input type="number" min="1" step="1" data-c="dias_limite" value="${p.dias_limite ?? ''}"></td><td class="okmsg" style="margin:0;font-size:12px"></td></tr>`).join('') || '<tr><td colspan="6" class="vacio">Sin productos.</td></tr>';
+  };
+  $('v-q').oninput = pintar; $('v-sin').onchange = pintar;
+  $('v-filas').onchange = async e => {
+    const tr = e.target.closest('[data-v]'); if (!tr) return;
+    const p = data.find(x => x.id === Number(tr.dataset.v)), ins = tr.querySelectorAll('input'), out = tr.lastElementChild;
+    const a = ins[0].value === '' ? null : Math.round(Number(ins[0].value)), l = ins[1].value === '' ? null : Math.round(Number(ins[1].value));
+    if (a != null && l != null && l <= a) { out.className = 'error'; return out.textContent = 'El límite debe ser mayor que la alerta'; }
+    const { error } = await sb.from('productos').update({ dias_alerta: a, dias_limite: l }).eq('id', p.id);
+    if (error) { out.className = 'error'; return out.textContent = errTxt(error); }
+    p.dias_alerta = a; p.dias_limite = l; out.className = 'okmsg'; out.textContent = '✓ guardado';
+    setTimeout(() => { if (out.textContent === '✓ guardado') out.textContent = ''; }, 1500);
+  };
   pintar();
 }
 function irTab(t) { st.tab = t; [...$('tabs').children].forEach(x => x.classList.toggle('activa', x.dataset.tab === t)); abrirTab(t); }

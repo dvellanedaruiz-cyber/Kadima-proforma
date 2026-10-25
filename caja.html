@@ -87,6 +87,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 .aviso-fav button{margin-left:auto;background:var(--rojo);color:#fff;padding:6px 14px;font-weight:600}
 .prod .estrella{position:absolute;top:6px;right:8px;font-size:15px}
 .prod{position:relative}
+.prod .stk{position:absolute;bottom:5px;right:8px;font-size:10px;line-height:1;font-weight:600;color:rgba(110,110,110,.5);pointer-events:none}
 .prod.es-fav .n{padding-right:16px}
 .prod.editando{border-style:dashed}
 .prod.editando.es-fav{border-color:#e0a800;background:#fffbea}
@@ -666,7 +667,7 @@ async function abrirPos() {
     if (!st.cat) st.cat = st.productos.some(x => x.favorito) ? 'fav' : 'todas';
   } catch (e) { msg('v-error', errorTexto(e)); }
   await actualizarNumeros();
-  dibujarCats(); dibujarGrilla(); dibujarCarrito();
+  dibujarCats(); dibujarGrilla(); dibujarCarrito(); cargarStock();
   enviarCola(); contarMesas(); setTimeout(reenviarPendientes, 3000);
   $('buscar').focus();
 }
@@ -727,12 +728,34 @@ function filtrados() {
   const pri = st.cat.slice(2);
   return st.productos.filter(p => principalDe(catDe(p.categoria_id)) === pri && (!st.sub || p.categoria_id === st.sub));
 }
+// ===== Stock de tienda (número pequeño en cada botón, solo referencia) =====
+st.stock = {};
+async function cargarStock() {
+  try {
+    const a = await sb.from('almacenes').select('id').eq('sede_id', st.disp.sede_id).eq('tipo', 'venta').eq('activo', true);
+    const ids = (a.data || []).map(x => x.id); if (!ids.length) return;
+    const r = await sb.from('stock_actual').select('producto_id,cantidad').in('almacen_id', ids);
+    if (r.error) return;
+    const m = {}; (r.data || []).forEach(x => m[x.producto_id] = (m[x.producto_id] || 0) + Number(x.cantidad));
+    st.stock = m; pintarStock();
+  } catch (e) {}
+}
+function stockTxt(id) {
+  if (st.stock[id] === undefined) return '';
+  const enCarrito = (st.carrito || []).filter(l => l.producto_id === id).reduce((a, l) => a + Number(l.cantidad || 0), 0);
+  const v = st.stock[id] - enCarrito;
+  return Number.isInteger(v) ? String(v) : v.toLocaleString('es-PE', { maximumFractionDigits: 2 });
+}
+function pintarStock() { document.querySelectorAll('#grilla .stk').forEach(e => e.textContent = stockTxt(Number(e.dataset.s))); }
+setInterval(() => { if (!document.hidden && st.turno) cargarStock(); }, 60000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && st.turno) cargarStock(); });
 function dibujarGrilla() {
   const lista = filtrados();
   $('grilla').innerHTML = lista.length ? lista.map(p => `
     <button class="prod ${st.editFav ? 'editando' : ''} ${p.favorito ? 'es-fav' : ''}" data-id="${p.id}" title="${esc(p.nombre)}">${p.favorito ? '<span class="estrella">⭐</span>' : ''}
       <span><span class="n">${esc(p.nombre)}</span><br><span class="t">${p.codigo}</span></span>
       <span class="p">${p.precio_libre ? 'Precio libre' : (GRANEL[p.unidad_medida] ? S(p.precio_venta / 10) + ' /100 ' + GRANEL[p.unidad_medida].sub : S(p.precio_venta))}</span>
+      <span class="stk" data-s="${p.id}" title="Stock en tienda">${stockTxt(p.id)}</span>
     </button>`).join('') : (st.cat === 'fav' && !$('buscar').value.trim() ? '<div class="vacio">Aún no hay favoritos. Toca <b>✎ Editar favoritos</b> y elige los productos que más vendes.</div>' : '<div class="vacio">No hay productos con ese filtro.</div>');
 }
 $('grilla').onclick = e => { const b = e.target.closest('.prod'); if (!b) return; if (st.editFav) return marcarFavorito(Number(b.dataset.id)); agregar(Number(b.dataset.id)); };
@@ -816,7 +839,7 @@ function dibujarCarrito() {
   $('cobrar').disabled = !st.carrito.length;
   $('enviar-mesa').disabled = !st.carrito.length || (st.ctx && ['cobrar','pedido'].includes(st.ctx.tipo));
   $('enviar-mesa').textContent = st.ctx && st.ctx.tipo === 'agregar' ? `Enviar a ${st.ctx.pedido.mesa}` : 'Enviar a mesa';
-  $('ctx').classList.toggle('oculto', !st.ctx);
+  $('ctx').classList.toggle('oculto', !st.ctx); pintarStock();
   if (st.ctx) $('ctx-txt').textContent = st.ctx.tipo === 'agregar' ? `Agregando productos a ${st.ctx.pedido.mesa}` : `Cobrando ${st.ctx.pedido.mesa}`;
   $('t-carrito').textContent = st.ctx && st.ctx.tipo === 'cobrar' ? `Cuenta de ${st.ctx.pedido.mesa}` : 'Venta actual';
 }
@@ -1009,7 +1032,7 @@ $('p-confirmar').onclick = async () => {
 };
 $('ok-nueva').onclick = () => {
   st.carrito = []; st.pagos = []; st.ctx = null; canalVenta(st.canal.id); contarMesas(); $('c-doc').value = ''; $('c-nombre').value = ''; $('c-ret').checked = false;
-  $('m-ok').classList.add('oculto'); dibujarCarrito(); $('buscar').focus();
+  $('m-ok').classList.add('oculto'); dibujarCarrito(); cargarStock(); $('buscar').focus();
 };
 $('ok-imprimir').onclick = () => { armarTicket(st.ultimaVenta); window.print(); };
 
