@@ -58,13 +58,6 @@ label{display:block;font-size:12px;color:var(--gris);margin:0 0 4px;font-weight:
 @keyframes brillo{50%{box-shadow:0 0 0 4px #f3c8d0}}
 .ped .c1{display:flex;justify-content:space-between;align-items:baseline;padding:10px 12px 2px;gap:8px}
 .ped .cod{font-weight:800;font-size:17px}
-.ped .tog{cursor:pointer;user-select:none}.ped .flecha{display:inline-block;width:16px;color:var(--gris);font-size:13px}
-.ped:not(.abierto) .cuerpo{display:none}
-.ped .res{padding:4px 12px 2px;font-size:13px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ped.abierto .res{display:none}
-.tag.saldo{background:#fbe9e9;color:#a52222}.tag.pagado{background:#e7f4ea;color:#1e6b34}
-.ped .acc .b-sec span{font-size:12px;font-weight:700}
-.b-link{background:none;border:0;color:var(--mal);font-size:12.5px;font-weight:700;padding:4px 12px 8px;cursor:pointer}
 .ped .cuando{font-weight:800;font-size:15px;text-align:right}
 .ped .cuando.tarde{color:var(--mal)}
 .ped .cli{padding:0 12px;color:var(--gris);font-size:13px}
@@ -162,7 +155,6 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
 .h-item{background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.05);display:grid;grid-template-columns:76px 1fr auto;gap:12px;align-items:start}
 .h-item .ph{width:76px;height:76px;border-radius:10px;background:var(--fondo);object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:28px}
 .h-item .t{font-weight:800}
-.h-item .h-ent{margin-left:10px;font-size:14px;font-weight:800;color:var(--rojo);background:#fbeeee;border-radius:8px;padding:2px 9px}
 .h-item .meta{color:var(--gris);font-size:12.5px;margin-top:2px}
 .h-item ul{margin:6px 0 0;padding-left:18px;font-size:13.5px}
 .h-item .bot{display:flex;flex-direction:column;gap:6px;align-items:stretch;min-width:130px}
@@ -221,9 +213,6 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1f1f1f;color:#fff;padding:10px 16px;border-radius:10px;z-index:90;font-weight:600;max-width:92vw}
 
 @media (max-width:900px){.form,.cot{grid-template-columns:1fr}.tablero{grid-template-columns:repeat(4,85vw)}.h-item{grid-template-columns:60px 1fr}.h-item .ph{width:60px;height:60px}.h-item .bot{grid-column:1/-1;flex-direction:row;flex-wrap:wrap}.h-item .bot button{flex:1}}
-.modo-del{display:inline-block;padding:4px 10px;border-radius:999px;background:#fff4e5;color:#9a5b00;font-size:12px;font-weight:700;margin-right:6px}
-.lbl-real{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600}
-.lbl-real input{width:90px}
 </style>
 </head>
 <body>
@@ -251,14 +240,14 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
       <button data-s="central" class="activa">📋 Central</button>
       <button data-s="nuevo">➕ Nuevo pedido</button>
       <button data-s="hist">🗂️ Cotizaciones e historial</button>
-      <button data-s="mapa" class="oculto" title="El mapa de clientes ahora está en el CRM">🗺️ Mapa de clientes</button>
+      <button data-s="mapa">🗺️ Mapa de clientes</button>
       <button data-s="adic">⚙️ Adicionales</button>
       <button data-s="deliv">🛵 Delivery</button>
       <button data-s="fact">🧾 Factura mensual</button>
     </div>
     <span class="vivo" id="vivo">● conectando</span>
     <span class="usr" id="usr" title="Cambiar de usuario"></span>
-    <span style="font-size:11px;opacity:.7" title="Versión de la app">v23.10-k</span>
+    <span style="font-size:11px;opacity:.7" title="Versión de la app">v23.10-m</span>
   </div>
 
   <!-- ===== CENTRAL ===== -->
@@ -283,7 +272,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
         <div class="bloque">
           <h3>🎂 Productos <button class="btn der" id="b-agregar">+ Agregar producto</button></h3>
           <div id="f-items"></div>
-          <p class="ayuda">⚡ <b>Producto rápido</b>: eliges el producto y escribes el detalle (relleno, pisos, colores…). 🧮 <b>Cotizar</b>: base + componentes con precio sugerido según food cost. El delivery va aparte.</p>
+          <p class="ayuda">Cada producto se arma en el cotizador: base + adicionales, con precio sugerido según food cost. El delivery va aparte.</p>
         </div>
       </div>
       <div>
@@ -295,12 +284,11 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
           </div>
           <div class="fila">
             <div style="flex:2"><label>Nombre</label><input data-k="cliente_nombre" placeholder="Nombre del cliente"></div>
-            <div><label>DNI / RUC (opcional)</label><input data-k="cliente_doc" inputmode="numeric"></div>
+            <div><label>DNI / RUC (opcional)</label><input data-k="cliente_doc" inputmode="numeric" title="Al salir del campo se buscan los datos en RENIEC/SUNAT"></div>
           </div>
           <div class="fila">
             <div><label>Facturación</label><select data-k="facturacion"><option value="normal">Normal (se cobra por pedido)</option><option value="mensual">🏫 Factura mensual al crédito</option></select></div>
             <div id="f-cmen-w" class="oculto"><label>Cliente mensual</label><select id="f-cmen"></select></div>
-            <div id="f-comp-w"><label>Comprobante (pregúntale al cliente)</label><select data-k="comprobante_modo"><option value="separados">📄📄 Dos: uno por el adelanto y otro por el saldo</option><option value="unico">🧾 Uno solo al final por el total</option></select></div>
           </div>
           <div class="fila">
             <div style="max-width:150px"><label>🎂 Ocasión (opcional)</label><select data-k="ocasion_tipo"><option value="">—</option><option value="cumpleanos">Cumpleaños</option><option value="aniversario">Aniversario</option><option value="otro">Otra fecha</option></select></div>
@@ -328,6 +316,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
               <div style="flex:3"><input id="ubi-link" placeholder="https://maps.app.goo.gl/…  ó  -12.0123, -76.9876"></div>
               <div style="flex:2"><input id="ubi-buscar" placeholder="o busca la dirección y Enter"></div>
             </div>
+            <div id="f-ubis" class="oculto" style="margin:6px 0"></div>
             <div id="f-mapa" class="mapa-form"></div>
             <div class="ubi-info" id="ubi-info"></div>
             <div class="ayuda" id="deliv-calc" style="margin:4px 0 0"></div>
@@ -343,7 +332,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
         <div class="acciones-form">
           <button class="btn-sec" id="b-limpiar">Limpiar</button>
           <button class="btn-sec" id="b-cotizacion">💾 Guardar como cotización</button>
-          <button class="btn-sec" id="b-confirmar">✓ Confirmar sin adelanto</button>
+          <button class="btn oculto" id="b-confirmar">✓ Confirmar pedido</button>
           <button class="btn" id="b-cobrar-conf">💵 Cobrar adelanto y confirmar</button>
         </div>
         <div class="error" id="f-error" style="text-align:right"></div>
@@ -506,18 +495,9 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
 <!-- ===== MODAL COTIZADOR ===== -->
 <div class="modal oculto" id="m-cot">
   <div class="caja">
-    <h2><span id="c-titulo">🧮 Cotizar producto</span> <button class="x" id="c-cerrar">✕</button></h2>
-    <div class="seg" id="c-modo" style="margin-bottom:12px">
-      <button data-m="rapido">⚡ Producto rápido (producto + detalle)</button>
-      <button data-m="cotizar">🧮 Cotizar (base + componentes)</button>
-    </div>
+    <h2>🧮 Cotizar producto <button class="x" id="c-cerrar">✕</button></h2>
     <div class="cot">
       <div>
-        <div id="c-rapido" class="oculto">
-          <div class="buscador"><label>Producto</label><input id="c-prod" placeholder="Buscar: torta personalizada, empanadas, alfajores…" autocomplete="off"><div class="resultados oculto" id="c-pres"></div></div>
-          <div id="c-prod-info" class="ayuda" style="margin:4px 0 10px">Elige un producto de la carta o escribe el nombre directo en la descripción.</div>
-        </div>
-        <div id="c-cotizar">
         <div class="fila">
           <div class="buscador" style="flex:2"><label>Producto base (con receta o costo)</label><input id="c-base" placeholder="Buscar: torta chocolate, keke, bizcocho…" autocomplete="off"><div class="resultados oculto" id="c-bres"></div></div>
           <div style="max-width:140px"><label id="c-bcant-l">Cantidad base</label><input id="c-bcant" type="number" min="0" step="0.01" value="1"></div>
@@ -530,12 +510,11 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
           <button class="btn-sec" id="c-otro" style="flex:0 0 auto">+ Otro costo</button>
         </div>
         <table class="t"><thead><tr><th>Componente</th><th class="n">Cant.</th><th>Unid.</th><th class="n">Costo</th><th></th></tr></thead><tbody id="c-lineas"></tbody></table>
-        </div>
         <div class="fila" style="margin-top:12px">
-          <div style="flex:3"><label id="c-desc-l">Descripción (la ve producción)</label><input id="c-desc" placeholder="Ej. Torta chocolate 20 porciones con manjar"></div>
+          <div style="flex:3"><label>Descripción (la ve producción)</label><input id="c-desc" placeholder="Ej. Torta chocolate 20 porciones con manjar"></div>
           <div style="max-width:110px"><label>Unidades</label><input id="c-cant" type="number" min="1" step="1" value="1"></div>
         </div>
-        <label id="c-pers-l">Personalización para producción</label>
+        <label>Personalización para producción</label>
         <textarea id="c-pers" rows="2" placeholder="Dedicatoria, colores, tema, diseño…"></textarea>
         <label style="margin-top:10px">Fotos de referencia</label>
         <div class="drop" id="c-drop">Arrastra fotos aquí, <b>pega con Ctrl+V</b> (desde WhatsApp Web) o <label for="c-file" style="display:inline;color:var(--rojo);cursor:pointer;font-size:13px">elige archivos</label><input id="c-file" type="file" accept="image/*" multiple class="oculto"></div>
@@ -543,7 +522,6 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
       </div>
       <div>
         <div class="calc" id="c-calc"></div>
-        <div class="calc oculto" id="c-calc-r"></div>
         <div style="margin-top:12px"><label>Precio final por unidad (con IGV, sin delivery) S/</label><input id="c-precio" type="number" min="0" step="0.5" style="font-size:18px;font-weight:800"></div>
         <div id="c-fcreal" style="margin-top:8px"></div>
         <div class="acciones-form" style="margin-top:14px"><button class="btn" id="c-ok" style="width:100%">Agregar al pedido</button></div>
@@ -559,7 +537,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
     <h2>💵 Cobrar pedido <span id="p-cod" style="margin-left:6px"></span><button class="x" id="p-cerrar">✕</button></h2>
     <div class="resumen" id="p-resumen" style="margin-bottom:6px"></div>
     <div id="p-comps"></div>
-    <div id="p-aviso-conf" class="oculto" style="background:#fff7e0;border:1px solid #f0d58a;border-radius:10px;padding:8px 10px;font-size:13px;margin-top:8px">⏳ Este pedido aún <b>no está confirmado</b>. Se confirma y pasa a la Central cuando el pago llega al <b>50% del total</b> o más. Si cierras sin emitir, queda como cotización.</div>
+    <div id="p-aviso-conf" class="oculto" style="background:#fff7e0;border:1px solid #f0d58a;border-radius:10px;padding:8px 10px;font-size:13px;margin-top:8px">⏳ Este pedido aún <b>no está confirmado</b>. Al emitir el comprobante se confirma y pasa a la Central. Si cierras sin emitir, queda como cotización.</div>
     <div id="p-form" style="margin-top:12px">
       <label>Comprobante</label>
       <div class="seg" id="p-docs" style="margin-bottom:10px"><button data-d="nota_venta">Nota de venta</button><button data-d="boleta" class="activa">Boleta</button><button data-d="factura">Factura</button></div>
@@ -567,7 +545,6 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
       <div class="seg" id="p-det" style="margin-bottom:10px"><button data-x="resumen" class="activa">Resumido: PEDIDO N°</button><button data-x="detalle">Con detalle de productos</button></div>
       <label>Cobro</label>
       <div class="seg" id="p-tipos" style="margin-bottom:10px"><button data-t="adelanto" class="activa">Adelanto</button><button data-t="saldo">Saldo</button><button data-t="total">Pago total</button></div>
-      <div id="p-canje" class="oculto" style="background:#fff7e6;border:1px solid #f3d9a4;border-radius:10px;padding:8px 10px;margin:-2px 0 10px;font-size:13px"></div>
       <label id="p-reg-w" class="oculto" style="display:flex;gap:8px;align-items:flex-start;background:#eef6ff;border:1px solid #bfd8f7;border-radius:10px;padding:8px 10px;margin:-2px 0 10px;font-weight:400">
         <input type="checkbox" id="p-reg" style="width:auto;margin-top:3px"><span><b>Comprobante por el TOTAL del pedido</b> (el cliente lo pidió así): incluye todos los productos y el delivery, y descuenta el adelanto <span id="p-reg-docs"></span>. Se cobra solo el saldo.</span></label>
       <div class="fila">
@@ -632,7 +609,6 @@ const st = {
   rango: 'hoy', origen: '', tipo: '', pedidos: [], inicio: new Date(), avisados: new Set(),
   urls: {}, f: null, ib: null, hist: [], htipo: 'todos', pagoPed: null, adEdit: null, adProd: null,
   emi: null, cobro: null, pagosComp: {},
-  abiertos: new Set((() => { try { return JSON.parse(localStorage.getItem('kped_abiertos') || '[]'); } catch (e) { return []; } })()),
 };
 // datos del comprobante (mismos de Comprobantes)
 const EMPRESA = {
@@ -685,7 +661,6 @@ const pad2 = n => String(n).padStart(2, '0');
 const fstr = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 const dias = n => { const d = new Date(); d.setDate(d.getDate() + n); return fstr(d); };
 const hora12 = t => { if (!t) return ''; const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${pad2(m)} ${h >= 12 ? 'pm' : 'am'}`; };
-const horaCorta = t => { const [h, m] = String(t).split(':').map(Number); return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'pm' : 'am'}`; };
 const fechaCorta = f => f ? new Date(f + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric', month: 'short' }) : 'sin fecha';
 
 // ===================== MAESTROS Y COSTOS =====================
@@ -814,9 +789,8 @@ const COLS = [
   { id: 'en_produccion', titulo: '👩‍🍳 En producción' },
   { id: 'listo', titulo: '✅ Listos' },
 ];
-// la Central solo valida el Yape (web) y marca entregado; "en producción" y "listo" los marca Producción
-const SIGUIENTE = { por_validar: 'confirmado', listo: 'entregado' };
-const ANTERIOR = {};
+const SIGUIENTE = { por_validar: 'confirmado', confirmado: 'en_produccion', en_produccion: 'listo', listo: 'entregado' };
+const ANTERIOR = { confirmado: 'por_validar', en_produccion: 'confirmado', listo: 'en_produccion' };
 
 function filtrarRango(q, campoEstado = 'estado') {
   if (st.rango === 'hoy') q = q.eq('fecha_entrega', dias(0));
@@ -900,25 +874,19 @@ function dibujarCentral(nuevos = []) {
 function tarjeta(p, hoy, ahoraMin, nuevo) {
   const [hh, mm] = (p.hora || '00:00').split(':').map(Number);
   const tarde = p.fecha && (p.fecha < hoy || (p.fecha === hoy && hh * 60 + mm < ahoraMin && p.estado !== 'listo'));
-  // fecha y hora siempre explícitas
-  const cuando = p.fecha ? `${p.fecha === hoy ? 'Hoy, ' : p.fecha === dias(1) ? 'Mañana, ' : ''}${fechaCorta(p.fecha)} · ${hora12(p.hora) || 'sin hora'}` : 'sin fecha';
+  const cuando = (p.fecha === hoy ? '' : fechaCorta(p.fecha) + ' · ') + (hora12(p.hora) || 'sin hora');
   const tel = (p.tel || '').replace(/\D/g, '');
   const items = p.items.map(i => `<li><b>${Number(i.cant)}×</b> ${esc(i.desc)}${i.comp && i.comp.length ? `<span style="display:block;font-size:12px;color:var(--gris)">${i.comp.map(esc).join(' · ')}</span>` : ''}${i.pers ? `<span class="pers">✏️ ${esc(i.pers)}</span>` : ''}${i.fotos.length ? `<div class="fotos">${i.fotos.map(imgFoto).join('')}</div>` : ''}</li>`).join('');
-  const resumen = p.items.map(i => `${Number(i.cant)}× ${esc(i.desc)}`).join(' · ');
   const totDel = p.total + Number(p.delivery || 0), saldo = Math.max(totDel - p.pagado, 0);
   const sig = SIGUIENTE[p.estado];
-  const txtSig = { por_validar: '✓ Yape recibido', listo: '✓ Entregado' }[p.estado];
+  const txtSig = { por_validar: '✓ Yape recibido', confirmado: 'A producción', en_produccion: 'Listo', listo: 'Entregado' }[p.estado];
   const origen = p.origen === 'web' ? '<span class="tag origen">🌐 Web</span>' : `<span class="tag origen enc">${{ whatsapp: '💬 WhatsApp', tienda: '🏪 Tienda', telefono: '📞 Teléfono', otro: '✳️ Otro' }[p.canal] || '💬'}</span>`;
-  const abierto = st.abiertos.has(p.key);
-  const tagUnico = p.raw && p.raw.comprobante_modo === 'unico' && !p.mensual ? '<span class="tag" style="background:#fff4e5;color:#9a5b00">🧾 1 comprobante al final</span>' : '';
   return `
-  <div class="ped ${p.estado} ${nuevo ? 'nuevo' : ''} ${abierto ? 'abierto' : ''}">
-    <div class="c1 tog" data-tog="${p.key}" title="Ver / ocultar detalle"><span class="cod"><span class="flecha">${abierto ? '▾' : '▸'}</span>${esc(p.codigo)}</span><span class="cuando ${tarde ? 'tarde' : ''}">${esc(cuando)}</span></div>
+  <div class="ped ${p.estado} ${nuevo ? 'nuevo' : ''}">
+    <div class="c1"><span class="cod">${esc(p.codigo)}</span><span class="cuando ${tarde ? 'tarde' : ''}">${esc(cuando)}</span></div>
     <div class="cli">${esc(p.cliente || 'Sin nombre')}${tel ? ` · <a href="https://wa.me/51${tel}" target="_blank" rel="noopener">${esc(p.tel)}</a>` : ''}</div>
-    ${origen}<span class="tag ${p.tipo_entrega}">${p.tipo_entrega === 'delivery' ? '🛵 Delivery' : '🏬 Recojo'}</span>${!p.mensual && saldo > 0 ? `<span class="tag saldo">Saldo ${S(saldo)}</span>` : '<span class="tag pagado">✓ Pagado</span>'}${tagUnico}
-    <div class="res">${resumen || 'Sin productos'}</div>
-    <div class="cuerpo">
-    ${p.tipo_entrega === 'delivery' ? `<div class="dir">📍 ${p.direccion ? esc(p.direccion) : p.lat != null ? 'Dirección en Google Maps' : 'sin dirección'}${p.distrito ? ', ' + esc(p.distrito) : ''}${p.referencia ? `<br><small>${esc(p.referencia)}</small>` : ''}${p.lat != null ? `<br><a class="maps" href="https://www.google.com/maps?q=${p.lat},${p.lng}" target="_blank" rel="noopener">🗺️ Abrir en Google Maps</a>` : ''}</div>` : ''}
+    ${origen}<span class="tag ${p.tipo_entrega}">${p.tipo_entrega === 'delivery' ? '🛵 Delivery' : '🏬 Recojo'}</span>
+    ${p.tipo_entrega === 'delivery' ? `<div class="dir">📍 ${esc(p.direccion || 'sin dirección')}${p.distrito ? ', ' + esc(p.distrito) : ''}${p.referencia ? `<br><small>${esc(p.referencia)}</small>` : ''}${p.lat != null ? `<br><a class="maps" href="https://www.google.com/maps?q=${p.lat},${p.lng}" target="_blank" rel="noopener">🗺️ Abrir en Google Maps</a>` : ''}</div>` : ''}
     <ul class="its">${items}</ul>
     ${p.notas ? `<div class="nota">📝 ${esc(p.notas)}</div>` : ''}
     ${p.mensual ? `<div class="dinero"><div>Total<b>${S(totDel)}</b></div><div style="flex:2">🏫 Factura mensual<b style="font-size:13px">${p.factDoc ? esc(p.factDoc) : 'por facturar'}</b></div></div>` : `<div class="dinero">
@@ -927,61 +895,25 @@ function tarjeta(p, hoy, ahoraMin, nuevo) {
       <div class="${saldo > 0 ? 'debe' : ''}">Saldo<b>${S(saldo)}</b></div>
     </div>`}
     <div class="pie">${p.origen === 'web' ? `Yape op. ${esc(p.yape_op || '—')}${p.pago_validado ? ' ✓' : ''}` : ([...p.comps.map(x => `🧾 ${x.comprobante} ${S(x.total)}`), ...p.pagos.map(x => `${x.tipo} ${x.metodo} ${S(x.monto)}`)].join(' · ') || 'Sin pagos registrados')}${p.delivery != null ? ` · delivery ${S(p.delivery)}` : ''}</div>
-    ${p.origen === 'web' && p.tipo_entrega === 'delivery' ? (p.delivIncl ? `<div class="envio">Delivery cobrado <b>${S(p.delivery)}</b> (incluido en el Yape)</div>` : p.modo === 'fijo' ? `<div class="envio">Delivery a cobrar S/ <input type="number" min="0" step="0.5" data-envio="${p.id}" value="${p.delivery ?? ''}" placeholder="0.00"></div>` : '') : ''}
+    ${p.origen === 'web' && p.tipo_entrega === 'delivery' ? (p.delivIncl ? `<div class="envio">Delivery cobrado <b>${S(p.delivery)}</b> (incluido en el Yape)</div>` : p.modo === 'fijo' ? `<div class="envio">Delivery a cobrar S/ <input type="number" min="0" step="0.5" data-envio="${p.id}" value="${p.delivery ?? ''}" placeholder="—"></div>` : '') : ''}
     ${p.tipo_entrega === 'delivery' && ['en_produccion', 'listo', 'entregado'].includes(p.estado) ? filaReal(p) : ''}
-    ${p.estado === 'por_validar' || (p.origen === 'enc' && p.estado === 'confirmado') ? `<button class="b-link" data-anular="${p.key}">✕ Anular pedido</button>` : ''}
-    </div>
     <div class="acc">
-      ${p.origen === 'enc' ? `${p.estado === 'confirmado' ? `<button class="b-sec" data-editar="${p.id}" title="Editar pedido">✏️ <span>Editar</span></button>` : ''}<button class="b-sec" data-pago="${p.id}" title="Cobrar / comprobantes">💵 <span>Cobrar</span></button>` : ''}
-      <button class="b-sec" data-wa="${p.key}" title="Enviar resumen por WhatsApp">💬 <span>WhatsApp</span></button>
-      <button class="b-sec" data-comanda="${p.key}" title="Imprimir comanda (ticketera 80 mm)">🖨️ <span>Comanda</span></button>
-      ${sig && txtSig ? `<button class="${p.estado === 'por_validar' ? 'b-yape' : 'b-sig'}" data-sig="${p.key}">${txtSig}</button>` : ''}
+      ${ANTERIOR[p.estado] && !(p.origen === 'enc' && p.estado === 'confirmado') ? `<button class="b-sec" data-atras="${p.key}" title="Regresar un paso">↩</button>` : ''}
+      ${p.origen === 'enc' ? `<button class="b-sec" data-editar="${p.id}" title="Editar pedido">✏️</button><button class="b-sec" data-pago="${p.id}" title="Cobrar / comprobantes">💵</button><button class="b-sec" data-wa="${p.key}" title="Enviar resumen por WhatsApp">💬</button><button class="b-sec" data-prof="${p.id}" title="Enviar proforma en PDF">📄</button><button class="b-sec" data-profd="${p.id}" title="Descargar proforma">📥</button>` : ''}
+      ${p.estado === 'por_validar' || (p.origen === 'enc' && p.estado === 'confirmado') ? `<button class="b-sec" data-anular="${p.key}" title="Anular pedido">✕</button>` : ''}
+      ${sig ? `<button class="${p.estado === 'por_validar' ? 'b-yape' : 'b-sig'}" data-sig="${p.key}">${txtSig}</button>` : ''}
     </div>
   </div>`;
 }
 
-// fichas plegadas por defecto; se recuerda cuáles abriste
-function guardarAbiertos() { try { localStorage.setItem('kped_abiertos', JSON.stringify([...st.abiertos].slice(-60))); } catch (e) {} }
-// comanda para ticketera de 80 mm (mismo formato que la de Power Apps)
-function imprimirComanda(p) {
-  if (!p) return;
-  const totDel = p.total + Number(p.delivery || 0), saldo = Math.max(totDel - p.pagado, 0);
-  const f2 = n => Number(n || 0).toFixed(2);
-  const filas = p.items.map(i => `<tr><td class="cant">${Number(i.cant)}</td><td class="desc"><div>${esc(i.desc)}</div>${(i.comp || []).length ? `<div class="sub">${i.comp.map(esc).join(' · ')}</div>` : ''}${i.pers ? `<div class="sub">${esc(i.pers)}</div>` : ''}</td></tr>`).join('');
-  const tipo = p.tipo_entrega === 'delivery' ? 'DELIVERY' : 'RECOJO';
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Comanda ${esc(p.codigo)}</title><style>
-    @page{size:80mm auto;margin:0}*{box-sizing:border-box}
-    body{width:70mm;margin:0 auto;padding:3mm 3mm 3mm 2mm;font-family:Arial,'Segoe UI',sans-serif;font-weight:700;font-size:13px;line-height:1.4;color:#000}
-    .h{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #000;padding-bottom:2mm;margin-bottom:2mm}.h .c{font-size:16px}
-    .div{border-top:1px dashed #000;margin:2mm 0}.lb{text-transform:uppercase;margin-bottom:1mm}
-    table{width:100%;border-collapse:collapse}td{vertical-align:top;padding:.5mm 0}td.cant{width:8mm}td.desc{padding-left:1mm}.sub{font-size:11px;white-space:pre-wrap}
-    .tot{margin-top:2mm;border-top:2px solid #000;padding-top:2mm}.r{display:flex;justify-content:space-between;font-size:12px;padding-right:1mm}.r.s{font-size:13px}
-    .pie{text-align:center;margin-top:3mm;font-size:11px}.obs{white-space:pre-wrap;word-break:break-word}
-  </style></head><body>
-    <div class="h"><span class="c">N° ${esc(p.codigo)}</span><span>${tipo}</span></div>
-    <div>Cliente: ${esc(p.cliente || '-')}${p.tel ? ' · Tel: ' + esc(p.tel) : ''}</div>
-    <div>Entrega: ${p.fecha ? esc(fechaCorta(p.fecha)) : '-'}${p.hora ? ' · ' + esc(hora12(p.hora)) : ''}</div>
-    ${p.tipo_entrega === 'delivery' ? `<div>Dir.: ${esc(p.direccion || '-')}${p.distrito ? ', ' + esc(p.distrito) : ''}${p.referencia ? ' (' + esc(p.referencia) + ')' : ''}</div>` : ''}
-    <div class="div"></div><div class="lb">Producto</div><table>${filas}</table>
-    ${p.notas ? `<div class="div"></div><div class="lb">Observaciones</div><div class="obs">${esc(p.notas)}</div>` : ''}
-    <div class="tot"><div class="r"><span>Total</span><span>S/ ${f2(totDel)}</span></div><div class="r"><span>Pagado</span><span>S/ ${f2(p.pagado)}</span></div><div class="r s"><span>SALDO</span><span>S/ ${f2(p.mensual ? 0 : saldo)}</span></div></div>
-    <div class="pie">Kadima Pastelería &amp; Panadería</div>
-  </body></html>`;
-  let fr = $('fr-comanda');
-  if (!fr) { fr = document.createElement('iframe'); fr.id = 'fr-comanda'; fr.style.cssText = 'position:fixed;width:0;height:0;border:0;left:-9999px'; document.body.appendChild(fr); }
-  fr.srcdoc = html;
-  fr.onload = () => setTimeout(() => { try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (e) { alert('No se pudo abrir la impresión.'); } }, 200);
-}
-
 // costo REAL pagado al InDrive (se registra al despachar)
 function filaReal(p) {
-  // el modo de cobro solo se cambia con ✏️ Editar; aquí solo se muestra
-  const nomModo = { al_despachar: 'Cobro: costo real + IGV', fijo: 'Cobro: monto fijo', cliente: '🚕 InDrive del cliente' }[p.modo] || 'Cobro: monto fijo';
-  const selModo = !p.delivIncl ? `<span class="modo-del" title="Para cambiarlo usa ✏️ Editar">${nomModo}</span>` : '';
+  const selModo = !p.delivIncl ? `<select data-dmodo="${p.key}" style="width:auto;padding:4px 6px;font-size:12px" title="Cómo se cobra el delivery">
+      <option value="al_despachar" ${p.modo === 'al_despachar' ? 'selected' : ''}>Cobro: real + IGV</option><option value="fijo" ${p.modo === 'fijo' ? 'selected' : ''}>Cobro: monto fijo</option><option value="cliente" ${p.modo === 'cliente' ? 'selected' : ''}>🚕 InDrive del cliente</option></select>` : '';
   if (p.modo === 'cliente') return `<div class="envio">${selModo}<span>no se cobra delivery</span></div>`;
   const r = p.real == null ? null : Number(p.real), cob = p.delivery == null ? null : Number(p.delivery);
   const gan = r != null && cob != null ? r2(cob / (1 + igvPct() / 100) - r) : null;
-  return `<div class="envio" style="flex-wrap:wrap">${selModo}<label class="lbl-real">🛵 Pagado al InDrive (al despachar) S/ <input type="number" min="0" step="0.1" data-real="${p.key}" value="${r ?? ''}" placeholder="0.00"></label>
+  return `<div class="envio" style="flex-wrap:wrap">${selModo}🛵 InDrive real S/ <input type="number" min="0" step="0.1" data-real="${p.key}" value="${r ?? ''}" placeholder="al despachar">
     ${p.modo === 'al_despachar' && cob != null ? `<span>→ cobro ${S(cob)}${p.delivFactDoc ? ' · ' + esc(p.delivFactDoc) : ''}</span>` : ''}
     ${gan != null && p.modo !== 'al_despachar' ? `<span style="color:${gan >= 0 ? 'var(--ok)' : 'var(--mal)'};font-weight:700" title="Cobrado sin IGV menos lo pagado al InDrive">${gan >= 0 ? '+' : '−'}${S(Math.abs(gan))}</span>` : ''}</div>`;
 }
@@ -1025,9 +957,8 @@ $('f-origen').onchange = e => { st.origen = e.target.value; cargarCentral(); };
 $('f-tipo').onchange = e => { st.tipo = e.target.value; cargarCentral(); };
 $('tablero').addEventListener('click', async e => {
   const pk = k => st.pedidos.find(x => x.key === k);
-  const tg = e.target.closest('[data-tog]');
-  if (tg && !e.target.closest('a')) { const k = tg.dataset.tog; st.abiertos.has(k) ? st.abiertos.delete(k) : st.abiertos.add(k); guardarAbiertos(); return dibujarCentral(); }
-  const cm = e.target.closest('[data-comanda]'); if (cm) return imprimirComanda(pk(cm.dataset.comanda));
+  const pf = e.target.closest('[data-prof]'); if (pf) return enviarProforma(Number(pf.dataset.prof), pf);
+  const pd = e.target.closest('[data-profd]'); if (pd) return descargarProforma(Number(pd.dataset.profd), pd);
   const s = e.target.closest('[data-sig]');
   if (s) {
     const p = pk(s.dataset.sig);
@@ -1037,26 +968,18 @@ $('tablero').addEventListener('click', async e => {
       return cambiarEstado(p, 'confirmado', { pago_validado: true, pago_validado_por: st.usuario?.nombre || null, pago_validado_en: new Date().toISOString() });
     }
     if (p.estado === 'listo') {
-      const noCobra = p.modo === 'cliente', alDesp = p.modo === 'al_despachar' && !p.delivIncl, esDel = p.tipo_entrega === 'delivery';
-      // bloqueo: sin el costo real del InDrive no se puede entregar
-      if (esDel && !noCobra && p.real == null) {
-        st.abiertos.add(p.key); guardarAbiertos(); dibujarCentral();
-        return alert(`⚠️ No se puede marcar ${p.codigo} como entregado.\n\nFalta registrar cuánto se pagó al InDrive.\nEscríbelo en la ficha, en "🛵 Pagado al InDrive (al despachar)", y vuelve a darle a Entregado.`);
-      }
       const saldo = Math.max(p.total + Number(p.delivery || 0) - p.pagado, 0);
-      const avisos = [];
-      if (!p.mensual && saldo > 0) avisos.push(`⚠️ Tiene saldo pendiente de ${S(saldo)}${alDesp && p.delivery != null ? ` (incluye delivery ${S(p.delivery)})` : ''}.`);
-      if (esDel && !noCobra && !alDesp && p.delivery == null) avisos.push('⚠️ No se registró el delivery que se cobra al cliente.');
-      const lineas = [
-        `¿Confirmas la entrega del pedido ${p.codigo}?`, '',
-        `Cliente: ${p.cliente || '—'}`,
-        `Entrega: ${esDel ? 'Delivery' : 'Recojo en tienda'}`,
-        `Productos: ${S(p.total)}`,
-        esDel ? (noCobra ? 'Delivery: InDrive del cliente (no se cobra)' : `Delivery cobrado: ${p.delivery != null ? S(p.delivery) : '—'} · Pagado al InDrive: ${S(p.real)}`) : '',
-        `Pagado: ${S(p.pagado)} · Saldo: ${p.mensual ? 'facturación mensual' : S(saldo)}`,
-        avisos.length ? '' : '', ...avisos
-      ].filter((x, i, arr) => x !== '' || (i > 0 && arr[i - 1] !== ''));
-      if (!confirm(lineas.join('\n'))) return;
+      const noCobra = p.modo === 'cliente', alDesp = p.modo === 'al_despachar' && !p.delivIncl;
+      if (p.tipo_entrega === 'delivery' && !noCobra && p.real == null) {
+        const r = prompt(`¿Cuánto se pagó al InDrive por ${p.codigo}? (S/)\nDéjalo vacío si aún no lo sabes.`, '');
+        if (r === null) return;
+        const v = r.trim() === '' ? null : Number(r.replace(',', '.'));
+        if (v != null && !(v >= 0)) return alert('Monto no válido.');
+        if (v != null && !(await guardarReal(p, r2(v)))) return;
+      }
+      const saldo2 = Math.max(p.total + Number(p.delivery || 0) - p.pagado, 0);
+      if (!p.mensual && saldo2 > 0 && !confirm(`Este pedido tiene saldo pendiente de ${S(saldo2)}${alDesp && p.delivery != null ? ` (incluye delivery ${S(p.delivery)})` : ''}. ¿Marcarlo como entregado igual?`)) return;
+      if (p.tipo_entrega === 'delivery' && !noCobra && !alDesp && p.delivery == null && !confirm('No se registró el costo del delivery que se cobra al cliente. ¿Marcar como entregado igual?')) return;
     }
     return cambiarEstado(p, SIGUIENTE[p.estado]);
   }
@@ -1069,10 +992,7 @@ $('tablero').addEventListener('click', async e => {
   const wa = e.target.closest('[data-wa]');
   if (wa) {
     const p = pk(wa.dataset.wa), r = p.raw;
-    const its = p.origen === 'web'
-      ? (r.pedidos_web_items || []).map(i => ({ descripcion: i.nombre, personalizacion: '', cantidad: Number(i.cantidad), precio_unit: Number(i.precio) }))
-      : (r.pedidos_encargo_items || []).sort((a, b) => a.orden - b.orden).map(i => ({ descripcion: i.descripcion, personalizacion: i.personalizacion, cantidad: Number(i.cantidad), precio_unit: Number(i.precio_unit) }));
-    const f = { ...r, items: its };
+    const f = { ...r, items: (r.pedidos_encargo_items || []).sort((a, b) => a.orden - b.orden).map(i => ({ descripcion: i.descripcion, personalizacion: i.personalizacion, cantidad: Number(i.cantidad), precio_unit: Number(i.precio_unit) })) };
     return abrirWhatsApp(r.cliente_telefono, textoWhatsApp(f, p.pagado));
   }
 });
@@ -1143,28 +1063,13 @@ function pintarCobro() {
   $('p-comps').innerHTML = (c.ventas.length || c.manual.length) ? `<div style="font-weight:700;font-size:13px;margin-top:6px">Comprobantes y pagos</div>` +
     c.ventas.map(v => `<div class="comp"><span class="nm">${CORTO[v.tipo_doc]} ${v.serie}-${String(v.numero).padStart(8, '0')}</span>
       <span>${COBRO[v.tipo_cobro] ? COBRO[v.tipo_cobro].toLowerCase() : ''} · ${S(v.total)}</span>
-      ${v.estado === 'anulada' ? `<span class="anul">${v.tipo_doc === 'nota_venta' && v.tipo_cobro === 'adelanto' ? 'ANULADA · canjeada' : 'ANULADA'}</span>` : v.tipo_doc !== 'nota_venta' ? `<span class="estado-sunat ${v.estado_sunat}">${v.estado_sunat}</span>` : ''}
+      ${v.estado === 'anulada' ? '<span class="anul">ANULADA</span>' : v.tipo_doc !== 'nota_venta' ? `<span class="estado-sunat ${v.estado_sunat}">${v.estado_sunat}</span>` : ''}
       ${v.estado === 'emitida' ? `<span class="der">${['pendiente', 'rechazado'].includes(v.estado_sunat) ? `<button data-vre="${v.id}" title="Reenviar a SUNAT">🔁 Reenviar</button>` : ''}<button data-vpdf="${v.id}">📄 PDF</button><button data-vwa="${v.id}">${c.listos[v.id] ? '💬 Enviar' : '💬 WhatsApp'}</button></span>` : ''}</div>`).join('') +
     c.manual.map(x => `<div class="comp"><span class="nm">Pago sin comprobante</span><span>${x.tipo} · ${x.metodo} · ${S(x.monto)}</span></div>`).join('')
     : '';
 }
-// regla Kadima: adelanto -> nota de venta interna; saldo/total -> boleta o factura (por el total si hubo adelanto con nota)
-const nvAdelantos = c => c.ventas.filter(v => v.estado === 'emitida' && v.tipo_doc === 'nota_venta' && v.tipo_cobro === 'adelanto' && Number(v.total) > 0);
-const enCanje = () => { const c = st.cobro; return !!c && c.tipo !== 'adelanto' && c.doc !== 'nota_venta' && nvAdelantos(c).length > 0; };
-const nvTxt = v => `${v.serie}-${String(v.numero).padStart(8, '0')}`;
-// modo elegido al tomar el pedido: 'unico' = adelanto con nota de venta y un solo comprobante final por el total;
-// 'separados' = boleta/factura por el adelanto y otra por el saldo
-const esUnico = () => st.cobro?.ped?.comprobante_modo === 'unico';
 function elegirDoc(d) {
-  const nvAdel = st.cobro.tipo === 'adelanto' && esUnico();
-  if (nvAdel) d = 'nota_venta';
-  else if (d === 'nota_venta') d = ($('p-docnum').value.trim().length === 11 ? 'factura' : 'boleta');
-  st.cobro.doc = d; [...$('p-docs').children].forEach(b => {
-    b.classList.toggle('activa', b.dataset.d === d);
-    const bloq = nvAdel ? b.dataset.d !== 'nota_venta' : b.dataset.d === 'nota_venta';
-    b.disabled = bloq; b.style.opacity = bloq ? '.35' : ''; b.title = bloq ? (nvAdel ? 'Pedido con un solo comprobante al final: el adelanto va con nota de venta' : 'Va con boleta o factura') : '';
-  });
-  aplicarCanje();
+  st.cobro.doc = d; [...$('p-docs').children].forEach(b => b.classList.toggle('activa', b.dataset.d === d));
   $('p-doc-l').textContent = d === 'factura' ? 'RUC' : 'DNI (opcional)';
   $('p-nom-l').textContent = d === 'factura' ? 'Razón social' : 'Nombre';
   $('p-ret-w').classList.toggle('oculto', d !== 'factura');
@@ -1180,7 +1085,7 @@ function elegirTipo(t) {
   else { const dv = k.delivCobrado ? 0 : k.del; $('p-deliv').value = dv ? dv.toFixed(2) : ''; $('p-monto').value = Math.max(r2(k.saldo - dv), 0).toFixed(2); }
   pintarReg();
   if (c_reg()) aplicarReg();
-  elegirDoc(st.cobro.doc);
+  calcCobro();
   if (t === 'adelanto') $('p-monto').focus();
 }
 const c_reg = () => !!(st.cobro && st.cobro.reg);
@@ -1194,47 +1099,24 @@ function aplicarReg() {
 }
 // adelantos con boleta/factura emitidos (se pueden regularizar en el comprobante final)
 const anticiposDe = c => c.ventas.filter(v => v.estado === 'emitida' && v.tipo_cobro === 'adelanto' && v.tipo_doc !== 'nota_venta' && v.estado_sunat !== 'rechazado' && Number(v.total) > 0);
-// "Comprobante por el TOTAL con deducción del anticipo": apagado hasta corregir el envío a Nubefact (error de IGV)
-const REGULARIZAR_ACTIVO = false;
 function pintarReg() {
   const c = st.cobro, ants = anticiposDe(c);
-  const ver = REGULARIZAR_ACTIVO && c.tipo !== 'adelanto' && ants.length > 0;
+  const ver = c.tipo !== 'adelanto' && ants.length > 0;
   $('p-reg-w').classList.toggle('oculto', !ver);
   if (!ver) { $('p-reg').checked = false; c.reg = false; }
   $('p-reg-docs').textContent = ants.map(v => `${CORTO[v.tipo_doc]} ${v.serie}-${String(v.numero).padStart(8, '0')} (${S(v.total)})`).join(', ');
-}
-// canje: el comprobante va por el pedido COMPLETO; las notas de venta del adelanto se anulan al emitirlo
-function aplicarCanje() {
-  const c = st.cobro, on = enCanje(), nvs = on ? nvAdelantos(c) : [];
-  $('p-canje').classList.toggle('oculto', !on && c.tipo !== 'adelanto' && !esUnico());
-  ['p-monto', 'p-deliv'].forEach(i => { $(i).readOnly = on; $(i).style.background = on ? '#f3f3f3' : ''; });
-  if (on) {
-    const prod = r2((c.ped.pedidos_encargo_items || []).reduce((a, i) => a + Number(i.precio_unit) * Number(i.cantidad), 0));
-    const del = c.ped.tipo_entrega === 'delivery' ? Number(c.ped.costo_delivery || 0) : 0;
-    $('p-monto').value = prod.toFixed(2); $('p-deliv').value = del ? del.toFixed(2) : '';
-    $('p-canje').innerHTML = `🧾 <b>${CORTO[c.doc]} por el TOTAL del pedido.</b> Se descuenta lo ya pagado con la nota de venta ${nvs.map(nvTxt).join(', ')} y esa nota de venta queda <b>anulada</b> (la reemplaza este comprobante).`;
-  } else if (c.tipo === 'adelanto') {
-    $('p-canje').innerHTML = esUnico()
-      ? '🧾 <b>Un solo comprobante al final</b> (lo pidió el cliente): el adelanto va con <b>nota de venta</b>. Al cobrar el saldo se emite la boleta o factura por el total y la nota se anula.'
-      : '📄📄 <b>Dos comprobantes</b> (lo pidió el cliente): este adelanto va con boleta o factura y el saldo irá en otra. Para cambiarlo usa ✏️ Editar.';
-  } else {
-    $('p-canje').innerHTML = '🧾 Pedido con <b>un solo comprobante al final</b>: emite la boleta o factura por el total.';
-  }
-  calcCobro();
 }
 function montosCobro() {
   const c = st.cobro;
   const m = r2($('p-monto').value), d = c.tipo === 'adelanto' ? 0 : r2($('p-deliv').value);
   const ant = c.reg ? r2(anticiposDe(c).reduce((a, v) => a + Number(v.total), 0)) : 0;
   const total = r2(m + d - ant);
-  const nv = enCanje() ? r2(nvAdelantos(c).reduce((a, v) => a + Number(v.total), 0)) : 0;
-  const cobrar = Math.max(r2(total - nv), 0);
   const ret = c.doc === 'factura' && $('p-ret').checked && total > 700 ? r2(total * 0.03) : 0;
-  return { m, d, ant, total, nv, cobrar, ret, neto: r2(cobrar - ret) };
+  return { m, d, ant, total, ret, neto: r2(total - ret) };
 }
 function calcCobro() {
   const x = montosCobro();
-  $('p-calc').innerHTML = `${x.ant ? `<span>Total del pedido</span><b>${S(x.m + x.d)}</b><span>Menos adelanto (regularizado)</span><b>− ${S(x.ant)}</b>` : ''}<span>${x.ant ? 'A pagar ahora' : 'Total del comprobante'}</span><b class="g">${S(x.total)}</b>${x.nv ? `<span>Menos adelanto (nota de venta)</span><b>− ${S(x.nv)}</b><span>A cobrar ahora</span><b class="g">${S(x.cobrar)}</b>` : ''}${x.ret ? `<span>Retención 3% (la retiene el cliente)</span><b>− ${S(x.ret)}</b><span>Neto a cobrar</span><b class="g">${S(x.neto)}</b>` : ''}`;
+  $('p-calc').innerHTML = `${x.ant ? `<span>Total del pedido</span><b>${S(x.m + x.d)}</b><span>Menos adelanto (regularizado)</span><b>− ${S(x.ant)}</b>` : ''}<span>${x.ant ? 'A pagar ahora' : 'Total del comprobante'}</span><b class="g">${S(x.total)}</b>${x.ret ? `<span>Retención 3% (la retiene el cliente)</span><b>− ${S(x.ret)}</b><span>Neto a cobrar</span><b class="g">${S(x.neto)}</b>` : ''}`;
 }
 $('p-reg').onchange = () => {
   st.cobro.reg = $('p-reg').checked;
@@ -1254,7 +1136,7 @@ function lineasComprobante(c, x) {
   } else if (x.m > 0) {
     // monto parcial (adelanto/saldo): una sola línea, con los productos en el texto si se pidió detalle
     const det = c.det === 'detalle' ? ': ' + its.map(i => `${Number(i.cantidad)} x ${i.descripcion}`).join('; ') : '';
-    items.push({ producto_id: st.emi.sv900, cantidad: 1, precio_unit: x.m, descripcion: `${conc}${enCanje() ? '' : ` (${COBRO[c.tipo]})`}${det}`.slice(0, 250) });
+    items.push({ producto_id: st.emi.sv900, cantidad: 1, precio_unit: x.m, descripcion: `${conc} (${COBRO[c.tipo]})${det}`.slice(0, 250) });
   }
   if (x.d > 0) items.push({ producto_id: st.emi.sv901, cantidad: 1, precio_unit: x.d, descripcion: `DELIVERY ${conc}` });
   // regularización: cada adelanto se descuenta con una línea negativa "ANTICIPO B003-00000012"
@@ -1301,7 +1183,7 @@ $('p-ok').onclick = async () => {
   if (doc && !nom) return err('Ingresa el nombre del cliente.');
   if (c.doc === 'boleta' && x.total >= 700 && !doc) return err('Boletas de S/ 700 o más necesitan el DNI del cliente (regla SUNAT).');
   const k = cuentasCobro();
-  if (x.cobrar > k.saldo + 0.01 && !confirm(`El monto (${S(x.cobrar)}) es mayor al saldo pendiente (${S(k.saldo)}). ¿Emitir igual?`)) return;
+  if (x.total > k.saldo + 0.01 && !confirm(`El monto (${S(x.total)}) es mayor al saldo pendiente (${S(k.saldo)}). ¿Emitir igual?`)) return;
   const turno = await turnoDigital();
   if (!turno) return err('La Caja Digital no tiene un turno abierto. Ábrelo en la caja (PC digital) y vuelve a intentar.');
   const canal = st.emi.canales.find(z => z.nombre === (p.canal === 'tienda' ? 'Tienda' : 'WhatsApp')) || st.emi.canales[0];
@@ -1312,20 +1194,13 @@ $('p-ok').onclick = async () => {
     pedido_externo: p.codigo, tipo_cobro: c.tipo, es_anticipo: c.tipo === 'adelanto',
     cliente: { num_doc: doc, nombre: nom, ...(c.doc === 'factura' ? { agente_retencion: $('p-ret').checked } : {}) },
     items, contado_credito: 'contado',
-    pagos: [{ metodo: $('p-metodo').value, monto: x.neto, referencia: $('p-op').value.trim() || null },
-      ...(x.nv ? [{ metodo: 'otro', monto: x.nv, referencia: 'Adelanto ' + nvAdelantos(c).map(nvTxt).join(', ') }] : [])].filter(z => z.monto > 0),
+    pagos: [{ metodo: $('p-metodo').value, monto: x.neto, referencia: $('p-op').value.trim() || null }],
   };
-  const nvIds = x.nv ? nvAdelantos(c).map(v => v.id) : [];
   $('p-ok').disabled = true; $('p-ok').textContent = 'Emitiendo…';
   try {
     const { data, error } = await sb.rpc('registrar_venta', { p: payload });
     if (error) throw error;
-    // se confirma solo con 50% o más pagado (adelanto o pago total)
-    // canje: la nota de venta del adelanto queda anulada (la reemplaza este comprobante)
-    if (nvIds.length) { const an = await sb.from('ventas').update({ estado: 'anulada' }).in('id', nvIds); if (an.error) toast('Comprobante emitido, pero no se pudo anular la nota de venta: ' + errTxt(an.error)); }
-    const pagadoAhora = r2(k.pagado + x.cobrar), llega50 = k.total > 0 && pagadoAhora >= r2(k.total * 0.5) - 0.01;
-    if ((c.confirmar || p.estado === 'cotizado') && !c.confirmado && !llega50) toast(`Adelanto menor al 50% (${S(pagadoAhora)} de ${S(k.total)}): el pedido sigue como cotización. Se confirma al llegar a ${S(r2(k.total * 0.5))}.`);
-    if ((c.confirmar || p.estado === 'cotizado') && !c.confirmado && llega50) {
+    if (c.confirmar && !c.confirmado) {
       const u = await sb.from('pedidos_encargo').update({ estado: 'confirmado', actualizado_por: st.usuario?.nombre || null, actualizado_en: new Date().toISOString() }).eq('id', p.id).eq('estado', 'cotizado');
       if (u.error) toast('Comprobante emitido, pero no se pudo confirmar el pedido: ' + errTxt(u.error));
       else { c.confirmado = true; c.confirmar = false; p.estado = 'confirmado'; $('p-aviso-conf').classList.add('oculto'); toast(`✅ Pedido ${p.codigo} confirmado: ya aparece en la Central`); }
@@ -1540,11 +1415,12 @@ async function enviarProforma(pid, btn) {
 // NUEVO / EDITAR PEDIDO
 // =====================================================================
 function nuevoForm(base = {}) {
+  ubisCli = []; if ($('f-ubis')) pintarUbisCli();
   st.f = {
     id: null, codigo: null, estado: null, canal: 'whatsapp', cliente_nombre: '', cliente_telefono: '', cliente_doc: '',
     fecha_entrega: '', hora_entrega: '', tipo_entrega: 'recojo', direccion: '', distrito: '', referencia: '',
     costo_delivery: '', notas: '', items: [], fotosBorrar: [], ubicacion_lat: null, ubicacion_lng: null, ubicacion_link: '',
-    delivery_modo: 'al_despachar', facturacion: 'normal', comprobante_modo: 'separados', delivery_costo_real: null, ocasion_tipo: '', ocasion_para: '', ocasion_fecha: '', ...base,
+    delivery_modo: 'al_despachar', facturacion: 'normal', delivery_costo_real: null, ocasion_tipo: '', ocasion_para: '', ocasion_fecha: '', ...base,
   };
   pintarForm();
 }
@@ -1563,10 +1439,10 @@ function pintarForm() {
   const esNuevoOCot = !f.id || f.estado === 'cotizado';
   const men = f.facturacion === 'mensual';
   $('b-cobrar-conf').classList.toggle('oculto', !esNuevoOCot || men);
-  // sin adelanto solo se confirma la facturación mensual al crédito; el resto necesita 50% pagado
+  // un pedido normal solo se confirma cobrando el adelanto; sin cobro solo se confirman los de factura mensual (crédito)
   $('b-confirmar').classList.toggle('oculto', esNuevoOCot && !men);
   $('b-confirmar').textContent = esNuevoOCot ? '✓ Confirmar pedido' : '💾 Guardar cambios';
-  $('b-confirmar').className = esNuevoOCot && !men ? 'btn-sec' : 'btn';
+  $('b-confirmar').className = 'btn' + (esNuevoOCot && !men ? ' oculto' : '');
   $('f-error').textContent = '';
   pintarItems();
 }
@@ -1607,7 +1483,6 @@ function pintarModoForm() {
   $('f-costo-w').classList.toggle('oculto', f.delivery_modo !== 'fijo');
   const men = f.facturacion === 'mensual';
   $('f-cmen-w').classList.toggle('oculto', !men);
-  $('f-comp-w').classList.toggle('oculto', men);
   if (men) {
     const l = st.cmen || [];
     $('f-cmen').innerHTML = '<option value="">— elegir —</option>' + l.filter(c => c.activo).map(c => `<option value="${c.ruc}" ${c.ruc === f.cliente_doc ? 'selected' : ''}>${esc(c.nombre_corto || c.razon_social)}</option>`).join('')
@@ -1637,6 +1512,7 @@ $('b-cobrar-conf').onclick = () => guardarPedido('cotizado', true);
 
 async function guardarPedido(estado, cobrar) {
   const f = st.f; $('f-error').textContent = '';
+  if (estado === 'confirmado' && (!f.id || f.estado === 'cotizado') && f.facturacion !== 'mensual') return $('f-error').textContent = 'Para confirmar el pedido cobra el adelanto (💵 Cobrar adelanto y confirmar).';
   if (!f.items.length) return $('f-error').textContent = 'Agrega al menos un producto.';
   if (estado !== 'cotizado' || cobrar) {
     if (!f.cliente_nombre.trim()) return $('f-error').textContent = 'Falta el nombre del cliente.';
@@ -1666,8 +1542,6 @@ async function guardarPedido(estado, cobrar) {
       const oc = await sb.from('pedidos_encargo').update({ ocasion_tipo: f.ocasion_tipo || (f.ocasion_fecha ? 'cumpleanos' : null), ocasion_para: f.ocasion_para || null, ocasion_fecha: f.ocasion_fecha || null }).eq('id', pid);
       if (oc.error) toast(/ocasion/.test(oc.error.message) ? 'Corre 51_crm.sql para guardar la ocasión' : errTxt(oc.error));
     }
-    const cm = await sb.from('pedidos_encargo').update({ comprobante_modo: f.facturacion === 'mensual' ? 'separados' : (f.comprobante_modo || 'separados') }).eq('id', pid);
-    if (cm.error) toast(/comprobante_modo/.test(cm.error.message) ? 'Corre 52_modo_comprobante.sql para guardar el tipo de comprobante' : errTxt(cm.error));
     if (ex.error && !/delivery_modo|facturacion/.test(ex.error.message)) throw ex.error;
     if (ex.error) toast('Corre 48_delivery_despacho_mensual.sql para guardar el modo del delivery');
     // fotos quitadas
@@ -1770,7 +1644,7 @@ async function editarPedido(id) {
     cliente_doc: d.cliente_doc || '', fecha_entrega: d.fecha_entrega || '', hora_entrega: (d.hora_entrega || '').slice(0, 5), tipo_entrega: d.tipo_entrega,
     direccion: d.direccion || '', distrito: d.distrito || '', referencia: d.referencia || '', costo_delivery: d.costo_delivery ?? '', notas: d.notas || '',
     ubicacion_lat: d.ubicacion_lat == null ? null : Number(d.ubicacion_lat), ubicacion_lng: d.ubicacion_lng == null ? null : Number(d.ubicacion_lng), ubicacion_link: d.ubicacion_link || '',
-    delivery_modo: d.delivery_modo || 'fijo', facturacion: d.facturacion || 'normal', comprobante_modo: d.comprobante_modo || 'separados', delivery_costo_real: d.delivery_costo_real ?? null,
+    delivery_modo: d.delivery_modo || 'fijo', facturacion: d.facturacion || 'normal', delivery_costo_real: d.delivery_costo_real ?? null,
     ocasion_tipo: d.ocasion_tipo || '', ocasion_para: d.ocasion_para || '', ocasion_fecha: d.ocasion_fecha || '',
     items: itemsDesde(d, false),
   });
@@ -1798,6 +1672,66 @@ function leerCoordenadas(texto) {
   for (const p of pats) { const m = t.match(p); if (m) { const lat = Number(m[1]), lng = Number(m[2]); if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng }; } }
   return null;
 }
+
+// ===================== DNI / RUC (RENIEC / SUNAT vía función consulta-doc) =====================
+const docCache = {};
+async function consultarDoc(n, silencioso) {
+  n = String(n || '').replace(/\D/g, '');
+  if (!/^(\d{8}|(10|15|17|20)\d{9})$/.test(n)) return null;
+  if (docCache[n]) return docCache[n];
+  try {
+    const { data, error } = await sb.functions.invoke('consulta-doc', { body: { numero: n } });
+    if (error || !data || !data.ok) { if (!silencioso) toast('No se encontró el ' + (n.length === 8 ? 'DNI' : 'RUC') + (data?.error ? ': ' + data.error : '')); return null; }
+    if (data.tipo === 'RUC' && data.estado && data.estado !== 'ACTIVO') toast(`⚠ RUC ${data.estado}${data.condicion ? ' · ' + data.condicion : ''}`);
+    return (docCache[n] = data);
+  } catch (e) { return null; }
+}
+// Nuevo pedido: al salir del DNI/RUC completa el nombre
+document.querySelector('#s-nuevo [data-k="cliente_doc"]').addEventListener('change', async e => {
+  const d = await consultarDoc(e.target.value); if (!d || !st.f) return;
+  const inp = document.querySelector('#s-nuevo [data-k="cliente_nombre"]');
+  if (!st.f.cliente_nombre.trim() || confirm(`¿Cambiar el nombre por "${d.nombre}"?`)) { st.f.cliente_nombre = d.nombre; inp.value = d.nombre; toast('Datos de ' + d.tipo + ' cargados'); }
+});
+// Cobro: al salir del DNI/RUC completa nombre / razón social
+$('p-docnum').addEventListener('change', async e => {
+  const d = await consultarDoc(e.target.value); if (!d) return;
+  $('p-nombre').value = d.nombre;
+  if (d.tipo === 'RUC' && d.agente_retencion && !$('p-ret').checked) { $('p-ret').checked = true; calcCobro(); toast('El cliente es agente de retención'); }
+});
+// Clientes mensuales: RUC → razón social, dirección y retención
+$('cm-ruc').addEventListener('change', async e => {
+  const d = await consultarDoc(e.target.value); if (!d || d.tipo !== 'RUC') return;
+  $('cm-razon').value = d.nombre;
+  if (!$('cm-dir').value && d.direccion) $('cm-dir').value = [d.direccion, d.distrito].filter(Boolean).join(', ');
+  $('cm-ret').checked = !!d.agente_retencion;
+});
+// Nuevo pedido: al escribir el celular, si el cliente ya existe en el CRM se completan sus datos y se muestran sus ubicaciones
+let ubisCli = [];
+document.querySelector('#s-nuevo [data-k="cliente_telefono"]').addEventListener('input', async e => {
+  const tel = e.target.value.replace(/\D/g, '').replace(/^51(?=9\d{8}$)/, '');
+  if (!/^9\d{8}$/.test(tel) || !st.f) { if (!tel) { ubisCli = []; pintarUbisCli(); } return; }
+  const c = await sb.from('crm_clientes').select('id,nombre,num_doc').eq('telefono', tel).maybeSingle();
+  if (c.error || !c.data) { ubisCli = []; return pintarUbisCli(); }
+  const f = st.f;
+  if (!f.cliente_nombre.trim()) { f.cliente_nombre = c.data.nombre; document.querySelector('#s-nuevo [data-k="cliente_nombre"]').value = c.data.nombre; }
+  if (!f.cliente_doc.trim() && c.data.num_doc) { f.cliente_doc = c.data.num_doc; document.querySelector('#s-nuevo [data-k="cliente_doc"]').value = c.data.num_doc; }
+  const u = await sb.from('crm_ubicaciones').select('*').eq('cliente_id', c.data.id).order('veces', { ascending: false }).order('ultima_vez', { ascending: false });
+  ubisCli = u.data || []; pintarUbisCli();
+  if (ubisCli.length) toast(`Cliente conocido: ${c.data.nombre} · ${ubisCli.length} ubicación(es) guardada(s)`);
+});
+function pintarUbisCli() {
+  const box = $('f-ubis');
+  box.classList.toggle('oculto', !ubisCli.length);
+  box.innerHTML = ubisCli.length ? `<label>📍 Ubicaciones guardadas del cliente (toca para usar)</label><div class="chips">${ubisCli.map((u, i) =>
+    `<button data-ubi="${i}" title="${esc(u.direccion || '')}">${esc(u.etiqueta || u.direccion || `${Number(u.lat).toFixed(4)}, ${Number(u.lng).toFixed(4)}`).slice(0, 40)}${u.veces > 1 ? ` · ${u.veces} veces` : ''}</button>`).join('')}</div>` : '';
+}
+$('f-ubis').onclick = e => {
+  const b = e.target.closest('[data-ubi]'); if (!b) return;
+  const u = ubisCli[Number(b.dataset.ubi)], f = st.f;
+  ['direccion', 'distrito', 'referencia'].forEach(k => { if (u[k]) { f[k] = u[k]; const i = document.querySelector(`#s-nuevo [data-k="${k}"]`); if (i) i.value = u[k]; } });
+  fijarUbicacion(Number(u.lat), Number(u.lng), u.link || null);
+  [...$('f-ubis').querySelectorAll('[data-ubi]')].forEach(x => x.classList.toggle('activa', x === b));
+};
 const st_map = { form: null, pin: null, grande: null, capa: null, datos: [] };
 function fijarUbicacion(lat, lng, link) {
   st.f.ubicacion_lat = Math.round(lat * 1e7) / 1e7; st.f.ubicacion_lng = Math.round(lng * 1e7) / 1e7;
@@ -2349,46 +2283,12 @@ function abrirCotizador(idx) {
     precio: it ? it.precio_unit : '', precioManual: !!it,
     fotosNuevas: [...(it?.fotosNuevas || [])], fotosExistentes: [...(it?.fotosExistentes || [])], fotosQuitadas: [],
   };
-  // modo: rápido (producto + detalle) o cotizar (base + componentes)
-  st.ib.modo = it ? ((cot.base || (cot.lineas || []).length) ? 'cotizar' : 'rapido') : 'rapido';
-  st.ib.prod = st.ib.modo === 'rapido' ? (it?.producto_id || null) : null;
-  $('c-error').textContent = ''; $('c-base').value = ''; $('c-ins').value = ''; $('c-prod').value = '';
+  $('c-error').textContent = ''; $('c-base').value = ''; $('c-ins').value = '';
   $('c-pers').value = st.ib.personalizacion; $('c-cant').value = st.ib.cantidad;
-  pintarChips(); pintarCot(); pintarFotosCot(); ponerModo(st.ib.modo);
+  pintarChips(); pintarCot(); pintarFotosCot();
   $('m-cot').classList.remove('oculto');
-  setTimeout(() => (st.ib.modo === 'rapido' ? (st.ib.prod ? $('c-pers') : $('c-prod')) : st.ib.base ? $('c-pers') : $('c-base')).focus(), 50);
+  setTimeout(() => (st.ib.base ? $('c-pers') : $('c-base')).focus(), 50);
 }
-function ponerModo(m) {
-  const ib = st.ib; ib.modo = m; const r = m === 'rapido';
-  [...$('c-modo').children].forEach(b => b.classList.toggle('activa', b.dataset.m === m));
-  $('c-rapido').classList.toggle('oculto', !r); $('c-cotizar').classList.toggle('oculto', r);
-  $('c-calc').classList.toggle('oculto', r); $('c-calc-r').classList.toggle('oculto', !r); $('c-fcreal').classList.toggle('oculto', r);
-  $('c-titulo').textContent = r ? '⚡ Producto rápido' : '🧮 Cotizar producto';
-  $('c-desc-l').textContent = r ? 'Producto (la ve producción)' : 'Descripción (la ve producción)';
-  $('c-pers-l').textContent = r ? 'Detalle / observaciones para producción' : 'Personalización para producción';
-  $('c-pers').placeholder = r ? 'Ej. Queque de vainilla, 2 pisos, relleno manjar y fresa, cobertura chantilly, colores rosado y dorado, dedicatoria "Feliz 15 Ana"' : 'Dedicatoria, colores, tema, diseño…';
-  $('c-pers').rows = r ? 4 : 2;
-  if (r) pintarRapido(); else pintarCot();
-}
-$('c-modo').onclick = e => { const b = e.target.closest('[data-m]'); if (b && st.ib) ponerModo(b.dataset.m); };
-function pintarRapido() {
-  const ib = st.ib, p = ib.prod ? st.prodMap[ib.prod] : null;
-  $('c-prod-info').innerHTML = p
-    ? `Producto: <b>${esc(p.nombre)}</b>${p.codigo ? ' · ' + esc(p.codigo) : ''}${p.precio_venta ? ` · precio de carta <b>${S(p.precio_venta)}</b>` : ' · sin precio en carta'} <a href="#" id="c-quitar-prod">quitar</a>`
-    : 'Elige un producto de la carta o escribe el nombre directo en “Producto”.';
-  if (p) $('c-quitar-prod').onclick = ev => { ev.preventDefault(); ib.prod = null; pintarRapido(); };
-  $('c-desc').value = ib.descripcion || '';
-  $('c-precio').value = ib.precio === '' || ib.precio == null ? '' : ib.precio;
-  const c = p ? costoDe(p.id) : null;
-  $('c-calc-r').innerHTML = `<div class="k"><span>Pedido rápido</span><b>${p ? esc(p.codigo || '') : 'libre'}</b></div>
-    <div class="ayuda" style="margin:6px 0 0">Sin cotizar: el precio es el de carta o el que acuerdes con el cliente. Producción ve el producto, el detalle y las fotos.${c != null ? `<br>Costo registrado del producto: <b>${S(c)}</b>/und.` : ''}</div>`;
-}
-buscador($('c-prod'), $('c-pres'), p => ['producto_terminado', 'plato', 'mercaderia', 'intermedio'].includes(p.tipo_item), id => {
-  const ib = st.ib, p = st.prodMap[id];
-  ib.prod = id; ib.descripcion = p.nombre; ib.descAuto = false;
-  if (!ib.precioManual && p.precio_venta) ib.precio = Number(p.precio_venta);
-  pintarRapido(); $('c-pers').focus();
-});
 function cerrarCot() { $('m-cot').classList.add('oculto'); st.ib = null; }
 $('c-cerrar').onclick = cerrarCot;
 
@@ -2539,22 +2439,7 @@ $('c-drop').addEventListener('drop', e => agregarFotos(e.dataTransfer.files));
 document.addEventListener('paste', e => { if (!st.ib || $('m-cot').classList.contains('oculto')) return; const fs = [...(e.clipboardData?.files || [])]; if (fs.length) { e.preventDefault(); agregarFotos(fs); toast('Foto pegada'); } });
 
 $('c-ok').onclick = () => {
-  const ib = st.ib; $('c-error').textContent = '';
-  if (ib.modo === 'rapido') {
-    const desc = ($('c-desc').value || '').trim(); if (!desc) return $('c-error').textContent = 'Elige el producto o escribe su nombre.';
-    const precio = Number($('c-precio').value || 0); if (!(precio > 0)) return $('c-error').textContent = 'Pon el precio por unidad.';
-    const cu = ib.prod ? costoDe(ib.prod) : null;
-    const item = {
-      producto_id: ib.prod || null, descripcion: desc, personalizacion: (ib.personalizacion || '').trim(),
-      cantidad: Math.max(1, Number($('c-cant').value || 1)), precio_unit: r2(precio), costo_unit: cu != null && cu > 0 ? Math.round(cu * 10000) / 10000 : null,
-      cotizacion: { modo: 'rapido', fecha: dias(0) },
-      fotosNuevas: ib.fotosNuevas, fotosExistentes: ib.fotosExistentes,
-    };
-    ib.fotosQuitadas.forEach(x => st.f.fotosBorrar.push(x));
-    if (ib.idx != null) st.f.items[ib.idx] = item; else st.f.items.push(item);
-    return cerrarCot(), pintarItems();
-  }
-  const k = calcCot();
+  const ib = st.ib, k = calcCot(); $('c-error').textContent = '';
   if (!ib.base && !ib.lineas.length) return $('c-error').textContent = 'Elige una base o agrega al menos un componente.';
   if (ib.lineas.some(l => l.tipo === 'insumo' && !(Number(l.cantidad) > 0))) return $('c-error').textContent = 'Cada insumo suelto necesita cantidad.';
   if (ib.lineas.some(l => l.tipo === 'otro' && (!l.nombre.trim() || !(Number(l.monto) > 0)))) return $('c-error').textContent = 'Completa nombre y monto de “otro costo”.';
@@ -2577,11 +2462,7 @@ $('c-ok').onclick = () => {
 // =====================================================================
 async function cargarHist() {
   $('h-lista').innerHTML = '<div class="vacio">Cargando…</div>';
-  const [{ data, error }, web] = await Promise.all([
-    sb.from('pedidos_encargo').select('*, pedidos_encargo_items(*), pedidos_encargo_fotos(id,item_orden,ruta)').order('creado_en', { ascending: false }).limit(400),
-    sb.from('pedidos_web').select('*, pedidos_web_items(nombre,cantidad,precio)').order('creado_en', { ascending: false }).limit(400),
-  ]);
-  st.histWeb = web.error ? [] : (web.data || []);
+  const { data, error } = await sb.from('pedidos_encargo').select('*, pedidos_encargo_items(*), pedidos_encargo_fotos(id,item_orden,ruta)').order('creado_en', { ascending: false }).limit(400);
   if (error) return $('h-lista').innerHTML = `<div class="vacio">${/pedidos_encargo/.test(error.message) ? 'Falta correr el script <b>40_pedidos_encargo.sql</b> en Supabase.' : esc(errTxt(error))}</div>`;
   st.hist = data || [];
   // pagado de cada pedido (comprobantes emitidos + pagos sin comprobante)
@@ -2601,23 +2482,14 @@ async function cargarHist() {
 }
 function pintarHist() {
   const q = $('h-q').value.trim().toLowerCase();
-  // pedidos web: solo lectura, mezclados con los de WhatsApp/tienda por fecha de registro
-  const webs = (st.htipo === 'cotizado' ? [] : (st.histWeb || [])).filter(p => {
-    if (st.htipo === 'pedidos' && p.estado === 'anulado') return false;
-    if (!q) return true;
-    const txt = [p.codigo, p.cliente_nombre, p.cliente_telefono, ...(p.pedidos_web_items || []).map(i => i.nombre)].join(' ').toLowerCase();
-    return q.split(/\s+/).every(w => txt.includes(w));
-  }).map(p => ({ ...p, _web: true }));
-  const encs = st.hist.filter(p => {
+  const l = st.hist.filter(p => {
     if (st.htipo === 'cotizado' && p.estado !== 'cotizado') return false;
     if (st.htipo === 'pedidos' && ['cotizado', 'anulado'].includes(p.estado)) return false;
     if (!q) return true;
     const txt = [p.codigo, p.cliente_nombre, p.cliente_telefono, ...(p.pedidos_encargo_items || []).flatMap(i => [i.descripcion, i.personalizacion])].join(' ').toLowerCase();
     return q.split(/\s+/).every(w => txt.includes(w));
   });
-  const l = [...encs, ...webs].sort((a, b) => String(b.creado_en).localeCompare(String(a.creado_en)));
   $('h-lista').innerHTML = l.length ? l.map(p => {
-    if (p._web) return tarjetaHistWeb(p);
     const its = (p.pedidos_encargo_items || []).sort((a, b) => a.orden - b.orden);
     const foto = (p.pedidos_encargo_fotos || [])[0];
     const esPed = !['cotizado', 'anulado'].includes(p.estado);
@@ -2625,31 +2497,22 @@ function pintarHist() {
     const pag = r2((st.hpag || {})[p.codigo] || 0), sal = Math.max(r2(totalP - pag), 0);
     return `<div class="h-item">
       ${foto && st.urls[foto.ruta] ? `<img class="ph" src="${st.urls[foto.ruta]}" data-zoom="${esc(st.urls[foto.ruta])}" alt="">` : '<div class="ph">🎂</div>'}
-      <div><div class="t">${esc(p.codigo)}${p.fecha_entrega ? `<span class="h-ent">📅 ${fechaCorta(p.fecha_entrega)}${p.hora_entrega ? ' · ' + horaCorta(p.hora_entrega) : ''}</span>` : ''}<span class="est ${p.estado}">${ESTADOS[p.estado]}</span></div>
-        <div class="meta">${esc(p.cliente_nombre || 'Sin nombre')}${p.cliente_telefono ? ' · ' + esc(p.cliente_telefono) : ''}${p.fecha_entrega ? '' : ' · registrado ' + new Date(p.creado_en).toLocaleDateString('es-PE')} · Total ${S(totalP)}</div>
+      <div><div class="t">${esc(p.codigo)}<span class="est ${p.estado}">${ESTADOS[p.estado]}</span></div>
+        <div class="meta">${esc(p.cliente_nombre || 'Sin nombre')}${p.cliente_telefono ? ' · ' + esc(p.cliente_telefono) : ''} · ${p.fecha_entrega ? 'entrega ' + fechaCorta(p.fecha_entrega) : 'registrado ' + new Date(p.creado_en).toLocaleDateString('es-PE')} · Total ${S(totalP)}</div>
         ${esPed ? `<div class="meta" style="font-weight:700">Pagado <span style="color:var(--ok)">${S(pag)}</span> · Saldo <span style="color:${sal > 0 ? 'var(--mal)' : 'var(--ok)'}">${sal > 0 ? S(sal) : 'S/ 0.00 ✓'}</span></div>` : ''}
-        <ul>${its.map(i => `<li>${Number(i.cantidad)} × ${esc(i.descripcion)} — ${S(i.precio_unit)} c/u${i.personalizacion ? ` <small style="color:#7a5300">✏️ ${esc(i.personalizacion)}</small>` : ''}</li>`).join('')}</ul></div>
+        <ul>${its.map(i => {
+          const hoy = costoCotizacion(i.cotizacion), antes = i.costo_unit == null ? null : Number(i.costo_unit);
+          const cmp = hoy && hoy.total > 0 && antes ? (() => { const d = (hoy.total - antes) / antes * 100; const sug = sugerido(hoy.total, FC_MED); return `<div class="cmp">Costo entonces ${S(antes)} → hoy ${S(hoy.total)} <b style="color:${Math.abs(d) < 3 ? 'var(--gris)' : d > 0 ? 'var(--mal)' : 'var(--ok)'}">(${d > 0 ? '+' : ''}${d.toFixed(1)}%)</b> · precio sugerido hoy S/ ${sug}</div>`; })() : '';
+          return `<li>${Number(i.cantidad)} × ${esc(i.descripcion)} — ${S(i.precio_unit)} c/u${i.personalizacion ? ` <small style="color:#7a5300">✏️ ${esc(i.personalizacion)}</small>` : ''}${cmp}</li>`;
+        }).join('')}</ul></div>
       <div class="bot">
         ${esPed ? `<button class="btn" data-hpago="${p.id}">${sal > 0 ? '💵 Cobrar saldo' : '💵 Comprobantes'}</button>` : ''}
         <button class="${esPed ? 'btn-sec' : 'btn'}" data-base="${p.id}">⧉ Usar como base</button>
-        ${p.estado !== 'anulado' ? `<button class="btn-wa" data-hwa="${p.id}">💬 Enviar por WhatsApp</button><button class="btn-sec" data-hprofd="${p.id}">📥 Descargar proforma</button>` : ''}
+        ${p.estado !== 'anulado' ? `<button class="btn-wa" data-hwa="${p.id}">💬 Enviar por WhatsApp</button><button class="btn-wa" data-hprof="${p.id}">📄 Enviar proforma</button><button class="btn-sec" data-hprofd="${p.id}">📥 Descargar proforma</button>` : ''}
         ${!['entregado', 'anulado'].includes(p.estado) ? `<button class="btn-sec" data-heditar="${p.id}">${p.estado === 'cotizado' ? '✓ Confirmar / editar' : '✏️ Editar'}</button>` : ''}
         ${p.estado === 'cotizado' ? `<button class="btn-sec" data-hanular="${p.id}">✕ Descartar</button>` : ''}
       </div></div>`;
   }).join('') : '<div class="vacio">Sin resultados. El historial se arma solo con los pedidos y cotizaciones que registres.</div>';
-}
-function tarjetaHistWeb(p) {
-  const its = p.pedidos_web_items || [];
-  const totalP = Number(p.total_productos || 0) + (p.tipo_entrega === 'delivery' ? Number(p.costo_delivery || 0) : 0);
-  const pag = p.pago_validado ? Number(p.total_productos || 0) + (p.delivery_incluido ? Number(p.costo_delivery || 0) : 0) : 0, sal = Math.max(r2(totalP - pag), 0);
-  const tel = (p.cliente_telefono || '').replace(/\D/g, '');
-  return `<div class="h-item">
-    <div class="ph">🌐</div>
-    <div><div class="t">${esc(p.codigo)}${p.fecha_entrega ? `<span class="h-ent">📅 ${fechaCorta(p.fecha_entrega)}${p.hora_entrega ? ' · ' + horaCorta(p.hora_entrega) : ''}</span>` : ''}<span class="est ${p.estado}">${ESTADOS[p.estado] || p.estado}</span> <span class="tag origen" style="font-size:11px">🌐 Web</span></div>
-      <div class="meta">${esc(p.cliente_nombre || 'Sin nombre')}${p.cliente_telefono ? ' · ' + esc(p.cliente_telefono) : ''} · ${p.tipo_entrega === 'delivery' ? '🛵 Delivery' : '🏬 Recojo'} · Total ${S(totalP)}</div>
-      ${p.estado !== 'anulado' ? `<div class="meta" style="font-weight:700">Pagado <span style="color:var(--ok)">${S(pag)}</span> · Saldo <span style="color:${sal > 0 ? 'var(--mal)' : 'var(--ok)'}">${sal > 0 ? S(sal) : 'S/ 0.00 ✓'}</span>${p.yape_operacion ? ` · Yape op. ${esc(p.yape_operacion)}` : ''}</div>` : ''}
-      <ul>${its.map(i => `<li>${Number(i.cantidad)} × ${esc(i.nombre)} — ${S(i.precio)} c/u</li>`).join('')}</ul></div>
-    <div class="bot">${tel ? `<a class="btn-wa" style="text-align:center;text-decoration:none;padding:9px 14px;border-radius:8px" href="https://wa.me/51${tel}" target="_blank" rel="noopener">💬 Escribir por WhatsApp</a>` : ''}</div></div>`;
 }
 $('h-q').oninput = pintarHist;
 $('h-tipos').onclick = e => { const b = e.target.closest('[data-k]'); if (!b) return; st.htipo = b.dataset.k; [...$('h-tipos').children].forEach(x => x.classList.toggle('activa', x === b)); pintarHist(); };
