@@ -247,7 +247,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
     </div>
     <span class="vivo" id="vivo">● conectando</span>
     <span class="usr" id="usr" title="Cambiar de usuario"></span>
-    <span style="font-size:11px;opacity:.7" title="Versión de la app">v23.10-m</span>
+    <span style="font-size:11px;opacity:.7" title="Versión de la app">v23.10-l</span>
   </div>
 
   <!-- ===== CENTRAL ===== -->
@@ -332,7 +332,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
         <div class="acciones-form">
           <button class="btn-sec" id="b-limpiar">Limpiar</button>
           <button class="btn-sec" id="b-cotizacion">💾 Guardar como cotización</button>
-          <button class="btn oculto" id="b-confirmar">✓ Confirmar pedido</button>
+          <button class="btn-sec" id="b-confirmar">✓ Confirmar sin adelanto</button>
           <button class="btn" id="b-cobrar-conf">💵 Cobrar adelanto y confirmar</button>
         </div>
         <div class="error" id="f-error" style="text-align:right"></div>
@@ -1439,10 +1439,8 @@ function pintarForm() {
   const esNuevoOCot = !f.id || f.estado === 'cotizado';
   const men = f.facturacion === 'mensual';
   $('b-cobrar-conf').classList.toggle('oculto', !esNuevoOCot || men);
-  // un pedido normal solo se confirma cobrando el adelanto; sin cobro solo se confirman los de factura mensual (crédito)
-  $('b-confirmar').classList.toggle('oculto', esNuevoOCot && !men);
-  $('b-confirmar').textContent = esNuevoOCot ? '✓ Confirmar pedido' : '💾 Guardar cambios';
-  $('b-confirmar').className = 'btn' + (esNuevoOCot && !men ? ' oculto' : '');
+  $('b-confirmar').textContent = esNuevoOCot ? (men ? '✓ Confirmar pedido' : '✓ Confirmar sin adelanto') : '💾 Guardar cambios';
+  $('b-confirmar').className = esNuevoOCot && !men ? 'btn-sec' : 'btn';
   $('f-error').textContent = '';
   pintarItems();
 }
@@ -1512,7 +1510,6 @@ $('b-cobrar-conf').onclick = () => guardarPedido('cotizado', true);
 
 async function guardarPedido(estado, cobrar) {
   const f = st.f; $('f-error').textContent = '';
-  if (estado === 'confirmado' && (!f.id || f.estado === 'cotizado') && f.facturacion !== 'mensual') return $('f-error').textContent = 'Para confirmar el pedido cobra el adelanto (💵 Cobrar adelanto y confirmar).';
   if (!f.items.length) return $('f-error').textContent = 'Agrega al menos un producto.';
   if (estado !== 'cotizado' || cobrar) {
     if (!f.cliente_nombre.trim()) return $('f-error').textContent = 'Falta el nombre del cliente.';
