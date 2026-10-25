@@ -59,6 +59,24 @@ input,select{font:inherit;padding:10px 12px;border:1px solid var(--borde);border
 .b-listo{background:var(--verde);color:#fff}
 .b-entregar{background:#fff;color:#000}
 .vacio{grid-column:1/-1;text-align:center;color:var(--gris);font-size:20px;padding:80px 16px}
+/* vista dividida: cola a la izquierda, consolidado a la derecha */
+.zona{display:block}
+.zona.dividida{display:grid;grid-template-columns:1fr 1fr;height:calc(100vh - 56px)}
+.zona.dividida .tablero{overflow:auto;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.conso{display:none;border-left:3px solid #000;background:#1a1a1a;overflow:auto;padding:14px}
+.zona.dividida .conso{display:block}
+.conso h2{margin:0 0 4px;font-size:18px;color:var(--gris);text-transform:uppercase;letter-spacing:.5px}
+.conso .ayuda{color:#777;font-size:13px;margin-bottom:12px}
+.tanda{background:var(--tarjeta);border-radius:14px;padding:12px 14px;margin-bottom:10px;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;border-left:8px solid var(--azul)}
+.tanda.prep{border-left-color:var(--ambar)}
+.tanda .q{font-size:38px;font-weight:900;min-width:64px;text-align:center}
+.tanda .n{font-size:22px;font-weight:700;line-height:1.2}
+.tanda .nota{display:inline-block;margin-top:4px;background:var(--ambar);color:#000;font-weight:700;font-size:14px;padding:2px 8px;border-radius:6px}
+.tanda .de{color:var(--gris);font-size:14px;margin-top:4px}
+.tanda .ventana{font-size:12px;color:#7ee2a0;margin-top:2px}
+.tanda .bt{display:flex;flex-direction:column;gap:6px}
+.tanda .bt button{padding:12px 14px;font-weight:800;font-size:15px;min-width:130px}
+.b-prep{background:var(--ambar);color:#000}
 
 #comanda{display:none}
 @media print{
@@ -98,10 +116,18 @@ input,select{font:inherit;padding:10px 12px;border:1px solid var(--borde);border
   <div class="barra">
     <span class="logo">COCINA</span>
     <span class="info" id="b-info"></span>
+    <label class="toggle"><input type="checkbox" id="conso"> Consolidado</label>
     <label class="toggle"><input type="checkbox" id="imprimir"> Imprimir comandas</label>
     <span class="chip ok" id="b-red">En vivo</span>
   </div>
-  <div class="tablero" id="tablero"></div>
+  <div class="zona" id="zona">
+    <div class="tablero" id="tablero"></div>
+    <div class="conso" id="conso-panel">
+      <h2>Consolidado · hacer en una sola tanda</h2>
+      <div class="ayuda">Junta los mismos productos con la misma observación que llegaron dentro de 5 minutos. Al marcar "Preparando", la tanda se cierra: lo que llegue después va en una tanda nueva.</div>
+      <div id="tandas"></div>
+    </div>
+  </div>
 </section>
 
 <div id="comanda"></div>
@@ -154,6 +180,8 @@ function arrancar() {
   vista('v-tablero');
   $('b-info').textContent = st.disp.nombre;
   $('imprimir').checked = leer('imprimir') ?? !!st.disp.imprime_comanda;
+  $('conso').checked = leer('consolidado') ?? true;
+  $('zona').classList.toggle('dividida', $('conso').checked);
   cargar();
   sb.channel('cocina')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'pedido_items' }, () => cargar())
@@ -161,6 +189,7 @@ function arrancar() {
   setInterval(cargar, 15000);       // respaldo por si se corta el tiempo real
   setInterval(dibujar, 30000);      // actualiza los minutos
 }
+$('conso').onchange = () => { guardar('consolidado', $('conso').checked); $('zona').classList.toggle('dividida', $('conso').checked); dibujar(); };
 $('imprimir').onchange = () => {
   guardar('imprimir', $('imprimir').checked);
   sb.from('dispositivos').update({ imprime_comanda: $('imprimir').checked }).eq('id', st.disp.id).then(() => {});
@@ -198,9 +227,51 @@ function agrupar() {
   return [...g.values()].sort((a, b) => a.desde.localeCompare(b.desde));
 }
 function titulo(p) { return p.tipo === 'mesa' ? esc(p.mesa) : p.tipo === 'llevar' ? 'Para llevar' : p.tipo === 'encargo' ? 'Encargo' : 'Mostrador'; }
+// ===== CONSOLIDADO =====
+// Tanda = mismo producto + misma observación (del producto y de la orden), llegados dentro de 5 min desde el primero.
+// Si la tanda ya está "preparando", lo que llega después abre una tanda nueva (no se puede sumar a algo que ya está en marcha).
+const VENTANA_MIN = 5;
+const normObs = t => String(t || '').trim().toLowerCase().replace(/\s+/g, ' ');
+function tandas() {
+  const lista = st.items.filter(i => i.estado_cocina === 'pendiente' || i.estado_cocina === 'preparando')
+    .slice().sort((a, b) => a.enviado_en.localeCompare(b.enviado_en));
+  const abiertas = new Map(), out = [];
+  lista.forEach(i => {
+    const clave = [i.producto, normObs(i.nota), normObs(i.obs_envio)].join('|');
+    const t0 = new Date(i.enviado_en).getTime();
+    let t = abiertas.get(clave);
+    const cabe = t && t0 - t.inicio <= VENTANA_MIN * 60000 && (t.prep ? i.estado_cocina === 'preparando' : i.estado_cocina === 'pendiente');
+    if (!cabe) { t = { clave, producto: i.producto, nota: i.nota, obs: i.obs_envio, inicio: t0, prep: i.estado_cocina === 'preparando', items: [] }; abiertas.set(clave, t); out.push(t); }
+    t.items.push(i);
+  });
+  return out;
+}
+function dibujarTandas() {
+  if (!$('conso').checked) return;
+  const ts = tandas();
+  $('tandas').innerHTML = ts.length ? ts.map((t, k) => {
+    const q = t.items.reduce((a, i) => a + Number(i.cantidad), 0);
+    const de = [...new Set(t.items.map(i => titulo(i)))].join(', ');
+    const resta = Math.ceil((t.inicio + VENTANA_MIN * 60000 - Date.now()) / 60000);
+    return `<div class="tanda ${t.prep ? 'prep' : ''}">
+      <span class="q">${q}</span>
+      <span><span class="n">${esc(t.producto)}</span>${t.nota ? `<br><span class="nota">${esc(t.nota)}</span>` : ''}${t.obs ? `<br><span class="nota">📝 ${esc(t.obs)}</span>` : ''}
+        <div class="de">${de} · hace ${Math.max(0, Math.floor((Date.now() - t.inicio) / 60000))} min</div>
+        ${!t.prep && resta > 0 ? `<div class="ventana">abierta ${resta} min más para sumar pedidos iguales</div>` : ''}</span>
+      <span class="bt">${t.prep ? '' : `<button class="b-prep" data-tprep="${k}">Preparando</button>`}<button class="b-listo" data-tlisto="${k}">Listo</button></span></div>`;
+  }).join('') : '<div class="vacio" style="padding:40px 10px">Nada pendiente</div>';
+  st.tandasActuales = ts;
+}
+$('tandas').onclick = e => {
+  const p = e.target.dataset.tprep, l = e.target.dataset.tlisto;
+  const t = st.tandasActuales && st.tandasActuales[Number(p ?? l)]; if (!t) return;
+  cambiar(t.items.map(i => i.id), p != null ? 'preparando' : 'listo');
+};
 function dibujar() {
+  dibujarTandas();
   const pedidos = agrupar();
   if (!pedidos.length) { $('tablero').innerHTML = '<div class="vacio">Sin pedidos pendientes 👌</div>'; return; }
+  // en la cola: el pedido más antiguo primero (orden de llegada)
   $('tablero').innerHTML = pedidos.map(p => {
     const min = Math.max(0, Math.floor((Date.now() - new Date(p.desde)) / 60000));
     const todosListos = p.items.every(i => i.estado_cocina === 'listo');
