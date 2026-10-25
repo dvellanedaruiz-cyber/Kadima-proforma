@@ -56,6 +56,10 @@
   .card { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; background: #fff; }
   .card-photo { aspect-ratio: 4/3; background: #f5ede1; position: relative; overflow: hidden; }
   .card-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .badge-tienda { position: absolute; left: 8px; top: 8px; background: #1e7d3a; color: #fff; font-size: 12px; font-weight: 600; padding: 4px 9px; border-radius: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .cat-btn.tienda { border-color: #1e7d3a; color: #1e7d3a; }
+  .cat-btn.tienda.active { background: #1e7d3a; color: #fff; }
+  .aviso-anticipo { font-size: 13px; color: var(--muted-2); margin: 4px 0 0; }
   .card-photo .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-size: 44px; color: #c9b08c; }
   .card-body { padding: 14px 16px 16px; display: flex; flex-direction: column; flex: 1; }
   .card-cat { font-size: 12px; color: var(--muted-2); text-transform: uppercase; letter-spacing: .5px; }
@@ -242,6 +246,7 @@
       <div class="field">
         <label for="fecha" id="lbl-fecha">Fecha de recojo</label>
         <input type="date" id="fecha" required>
+        <p class="aviso-anticipo">Preparamos tu pedido con mínimo 20 horas de anticipación.</p>
       </div>
       <div class="field">
         <label for="hora" id="lbl-hora">Hora de recojo</label>
@@ -405,8 +410,7 @@
     // Horarios de recojo / entrega
     STORE_OPEN_HOUR: 8,        // primera hora disponible
     STORE_CLOSE_HOUR: 22,      // última hora disponible
-    MIN_LEAD_HOURS: 2,         // horas mínimas de anticipación
-    SAME_DAY_CUTOFF_HOUR: 13,  // después de esta hora, se entrega desde mañana
+    MIN_LEAD_HOURS: 20,        // horas mínimas de anticipación (el servidor también lo valida)
     MAX_DAYS_AHEAD: 30,        // hasta cuántos días adelante se puede pedir
   };
 
@@ -436,19 +440,23 @@
       $('grid').innerHTML = '<div class="estado-carga">No pudimos cargar los productos. Revisa tu conexión y recarga la página.</div>';
       return;
     }
-    PRODUCTOS = (data || []).map(p => ({ ...p, precio: Number(p.precio), categoria: p.categoria || 'Otros' }));
+    PRODUCTOS = (data || []).map(p => ({ ...p, precio: Number(p.precio), categoria: p.categoria || 'Otros', en_tienda: Number(p.en_tienda || 0) }));
+    if (PRODUCTOS.some(p => p.en_tienda > 0)) categoria = EN_TIENDA;
     // el carrito guardado solo conserva productos que siguen disponibles
     const previo = leer('carrito') || {};
     Object.entries(previo).forEach(([id, q]) => { if (PRODUCTOS.some(p => p.id == id) && q > 0) cart[id] = Math.min(99, q); });
   }
 
+  const EN_TIENDA = 'Disponible en tienda';
   function pintarCategorias() {
-    const cats = ['Todos', ...new Set(PRODUCTOS.map(p => p.categoria))];
-    $('cats').innerHTML = cats.map(c => `<button class="cat-btn ${c === categoria ? 'active' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('');
+    const hay = PRODUCTOS.some(p => p.en_tienda > 0);
+    if (!hay && categoria === EN_TIENDA) categoria = 'Todos';
+    const cats = [...(hay ? [EN_TIENDA] : []), 'Todos', ...new Set(PRODUCTOS.map(p => p.categoria))];
+    $('cats').innerHTML = cats.map(c => `<button class="cat-btn ${c === EN_TIENDA ? 'tienda' : ''} ${c === categoria ? 'active' : ''}" data-cat="${esc(c)}">${c === EN_TIENDA ? '🟢 ' : ''}${esc(c)}</button>`).join('');
   }
 
   function pintarGrid() {
-    let lista = categoria === 'Todos' ? PRODUCTOS : PRODUCTOS.filter(p => p.categoria === categoria);
+    let lista = categoria === 'Todos' ? PRODUCTOS : categoria === EN_TIENDA ? PRODUCTOS.filter(p => p.en_tienda > 0) : PRODUCTOS.filter(p => p.categoria === categoria);
     if (busqueda) lista = lista.filter(p => (p.nombre + ' ' + (p.descripcion || '')).toLowerCase().includes(busqueda));
     if (!PRODUCTOS.length) { $('grid').innerHTML = '<div class="estado-carga">Pronto tendremos productos disponibles aquí.</div>'; return; }
     if (!lista.length) { $('grid').innerHTML = '<div class="estado-carga">No encontramos productos con esa búsqueda.</div>'; return; }
@@ -456,6 +464,7 @@
       <div class="card">
         <div class="card-photo">
           ${p.imagen ? `<img src="${esc(p.imagen)}" alt="${esc(p.nombre)}" loading="lazy">` : `<div class="ph">${esc(p.nombre.charAt(0))}</div>`}
+          ${p.en_tienda > 0 ? `<span class="badge-tienda">En tienda: ${p.en_tienda}</span>` : ''}
         </div>
         <div class="card-body">
           <div class="card-cat">${esc(p.categoria)}</div>
@@ -560,17 +569,20 @@
   const pad2 = n => String(n).padStart(2, '0');
   const fechaStr = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 
+  // hora de Lima de un día + minuto, como instante real (no depende de la zona del celular)
+  const instanteLima = (fecha, m) => new Date(`${fecha}T${pad2(Math.floor(m / 60))}:${pad2(m % 60)}:00-05:00`).getTime();
+  const fechaLima = t => new Date(t).toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+  const minimo = () => Date.now() + CONFIG.MIN_LEAD_HOURS * 3600e3 + 5 * 60e3;   // +5 min de margen para llenar el formulario
+
   function primeraFecha() {
-    const d = new Date();
-    if (d.getHours() >= CONFIG.SAME_DAY_CUTOFF_HOUR) d.setDate(d.getDate() + 1);
-    return fechaStr(d);
+    const d = new Date(minimo());
+    for (let i = 0; i < 3; i++) { const f = fechaLima(d.getTime() + i * 864e5); if (horarios(f).length) return f; }
+    return fechaLima(d.getTime() + 864e5);
   }
 
   function horarios(fecha) {
-    const ahora = new Date();
-    const desde = fecha === fechaStr(ahora) ? ahora.getHours() * 60 + ahora.getMinutes() + CONFIG.MIN_LEAD_HOURS * 60 : -1;
-    const lista = [];
-    for (let m = CONFIG.STORE_OPEN_HOUR * 60; m <= CONFIG.STORE_CLOSE_HOUR * 60; m += 30) if (m >= desde) lista.push(m);
+    const min = minimo(), lista = [];
+    for (let m = CONFIG.STORE_OPEN_HOUR * 60; m <= CONFIG.STORE_CLOSE_HOUR * 60; m += 30) if (instanteLima(fecha, m) >= min) lista.push(m);
     return lista;
   }
   const hhmm = m => `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`;

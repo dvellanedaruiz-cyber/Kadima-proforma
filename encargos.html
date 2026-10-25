@@ -830,7 +830,7 @@ function filtrarRango(q, campoEstado = 'estado') {
 
 async function cargarCentral() {
   const tareas = [];
-  if (st.origen !== 'enc') tareas.push(filtrarRango(sb.from('pedidos_web').select('*, pedidos_web_items(nombre,cantidad,precio)').neq('estado', 'anulado')));
+  if (st.origen !== 'enc') tareas.push(filtrarRango(sb.from('pedidos_web').select('*, pedidos_web_items(nombre,cantidad,precio,de_tienda,tienda_estado)').neq('estado', 'anulado')));
   else tareas.push(Promise.resolve({ data: [] }));
   if (st.origen !== 'web') tareas.push(filtrarRango(sb.from('pedidos_encargo')
     .select('*, pedidos_encargo_items(*), pedidos_encargo_fotos(id,item_orden,ruta), pedidos_encargo_pagos(id,tipo,metodo,monto,operacion,creado_en,registrado_por)')
@@ -863,7 +863,7 @@ function normWeb(p) {
     key: 'w' + p.id, origen: 'web', id: p.id, codigo: p.codigo, estado: p.estado, fecha: p.fecha_entrega, hora: p.hora_entrega,
     tipo_entrega: p.tipo_entrega, cliente: p.cliente_nombre, tel: p.cliente_telefono, direccion: p.direccion, distrito: p.distrito,
     referencia: p.referencia, lat: p.ubicacion_lat, lng: p.ubicacion_lng, notas: p.notas, creado_en: p.creado_en,
-    items: (p.pedidos_web_items || []).map(i => ({ desc: i.nombre, cant: i.cantidad, pers: '', fotos: [] })),
+    items: (p.pedidos_web_items || []).map(i => ({ desc: i.nombre + (Number(i.de_tienda) > 0 && i.tienda_estado ? ({ validar: ` · 🟢 ${Number(i.de_tienda)} de tienda (por validar)`, despachado: ` · ✓ ${Number(i.de_tienda)} salieron de tienda`, producir: ' · se produce (tienda no óptima)' })[i.tienda_estado] || '' : ''), cant: i.cantidad, pers: '', fotos: [] })),
     total: Number(p.total_productos || 0), delivery: p.costo_delivery, pagado: p.pago_validado ? Number(p.total_productos || 0) + (p.delivery_incluido ? Number(p.costo_delivery || 0) : 0) : 0,
     yape_op: p.yape_operacion, pago_validado: p.pago_validado, delivIncl: !!p.delivery_incluido, real: p.delivery_costo_real,
     modo: p.delivery_modo || (p.delivery_incluido ? 'fijo' : 'al_despachar'), raw: p,

@@ -92,6 +92,12 @@ input{font:inherit;padding:10px;border:1px solid var(--borde);border-radius:8px;
 .txt .nom b{color:var(--rojo);margin-right:8px}
 .comp{margin:6px 0 0;padding-left:20px;font-size:16px;line-height:1.45;color:#333}
 .comp li::marker{color:#8B0000}
+.tienda{margin-top:8px;border-radius:10px;padding:9px 12px;font-size:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tienda.validar{background:#e8f5ec;border:2px dashed #1e7d3a;color:#145a2a}
+.tienda.despachado{background:#eef7f0;color:#1e7d3a;font-weight:700}
+.tienda.producir{background:var(--fondo);color:#6b6b6b;font-size:14px}
+.tienda button{font-size:14px;font-weight:700;padding:7px 12px;border-radius:8px;border:1.5px solid #1e7d3a;background:#fff;color:#1e7d3a}
+.tienda button.si{background:#1e7d3a;color:#fff}.tienda button.sec{border-color:#ccc;color:#6b6b6b}
 .pers{display:block;font-size:17px;font-weight:700;color:#5c3d00;background:#fff3c4;border-radius:10px;padding:8px 11px;margin-top:8px;white-space:pre-wrap}
 .nota{margin-top:10px;background:#fff3c4;font-weight:600;padding:6px 9px;border-radius:8px;font-size:14px}
 .hecho button{display:flex;align-items:center;gap:10px;background:#e7f6ec;color:var(--ok);font-weight:800;font-size:17px;padding:12px 18px;border:2px solid #bfe3cb}
@@ -249,13 +255,18 @@ async function cargar() {
   const filtro = q => st.sel ? q : rango(q);   // seleccionados: todos, sin importar la fecha
   contarSel();
   const [w, e] = await Promise.all([
-    filtro(sb.from('pedidos_web').select('id,codigo,estado,fecha_entrega,hora_entrega,tipo_entrega,notas,creado_en,pedidos_web_items(nombre,cantidad)').in('estado', estados)),
+    filtro(sb.from('pedidos_web').select('id,codigo,estado,fecha_entrega,hora_entrega,tipo_entrega,notas,creado_en,pedidos_web_items(id,nombre,cantidad,de_tienda,tienda_estado)').in('estado', estados)),
     filtro(sb.from('pedidos_encargo').select('id,codigo,estado,fecha_entrega,hora_entrega,tipo_entrega,creado_en,pedidos_encargo_items(orden,descripcion,personalizacion,cantidad,cotizacion),pedidos_encargo_fotos(item_orden,ruta)').in('estado', estados)),
   ]);
   if (w.error || e.error) { $('lista').innerHTML = `<div class="vacio">${esc(errTxt(w.error || e.error))}</div>`; return; }
   const lista = [
     ...(w.data || []).map(p => ({ key: 'w' + p.id, origen: 'web', id: p.id, codigo: p.codigo, estado: p.estado, fecha: p.fecha_entrega, hora: p.hora_entrega, tipo: p.tipo_entrega, nota: p.notas, creado: p.creado_en,
-      items: (p.pedidos_web_items || []).map(i => ({ desc: i.nombre, cant: Number(i.cantidad), pers: '', fotos: [] })) })),
+      items: (p.pedidos_web_items || []).sort((a, b) => a.id - b.id).map(i => {
+        const dt = Number(i.de_tienda || 0), te = i.tienda_estado, tot = Number(i.cantidad);
+        // lo que sale de tienda no se produce (salvo que producción diga que no está óptimo)
+        const cant = ['validar', 'despachado'].includes(te) ? tot - dt : tot;
+        return { desc: i.nombre, cant, total: tot, pers: '', fotos: [], tienda: te ? { id: i.id, n: dt, estado: te } : null };
+      }) })),
     ...(e.data || []).map(p => {
       const its = (p.pedidos_encargo_items || []).sort((a, b) => a.orden - b.orden);
       const fotos = p.pedidos_encargo_fotos || [];
@@ -313,7 +324,7 @@ function fila(p, hoy, ahora, nuevo) {
       : '🎂';
     return `<div class="prod ${urls.length ? '' : 'sin'}">
       <div><div class="foto">${foto}</div>${urls.length > 1 ? `<div class="mini">${urls.map((u, k) => `<img src="${u}" data-ver="${p.key}" data-it="${n}" data-i="${k}" alt="">`).join('')}</div>` : ''}</div>
-      <div class="txt"><div class="nom"><b>${i.cant}×</b>${esc(i.desc)}</div>${i.comp && i.comp.length ? `<ul class="comp">${i.comp.map(c => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}${i.pers ? `<span class="pers">✏️ ${esc(i.pers)}</span>` : ''}</div>
+      <div class="txt"><div class="nom">${i.cant ? `<b>${i.cant}×</b>` : ''}${esc(i.desc)}${i.tienda && i.cant ? ` <small style="font-size:14px;color:#6b6b6b;font-weight:600">(de ${i.total})</small>` : ''}</div>${bloqueTienda(i)}${i.comp && i.comp.length ? `<ul class="comp">${i.comp.map(c => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}${i.pers ? `<span class="pers">✏️ ${esc(i.pers)}</span>` : ''}</div>
     </div>`;
   }).join('');
   return `<div class="ped ${st.hechos ? 'hecha' : ''} ${sel && !st.hechos ? 'en_produccion' : ''} ${nuevo ? 'nuevo' : ''}" id="f-${p.key}">
@@ -322,11 +333,21 @@ function fila(p, hoy, ahora, nuevo) {
     ${p.nota ? `<div class="nota">📝 ${esc(p.nota)}</div>` : ''}
   </div>`;
 }
+// productos web que pueden salir del stock de tienda (lo más antiguo sale primero)
+function bloqueTienda(i) {
+  const t = i.tienda; if (!t) return '';
+  if (st.hechos) return t.estado === 'despachado' ? `<div class="tienda despachado">✓ ${t.n} salieron de tienda</div>` : '';
+  if (t.estado === 'validar') return `<div class="tienda validar">🔎 <span><b>${t.n} de tienda</b> · revisa que estén óptimas</span>
+    <button class="si" data-tv="${t.id}" data-acc="despachar" data-n="${t.n}">✓ Sale de tienda</button><button data-tv="${t.id}" data-acc="producir">🔄 No están óptimas, producir</button></div>`;
+  if (t.estado === 'despachado') return `<div class="tienda despachado">✓ ${t.n} salieron de tienda <button class="sec" data-tv="${t.id}" data-acc="deshacer">↩ Deshacer</button></div>`;
+  if (t.estado === 'producir') return `<div class="tienda producir">Lo de tienda no estaba óptimo · se produce todo <button class="sec" data-tv="${t.id}" data-acc="deshacer">↩ Deshacer</button></div>`;
+  return '';
+}
 // suma lo mismo de distintos pedidos para sacar lotes: "70 empanadas de pollo · 100 alfajores"
 function dibujarConsolidado() {
   const norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
   const grupos = new Map();
-  st.pedidos.forEach(p => p.items.forEach(i => {
+  st.pedidos.forEach(p => p.items.filter(i => i.cant > 0).forEach(i => {
     const k = norm(i.desc) + '|' + (i.comp || []).map(norm).join(';');
     if (!grupos.has(k)) grupos.set(k, { desc: i.desc, comp: i.comp || [], total: 0, det: [], notas: [] });
     const g = grupos.get(k); g.total += Number(i.cant) || 0;
@@ -364,8 +385,19 @@ $('lista').onclick = async e => {
     if (st.sel && nuevo !== 'en_produccion') st.pedidos = st.pedidos.filter(x => x.key !== p.key);
     return dibujar();
   }
+  const tv = e.target.closest('[data-tv]');
+  if (tv) {
+    const acc = tv.dataset.acc;
+    if (acc === 'despachar' && !confirm(`¿Sacas ${tv.dataset.n} de tienda para este pedido? Se descuenta del stock de tienda.`)) return;
+    tv.disabled = true;
+    const { error } = await sb.rpc('validar_item_tienda', { p_item: Number(tv.dataset.tv), p_accion: acc, p_cantidad: null, p_usuario: st.usuario?.nombre || null });
+    tv.disabled = false;
+    if (error) return alert(errTxt(error));
+    return cargar();
+  }
   const b = e.target.closest('[data-hecho], [data-deshacer]'); if (!b) return;
   const key = b.dataset.hecho || b.dataset.deshacer, p = st.pedidos.find(x => x.key === key);
+  if (b.dataset.hecho && p.items.some(i => i.tienda && i.tienda.estado === 'validar') && !confirm('Hay productos de tienda sin validar. ¿Marcar como hecho igual?')) return;
   b.disabled = true;
   if (!(await cambiar(p, b.dataset.hecho ? 'listo' : 'confirmado'))) { b.disabled = false; return; }
   const el = $('f-' + key); el.classList.add('sale');
