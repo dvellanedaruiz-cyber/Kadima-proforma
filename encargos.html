@@ -62,6 +62,11 @@ label{display:block;font-size:12px;color:var(--gris);margin:0 0 4px;font-weight:
 .ped:not(.abierto) .cuerpo{display:none}
 .ped .res{padding:4px 12px 2px;font-size:13px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ped.abierto .res{display:none}
+.tag.incomp{background:#fff1d6;color:#9a4b00;border:1px dashed #d88a00}
+.falta{margin:8px 12px 0;background:#fff7e6;border:1.5px dashed #d88a00;border-radius:10px;padding:8px 10px;font-size:13px;color:#7a3e00}
+.falta b{display:block;margin-bottom:2px}
+.inc-it{display:grid;grid-template-columns:1fr 92px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f1eeeb}
+.inc-it input{text-align:center}
 .tag.saldo{background:#fbe9e9;color:#a52222}.tag.pagado{background:#e7f4ea;color:#1e6b34}
 .ped .acc .b-sec span{font-size:12px;font-weight:700}
 .b-link{background:none;border:0;color:var(--mal);font-size:12.5px;font-weight:700;padding:4px 12px 8px;cursor:pointer}
@@ -554,6 +559,23 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
   </div>
 </div>
 
+<!-- ===== MODAL INCOMPLETO ===== -->
+<div class="modal oculto" id="m-inc">
+  <div class="caja" style="max-width:520px">
+    <h2>📦 Pedido incompleto <span id="inc-cod" style="margin-left:6px"></span><button class="x" id="inc-cerrar">✕</button></h2>
+    <p style="font-size:13px;color:var(--gris);margin:0 0 8px">Marca cuánto <b>falta</b> de cada producto (0 = ya está en el paquete). Se imprime una etiqueta para pegar en el paquete.</p>
+    <div id="inc-items"></div>
+    <label style="margin-top:10px;display:block">¿Qué falta? (opcional)</label>
+    <input id="inc-nota" placeholder="Ej. armar con crema al momento, poner topper y velas">
+    <div class="error" id="inc-err" style="color:var(--mal);min-height:18px;margin-top:6px"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:8px">
+      <button class="b-sec oculto" id="inc-completo">✓ Ya está completo</button>
+      <button class="b-sec" id="inc-guardar">Guardar</button>
+      <button class="b-sig" id="inc-imprimir">🖨️ Guardar e imprimir etiqueta</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== MODAL COBRO / COMPROBANTE ===== -->
 <div class="modal oculto" id="m-pago">
   <div class="caja" style="max-width:640px">
@@ -866,7 +888,7 @@ function normWeb(p) {
     items: (p.pedidos_web_items || []).map(i => ({ desc: i.nombre + (Number(i.de_tienda) > 0 && i.tienda_estado ? ({ validar: ` · 🟢 ${Number(i.de_tienda)} de tienda (por validar)`, despachado: ` · ✓ ${Number(i.de_tienda)} salieron de tienda`, producir: ' · se produce (tienda no óptima)' })[i.tienda_estado] || '' : ''), cant: i.cantidad, pers: '', fotos: [] })),
     total: Number(p.total_productos || 0), delivery: p.costo_delivery, pagado: p.pago_validado ? Number(p.total_productos || 0) + (p.delivery_incluido ? Number(p.costo_delivery || 0) : 0) : 0,
     yape_op: p.yape_operacion, pago_validado: p.pago_validado, delivIncl: !!p.delivery_incluido, real: p.delivery_costo_real,
-    modo: p.delivery_modo || (p.delivery_incluido ? 'fijo' : 'al_despachar'), raw: p,
+    modo: p.delivery_modo || (p.delivery_incluido ? 'fijo' : 'al_despachar'), inc: p.incompleto || null, raw: p,
   };
 }
 function normEnc(p) {
@@ -882,7 +904,7 @@ function normEnc(p) {
     tipo_entrega: p.tipo_entrega, cliente: p.cliente_nombre, tel: p.cliente_telefono, direccion: p.direccion, distrito: p.distrito,
     referencia: p.referencia, lat: p.ubicacion_lat, lng: p.ubicacion_lng, notas: p.notas, creado_en: p.creado_en, items,
     total: Number(p.total_productos || 0), delivery: p.costo_delivery, pagado, pagos: p.pedidos_encargo_pagos || [], comps, real: p.delivery_costo_real,
-    modo: p.delivery_modo || 'fijo', mensual: p.facturacion === 'mensual', factDoc: p.factura_doc, delivFactDoc: p.delivery_factura_doc, raw: p,
+    modo: p.delivery_modo || 'fijo', mensual: p.facturacion === 'mensual', factDoc: p.factura_doc, delivFactDoc: p.delivery_factura_doc, inc: p.incompleto || null, raw: p,
   };
 }
 
@@ -916,8 +938,9 @@ function tarjeta(p, hoy, ahoraMin, nuevo) {
   <div class="ped ${p.estado} ${nuevo ? 'nuevo' : ''} ${abierto ? 'abierto' : ''}">
     <div class="c1 tog" data-tog="${p.key}" title="Ver / ocultar detalle"><span class="cod"><span class="flecha">${abierto ? '▾' : '▸'}</span>${esc(p.codigo)}</span><span class="cuando ${tarde ? 'tarde' : ''}">${esc(cuando)}</span></div>
     <div class="cli">${esc(p.cliente || 'Sin nombre')}${tel ? ` · <a href="https://wa.me/51${tel}" target="_blank" rel="noopener">${esc(p.tel)}</a>` : ''}</div>
-    ${origen}<span class="tag ${p.tipo_entrega}">${p.tipo_entrega === 'delivery' ? '🛵 Delivery' : '🏬 Recojo'}</span>${!p.mensual && saldo > 0 ? `<span class="tag saldo">Saldo ${S(saldo)}</span>` : '<span class="tag pagado">✓ Pagado</span>'}${tagUnico}
+    ${origen}<span class="tag ${p.tipo_entrega}">${p.tipo_entrega === 'delivery' ? '🛵 Delivery' : '🏬 Recojo'}</span>${!p.mensual && saldo > 0 ? `<span class="tag saldo">Saldo ${S(saldo)}</span>` : '<span class="tag pagado">✓ Pagado</span>'}${tagUnico}${p.inc ? '<span class="tag incomp">⚠ Incompleto</span>' : ''}
     <div class="res">${resumen || 'Sin productos'}</div>
+    ${p.inc ? `<div class="falta"><b>📦 Falta:</b>${textoFalta(p.inc)}</div>` : ''}
     <div class="cuerpo">
     ${p.tipo_entrega === 'delivery' ? `<div class="dir">📍 ${p.direccion ? esc(p.direccion) : p.lat != null ? 'Dirección en Google Maps' : 'sin dirección'}${p.distrito ? ', ' + esc(p.distrito) : ''}${p.referencia ? `<br><small>${esc(p.referencia)}</small>` : ''}${p.lat != null ? `<br><a class="maps" href="https://www.google.com/maps?q=${p.lat},${p.lng}" target="_blank" rel="noopener">🗺️ Abrir en Google Maps</a>` : ''}</div>` : ''}
     <ul class="its">${items}</ul>
@@ -936,6 +959,7 @@ function tarjeta(p, hoy, ahoraMin, nuevo) {
       ${p.origen === 'enc' ? `${p.estado === 'confirmado' ? `<button class="b-sec" data-editar="${p.id}" title="Editar pedido">✏️ <span>Editar</span></button>` : ''}<button class="b-sec" data-pago="${p.id}" title="Cobrar / comprobantes">💵 <span>Cobrar</span></button>` : ''}
       <button class="b-sec" data-wa="${p.key}" title="Enviar resumen por WhatsApp">💬 <span>WhatsApp</span></button>
       <button class="b-sec" data-comanda="${p.key}" title="Imprimir comanda (ticketera 80 mm)">🖨️ <span>Comanda</span></button>
+      ${['confirmado', 'en_produccion', 'listo'].includes(p.estado) ? `<button class="b-sec" data-inc="${p.key}" title="Alistado a medias: marca lo que falta e imprime etiqueta">📦 <span>${p.inc ? 'Falta…' : 'Incompleto'}</span></button>` : ''}
       ${sig && txtSig ? `<button class="${p.estado === 'por_validar' ? 'b-yape' : 'b-sig'}" data-sig="${p.key}">${txtSig}</button>` : ''}
     </div>
   </div>`;
@@ -965,8 +989,80 @@ function imprimirComanda(p) {
     ${p.tipo_entrega === 'delivery' ? `<div>Dir.: ${esc(p.direccion || '-')}${p.distrito ? ', ' + esc(p.distrito) : ''}${p.referencia ? ' (' + esc(p.referencia) + ')' : ''}</div>` : ''}
     <div class="div"></div><div class="lb">Producto</div><table>${filas}</table>
     ${p.notas ? `<div class="div"></div><div class="lb">Observaciones</div><div class="obs">${esc(p.notas)}</div>` : ''}
+    ${p.inc ? `<div class="div"></div><div class="lb">⚠ INCOMPLETO · FALTA</div><div class="obs">${textoFalta(p.inc, true)}</div>` : ''}
     <div class="tot"><div class="r"><span>Total</span><span>S/ ${f2(totDel)}</span></div><div class="r"><span>Pagado</span><span>S/ ${f2(p.pagado)}</span></div><div class="r s"><span>SALDO</span><span>S/ ${f2(p.mensual ? 0 : saldo)}</span></div></div>
     <div class="pie">Kadima Pastelería &amp; Panadería</div>
+  </body></html>`;
+  let fr = $('fr-comanda');
+  if (!fr) { fr = document.createElement('iframe'); fr.id = 'fr-comanda'; fr.style.cssText = 'position:fixed;width:0;height:0;border:0;left:-9999px'; document.body.appendChild(fr); }
+  fr.srcdoc = html;
+  fr.onload = () => setTimeout(() => { try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (e) { alert('No se pudo abrir la impresión.'); } }, 200);
+}
+
+// ===== PEDIDO INCOMPLETO (alistado a medias) =====
+function textoFalta(inc, plano) {
+  const l = (inc.falta || []).map(f => `${Number(f.cant)}× ${esc(f.desc)}`);
+  if (inc.nota) l.push(esc(inc.nota));
+  return l.join(plano ? '\n' : '<br>') || 'Sin detalle';
+}
+function abrirIncompleto(p) {
+  st.incP = p;
+  $('inc-cod').textContent = p.codigo; $('inc-err').textContent = '';
+  const prev = p.inc || { falta: [], nota: '' };
+  const faltaDe = (desc, i) => { const f = (prev.falta || []).find(x => x.i === i) || (prev.falta || []).find(x => x.desc === desc); return f ? Number(f.cant) : 0; };
+  $('inc-items').innerHTML = p.items.map((i, n) => `<div class="inc-it"><div><b>${Number(i.cant)}×</b> ${esc(i.desc)}</div>
+    <div><label style="font-size:11px;color:var(--gris)">Falta</label><input type="number" min="0" max="${Number(i.cant)}" step="1" data-fi="${n}" value="${faltaDe(i.desc, n)}"></div></div>`).join('');
+  $('inc-nota').value = prev.nota || '';
+  $('inc-completo').classList.toggle('oculto', !p.inc);
+  $('m-inc').classList.remove('oculto');
+}
+function leerIncompleto() {
+  const p = st.incP, falta = [];
+  let mal = false;
+  $('inc-items').querySelectorAll('[data-fi]').forEach(inp => {
+    const i = p.items[Number(inp.dataset.fi)], n = Number(inp.value || 0);
+    if (n < 0 || n > Number(i.cant)) mal = true;
+    if (n > 0) falta.push({ i: Number(inp.dataset.fi), desc: i.desc, cant: n, de: Number(i.cant) });
+  });
+  const nota = $('inc-nota').value.trim();
+  if (mal) return $('inc-err').textContent = 'La cantidad que falta no puede ser mayor a la del pedido.', null;
+  if (!falta.length && !nota) return $('inc-err').textContent = 'Indica qué falta (cantidad o detalle). Si ya está todo, usa “Ya está completo”.', null;
+  return { falta, nota, por: st.usuario?.nombre || null, en: new Date().toISOString() };
+}
+async function guardarIncompleto(inc) {
+  const p = st.incP, tabla = p.origen === 'web' ? 'pedidos_web' : 'pedidos_encargo';
+  const { error } = await sb.from(tabla).update({ incompleto: inc }).eq('id', p.id);
+  if (error) { $('inc-err').textContent = /incompleto/.test(error.message) ? 'Falta correr 61_pedido_incompleto.sql en Supabase.' : errTxt(error); return false; }
+  p.inc = inc; if (p.raw) p.raw.incompleto = inc;
+  $('m-inc').classList.add('oculto'); dibujarCentral(); return true;
+}
+$('inc-cerrar').onclick = () => $('m-inc').classList.add('oculto');
+$('inc-guardar').onclick = async () => { const inc = leerIncompleto(); if (inc) await guardarIncompleto(inc); };
+$('inc-imprimir').onclick = async () => { const inc = leerIncompleto(); if (inc && await guardarIncompleto(inc)) imprimirIncompleto(st.incP); };
+$('inc-completo').onclick = async () => { if (confirm(`¿${st.incP.codigo} ya está completo?`)) await guardarIncompleto(null); };
+// etiqueta para pegar en el paquete (ticketera 80 mm)
+function imprimirIncompleto(p) {
+  const inc = p.inc; if (!inc) return;
+  const filas = (inc.falta || []).map(f => `<tr><td class="cant">${Number(f.cant)}</td><td>${esc(f.desc)}${f.de && f.de !== f.cant ? ` <small>(de ${f.de})</small>` : ''}</td></tr>`).join('');
+  const listos = p.items.map((i, n) => { const f = (inc.falta || []).find(x => x.i === n); const ok = Number(i.cant) - (f ? Number(f.cant) : 0); return ok > 0 ? `<tr><td class="cant">${ok}</td><td>${esc(i.desc)}</td></tr>` : ''; }).join('');
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Incompleto ${esc(p.codigo)}</title><style>
+    @page{size:80mm auto;margin:0}*{box-sizing:border-box}
+    body{width:70mm;margin:0 auto;padding:3mm 3mm 3mm 2mm;font-family:Arial,'Segoe UI',sans-serif;font-weight:700;font-size:13px;line-height:1.35;color:#000}
+    .big{border:3px solid #000;text-align:center;font-size:22px;letter-spacing:1px;padding:2mm 0;margin-bottom:2mm}
+    .cod{font-size:20px;text-align:center;margin-bottom:1mm}.c{text-align:center}
+    .div{border-top:1px dashed #000;margin:2mm 0}.lb{text-transform:uppercase;margin-bottom:1mm}
+    table{width:100%;border-collapse:collapse}td{vertical-align:top;padding:.5mm 0}td.cant{width:9mm;font-size:16px}
+    .falta td{font-size:15px}.obs{white-space:pre-wrap;word-break:break-word;font-size:14px}.pie{text-align:center;margin-top:3mm;font-size:10px;font-weight:400}
+  </style></head><body>
+    <div class="big">⚠ INCOMPLETO</div>
+    <div class="cod">${esc(p.codigo)}</div>
+    <div class="c">${esc(p.cliente || '-')}</div>
+    <div class="c">Entrega: ${p.fecha ? esc(fechaCorta(p.fecha)) : '-'}${p.hora ? ' · ' + esc(hora12(p.hora)) : ''} · ${p.tipo_entrega === 'delivery' ? 'DELIVERY' : 'RECOJO'}</div>
+    <div class="div"></div><div class="lb">Falta</div>
+    ${filas ? `<table class="falta">${filas}</table>` : ''}
+    ${inc.nota ? `<div class="obs">${esc(inc.nota)}</div>` : ''}
+    ${listos ? `<div class="div"></div><div class="lb">Ya está en el paquete</div><table>${listos}</table>` : ''}
+    <div class="pie">Alistado ${new Date(inc.en).toLocaleString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}${inc.por ? ' · ' + esc(inc.por) : ''}</div>
   </body></html>`;
   let fr = $('fr-comanda');
   if (!fr) { fr = document.createElement('iframe'); fr.id = 'fr-comanda'; fr.style.cssText = 'position:fixed;width:0;height:0;border:0;left:-9999px'; document.body.appendChild(fr); }
@@ -1029,6 +1125,7 @@ $('tablero').addEventListener('click', async e => {
   const tg = e.target.closest('[data-tog]');
   if (tg && !e.target.closest('a')) { const k = tg.dataset.tog; st.abiertos.has(k) ? st.abiertos.delete(k) : st.abiertos.add(k); guardarAbiertos(); return dibujarCentral(); }
   const cm = e.target.closest('[data-comanda]'); if (cm) return imprimirComanda(pk(cm.dataset.comanda));
+  const ic = e.target.closest('[data-inc]'); if (ic) return abrirIncompleto(pk(ic.dataset.inc));
   const s = e.target.closest('[data-sig]');
   if (s) {
     const p = pk(s.dataset.sig);
@@ -1037,6 +1134,8 @@ $('tablero').addEventListener('click', async e => {
       if (!confirm(`¿Confirmas que llegó el Yape de ${S(yapeo)}${p.delivIncl ? ` (productos ${S(p.total)} + delivery ${S(p.delivery)})` : ''} (op. ${p.yape_op})?`)) return;
       return cambiarEstado(p, 'confirmado', { pago_validado: true, pago_validado_por: st.usuario?.nombre || null, pago_validado_en: new Date().toISOString() });
     }
+    if (p.inc && ['en_produccion', 'listo'].includes(p.estado)
+      && !confirm(`⚠️ ${p.codigo} está marcado INCOMPLETO.\n\nFalta:\n${textoFalta(p.inc, true).replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")}\n\n¿Continuar igual? (Si ya se completó, mejor usa 📦 Falta… → “Ya está completo”.)`)) return;
     if (p.estado === 'listo') {
       const noCobra = p.modo === 'cliente', alDesp = p.modo === 'al_despachar' && !p.delivIncl, esDel = p.tipo_entrega === 'delivery';
       // bloqueo: sin el costo real del InDrive no se puede entregar
