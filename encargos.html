@@ -320,8 +320,8 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
             <div class="fila"><div style="flex:2"><label>Dirección</label><input data-k="direccion"></div><div><label>Distrito</label><input data-k="distrito"></div></div>
             <div class="fila"><div style="flex:2"><label>Referencia</label><input data-k="referencia"></div></div>
             <div class="fila">
-              <div style="flex:2"><label>Cobro del delivery</label><select data-k="delivery_modo"><option value="al_despachar">Al despachar: costo real del InDrive + IGV</option><option value="fijo">Monto fijo (se cobra desde ya)</option><option value="cliente">🚕 El cliente manda su propio InDrive (no se cobra)</option></select></div>
-              <div id="f-costo-w"><label>Costo delivery S/</label><input data-k="costo_delivery" type="number" min="0" step="0.5"></div>
+              <div style="flex:2"><label>Cobro del delivery</label><select data-k="delivery_modo"><option value="fijo">Según tarifa (sugerido, puedes editarlo)</option><option value="al_despachar">Al despachar: costo real del InDrive + IGV</option><option value="cliente">🚕 El cliente manda su propio InDrive (no se cobra)</option></select></div>
+              <div id="f-costo-w"><label>Delivery S/ <small style="font-weight:400;color:var(--gris)">(sugerido)</small></label><input data-k="costo_delivery" type="number" min="0" step="0.5"></div>
             </div>
             <label>📍 Ubicación: pega el link de Google Maps o la ubicación de WhatsApp, o marca el punto en el mapa</label>
             <div class="fila" style="margin-bottom:0">
@@ -977,7 +977,7 @@ function imprimirComanda(p) {
 // costo REAL pagado al InDrive (se registra al despachar)
 function filaReal(p) {
   // el modo de cobro solo se cambia con ✏️ Editar; aquí solo se muestra
-  const nomModo = { al_despachar: 'Cobro: costo real + IGV', fijo: 'Cobro: monto fijo', cliente: '🚕 InDrive del cliente' }[p.modo] || 'Cobro: monto fijo';
+  const nomModo = { al_despachar: 'Cobro: costo real + IGV', fijo: 'Cobro: según tarifa', cliente: '🚕 InDrive del cliente' }[p.modo] || 'Cobro: monto fijo';
   const selModo = !p.delivIncl ? `<span class="modo-del" title="Para cambiarlo usa ✏️ Editar">${nomModo}</span>` : '';
   if (p.modo === 'cliente') return `<div class="envio">${selModo}<span>no se cobra delivery</span></div>`;
   const r = p.real == null ? null : Number(p.real), cob = p.delivery == null ? null : Number(p.delivery);
@@ -1546,7 +1546,7 @@ function nuevoForm(base = {}) {
     id: null, codigo: null, estado: null, canal: 'whatsapp', cliente_nombre: '', cliente_telefono: '', cliente_doc: '',
     fecha_entrega: '', hora_entrega: '', tipo_entrega: 'recojo', direccion: '', distrito: '', referencia: '',
     costo_delivery: '', notas: '', items: [], fotosBorrar: [], ubicacion_lat: null, ubicacion_lng: null, ubicacion_link: '',
-    delivery_modo: 'al_despachar', facturacion: 'normal', comprobante_modo: 'separados', delivery_costo_real: null, ocasion_tipo: '', ocasion_para: '', ocasion_fecha: '', ...base,
+    delivery_modo: 'fijo', facturacion: 'normal', comprobante_modo: 'separados', delivery_costo_real: null, ocasion_tipo: '', ocasion_para: '', ocasion_fecha: '', ...base,
   };
   pintarForm();
 }
@@ -1601,7 +1601,14 @@ function pintarResumen() {
 }
 document.querySelectorAll('#s-nuevo [data-k]').forEach(i => i.addEventListener('input', () => { ocultarAviso(); st.f[i.dataset.k] = i.value; if (i.dataset.k === 'costo_delivery') { st.f.delivAuto = false; cotizarFormDelivery(); } if (i.dataset.k === 'fecha_entrega' || i.dataset.k === 'hora_entrega') cotizarFormDelivery();
   if (i.dataset.k === 'delivery_modo') { if (i.value !== 'fijo' && st.f.delivery_costo_real == null) { st.f.costo_delivery = ''; st.f.delivAuto = false; } pintarModoForm(); cotizarFormDelivery(); }
-  if (i.dataset.k === 'facturacion') { pintarModoForm(); pintarForm(); }
+  if (i.dataset.k === 'facturacion') {
+    // factura mensual (ej. colegio): el delivery va al costo real del InDrive + IGV
+    if (i.value === 'mensual' && st.f.delivery_modo === 'fijo' && (st.f.delivAuto || st.f.costo_delivery === '')) {
+      st.f.delivery_modo = 'al_despachar'; st.f.costo_delivery = ''; st.f.delivAuto = false;
+      const dm = document.querySelector('#s-nuevo [data-k="delivery_modo"]'); if (dm) dm.value = 'al_despachar';
+      cotizarFormDelivery();
+    }
+    pintarModoForm(); pintarForm(); }
   pintarResumen(); }));
 // muestra/oculta lo que depende del modo de cobro del delivery y del tipo de facturación
 function pintarModoForm() {

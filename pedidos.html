@@ -520,24 +520,25 @@
       </div>`).join('');
     pintarTotales();
   }
-  // total a pagar = productos + delivery (si ya está cotizado)
-  // el delivery NO va en el Yape: se paga al recibir (costo real del InDrive + IGV). Aquí solo se muestra un aproximado.
+  // total a pagar = productos + delivery calculado (va en el Yape). El servidor lo vuelve a calcular igual al guardar.
+  // Fuera de zona: el Yape es solo de productos y el delivery se confirma por WhatsApp.
   const precioDelivery = () => tipoEntrega === 'delivery' && delivery && delivery.ok ? Number(delivery.precio) : 0;
   function pintarTotales() {
     const d = precioDelivery(), esDel = tipoEntrega === 'delivery';
     $('order-total-amount').textContent = soles(total());
     $('fila-delivery').classList.toggle('oculto', !d);
-    $('fila-total').classList.add('oculto');
-    if (d) { $('delivery-monto').textContent = soles(d); $('lbl-delivery').textContent = `Delivery aprox. (${String(delivery.km).replace('.', ',')} km${delivery.punta ? ', hora punta' : ''}) · se paga al recibir`; }
+    $('fila-total').classList.toggle('oculto', !d);
+    if (d) { $('delivery-monto').textContent = soles(d); $('lbl-delivery').textContent = `Delivery (${String(delivery.km).replace('.', ',')} km${delivery.punta ? ', hora punta' : ''})`; $('total-pagar').textContent = soles(total() + d); }
     $('nota-delivery-total').style.display = esDel && !d ? 'block' : 'none';
     $('nota-delivery-total').textContent = !esDel ? '' : !ubicacion ? '+ delivery: marca tu ubicación abajo y te mostramos el precio'
       : !confirmada ? '+ delivery: confirma tu ubicación en el mapa y te mostramos el precio'
       : delivery && delivery.motivo === 'fuera_zona' ? '+ delivery: tu dirección está fuera de nuestra zona de reparto; te confirmamos por WhatsApp si llegamos y el costo'
-      : '+ delivery (te confirmamos el costo por WhatsApp)';
-    $('yape-monto').textContent = soles(total());
+      : delivery ? '+ delivery (te confirmamos el costo por WhatsApp)' : '+ delivery: calculando…';
+    $('yape-monto').textContent = soles(total() + d);
     const av = $('aviso-delivery');
-    if (av) av.textContent = d ? `🛵 Delivery aproximado a tu ubicación: S/ ${soles(d)} (≈ ${String(delivery.km).replace('.', ',')} km${delivery.punta ? ', en hora punta' : ''}). No se incluye en el Yape: pagas el costo real del envío cuando recibas tu pedido.`
-      : (ubicacion && !confirmada ? '🛵 Confirma tu ubicación en el mapa para ver cuánto costaría aprox. el delivery.' : '🛵 El delivery se paga al recibir (costo real del InDrive). Marca y confirma tu ubicación para ver un aproximado.');
+    if (av) av.textContent = d ? `🛵 Delivery a tu ubicación: S/ ${soles(d)} (≈ ${String(delivery.km).replace('.', ',')} km${delivery.punta ? ', en hora punta' : ''}). Ya está incluido en el monto a yapear.`
+      : delivery && delivery.motivo === 'fuera_zona' ? '🛵 Tu dirección está fuera de nuestra zona de reparto. Yapea solo los productos: te confirmamos por WhatsApp si llegamos y el costo del envío.'
+      : (ubicacion && !confirmada ? '🛵 Confirma tu ubicación en el mapa para calcular el delivery.' : '🛵 El costo del delivery depende de la distancia. Marca y confirma tu ubicación para calcularlo.');
   }
   async function cotizarDelivery() {
     delivery = null;
@@ -549,8 +550,8 @@
         if ($('fecha').value && $('hora').value) { args.p_fecha = $('fecha').value; args.p_hora = $('hora').value; }
         const { data, error } = await sb.rpc('cotizar_delivery', args);
         if (pedido !== cotizarDelivery.n) return;          // llegó una cotización más nueva
-        if (!error && data) delivery = data;
-      } catch (e) {}
+        delivery = !error && data ? data : { ok: false, motivo: 'error' };
+      } catch (e) { delivery = { ok: false, motivo: 'error' }; }
     }
     pintarTotales();
   }
@@ -852,6 +853,7 @@
       return err(ubicacion ? 'Confirma tu ubicación en el mapa (botón “Confirmar ubicación”).' : 'Falta la ubicación de entrega: usa tu ubicación actual, pega el link de Google Maps o escribe la dirección.');
     }
     if (tipoEntrega === 'delivery' && datos.direccion.length < 5) return err('Escribe la dirección de entrega.');
+    if (tipoEntrega === 'delivery' && confirmada && !delivery) return err('Estamos calculando el delivery, espera un segundo y vuelve a intentar.');
     if (datos.nombre.length < 3) return err('Escribe tu nombre completo.');
     if (!/^9\d{8}$/.test(tel)) return err('El celular debe tener 9 dígitos y empezar con 9.');
     if (datos.yape_operacion.replace(/\D/g, '').length < 4) return err('Escribe el número de operación de tu Yape.');
@@ -878,7 +880,7 @@
 
     $('codigo-pedido').textContent = res.codigo;
     const dv = datos.tipo_entrega === 'delivery' ? datos.delivery : 0;
-    $('resumen-entrega').textContent = entregaTxt + ` Total productos: S/ ${soles(res.total)}.` + (datos.tipo_entrega === 'delivery' ? ` El delivery${dv ? ` (aprox. S/ ${soles(dv)})` : ''} se paga al recibir.` : '');
+    $('resumen-entrega').textContent = entregaTxt + ` Total productos: S/ ${soles(res.total)}.` + (datos.tipo_entrega === 'delivery' ? (dv ? ` Delivery: S/ ${soles(dv)}. Total pagado: S/ ${soles(Number(res.total) + dv)}.` : ' El costo del delivery te lo confirmamos por WhatsApp.') : '');
 
     // Mensaje sin emojis: cada dato con viñeta "•"
     const lineas = [
@@ -889,7 +891,7 @@
       `• *Productos:*`,
       ...its.map(i => `   - ${i.qty} x ${i.nombre} — S/ ${soles(i.precio * i.qty)}`),
       `• *Total productos:* S/ ${soles(res.total)}`,
-      ...(datos.tipo_entrega === 'delivery' ? [`• *Delivery:* se paga al recibir${dv ? ` (aprox. S/ ${soles(dv)})` : ''}`] : []),
+      ...(datos.tipo_entrega === 'delivery' ? (dv ? [`• *Delivery:* S/ ${soles(dv)}`, `• *Total pagado:* S/ ${soles(Number(res.total) + dv)}`] : [`• *Delivery:* por confirmar (fuera de zona)`]) : []),
       `• *Entrega:* ${entregaTxt}`,
     ];
     if (datos.tipo_entrega === 'delivery') {
