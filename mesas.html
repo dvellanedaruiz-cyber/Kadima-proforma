@@ -42,6 +42,9 @@ input,select,textarea{font:inherit;padding:10px 12px;border:1px solid var(--bord
 .aviso-modo{margin:10px 16px 0;background:#fff3c4;color:#6b4c15;border-radius:10px;padding:10px 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-weight:600}
 .aviso-modo button{margin-left:auto}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;padding:14px 16px 90px}
+.zona-h{grid-column:1/-1;display:flex;align-items:center;gap:10px;font-size:15px;font-weight:800;color:var(--rojo);text-transform:uppercase;letter-spacing:.5px;margin-top:8px;border-bottom:2px solid var(--borde);padding-bottom:6px}
+.zona-h:first-child{margin-top:0}.zona-h small{font-weight:600;color:var(--gris);text-transform:none;letter-spacing:0}
+.zona-h button{background:var(--fondo);color:var(--texto);padding:4px 10px;font-size:12px;text-transform:none;letter-spacing:0}
 .mesa{position:relative;aspect-ratio:1/0.85;border-radius:16px;background:#fff;border:2px solid var(--borde);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;padding:8px;box-shadow:0 1px 3px rgba(0,0,0,.06);user-select:none}
 .mesa .nom{font-size:22px;font-weight:800}
 .mesa .det{font-size:13px;color:var(--gris)}
@@ -54,7 +57,8 @@ input,select,textarea{font:inherit;padding:10px 12px;border:1px solid var(--bord
 .mesa.sel{outline:4px solid #f2a900;outline-offset:2px}
 .mesa.nueva{border-style:dashed;color:var(--gris);background:transparent;font-weight:700}
 .mesa .ed{position:absolute;bottom:6px;display:flex;gap:4px}
-.mesa .ed button{background:var(--fondo);color:var(--texto);padding:4px 8px;font-size:13px}
+.mesa .ed button{background:var(--fondo);color:var(--texto);padding:4px 6px;font-size:12px}
+.mesa .ed{gap:3px}
 .mesa.fuera{border-style:dotted}
 /* detalle de mesa */
 .full{position:fixed;inset:0;background:var(--fondo);z-index:20;display:flex;flex-direction:column}
@@ -371,18 +375,25 @@ function pintarGrid() {
       <span class="nom">${esc(nombre)}</span>
       ${a ? `<span class="tot">${S(a.total)}</span><span class="det">${minDesde(a.creado_en)} min${a.mozo ? ' · ' + esc(a.mozo) : ''}${Number(a.en_cocina) ? ' · ' + a.en_cocina + ' en cocina' : ''}</span>${unida(a.mesa) ? `<span class="det">${esc(a.mesa)}</span>` : ''}`
           : `<span class="det">${fuera ? 'fuera del plano' : 'Libre'}</span>`}
-      ${st.modo === 'editar' && m ? `<span class="ed"><button data-izq="${m.id}" title="Mover a la izquierda">◀</button><button data-ren="${m.id}" title="Renombrar">✎</button>${a ? '' : `<button data-del="${m.id}" title="Quitar">✕</button>`}<button data-der="${m.id}" title="Mover a la derecha">▶</button></span>` : ''}
+      ${st.modo === 'editar' && m ? `<span class="ed"><button data-izq="${m.id}" title="Mover a la izquierda">◀</button><button data-ren="${m.id}" title="Renombrar">✎</button><button data-zona="${m.id}" title="Cambiar de zona">⇄</button>${a ? '' : `<button data-del="${m.id}" title="Quitar">✕</button>`}<button data-der="${m.id}" title="Mover a la derecha">▶</button></span>` : ''}
     </div>`;
   };
-  let html = st.mesas.map(m => tile(m.nombre, cuentaDe(m.nombre))).join('');
+  // agrupadas por zona del salón
+  let html = zonas().map(z => {
+    const ms = st.mesas.filter(m => zonaDe(m) === z), oc = ms.filter(m => cuentaDe(m.nombre)).length;
+    return `<div class="zona-h">${esc(z)} <small>${oc ? oc + ' ocupada(s) de ' + ms.length : ms.length + ' mesa(s) libres'}</small>${st.modo === 'editar' ? `<button data-renzona="${esc(z)}">✎ Renombrar zona</button>` : ''}</div>`
+      + ms.map(m => tile(m.nombre, cuentaDe(m.nombre))).join('')
+      + (st.modo === 'editar' ? `<div class="mesa nueva" data-nueva="${esc(z)}">+ Agregar mesa</div>` : '');
+  }).join('');
   // cuentas abiertas que no calzan con ningún cuadro (ej. abiertas desde la caja con otro nombre)
-  st.abiertas.filter(a => !usados.has(a.id)).forEach(a => { html += tile(a.mesa, a, true); });
-  if (st.modo === 'editar') html += `<div class="mesa nueva" id="t-nueva">+ Agregar mesa</div>`;
+  const fuera = st.abiertas.filter(a => !usados.has(a.id));
+  if (fuera.length) html += `<div class="zona-h">Otras cuentas</div>` + fuera.map(a => tile(a.mesa, a, true)).join('');
+  if (st.modo === 'editar') html += `<div class="zona-h"><button data-nuevazona="1">+ Nueva zona</button></div>`;
   $('grid').innerHTML = html;
   const av = $('aviso-modo');
   av.classList.toggle('oculto', st.modo === 'normal');
   if (st.modo === 'unir') av.innerHTML = `🔗 Toca las mesas que quieres unir (${st.sel.size} elegidas). <button class="btn" id="b-unir-ok" ${st.sel.size < 2 ? 'disabled' : ''}>Unir ${st.sel.size || ''}</button><button class="btn-sec" id="b-unir-no">Cancelar</button>`;
-  if (st.modo === 'editar') av.innerHTML = `✎ Editando el plano: agrega, renombra, ordena (◀ ▶) o quita mesas libres. <button class="btn" id="b-edit-ok">Listo</button>`;
+  if (st.modo === 'editar') av.innerHTML = `✎ Editando el plano: agrega, renombra, ordena (◀ ▶), cambia de zona (⇄) o quita mesas libres. <button class="btn" id="b-edit-ok">Listo</button>`;
   $('b-unir').classList.toggle('activa', st.modo === 'unir'); $('b-editar').classList.toggle('activa', st.modo === 'editar');
 }
 setInterval(() => { if (!$('v-app').classList.contains('oculto') && !st.actual) pintarGrid(); }, 60000);
@@ -393,29 +404,48 @@ $('aviso-modo').onclick = e => {
   if (e.target.id === 'b-unir-no' || e.target.id === 'b-edit-ok') { st.modo = 'normal'; st.sel.clear(); pintarGrid(); }
   if (e.target.id === 'b-unir-ok') unirSeleccion();
 };
+const zonaDe = m => (m.zona || 'Zona 1').trim();
+function zonas() { const z = []; st.mesas.forEach(m => { if (!z.includes(zonaDe(m))) z.push(zonaDe(m)); }); (st.zonasNuevas || []).forEach(x => { if (!z.includes(x)) z.push(x); }); return z.length ? z : ['Zona 1']; }
 $('grid').onclick = async e => {
   const b = e.target.closest('button');
+  if (b && b.dataset.renzona) return renombrarZona(b.dataset.renzona);
+  if (b && b.dataset.nuevazona) { const n = prompt('Nombre de la nueva zona (ej. Terraza, Segundo piso):', 'Zona ' + (zonas().length + 1)); if (n && n.trim()) { st.zonasNuevas = [...(st.zonasNuevas || []), n.trim()]; pintarGrid(); } return; }
   if (b && st.modo === 'editar') return editarMesa(b);
-  if (e.target.closest('#t-nueva')) return agregarMesa();
+  const nz = e.target.closest('[data-nueva]'); if (nz) return agregarMesa(nz.dataset.nueva);
   const t = e.target.closest('[data-mesa]'); if (!t) return;
   const nombre = t.dataset.mesa;
   if (st.modo === 'unir') { st.sel.has(nombre) ? st.sel.delete(nombre) : st.sel.add(nombre); return pintarGrid(); }
   if (st.modo === 'editar') return;
   abrirMesa(nombre);
 };
-async function agregarMesa() {
+async function renombrarZona(z) {
+  const n = prompt('Nuevo nombre de la zona:', z); if (!n || !n.trim() || n.trim() === z) return;
+  const ids = st.mesas.filter(m => zonaDe(m) === z).map(m => m.id);
+  st.zonasNuevas = (st.zonasNuevas || []).map(x => x === z ? n.trim() : x);
+  if (ids.length) { const { error } = await sb.from('mesas').update({ zona: n.trim() }).in('id', ids); if (error) return alert(/zona/.test(error.message) ? 'Falta correr 62_mesas_zonas.sql en Supabase.' : errTxt(error)); }
+  cargar();
+}
+async function agregarMesa(zona) {
   const nums = st.mesas.map(m => Number((m.nombre.match(/^Mesa\s+(\d+)$/i) || [])[1] || 0));
   const sug = 'Mesa ' + (Math.max(0, ...nums) + 1);
   const n = prompt('Nombre de la mesa (ej. "Mesa 9", "Barra", "Terraza 1"):', sug);
   if (!n || !n.trim()) return;
   const nombre = /^\d+$/.test(n.trim()) ? 'Mesa ' + n.trim() : n.trim().replace(/^mesa\s*/i, m => 'Mesa ');
-  const { error } = await sb.from('mesas').insert({ sede_id: st.disp.sede_id, nombre, orden: Math.max(0, ...st.mesas.map(m => m.orden)) + 1 });
+  const { error } = await sb.from('mesas').insert({ sede_id: st.disp.sede_id, nombre, orden: Math.max(0, ...st.mesas.map(m => m.orden)) + 1, ...(zona ? { zona } : {}) });
   if (error) return alert(/duplicate|unique/i.test(error.message) ? 'Ya existe una mesa con ese nombre.' : errTxt(error));
   cargar();
 }
 async function editarMesa(b) {
-  const id = Number(b.dataset.ren || b.dataset.del || b.dataset.izq || b.dataset.der);
+  const id = Number(b.dataset.ren || b.dataset.del || b.dataset.izq || b.dataset.der || b.dataset.zona);
   const m = st.mesas.find(x => x.id === id); if (!m) return;
+  if (b.dataset.zona) {
+    const zs = zonas(), otras = zs.filter(z => z !== zonaDe(m));
+    let dest = otras.length === 1 ? otras[0] : null;
+    if (!dest) { const n = prompt(`¿A qué zona pasa ${m.nombre}?\n${zs.map((z, i) => `${i + 1}. ${z}`).join('\n')}\n\nEscribe el número o el nombre de una zona nueva:`); if (!n || !n.trim()) return; dest = zs[Number(n) - 1] || n.trim(); }
+    else if (!confirm(`¿Pasar ${m.nombre} a ${dest}?`)) return;
+    const { error } = await sb.from('mesas').update({ zona: dest }).eq('id', id);
+    if (error) return alert(/zona/.test(error.message) ? 'Falta correr 62_mesas_zonas.sql en Supabase.' : errTxt(error));
+  }
   if (b.dataset.ren) {
     if (cuentaDe(m.nombre)) return alert('Solo se puede renombrar una mesa libre.');
     const n = prompt('Nuevo nombre:', m.nombre); if (!n || !n.trim()) return;
@@ -428,9 +458,12 @@ async function editarMesa(b) {
     if (error) return alert(errTxt(error));
   }
   if (b.dataset.izq || b.dataset.der) {
-    const i = st.mesas.indexOf(m), j = b.dataset.izq ? i - 1 : i + 1;
-    if (j < 0 || j >= st.mesas.length) return;
-    const lista = st.mesas.slice(); [lista[i], lista[j]] = [lista[j], lista[i]];
+    // se ordena dentro de su zona; el orden global queda zona por zona
+    const enZona = st.mesas.filter(x => zonaDe(x) === zonaDe(m));
+    const i = enZona.indexOf(m), j = b.dataset.izq ? i - 1 : i + 1;
+    if (j < 0 || j >= enZona.length) return;
+    [enZona[i], enZona[j]] = [enZona[j], enZona[i]];
+    const lista = zonas().flatMap(z => z === zonaDe(m) ? enZona : st.mesas.filter(x => zonaDe(x) === z));
     const res = await Promise.all(lista.map((x, k) => x.orden === k + 1 ? null : sb.from('mesas').update({ orden: k + 1 }).eq('id', x.id)));
     const er = res.find(r => r && r.error); if (er) return alert(errTxt(er.error));
   }

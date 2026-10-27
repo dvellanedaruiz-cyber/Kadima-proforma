@@ -52,6 +52,16 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 .ctx{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#fff6db;border-bottom:1px solid #f0dca0;padding:8px 16px;font-size:14px;font-weight:600;color:#6a4b00}
 .linea .nota{font-size:12px;color:#b26a00;font-weight:600}
 .linea .n button{background:none;color:var(--gris);font-size:12px;padding:0 4px;text-decoration:underline}
+.plano{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin-top:8px}
+.plano .zh{grid-column:1/-1;font-size:12px;font-weight:800;color:var(--rojo);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--borde);padding:6px 0 4px;margin-top:4px}
+.plano .zh small{color:var(--gris);font-weight:600;text-transform:none;letter-spacing:0}
+.tm{border:2px solid var(--borde);border-radius:12px;background:#fff;padding:10px 4px;text-align:center;min-height:72px;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.tm b{font-size:15px}.tm span{font-size:12px}
+.tm.libre{background:#f4f2f0;color:#b3aca6;border-style:dashed;cursor:not-allowed}
+.tm.abierta{background:var(--rojo);border-color:var(--rojo);color:#fff;cursor:pointer}
+.tm.abierta.listos{background:#1e7d3a;border-color:#1e7d3a}
+.tm.abierta.elegida{outline:4px solid #f2a900;outline-offset:2px}
+.ms-hint{color:var(--gris);font-size:13px;text-align:center;padding:10px 0 2px}
 .mesa-row{border:1px solid var(--borde);border-radius:12px;padding:12px;margin-top:10px}
 .mesa-row .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .mesa-row .nom{font-size:18px;font-weight:800}
@@ -368,8 +378,9 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 
 <!-- MODAL MESAS ABIERTAS -->
 <div class="modal oculto" id="m-mesas">
-  <div class="caja" style="max-width:620px">
-    <h3>Mesas abiertas</h3>
+  <div class="caja" style="max-width:760px">
+    <h3>Mesas</h3>
+    <div class="plano" id="ms-plano"></div>
     <div id="ms-lista"></div>
     <div class="fila" style="margin-top:12px"><button class="btn-sec" id="ms-cerrar">Volver</button></div>
     <div class="error" id="ms-error"></div>
@@ -1222,8 +1233,13 @@ $('ms-cerrar').onclick = () => $('m-mesas').classList.add('oculto');
 async function abrirMesas() {
   msg('v-error'); msg('ms-error');
   if (!navigator.onLine) return msg('v-error', 'Ver mesas necesita internet.');
-  const { data, error } = await sb.from('v_mesas_abiertas').select('*').eq('sede_id', st.disp.sede_id).order('creado_en');
+  const [ab, pl] = await Promise.all([
+    sb.from('v_mesas_abiertas').select('*').eq('sede_id', st.disp.sede_id).order('creado_en'),
+    sb.from('mesas').select('*').eq('sede_id', st.disp.sede_id).eq('activo', true).order('orden').order('id'),
+  ]);
+  const { data, error } = ab;
   if (error) return msg('v-error', errorTexto(error));
+  st.planoMesas = pl.error ? [] : (pl.data || []);
   // productos de cada mesa
   const porMesa = {};
   if (data.length) {
@@ -1232,10 +1248,11 @@ async function abrirMesas() {
     (r.data || []).forEach(i => (porMesa[i.pedido_id] = porMesa[i.pedido_id] || []).push(i));
   }
   const ICONO = { pendiente:'🕒 en cocina', preparando:'👨‍🍳 preparando', listo:'✅ listo', entregado:'' };
-  $('ms-lista').innerHTML = data.length ? data.map(m => {
+  st.htmlMesa = {};
+  data.forEach(m => {
     const min = Math.floor((Date.now() - new Date(m.creado_en)) / 60000);
     const lineas = (porMesa[m.id] || []).map(i => `<div class="ml"><span>${Number(i.cantidad)} × ${esc(i.productos.nombre)}${i.nota ? ` <i>(${esc(i.nota)})</i>` : ''}${i.obs_envio ? ` <i>📝 ${esc(i.obs_envio)}</i>` : ''} <small>${ICONO[i.estado_cocina] || ''}</small>${i.estado_cocina !== 'entregado' ? ` <button class="ed" data-nota-item="${i.id}" data-nota="${esc(i.nota || '')}">✎ obs.</button>` : ''}</span><span>${S(i.cantidad * i.precio_unit)}</span></div>`).join('');
-    return `<div class="mesa-row">
+    const html = `<div class="mesa-row">
       <div class="top"><span class="nom">${esc(m.mesa)}${m.en_cocina ? `<span class="etq coc">${m.en_cocina} en cocina</span>` : ''}${m.listos ? `<span class="etq lis">${m.listos} listo(s) para servir</span>` : ''}</span><b>${S(m.total)}</b></div>
       <div class="det">${m.mozo ? esc(m.mozo) + ' · ' : ''}hace ${min} min</div>
       <div class="mlista">${lineas || '<div class="ml"><span>Sin productos</span></div>'}</div>
@@ -1246,10 +1263,41 @@ async function abrirMesas() {
         <button class="btn-sec" data-acc="anular" data-id="${m.id}">Anular</button>
         <button class="btn" data-acc="cobrar" data-id="${m.id}">Cobrar</button>
       </div></div>`;
-  }).join('') : '<div class="vacio">No hay mesas abiertas.</div>';
+    st.htmlMesa[m.id] = html;
+  });
   st.mesasAbiertas = data;
+  if (!data.some(m => m.id === st.mesaElegida)) st.mesaElegida = data.length === 1 ? data[0].id : null;
+  pintarPlanoCaja();
   $('m-mesas').classList.remove('oculto');
 }
+// plano por zonas: las mesas libres se ven pero no se pueden elegir; las abiertas sí (para cobrar)
+function cuadrosMesa(label) {
+  const m = String(label || '').match(/^Mesa\s+(\d+(?:\+\d+)+)$/i);
+  if (m) return m[1].split('+').map(n => 'mesa ' + n);
+  return String(label || '').split(/\s+\+\s+/).map(x => x.trim().toLowerCase());
+}
+function pintarPlanoCaja() {
+  const ab = st.mesasAbiertas || [], usadas = new Set();
+  const cuenta = nombre => ab.find(a => cuadrosMesa(a.mesa).includes(nombre.toLowerCase()));
+  const tile = (nombre, a) => {
+    if (!a) return `<div class="tm libre" title="Libre"><b>${esc(nombre)}</b><span>Libre</span></div>`;
+    usadas.add(a.id);
+    return `<div class="tm abierta ${Number(a.listos) ? 'listos' : ''} ${a.id === st.mesaElegida ? 'elegida' : ''}" data-elegir="${a.id}" title="${esc(a.mesa)}"><b>${esc(nombre)}</b><span>${S(a.total)}</span>${cuadrosMesa(a.mesa).length > 1 ? `<span>🔗 ${esc(a.mesa)}</span>` : ''}</div>`;
+  };
+  const zonas = [];
+  st.planoMesas.forEach(m => { const z = (m.zona || 'Zona 1').trim(); if (!zonas.includes(z)) zonas.push(z); });
+  let html = zonas.map(z => {
+    const ms = st.planoMesas.filter(m => (m.zona || 'Zona 1').trim() === z), oc = ms.filter(m => cuenta(m.nombre)).length;
+    return `<div class="zh">${esc(z)} <small>· ${oc} abierta(s)</small></div>` + ms.map(m => tile(m.nombre, cuenta(m.nombre))).join('');
+  }).join('');
+  const fuera = ab.filter(a => !usadas.has(a.id));
+  if (fuera.length) html += `<div class="zh">${st.planoMesas.length ? 'Otras cuentas' : 'Mesas abiertas'}</div>` + fuera.map(a => tile(a.mesa, a)).join('');
+  $('ms-plano').innerHTML = html;
+  $('ms-lista').innerHTML = !ab.length ? '<div class="vacio">No hay mesas abiertas.</div>'
+    : st.mesaElegida && st.htmlMesa[st.mesaElegida] ? st.htmlMesa[st.mesaElegida]
+    : '<div class="ms-hint">Toca una mesa abierta para ver su cuenta y cobrar.</div>';
+}
+$('ms-plano').onclick = e => { const t = e.target.closest('[data-elegir]'); if (!t) return; st.mesaElegida = Number(t.dataset.elegir); pintarPlanoCaja(); $('ms-lista').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); };
 async function itemsDe(pedidoId) {
   const { data, error } = await sb.from('pedido_items').select('id,producto_id,cantidad,precio_unit,nota,estado_cocina,productos(nombre,afecto_igv,area_preparacion,unidad_medida)')
     .eq('pedido_id', pedidoId).neq('estado_cocina', 'anulado').order('id');
