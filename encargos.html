@@ -713,6 +713,10 @@ const fechaCorta = f => f ? new Date(f + 'T12:00:00').toLocaleDateString('es-PE'
 
 // ===================== MAESTROS Y COSTOS =====================
 async function cargarMaestros() {
+  // precios por cantidad (si no se corrió 63, simplemente no hay)
+  sb.from('productos').select('id,precios_escala').not('precios_escala', 'is', null).then(({ data }) => {
+    st.escalas = {}; (data || []).forEach(x => { if (Array.isArray(x.precios_escala) && x.precios_escala.length) st.escalas[x.id] = x.precios_escala; });
+  });
   const [p, c, r, a] = await Promise.all([
     sb.from('productos').select('id,codigo,nombre,tipo_item,unidad_medida,precio_venta,afecto_igv,activo').eq('activo', true).order('nombre'),
     sb.from('v_costos').select('producto_id,costo'),
@@ -2540,10 +2544,17 @@ function ponerModo(m) {
   if (r) pintarRapido(); else pintarCot();
 }
 $('c-modo').onclick = e => { const b = e.target.closest('[data-m]'); if (b && st.ib) ponerModo(b.dataset.m); };
+// precio de carta según la cantidad (ej. bocaditos: unidad / medio ciento / ciento)
+function precioCarta(pid, cant) {
+  const p = st.prodMap[pid]; if (!p) return null;
+  const e = ((st.escalas || {})[pid] || []).filter(x => Number(x.desde) <= cant).sort((a, b) => b.desde - a.desde)[0];
+  return e ? Number(e.precio) : (p.precio_venta ? Number(p.precio_venta) : null);
+}
+function textoEscala(pid) { const l = (st.escalas || {})[pid]; return l && l.length ? ' · ' + l.map(e => `desde ${e.desde}: <b>${S(e.precio)}</b>`).join(' · ') : ''; }
 function pintarRapido() {
   const ib = st.ib, p = ib.prod ? st.prodMap[ib.prod] : null;
   $('c-prod-info').innerHTML = p
-    ? `Producto: <b>${esc(p.nombre)}</b>${p.codigo ? ' · ' + esc(p.codigo) : ''}${p.precio_venta ? ` · precio de carta <b>${S(p.precio_venta)}</b>` : ' · sin precio en carta'} <a href="#" id="c-quitar-prod">quitar</a>`
+    ? `Producto: <b>${esc(p.nombre)}</b>${p.codigo ? ' · ' + esc(p.codigo) : ''}${p.precio_venta ? ` · precio de carta <b>${S(p.precio_venta)}</b>${textoEscala(p.id)}` : ' · sin precio en carta'} <a href="#" id="c-quitar-prod">quitar</a>`
     : 'Elige un producto de la carta o escribe el nombre directo en “Producto”.';
   if (p) $('c-quitar-prod').onclick = ev => { ev.preventDefault(); ib.prod = null; pintarRapido(); };
   $('c-desc').value = ib.descripcion || '';
@@ -2555,7 +2566,7 @@ function pintarRapido() {
 buscador($('c-prod'), $('c-pres'), p => ['producto_terminado', 'plato', 'mercaderia', 'intermedio'].includes(p.tipo_item), id => {
   const ib = st.ib, p = st.prodMap[id];
   ib.prod = id; ib.descripcion = p.nombre; ib.descAuto = false;
-  if (!ib.precioManual && p.precio_venta) ib.precio = Number(p.precio_venta);
+  if (!ib.precioManual && p.precio_venta) ib.precio = precioCarta(id, Math.max(1, Number($('c-cant').value || 1)));
   pintarRapido(); $('c-pers').focus();
 });
 function cerrarCot() { $('m-cot').classList.add('oculto'); st.ib = null; }
@@ -2669,7 +2680,12 @@ function pintarFcReal(cu = calcCot().total) {
 }
 $('c-calc').onclick = e => { const b = e.target.closest('[data-sug]'); if (!b || !b.dataset.sug) return; st.ib.precio = Number(b.dataset.sug); st.ib.precioManual = true; $('c-precio').value = st.ib.precio; pintarFcReal(); };
 $('c-precio').oninput = () => { st.ib.precio = $('c-precio').value === '' ? '' : Number($('c-precio').value); st.ib.precioManual = true; pintarFcReal(); };
-$('c-cant').oninput = () => { st.ib.cantidad = Math.max(1, Number($('c-cant').value || 1)); pintarFcReal(); };
+$('c-cant').oninput = () => {
+  st.ib.cantidad = Math.max(1, Number($('c-cant').value || 1));
+  // pedido rápido de un producto de carta: el precio sigue la escala por cantidad (salvo que lo hayas escrito a mano)
+  const ib = st.ib;
+  if (ib.modo === 'rapido' && ib.prod && !ib.precioManual) { const pr = precioCarta(ib.prod, ib.cantidad); if (pr != null) { ib.precio = pr; $('c-precio').value = pr; } }
+  pintarFcReal(); };
 $('c-bcant').oninput = () => { if (st.ib.base) { st.ib.base.cantidad = Number($('c-bcant').value || 0); const k = calcCot(); pintarCalc(k); } };
 $('c-desc').oninput = () => { st.ib.descripcion = $('c-desc').value; st.ib.descAuto = false; };
 $('c-pers').oninput = () => { st.ib.personalizacion = $('c-pers').value; };

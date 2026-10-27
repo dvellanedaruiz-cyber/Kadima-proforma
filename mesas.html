@@ -615,6 +615,11 @@ function abrirProducto(l, idx) {
 }
 function pintarProducto() {
   const l = st.pp.l;
+  const p = st.productos.find(x => x.id === l.producto_id);
+  if (p && !p.precio_libre && Array.isArray(p.precios_escala) && p.precios_escala.length) {
+    const otros = st.envio.reduce((a, x, i) => a + (i !== st.pp.idx && x.producto_id === l.producto_id ? x.cantidad : 0), 0);
+    l.precio_unit = precioEscala(p, otros + l.cantidad);
+  }
   $('pp-cant').textContent = l.cantidad;
   $('pp-precio').textContent = `${S(l.precio_unit)} c/u · ${S(l.precio_unit * l.cantidad)}`;
   $('pp-chips').innerHTML = OBS_PROD.map(c => `<button data-ch="${esc(c)}" class="${l.chips.includes(c) ? 'on' : ''}">${esc(c)}</button>`).join('');
@@ -651,11 +656,26 @@ async function alternarFav(p) {
   const { error } = await sb.from('productos').update({ [col]: nuevo }).eq('id', p.id);
   if (error) { p[col] = !nuevo; pintarProds(); alert(errTxt(error)); }
 }
+// precio por cantidad (bocaditos al medio ciento / ciento): según el total de ese producto en el envío
+function precioEscala(p, cant) {
+  const e = (Array.isArray(p.precios_escala) ? p.precios_escala : []).filter(x => Number(x.desde) <= cant).sort((a, b) => b.desde - a.desde)[0];
+  return e ? Number(e.precio) : Number(p.precio_venta);
+}
+function aplicarEscalas() {
+  const tot = {};
+  st.envio.forEach(l => { tot[l.producto_id] = (tot[l.producto_id] || 0) + l.cantidad; });
+  st.envio.forEach(l => {
+    const p = st.productos.find(x => x.id === l.producto_id);
+    if (!p || p.precio_libre || !Array.isArray(p.precios_escala) || !p.precios_escala.length) return;
+    l.precio_unit = precioEscala(p, tot[l.producto_id]); l.escala = l.precio_unit < Number(p.precio_venta);
+  });
+}
 function pintarEnvio() {
+  aplicarEscalas();
   const n = st.envio.reduce((a, l) => a + l.cantidad, 0), tot = st.envio.reduce((a, l) => a + l.cantidad * l.precio_unit, 0);
   $('dm-envbar').classList.toggle('oculto', !st.envio.length);
   $('dm-pend').innerHTML = st.envio.length ? `<div class="pend"><h4><span>⏳ Por enviar (${n})</span><span>${S(tot)}</span></h4>
-    ${st.envio.map((l, i) => `<div class="ln" data-ed="${i}" title="Tocar para editar"><span class="q">${l.cantidad}×</span><span><b>${esc(l.nombre)}</b>${l.nota ? `<span class="nt">→ ${esc(l.nota)}</span>` : ''}</span><span>${S(l.cantidad * l.precio_unit)}</span></div>`).join('')}
+    ${st.envio.map((l, i) => `<div class="ln" data-ed="${i}" title="Tocar para editar"><span class="q">${l.cantidad}×</span><span><b>${esc(l.nombre)}</b>${l.escala ? `<span class="nt" style="color:#1e7d3a">precio x cantidad ${S(l.precio_unit)} c/u</span>` : ''}${l.nota ? `<span class="nt">→ ${esc(l.nota)}</span>` : ''}</span><span>${S(l.cantidad * l.precio_unit)}</span></div>`).join('')}
     ${st.notaOrden ? `<div class="notaord" id="dm-notaver">📝 ${esc(st.notaOrden)}</div>` : ''}</div>` : '';
   $('dm-notaord').textContent = st.notaOrden ? '📝 Nota ✓' : '📝 Nota';
   const hayCocina = st.envio.some(l => l.area === 'cocina');

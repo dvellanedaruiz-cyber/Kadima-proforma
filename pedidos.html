@@ -66,6 +66,8 @@
   .card-name { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 500; line-height: 1.3; }
   .card-desc { font-size: 13px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
   .card-foot { margin-top: auto; padding-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .escala-web { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .escala-web button { font: inherit; font-size: 12.5px; border: 1px solid var(--wine); color: var(--wine); background: #fff; border-radius: 999px; padding: 4px 10px; cursor: pointer; }
   .card-price { color: var(--wine); font-weight: 600; font-size: 16px; }
   .add-btn { background: var(--wine); color: #fff; border: none; padding: 9px 16px; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; white-space: nowrap; }
   .add-btn:hover { background: var(--wine-dark); }
@@ -440,11 +442,12 @@
       $('grid').innerHTML = '<div class="estado-carga">No pudimos cargar los productos. Revisa tu conexión y recarga la página.</div>';
       return;
     }
-    PRODUCTOS = (data || []).map(p => ({ ...p, precio: Number(p.precio), categoria: p.categoria || 'Otros', en_tienda: Number(p.en_tienda || 0) }));
+    PRODUCTOS = (data || []).map(p => ({ ...p, precio: Number(p.precio), categoria: p.categoria || 'Otros', en_tienda: Number(p.en_tienda || 0),
+      escala: (Array.isArray(p.escala) ? p.escala : []).map(e => ({ desde: Number(e.desde), precio: Number(e.precio) })).sort((a, b) => a.desde - b.desde) }));
     if (PRODUCTOS.some(p => p.en_tienda > 0)) categoria = EN_TIENDA;
     // el carrito guardado solo conserva productos que siguen disponibles
     const previo = leer('carrito') || {};
-    Object.entries(previo).forEach(([id, q]) => { if (PRODUCTOS.some(p => p.id == id) && q > 0) cart[id] = Math.min(99, q); });
+    Object.entries(previo).forEach(([id, q]) => { if (PRODUCTOS.some(p => p.id == id) && q > 0) cart[id] = Math.min(999, q); });
   }
 
   const EN_TIENDA = 'Disponible en tienda';
@@ -470,6 +473,7 @@
           <div class="card-cat">${esc(p.categoria)}</div>
           <div class="card-name">${esc(p.nombre)}</div>
           ${p.descripcion ? `<div class="card-desc">${esc(p.descripcion)}</div>` : ''}
+          ${p.escala.length ? `<div class="escala-web">${p.escala.map(e => `<button data-fijar="${p.id}" data-n="${e.desde}">${e.desde} und · S/ ${soles(e.desde * e.precio)}</button>`).join('')}</div>` : ''}
           <div class="card-foot">
             <div class="card-price">S/ ${soles(p.precio)}</div>
             <div id="ctl-${p.id}">${controlCantidad(p.id)}</div>
@@ -485,7 +489,7 @@
   }
 
   function cambiar(id, delta) {
-    const q = Math.max(0, Math.min(99, (cart[id] || 0) + delta));
+    const q = Math.max(0, Math.min(999, (cart[id] || 0) + delta));
     if (q) cart[id] = q; else delete cart[id];
     guardar('carrito', cart);
     const ctl = $('ctl-' + id); if (ctl) ctl.innerHTML = controlCantidad(id);
@@ -493,7 +497,9 @@
     if ($('checkout').style.display === 'block') pintarLineas();
   }
 
-  const items = () => Object.entries(cart).map(([id, qty]) => ({ ...PRODUCTOS.find(p => p.id == id), qty })).filter(i => i.id && i.qty > 0);
+  // precio por cantidad (bocaditos: medio ciento / ciento); el servidor aplica la misma escala al guardar
+  const precioPor = (p, q) => { const e = (p.escala || []).filter(x => x.desde <= q).pop(); return e ? e.precio : p.precio; };
+  const items = () => Object.entries(cart).map(([id, qty]) => { const p = PRODUCTOS.find(x => x.id == id); return p ? { ...p, precio: precioPor(p, qty), qty } : {}; }).filter(i => i.id && i.qty > 0);
   const total = () => items().reduce((s, i) => s + i.precio * i.qty, 0);
 
   function actualizarBarra() {
@@ -872,6 +878,7 @@
 
   function mostrarConfirmacion(res, datos) {
     const its = items();
+    const tp = total();   // con precios por cantidad (el servidor calcula igual)
     const fechaTxt = new Date(datos.fecha + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
     const horaTxt = etiquetaHora(Number(datos.hora.slice(0, 2)) * 60 + Number(datos.hora.slice(3, 5)));
     const entregaTxt = datos.tipo_entrega === 'delivery'
@@ -880,7 +887,7 @@
 
     $('codigo-pedido').textContent = res.codigo;
     const dv = datos.tipo_entrega === 'delivery' ? datos.delivery : 0;
-    $('resumen-entrega').textContent = entregaTxt + ` Total productos: S/ ${soles(res.total)}.` + (datos.tipo_entrega === 'delivery' ? (dv ? ` Delivery: S/ ${soles(dv)}. Total pagado: S/ ${soles(Number(res.total) + dv)}.` : ' El costo del delivery te lo confirmamos por WhatsApp.') : '');
+    $('resumen-entrega').textContent = entregaTxt + ` Total productos: S/ ${soles(tp)}.` + (datos.tipo_entrega === 'delivery' ? (dv ? ` Delivery: S/ ${soles(dv)}. Total pagado: S/ ${soles(tp + dv)}.` : ' El costo del delivery te lo confirmamos por WhatsApp.') : '');
 
     // Mensaje sin emojis: cada dato con viñeta "•"
     const lineas = [
@@ -890,8 +897,8 @@
       `• *Nombre:* ${datos.nombre}`,
       `• *Productos:*`,
       ...its.map(i => `   - ${i.qty} x ${i.nombre} — S/ ${soles(i.precio * i.qty)}`),
-      `• *Total productos:* S/ ${soles(res.total)}`,
-      ...(datos.tipo_entrega === 'delivery' ? (dv ? [`• *Delivery:* S/ ${soles(dv)}`, `• *Total pagado:* S/ ${soles(Number(res.total) + dv)}`] : [`• *Delivery:* por confirmar (fuera de zona)`]) : []),
+      `• *Total productos:* S/ ${soles(tp)}`,
+      ...(datos.tipo_entrega === 'delivery' ? (dv ? [`• *Delivery:* S/ ${soles(dv)}`, `• *Total pagado:* S/ ${soles(tp + dv)}`] : [`• *Delivery:* por confirmar (fuera de zona)`]) : []),
       `• *Entrega:* ${entregaTxt}`,
     ];
     if (datos.tipo_entrega === 'delivery') {
@@ -914,6 +921,7 @@
 
   // ---------- Eventos ----------
   document.addEventListener('click', e => {
+    const fj = e.target.closest('[data-fijar]'); if (fj) return cambiar(fj.dataset.fijar, Number(fj.dataset.n) - (cart[fj.dataset.fijar] || 0));
     const mas = e.target.closest('[data-mas]'); if (mas) return cambiar(mas.dataset.mas, 1);
     const menos = e.target.closest('[data-menos]'); if (menos) return cambiar(menos.dataset.menos, -1);
     const cat = e.target.closest('[data-cat]'); if (cat) { categoria = cat.dataset.cat; pintarCategorias(); pintarGrid(); return; }

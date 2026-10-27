@@ -115,6 +115,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 .carrito{flex:1;overflow-y:auto;padding:4px 0}
 .linea{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:10px 16px;border-bottom:1px solid #f1eeeb}
 .linea .n{font-size:14px;font-weight:600}
+.chips-peso button.activa{background:var(--rojo);color:#fff}
 .chips-peso{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.chips-peso button{background:var(--fondo);border:none;border-radius:16px;padding:6px 12px;font-weight:600;cursor:pointer}
 .linea .u button{background:none;border:none;padding:0;color:var(--rojo);font:inherit;text-decoration:underline;cursor:pointer}
 .linea .u{font-size:12px;color:var(--gris)}
@@ -307,6 +308,20 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 </section>
 
 <!-- MODAL COBRO DE PEDIDO -->
+<div class="modal oculto" id="m-cant">
+  <div class="caja">
+    <h3 id="ct-titulo">Producto</h3>
+    <p class="sub" id="ct-sub"></p>
+    <div class="chips-peso" id="ct-chips" style="margin:4px 0 12px"></div>
+    <div class="campo"><label>Unidades (precio por unidad)</label><input id="ct-n" type="number" step="1" min="1" inputmode="numeric" placeholder="Ej. 12"></div>
+    <div style="font-size:22px;font-weight:800;margin:10px 0" id="ct-total">S/ 0.00</div>
+    <div class="fila" style="gap:8px">
+      <button class="btn-sec" id="ct-cancelar">Cancelar</button>
+      <button class="btn" id="ct-ok">Agregar</button>
+    </div>
+    <div class="error" id="ct-error"></div>
+  </div>
+</div>
 <div class="modal oculto" id="m-peso">
   <div class="caja" style="max-width:360px">
     <h3 id="ps-titulo">Peso</h3>
@@ -668,6 +683,8 @@ async function abrirPos() {
   $('b-info').textContent = `${st.caja.nombre} · ${st.canal.nombre} · ${st.usuario.nombre} · ${st.turno.nombre || 'Turno'} desde ${new Date(st.turno.abierto_en).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}`;
   try {
     st.productos = await conCopia('productos', () => sb.from('productos').select('id,codigo,nombre,precio_venta,precio_libre,unidad_medida,tipo_item,afecto_igv,categoria_id,area_preparacion,favorito').eq('vendible', true).eq('activo', true).order('nombre'));
+    st.escalas = {};
+    try { (await conCopia('escalas', () => sb.from('productos').select('id,precios_escala').not('precios_escala', 'is', null))).forEach(x => { if (Array.isArray(x.precios_escala) && x.precios_escala.length) st.escalas[x.id] = x.precios_escala; }); } catch (e) {}
     const cats = await conCopia('categorias', () => sb.from('categorias').select('id,nombre,categoria_principal').order('nombre'));
     st.canales = await conCopia('canales', () => sb.from('canales').select('id,nombre').order('id'));
     st.conceptos = await conCopia('conceptos', () => sb.from('productos').select('id,codigo,nombre').in('codigo', ['SV-900', 'SV-901'])).catch(() => []);
@@ -782,6 +799,7 @@ function agregar(id) {
   const p = st.productos.find(x => x.id === id);
   if (p.precio_libre) return pedirPrecio(p);
   if (GRANEL[p.unidad_medida]) return pedirPeso(p);
+  if (st.escalas && st.escalas[id] && st.escalas[id].length) return pedirCantidad(p);
   const l = st.carrito.find(x => x.producto_id === id && !x.libre);
   if (l && !l.nota) l.cantidad++; else st.carrito.push({ producto_id: id, nombre: p.nombre, precio_unit: Number(p.precio_venta), cantidad: 1, afecto_igv: p.afecto_igv, area: p.area_preparacion, nota: null });
   dibujarCarrito();
@@ -790,6 +808,33 @@ function agregar(id) {
 const GRANEL = { Kilo: { u: 'kg', sub: 'g', label: 'Gramos' }, Litro: { u: 'L', sub: 'ml', label: 'Mililitros' } };
 const fmtCant = l => GRANEL[l.unidad] ? `${Math.round(l.cantidad * 1000)} ${GRANEL[l.unidad].sub}` : `${l.cantidad}`;
 let pesoDe = null;
+// bocaditos con precio por cantidad: ciento / medio ciento / 25 o unidades sueltas
+let cantDe = null;
+function pedirCantidad(p) {
+  cantDe = p;
+  const esc = st.escalas[p.id].slice().sort((a, b) => b.desde - a.desde);
+  $('ct-titulo').textContent = p.nombre;
+  $('ct-sub').textContent = `${S(p.precio_venta)} por unidad · ` + esc.map(e => `desde ${e.desde}: ${S(e.precio)} c/u`).join(' · ');
+  $('ct-chips').innerHTML = esc.map(e => `<button data-n="${e.desde}" style="font-size:16px;padding:12px 16px">${e.desde} und · ${S(r2(e.desde * e.precio))}</button>`).join('');
+  $('ct-n').value = ''; msg('ct-error'); totalCant();
+  $('m-cant').classList.remove('oculto'); setTimeout(() => $('ct-n').focus(), 50);
+}
+function totalCant() {
+  const n = Math.round(Number($('ct-n').value || 0));
+  [...$('ct-chips').children].forEach(b => b.classList.toggle('activa', Number(b.dataset.n) === n));
+  $('ct-total').textContent = n > 0 ? `${n} und · ${S(r2(n * precioEscala(cantDe.id, n)))}` : S(0);
+}
+$('ct-n').oninput = totalCant;
+$('ct-n').onkeydown = e => { if (e.key === 'Enter') $('ct-ok').click(); };
+$('ct-chips').onclick = e => { const b = e.target.closest('[data-n]'); if (b) { $('ct-n').value = b.dataset.n; totalCant(); $('ct-ok').click(); } };
+$('ct-cancelar').onclick = () => $('m-cant').classList.add('oculto');
+$('ct-ok').onclick = () => {
+  const n = Math.round(Number($('ct-n').value)), p = cantDe;
+  if (!(n > 0)) return msg('ct-error', 'Elige un paquete o escribe las unidades');
+  const l = st.carrito.find(x => x.producto_id === p.id && !x.libre && !x.nota);
+  if (l) l.cantidad += n; else st.carrito.push({ producto_id: p.id, nombre: p.nombre, precio_unit: Number(p.precio_venta), cantidad: n, afecto_igv: p.afecto_igv, area: p.area_preparacion, nota: null });
+  $('m-cant').classList.add('oculto'); dibujarCarrito();
+};
 function pedirPeso(p, i) {
   pesoDe = { p, i }; const g = GRANEL[p.unidad_medida];
   $('ps-titulo').textContent = p.nombre; $('ps-sub').textContent = `${S(p.precio_venta / 10)} cada 100 ${g.sub} · ${S(p.precio_venta)} por ${g.u}`; $('ps-label').textContent = g.label;
@@ -837,10 +882,28 @@ function canalVenta(id) {
   $('c-canal').classList.toggle('digital', st.canalVenta !== st.canal.id);
 }
 $('c-canal').onchange = () => canalVenta($('c-canal').value);
+// precio por cantidad (ej. bocaditos al medio ciento / ciento): se aplica según el total de ese producto en la venta
+function precioEscala(pid, cant) {
+  const p = st.productos.find(x => x.id === pid), base = p ? Number(p.precio_venta) : null;
+  const e = (st.escalas && st.escalas[pid] || []).filter(x => Number(x.desde) <= cant).sort((a, b) => b.desde - a.desde)[0];
+  return e ? Number(e.precio) : base;
+}
+function aplicarEscalas() {
+  if (!st.escalas) return;
+  const tot = {};
+  st.carrito.forEach(l => { if (st.escalas[l.producto_id] && !l.libre && !l.fijo) tot[l.producto_id] = (tot[l.producto_id] || 0) + Number(l.cantidad); });
+  st.carrito.forEach(l => {
+    if (!(l.producto_id in tot)) return;
+    const p = st.productos.find(x => x.id === l.producto_id); if (!p || p.precio_libre) return;
+    l.precio_unit = precioEscala(l.producto_id, tot[l.producto_id]);
+    l.escala = l.precio_unit < Number(p.precio_venta);
+  });
+}
 function dibujarCarrito() {
+  aplicarEscalas();
   $('carrito').innerHTML = st.carrito.length ? st.carrito.map((l, i) => `
     <div class="linea">
-      <div><div class="n">${esc(l.nombre)} ${l.fijo ? '' : `<button data-nota="${i}" title="Agregar nota para cocina">nota</button>`}</div>${l.nota ? `<div class="nota">→ ${esc(l.nota)}</div>` : ''}<div class="u">${GRANEL[l.unidad] ? `${S(l.precio_unit / 10)} /100 ${GRANEL[l.unidad].sub}` : l.libre ? `<button data-precio="${i}" title="Cambiar precio">${S(l.precio_unit)} c/u ✎</button>` : `${S(l.precio_unit)} c/u`}</div></div>
+      <div><div class="n">${esc(l.nombre)} ${l.fijo ? '' : `<button data-nota="${i}" title="Agregar nota para cocina">nota</button>`}</div>${l.nota ? `<div class="nota">→ ${esc(l.nota)}</div>` : ''}<div class="u">${GRANEL[l.unidad] ? `${S(l.precio_unit / 10)} /100 ${GRANEL[l.unidad].sub}` : l.libre ? `<button data-precio="${i}" title="Cambiar precio">${S(l.precio_unit)} c/u ✎</button>` : `${S(l.precio_unit)} c/u${l.escala ? ' <b style="color:#1e7d3a">· precio x cantidad</b>' : ''}`}</div></div>
       ${l.fijo ? '<div class="cant"></div>' : GRANEL[l.unidad] ? `<div class="cant"><button data-i="${i}" data-a="x" title="Quitar">✕</button><button data-peso="${i}" style="width:auto;padding:0 8px">${fmtCant(l)} ✎</button></div>` : `<div class="cant"><button data-i="${i}" data-a="-">−</button><span>${l.cantidad}</span><button data-i="${i}" data-a="+">+</button></div>`}
       <div class="imp">${S(l.cantidad * l.precio_unit)}</div>
     </div>`).join('') : '<div class="vacio">Toca un producto para agregarlo.</div>';

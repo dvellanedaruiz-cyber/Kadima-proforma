@@ -446,7 +446,7 @@ function pintarProductos() {
   const cat = id => { const c = st.categorias.find(c => c.id === id); return c ? esc(c.nombre) + (c.categoria_principal ? `<br><small style="color:var(--gris)">${esc(c.categoria_principal)}</small>` : '') : ''; };
   const l = st.productos.filter(p => (inact || p.activo) && (!st.ptipo || p.tipo_item === st.ptipo) && (!q || p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q) || cat(p.categoria_id).toLowerCase().includes(q)));
   $('p-filas').innerHTML = l.map(p => `<tr style="${p.activo ? '' : 'color:#aaa'}"><td>${p.codigo}</td><td>${esc(p.nombre)}</td><td>${tipoTag(p.tipo_item)}</td><td>${UNI[p.unidad_medida]}</td><td>${cat(p.categoria_id)}</td>
-    <td class="n">${p.favorito ? '⭐ ' : ''}${p.vendible ? (p.precio_libre ? 'Libre' : S(p.precio_venta) + (p.unidad_medida !== 'Unidad' ? '/' + UNI[p.unidad_medida] : '')) : ''}</td><td>${DESCUENTO[p.modo_descuento]}${p.modo_descuento === 'porcion' ? ` (${p.porciones_por_unidad})` : ''}</td>
+    <td class="n">${p.favorito ? '⭐ ' : ''}${p.vendible ? (p.precio_libre ? 'Libre' : S(p.precio_venta) + (p.unidad_medida !== 'Unidad' ? '/' + UNI[p.unidad_medida] : '')) + (Array.isArray(p.precios_escala) && p.precios_escala.length ? ` <small title="${p.precios_escala.map(e => 'desde ' + e.desde + ': ' + S(e.precio)).join(' · ')}" style="color:var(--ok)">+${p.precios_escala.length} x cant.</small>` : '') : ''}</td><td>${DESCUENTO[p.modo_descuento]}${p.modo_descuento === 'porcion' ? ` (${p.porciones_por_unidad})` : ''}</td>
     <td>${tieneReceta(p.id) ? `<button class="btn-mini" data-rec="${p.id}">Ver receta</button>` : ''}</td><td><button class="btn-mini" data-ed="${p.id}">Editar</button></td></tr>`).join('') || '<tr><td colspan="9" class="vacio">Sin productos.</td></tr>';
   $('p-filas').onclick = e => {
     if (e.target.dataset.ed) formProducto(prodDe(Number(e.target.dataset.ed)), () => pintarProductos());
@@ -489,7 +489,12 @@ function formProducto(p, alGuardar) {
     </div>
     <div id="f-venta" class="grid2" style="margin-top:10px">
       <div class="campo"><label>Precio de venta (con IGV)<span id="f-precio-u"></span></label><input id="f-precio" type="number" step="0.10" min="0" value="${p.precio_venta ?? ''}">
-        <label class="check" style="margin-top:6px;font-size:13px"><input type="checkbox" id="f-libre" ${p.precio_libre ? 'checked' : ''}> Precio libre: la cajera lo escribe al cobrar</label></div>
+        <label class="check" style="margin-top:6px;font-size:13px"><input type="checkbox" id="f-libre" ${p.precio_libre ? 'checked' : ''}> Precio libre: la cajera lo escribe al cobrar</label>
+        <div id="f-esc-box" style="margin-top:10px;background:#faf7f4;border:1px solid var(--borde);border-radius:10px;padding:8px 10px">
+          <div style="font-weight:700;font-size:13px">Precios por cantidad <span style="font-weight:400;color:var(--gris)">(opcional, ej. medio ciento / ciento)</span></div>
+          <div id="f-esc" style="margin-top:6px"></div>
+          <button type="button" class="btn-sec" id="f-esc-mas" style="margin-top:6px;padding:5px 10px;font-size:13px">+ Agregar precio por cantidad</button>
+        </div></div>
       <div class="campo"><label>Se prepara en</label><select id="f-area"><option value="vitrina" ${p.area_preparacion === 'vitrina' ? 'selected' : ''}>Vitrina (sale directo)</option><option value="cocina" ${p.area_preparacion === 'cocina' ? 'selected' : ''}>Cocina (va a la pantalla)</option></select></div>
       <div class="campo"><label>Al venderse descuenta</label><select id="f-modo">${Object.entries(DESCUENTO).map(([k, v]) => `<option value="${k}" ${k === p.modo_descuento ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
       <div></div>
@@ -547,6 +552,23 @@ function formProducto(p, alGuardar) {
     if (n) codigo();
     else if (confirm('Cambiaste el tipo. ¿Le asigno un código nuevo según el tipo? (Cancelar = mantener ' + p.codigo + ')')) codigo();
   };
+  // precios por cantidad: [{desde, precio}] — de 1 hasta el primer "desde" vale el precio normal
+  const esc = (Array.isArray(p.precios_escala) ? p.precios_escala : []).map(e => ({ desde: e.desde, precio: e.precio }));
+  const pintarEsc = () => {
+    const base = Number($('f-precio').value || 0);
+    $('f-esc').innerHTML = esc.map((e, i) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px;font-size:13px">
+      Desde <input data-ed="${i}" data-k="desde" type="number" min="2" step="1" value="${e.desde ?? ''}" style="width:80px" placeholder="50"> und.
+      a S/ <input data-ed="${i}" data-k="precio" type="number" min="0" step="0.01" value="${e.precio ?? ''}" style="width:90px" placeholder="0.90"> c/u
+      <span style="color:var(--gris)">${Number(e.desde) > 0 && Number(e.precio) > 0 ? '= ' + S(Number(e.desde) * Number(e.precio)) : ''}</span>
+      <button type="button" data-qe="${i}" style="margin-left:auto;background:none;color:var(--rojo);font-size:16px">✕</button></div>`).join('')
+      || `<div style="font-size:12.5px;color:var(--gris)">Sin precios por cantidad: siempre vale ${base ? S(base) : 'el precio de venta'} c/u.</div>`;
+  };
+  $('f-esc').oninput = e => { const i = e.target.dataset.ed; if (i == null) return; esc[i][e.target.dataset.k] = e.target.value; const sp = e.target.parentElement.querySelector('span'); const x = esc[i]; sp.textContent = Number(x.desde) > 0 && Number(x.precio) > 0 ? '= ' + S(Number(x.desde) * Number(x.precio)) : ''; };
+  $('f-esc').onclick = e => { const q = e.target.dataset.qe; if (q != null) { esc.splice(Number(q), 1); pintarEsc(); } };
+  $('f-esc-mas').onclick = () => { esc.push({ desde: esc.length ? '' : 50, precio: '' }); pintarEsc(); };
+  $('f-libre').addEventListener('change', () => $('f-esc-box').classList.toggle('oculto', $('f-libre').checked));
+  $('f-esc-box').classList.toggle('oculto', !!p.precio_libre);
+  pintarEsc();
   $('f-vend').onchange = sinc; $('f-modo').onchange = sinc; $('f-uni').onchange = sinc;
   sinc(); if (n) codigo();
   $('f-ok').onclick = async () => {
@@ -565,6 +587,12 @@ function formProducto(p, alGuardar) {
       porciones_por_unidad: modo === 'porcion' && $('f-porc').value ? Number($('f-porc').value) : null
     };
     if (vend && !reg.precio_libre && !(reg.precio_venta > 0)) return $('f-err').textContent = 'Indica el precio de venta o marca Precio libre.';
+    // precios por cantidad
+    const escOk = vend && !reg.precio_libre ? esc.filter(e => e.desde !== '' || e.precio !== '').map(e => ({ desde: Math.round(Number(e.desde)), precio: Number(e.precio) })) : [];
+    if (escOk.some(e => !(e.desde >= 2) || !(e.precio > 0))) return $('f-err').textContent = 'Revisa los precios por cantidad: "desde" debe ser 2 o más y el precio mayor a 0.';
+    if (new Set(escOk.map(e => e.desde)).size !== escOk.length) return $('f-err').textContent = 'Hay dos precios por cantidad con el mismo "desde".';
+    escOk.sort((a, b) => a.desde - b.desde);
+    if (escOk.length || (p && 'precios_escala' in p)) reg.precios_escala = escOk.length ? escOk : null;
     if (modo === 'porcion' && (!reg.producto_padre_id || !reg.porciones_por_unidad)) return $('f-err').textContent = 'Para porción indica el producto entero y cuántas porciones salen.';
     let res;
     if (n) res = await sb.from('productos').insert(reg).select().single();
