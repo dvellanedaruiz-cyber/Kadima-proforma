@@ -454,7 +454,11 @@ function pintarProductos() {
   };
 }
 function cerrarModal() { $('modal').classList.add('oculto'); }
-$('modal').onclick = e => { if (e.target === $('modal')) cerrarModal(); };
+// se cierra solo si el clic EMPIEZA y TERMINA en el fondo gris (no al arrastrar desde un campo hacia afuera)
+let downFondo = false;
+$('modal').addEventListener('mousedown', e => { downFondo = e.target === $('modal'); });
+$('modal').addEventListener('touchstart', e => { downFondo = e.target === $('modal'); }, { passive: true });
+$('modal').onclick = e => { if (e.target === $('modal') && downFondo) cerrarModal(); downFondo = false; };
 
 // Formulario de producto (nuevo o editar). alGuardar(producto) se llama al terminar.
 function formProducto(p, alGuardar) {
