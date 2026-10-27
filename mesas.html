@@ -66,7 +66,7 @@ input,select,textarea{font:inherit;padding:10px 12px;border:1px solid var(--bord
 .full .cab b{font-size:20px}.full .cab .x{margin-left:auto;background:rgba(255,255,255,.18);color:#fff;width:40px;height:40px;font-size:18px}
 .tabs{display:none;gap:6px;padding:8px 12px;background:#fff;border-bottom:1px solid var(--borde)}
 .tabs button{flex:1;background:var(--fondo);padding:10px;font-weight:700}.tabs button.activa{background:var(--rojo);color:#fff}
-.cuerpo{flex:1;display:grid;grid-template-columns:minmax(320px,40%) 1fr;gap:12px;padding:12px;overflow:hidden}
+.cuerpo{flex:1;display:grid;grid-template-columns:minmax(270px,30%) 1fr;gap:12px;padding:12px;overflow:hidden}
 .col{background:#fff;border-radius:14px;padding:12px;display:flex;flex-direction:column;overflow:hidden;min-height:0}
 .col h3{margin:0 0 8px;font-size:16px;display:flex;align-items:center;gap:8px}
 .lista{flex:1;overflow:auto;min-height:0}
@@ -83,21 +83,38 @@ input,select,textarea{font:inherit;padding:10px 12px;border:1px solid var(--bord
 .acciones button{flex:1 1 auto}
 .cats{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px}
 .cats button{background:var(--fondo);padding:8px 12px;font-weight:700;white-space:nowrap}.cats button.activa{background:var(--rojo);color:#fff}
-.prods{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;align-content:start;min-height:0;padding-top:6px}
-.prod{background:var(--fondo);border-radius:12px;padding:10px;text-align:left;min-height:72px;display:flex;flex-direction:column;justify-content:space-between}
-.prod b{font-size:14px;line-height:1.2}.prod span{font-weight:800;color:var(--rojo)}
+.prods{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;align-content:start;min-height:0;padding-top:6px}
+.prod{background:var(--fondo);border-radius:12px;padding:12px;text-align:left;min-height:96px;display:flex;flex-direction:column;justify-content:space-between}
+.prod b{font-size:15px;line-height:1.25}.prod span{font-weight:800;color:var(--rojo)}
 .prod.coc b::after{content:' 🍳';font-size:12px}
 .prod{position:relative}
 .prod .star{position:absolute;top:6px;right:8px;font-size:18px;line-height:1}
 .prods.editfav .prod{outline:2px dashed #f2a900;outline-offset:-2px}
 .cats .editar{background:#fff3c4;color:#6b4c15}
-.envio{border-top:2px solid var(--borde);margin-top:8px;padding-top:8px;max-height:45%;overflow:auto}
-.envio .ln{display:grid;grid-template-columns:auto 1fr auto;gap:6px;align-items:center;padding:4px 0}
-.envio .ln .qq{display:flex;gap:4px;align-items:center}
-.envio .ln .qq button{background:var(--fondo);width:30px;height:30px;font-weight:800}
-.envio .ln input{padding:6px 8px;font-size:13px}
-.chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
-.chips button{background:var(--fondo);font-size:12.5px;padding:5px 9px}
+/* por enviar (columna izquierda) */
+.pend{background:#fffbea;border:1.5px dashed #e0a800;border-radius:12px;padding:8px 10px;margin-bottom:10px}
+.pend h4{margin:0 0 4px;font-size:13px;color:#7a5300;display:flex;justify-content:space-between}
+.pend .ln{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:start;padding:6px 0;border-bottom:1px solid #f3e6b8;cursor:pointer}
+.pend .ln:last-child{border-bottom:0}
+.pend .ln .q{font-weight:800}.pend .ln .nt{display:block;font-size:12.5px;color:#6b4c15}
+.notaord{background:#eef2ff;color:var(--azul);border-radius:8px;padding:6px 9px;font-size:13px;margin:6px 0 0;cursor:pointer}
+.envbar{display:flex;gap:6px;margin:6px 0}
+.envbar .btn{flex:1}
+/* producto a pantalla completa */
+.pp{position:fixed;inset:0;background:var(--fondo);z-index:35;display:flex;flex-direction:column}
+.pp .cab{background:var(--rojo);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:12px}
+.pp .cab b{font-size:22px}.pp .cab .x{margin-left:auto;background:rgba(255,255,255,.18);color:#fff;width:44px;height:44px;font-size:20px}
+.pp .cont{flex:1;overflow:auto;padding:18px;max-width:900px;width:100%;margin:0 auto}
+.pp .qty{display:flex;align-items:center;gap:18px;justify-content:center;margin:6px 0 18px}
+.pp .qty button{width:64px;height:64px;font-size:30px;font-weight:800;background:#fff;border:2px solid var(--borde)}
+.pp .qty b{font-size:40px;min-width:60px;text-align:center}
+.pp h4{margin:14px 0 8px;font-size:15px;color:var(--gris)}
+.chipsg{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.chipsg button{background:#fff;border:2px solid var(--borde);padding:16px 10px;font-size:17px;font-weight:700;border-radius:14px}
+.chipsg button.on{background:var(--rojo);border-color:var(--rojo);color:#fff}
+.pp textarea{width:100%;font:inherit;font-size:16px;padding:12px;border:1px solid var(--borde);border-radius:12px;min-height:70px;resize:vertical}
+.pp .pie{padding:12px 16px;background:#fff;border-top:1px solid var(--borde);display:flex;gap:10px;flex-wrap:wrap}
+.pp .pie button{flex:1;padding:16px;font-size:17px;min-width:180px}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:40}
 .modal .caja{background:#fff;border-radius:16px;width:100%;max-width:480px;max-height:92vh;overflow:auto;padding:20px}
 .modal h3{margin:0 0 10px;font-size:20px;display:flex;align-items:center}.modal h3 .x{margin-left:auto;background:var(--fondo);width:36px;height:36px}
@@ -171,8 +188,12 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
   <div class="cuerpo">
     <div class="col" id="col-cuenta">
       <h3>🧾 Cuenta</h3>
-      <div class="lista" id="dm-items"></div>
+      <div class="lista"><div id="dm-pend"></div><div id="dm-items"></div></div>
       <div class="totbar"><span>Total</span><span id="dm-total">S/ 0.00</span></div>
+      <div class="envbar oculto" id="dm-envbar">
+        <button class="btn-sec" id="dm-notaord" title="Anotación para toda la orden">📝 Nota</button>
+        <button class="btn" id="dm-enviar">Enviar a cocina</button>
+      </div>
       <div class="acciones">
         <button class="btn-ok oculto" id="dm-servido">🍽️ Marcar servido</button>
         <button class="btn-sec" id="dm-precuenta">Precuenta</button>
@@ -188,13 +209,34 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
       <input id="dm-buscar" placeholder="Buscar producto…" autocomplete="off" style="margin-bottom:6px">
       <div class="cats" id="dm-cats"></div>
       <div class="prods" id="dm-prods"></div>
-      <div class="envio oculto" id="dm-envio">
-        <div id="dm-lineas"></div>
-        <div class="chips" id="dm-chips"><button>Para llevar</button><button>Sin hielo</button><button>Poco azúcar</button><button>Sin azúcar</button><button>Sin cebolla</button><button>Bien caliente</button></div>
-        <input id="dm-obs" placeholder="Observación para toda la orden (opcional)" maxlength="120" style="margin-bottom:6px">
-        <button class="btn" id="dm-enviar" style="width:100%">Enviar a cocina</button>
-      </div>
     </div>
+  </div>
+</div>
+
+<!-- ===== PRODUCTO (pantalla completa): cantidad + observaciones ===== -->
+<div class="pp oculto" id="m-prod">
+  <div class="cab"><b id="pp-nom">Producto</b><span id="pp-precio" style="font-size:16px;opacity:.9"></span><button class="x" id="pp-x">✕</button></div>
+  <div class="cont">
+    <div class="qty"><button id="pp-menos">−</button><b id="pp-cant">1</b><button id="pp-mas">+</button></div>
+    <h4>Observaciones de este producto</h4>
+    <div class="chipsg" id="pp-chips"></div>
+    <h4>Otra indicación (opcional)</h4>
+    <textarea id="pp-texto" maxlength="120" placeholder="Ej. sin mayonesa, cortado en 4"></textarea>
+  </div>
+  <div class="pie">
+    <button class="btn-sec oculto" id="pp-quitar">🗑 Quitar</button>
+    <button class="btn-sec" id="pp-agregar">＋ Agregar y seguir eligiendo</button>
+    <button class="btn" id="pp-enviar">Enviar a cocina</button>
+  </div>
+</div>
+
+<!-- ===== NOTA PARA TODA LA ORDEN ===== -->
+<div class="modal oculto" id="m-notaord">
+  <div class="caja">
+    <h3>📝 Nota para toda la orden<button class="x" id="no-x">✕</button></h3>
+    <p style="color:var(--gris);font-size:13px;margin:0 0 8px">Se envía a cocina junto con todos los productos de este envío.</p>
+    <textarea id="no-texto" maxlength="120" style="width:100%;font:inherit;font-size:16px;padding:10px;border:1px solid var(--borde);border-radius:10px;min-height:80px" placeholder="Ej. sacar todo junto, cliente apurado"></textarea>
+    <div class="fila" style="margin-top:10px"><button class="btn-sec" id="no-borrar">Quitar nota</button><button class="btn" id="no-ok">Guardar</button></div>
   </div>
 </div>
 
@@ -496,7 +538,7 @@ async function unirSeleccion() {
 
 // ===================== DETALLE DE MESA =====================
 function abrirMesa(nombre) {
-  st.actual = { nombre }; st.envio = []; $('dm-obs').value = ''; $('dm-buscar').value = '';
+  st.actual = { nombre }; st.envio = []; st.notaOrden = ''; $('dm-buscar').value = '';
   $('dm-error').textContent = '';
   const a = cuentaDe(nombre);
   tabMovil(a ? 'cuenta' : 'agregar');
@@ -559,10 +601,48 @@ $('dm-prods').onclick = e => {
   if (st.editFav) return alternarFav(p);
   let precio = Number(p.precio_venta || 0);
   if (p.precio_libre || !(precio > 0)) { const v = prompt(`Precio de ${p.nombre} (S/):`); if (v === null) return; precio = Number(String(v).replace(',', '.')); if (!(precio > 0)) return; }
-  const l = st.envio.find(x => x.producto_id === p.id && x.precio_unit === precio && !x.nota);
-  if (l) l.cantidad += 1; else st.envio.push({ producto_id: p.id, nombre: p.nombre, precio_unit: precio, cantidad: 1, nota: '', area: p.area_preparacion });
-  pintarEnvio();
+  abrirProducto({ producto_id: p.id, nombre: p.nombre, precio_unit: precio, cantidad: 1, chips: [], texto: '', area: p.area_preparacion }, null);
 };
+// ===== producto a pantalla completa =====
+const OBS_PROD = ['Para llevar', 'Sin hielo', 'Poco azúcar', 'Sin azúcar', 'Al tiempo', 'Bien caliente'];
+const notaDe = l => [...l.chips, l.texto.trim()].filter(Boolean).join(', ');
+function abrirProducto(l, idx) {
+  st.pp = { l: { ...l, chips: [...l.chips] }, idx };
+  $('pp-nom').textContent = l.nombre; $('pp-texto').value = l.texto;
+  $('pp-quitar').classList.toggle('oculto', idx == null);
+  $('pp-agregar').textContent = idx == null ? '＋ Agregar y seguir eligiendo' : '✓ Guardar cambios';
+  pintarProducto(); $('m-prod').classList.remove('oculto');
+}
+function pintarProducto() {
+  const l = st.pp.l;
+  $('pp-cant').textContent = l.cantidad;
+  $('pp-precio').textContent = `${S(l.precio_unit)} c/u · ${S(l.precio_unit * l.cantidad)}`;
+  $('pp-chips').innerHTML = OBS_PROD.map(c => `<button data-ch="${esc(c)}" class="${l.chips.includes(c) ? 'on' : ''}">${esc(c)}</button>`).join('');
+  const n = st.envio.reduce((a, x, i) => a + (i === st.pp.idx ? 0 : x.cantidad), 0) + l.cantidad;
+  const coc = l.area === 'cocina' || st.envio.some(x => x.area === 'cocina');
+  $('pp-enviar').textContent = `${coc ? 'Enviar a cocina' : 'Agregar a la cuenta'} (${n})`;
+}
+$('pp-chips').onclick = e => { const b = e.target.closest('[data-ch]'); if (!b) return; const c = st.pp.l.chips, k = c.indexOf(b.dataset.ch); k >= 0 ? c.splice(k, 1) : c.push(b.dataset.ch); pintarProducto(); };
+$('pp-menos').onclick = () => { if (st.pp.l.cantidad > 1) { st.pp.l.cantidad--; pintarProducto(); } };
+$('pp-mas').onclick = () => { st.pp.l.cantidad++; pintarProducto(); };
+$('pp-x').onclick = () => $('m-prod').classList.add('oculto');
+function guardarProducto() {
+  const l = st.pp.l; l.texto = $('pp-texto').value; l.nota = notaDe(l);
+  if (st.pp.idx != null) st.envio[st.pp.idx] = l;
+  else {
+    const igual = st.envio.find(x => x.producto_id === l.producto_id && x.precio_unit === l.precio_unit && x.nota === l.nota);
+    if (igual) igual.cantidad += l.cantidad; else st.envio.push(l);
+  }
+  $('m-prod').classList.add('oculto'); pintarEnvio();
+}
+$('pp-agregar').onclick = guardarProducto;
+$('pp-enviar').onclick = () => { guardarProducto(); $('dm-enviar').click(); };
+$('pp-quitar').onclick = () => { st.envio.splice(st.pp.idx, 1); $('m-prod').classList.add('oculto'); pintarEnvio(); };
+// nota para toda la orden (botón en la cuenta)
+$('dm-notaord').onclick = () => { $('no-texto').value = st.notaOrden || ''; $('m-notaord').classList.remove('oculto'); $('no-texto').focus(); };
+$('no-x').onclick = () => $('m-notaord').classList.add('oculto');
+$('no-ok').onclick = () => { st.notaOrden = $('no-texto').value.trim(); $('m-notaord').classList.add('oculto'); pintarEnvio(); };
+$('no-borrar').onclick = () => { st.notaOrden = ''; $('m-notaord').classList.add('oculto'); pintarEnvio(); };
 // marcar / desmarcar favorito (lo ven todos los equipos de Mesas)
 async function alternarFav(p) {
   const col = st.favCol ? 'favorito_mesa' : 'favorito', nuevo = !esFav(p);
@@ -572,23 +652,21 @@ async function alternarFav(p) {
   if (error) { p[col] = !nuevo; pintarProds(); alert(errTxt(error)); }
 }
 function pintarEnvio() {
-  $('dm-envio').classList.toggle('oculto', !st.envio.length);
-  const tot = st.envio.reduce((a, l) => a + l.cantidad * l.precio_unit, 0);
-  $('dm-lineas').innerHTML = `<div style="font-weight:800;margin-bottom:4px">Por enviar · ${S(tot)}</div>` + st.envio.map((l, i) => `<div class="ln">
-      <span class="qq"><button data-m="${i}">−</button><b>${l.cantidad}</b><button data-s="${i}">+</button></span>
-      <span><b style="font-size:14px">${esc(l.nombre)}</b><input data-n="${i}" value="${esc(l.nota)}" placeholder="Observación (ej. poco azúcar)" maxlength="120"></span>
-      <span>${S(l.cantidad * l.precio_unit)}</span></div>`).join('');
+  const n = st.envio.reduce((a, l) => a + l.cantidad, 0), tot = st.envio.reduce((a, l) => a + l.cantidad * l.precio_unit, 0);
+  $('dm-envbar').classList.toggle('oculto', !st.envio.length);
+  $('dm-pend').innerHTML = st.envio.length ? `<div class="pend"><h4><span>⏳ Por enviar (${n})</span><span>${S(tot)}</span></h4>
+    ${st.envio.map((l, i) => `<div class="ln" data-ed="${i}" title="Tocar para editar"><span class="q">${l.cantidad}×</span><span><b>${esc(l.nombre)}</b>${l.nota ? `<span class="nt">→ ${esc(l.nota)}</span>` : ''}</span><span>${S(l.cantidad * l.precio_unit)}</span></div>`).join('')}
+    ${st.notaOrden ? `<div class="notaord" id="dm-notaver">📝 ${esc(st.notaOrden)}</div>` : ''}</div>` : '';
+  $('dm-notaord').textContent = st.notaOrden ? '📝 Nota ✓' : '📝 Nota';
   const hayCocina = st.envio.some(l => l.area === 'cocina');
-  $('dm-enviar').textContent = `${hayCocina ? 'Enviar a cocina' : 'Agregar a la cuenta'} (${st.envio.reduce((a, l) => a + l.cantidad, 0)})`;
+  $('dm-enviar').textContent = `${hayCocina ? 'Enviar a cocina' : 'Agregar a la cuenta'} (${n})`;
+  $('dm-tabs').querySelector('[data-t="cuenta"]').textContent = n ? `🧾 Cuenta · ${n} por enviar` : '🧾 Cuenta';
 }
-$('dm-lineas').onclick = e => {
-  const m = e.target.dataset.m, s = e.target.dataset.s;
-  if (m != null) { const l = st.envio[m]; l.cantidad -= 1; if (l.cantidad <= 0) st.envio.splice(m, 1); }
-  if (s != null) st.envio[s].cantidad += 1;
-  if (m != null || s != null) pintarEnvio();
+$('dm-pend').onclick = e => {
+  if (e.target.closest('#dm-notaver')) return $('dm-notaord').click();
+  const r = e.target.closest('[data-ed]'); if (!r) return;
+  const i = Number(r.dataset.ed); abrirProducto(st.envio[i], i);
 };
-$('dm-lineas').oninput = e => { const n = e.target.dataset.n; if (n != null) st.envio[n].nota = e.target.value; };
-$('dm-chips').onclick = e => { if (e.target.tagName !== 'BUTTON') return; const t = $('dm-obs').value.trim(); $('dm-obs').value = t ? t + ', ' + e.target.textContent.toLowerCase() : e.target.textContent; };
 $('dm-enviar').onclick = async () => {
   if (!st.envio.length) return;
   const b = $('dm-enviar'); b.disabled = true; $('dm-error').textContent = '';
@@ -600,12 +678,12 @@ $('dm-enviar').onclick = async () => {
       if (error) throw error;
       a = data; st.actual.id = data.id;
     }
-    const obs = $('dm-obs').value.trim() || null;
-    const filas = st.envio.map(l => ({ pedido_id: a.id, producto_id: l.producto_id, cantidad: l.cantidad, precio_unit: l.precio_unit, nota: l.nota.trim() || null, obs_envio: obs }));
+    const obs = (st.notaOrden || '').trim() || null;
+    const filas = st.envio.map(l => ({ pedido_id: a.id, producto_id: l.producto_id, cantidad: l.cantidad, precio_unit: l.precio_unit, nota: (l.nota || '').trim() || null, obs_envio: obs }));
     const { error } = await sb.from('pedido_items').insert(filas);
     if (error) throw error;
     const n = st.envio.filter(l => l.area === 'cocina').reduce((x, l) => x + l.cantidad, 0);
-    st.envio = []; $('dm-obs').value = ''; pintarEnvio();
+    st.envio = []; st.notaOrden = ''; pintarEnvio();
     toast(`✓ Enviado a ${a.mesa}${n ? ` · ${n} a cocina` : ''}`);
     await cargar(); pintarDetalle(); tabMovil('cuenta');
   } catch (e) { $('dm-error').textContent = errTxt(e); tabMovil('cuenta'); }
