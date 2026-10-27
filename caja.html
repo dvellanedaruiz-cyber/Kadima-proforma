@@ -313,7 +313,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
     <h3 id="ct-titulo">Producto</h3>
     <p class="sub" id="ct-sub"></p>
     <div class="chips-peso" id="ct-chips" style="margin:4px 0 12px"></div>
-    <div class="campo"><label>Unidades (precio por unidad)</label><input id="ct-n" type="number" step="1" min="1" inputmode="numeric" placeholder="Ej. 12"></div>
+    <div class="campo"><label>Otra cantidad (se arman paquetes y el resto va suelto)</label><input id="ct-n" type="number" step="1" min="1" inputmode="numeric" placeholder="Ej. 12"></div>
     <div style="font-size:22px;font-weight:800;margin:10px 0" id="ct-total">S/ 0.00</div>
     <div class="fila" style="gap:8px">
       <button class="btn-sec" id="ct-cancelar">Cancelar</button>
@@ -814,7 +814,7 @@ function pedirCantidad(p) {
   cantDe = p;
   const esc = st.escalas[p.id].slice().sort((a, b) => b.desde - a.desde);
   $('ct-titulo').textContent = p.nombre;
-  $('ct-sub').textContent = `${S(p.precio_venta)} por unidad · ` + esc.map(e => `desde ${e.desde}: ${S(e.precio)} c/u`).join(' · ');
+  $('ct-sub').textContent = `Suelta ${S(p.precio_venta)} c/u · ` + esc.map(e => `paquete de ${e.desde}: ${S(e.precio)} c/u`).join(' · ');
   $('ct-chips').innerHTML = esc.map(e => `<button data-n="${e.desde}" style="font-size:16px;padding:12px 16px">${e.desde} und · ${S(r2(e.desde * e.precio))}</button>`).join('');
   $('ct-n').value = ''; msg('ct-error'); totalCant();
   $('m-cant').classList.remove('oculto'); setTimeout(() => $('ct-n').focus(), 50);
@@ -822,7 +822,8 @@ function pedirCantidad(p) {
 function totalCant() {
   const n = Math.round(Number($('ct-n').value || 0));
   [...$('ct-chips').children].forEach(b => b.classList.toggle('activa', Number(b.dataset.n) === n));
-  $('ct-total').textContent = n > 0 ? `${n} und · ${S(r2(n * precioEscala(cantDe.id, n)))}` : S(0);
+  const ps = n > 0 ? paquetes(cantDe.id, n) : [];
+  $('ct-total').innerHTML = n > 0 ? `${n} und · ${S(totalPaquetes(cantDe.id, n))}<div style="font-size:13px;font-weight:600;color:var(--gris);margin-top:2px">${ps.map(x => x.paq ? `${x.k > 1 ? x.k + ' × ' : ''}paquete ${x.paq} a ${S(x.precio_unit)}` : `${x.cantidad} sueltas a ${S(x.precio_unit)}`).join(' + ')}</div>` : S(0);
 }
 $('ct-n').oninput = totalCant;
 $('ct-n').onkeydown = e => { if (e.key === 'Enter') $('ct-ok').click(); };
@@ -883,27 +884,42 @@ function canalVenta(id) {
 }
 $('c-canal').onchange = () => canalVenta($('c-canal').value);
 // precio por cantidad (ej. bocaditos al medio ciento / ciento): se aplica según el total de ese producto en la venta
-function precioEscala(pid, cant) {
-  const p = st.productos.find(x => x.id === pid), base = p ? Number(p.precio_venta) : null;
-  const e = (st.escalas && st.escalas[pid] || []).filter(x => Number(x.desde) <= cant).sort((a, b) => b.desde - a.desde)[0];
-  return e ? Number(e.precio) : base;
+// precios por PAQUETE (bocaditos): 30 und = paquete de 25 a su precio + 5 sueltas a precio unitario.
+// Se arman los paquetes más grandes primero (75 = 50 + 25).
+function paquetes(pid, n) {
+  const p = st.productos.find(x => x.id === pid), base = p ? Number(p.precio_venta) : 0, out = [];
+  (st.escalas && st.escalas[pid] || []).slice().sort((a, b) => b.desde - a.desde).forEach(e => {
+    const d = Number(e.desde), k = Math.floor(n / d);
+    if (d > 0 && k > 0) { out.push({ cantidad: k * d, precio_unit: Number(e.precio), paq: d, k }); n -= k * d; }
+  });
+  if (n > 0) out.push({ cantidad: n, precio_unit: base, paq: null });
+  return out;
 }
+const totalPaquetes = (pid, n) => r2(paquetes(pid, n).reduce((a, x) => a + x.cantidad * x.precio_unit, 0));
+// en el carrito, cada bocadito se separa en líneas: "paquete(s) de 25" y "sueltas"
 function aplicarEscalas() {
   if (!st.escalas) return;
-  const tot = {};
-  st.carrito.forEach(l => { if (st.escalas[l.producto_id] && !l.libre && !l.fijo) tot[l.producto_id] = (tot[l.producto_id] || 0) + Number(l.cantidad); });
-  st.carrito.forEach(l => {
-    if (!(l.producto_id in tot)) return;
+  const tot = {}, primero = {};
+  st.carrito.forEach((l, i) => {
+    if (!st.escalas[l.producto_id] || l.libre || l.fijo || l.nota) return;
     const p = st.productos.find(x => x.id === l.producto_id); if (!p || p.precio_libre) return;
-    l.precio_unit = precioEscala(l.producto_id, tot[l.producto_id]);
-    l.escala = l.precio_unit < Number(p.precio_venta);
+    tot[l.producto_id] = (tot[l.producto_id] || 0) + Number(l.cantidad);
+    if (!(l.producto_id in primero)) primero[l.producto_id] = l;
   });
+  if (!Object.keys(tot).length) return;
+  const nuevo = [];
+  st.carrito.forEach(l => {
+    if (!(l.producto_id in tot) || l.libre || l.fijo || l.nota) return nuevo.push(l);
+    if (primero[l.producto_id] !== l) return;   // las demás líneas del mismo producto se juntan aquí
+    paquetes(l.producto_id, tot[l.producto_id]).forEach(x => nuevo.push({ ...l, cantidad: x.cantidad, precio_unit: x.precio_unit, paq: x.paq, k: x.k }));
+  });
+  st.carrito = nuevo;
 }
 function dibujarCarrito() {
   aplicarEscalas();
   $('carrito').innerHTML = st.carrito.length ? st.carrito.map((l, i) => `
     <div class="linea">
-      <div><div class="n">${esc(l.nombre)} ${l.fijo ? '' : `<button data-nota="${i}" title="Agregar nota para cocina">nota</button>`}</div>${l.nota ? `<div class="nota">→ ${esc(l.nota)}</div>` : ''}<div class="u">${GRANEL[l.unidad] ? `${S(l.precio_unit / 10)} /100 ${GRANEL[l.unidad].sub}` : l.libre ? `<button data-precio="${i}" title="Cambiar precio">${S(l.precio_unit)} c/u ✎</button>` : `${S(l.precio_unit)} c/u${l.escala ? ' <b style="color:#1e7d3a">· precio x cantidad</b>' : ''}`}</div></div>
+      <div><div class="n">${esc(l.nombre)} ${l.fijo ? '' : `<button data-nota="${i}" title="Agregar nota para cocina">nota</button>`}</div>${l.nota ? `<div class="nota">→ ${esc(l.nota)}</div>` : ''}<div class="u">${GRANEL[l.unidad] ? `${S(l.precio_unit / 10)} /100 ${GRANEL[l.unidad].sub}` : l.libre ? `<button data-precio="${i}" title="Cambiar precio">${S(l.precio_unit)} c/u ✎</button>` : `${S(l.precio_unit)} c/u${l.paq ? ` <b style="color:#1e7d3a">· ${l.k > 1 ? l.k + ' paquetes' : 'paquete'} de ${l.paq}</b>` : (st.escalas && st.escalas[l.producto_id] && !l.libre && !l.fijo ? ' <span style="color:var(--gris)">· sueltas</span>' : '')}`}</div></div>
       ${l.fijo ? '<div class="cant"></div>' : GRANEL[l.unidad] ? `<div class="cant"><button data-i="${i}" data-a="x" title="Quitar">✕</button><button data-peso="${i}" style="width:auto;padding:0 8px">${fmtCant(l)} ✎</button></div>` : `<div class="cant"><button data-i="${i}" data-a="-">−</button><span>${l.cantidad}</span><button data-i="${i}" data-a="+">+</button></div>`}
       <div class="imp">${S(l.cantidad * l.precio_unit)}</div>
     </div>`).join('') : '<div class="vacio">Toca un producto para agregarlo.</div>';

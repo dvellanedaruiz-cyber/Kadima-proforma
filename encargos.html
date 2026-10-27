@@ -2544,13 +2544,29 @@ function ponerModo(m) {
   if (r) pintarRapido(); else pintarCot();
 }
 $('c-modo').onclick = e => { const b = e.target.closest('[data-m]'); if (b && st.ib) ponerModo(b.dataset.m); };
-// precio de carta según la cantidad (ej. bocaditos: unidad / medio ciento / ciento)
+// precios por PAQUETE (bocaditos): 30 und = paquete de 25 a su precio + 5 sueltas a precio de carta
+function paquetesEnc(pid, n) {
+  const p = st.prodMap[pid], out = []; if (!p) return out;
+  ((st.escalas || {})[pid] || []).slice().sort((a, b) => b.desde - a.desde).forEach(e => {
+    const d = Number(e.desde), k = Math.floor(n / d);
+    if (d > 0 && k > 0) { out.push({ cantidad: k * d, precio_unit: Number(e.precio), paq: d, k }); n -= k * d; }
+  });
+  if (n > 0) out.push({ cantidad: n, precio_unit: Number(p.precio_venta || 0), paq: null });
+  return out;
+}
 function precioCarta(pid, cant) {
   const p = st.prodMap[pid]; if (!p) return null;
-  const e = ((st.escalas || {})[pid] || []).filter(x => Number(x.desde) <= cant).sort((a, b) => b.desde - a.desde)[0];
-  return e ? Number(e.precio) : (p.precio_venta ? Number(p.precio_venta) : null);
+  const ps = paquetesEnc(pid, cant);
+  if (ps.length === 1) return ps[0].precio_unit;
+  return r2(ps.reduce((a, x) => a + x.cantidad * x.precio_unit, 0) / cant);   // solo referencial: al agregar se separa en líneas
 }
-function textoEscala(pid) { const l = (st.escalas || {})[pid]; return l && l.length ? ' · ' + l.map(e => `desde ${e.desde}: <b>${S(e.precio)}</b>`).join(' · ') : ''; }
+function textoEscala(pid) { const l = (st.escalas || {})[pid]; return l && l.length ? ' · ' + l.slice().sort((a, b) => a.desde - b.desde).map(e => `paquete ${e.desde}: <b>${S(e.precio)}</b> c/u`).join(' · ') : ''; }
+function infoPaq() {
+  const ib = st.ib, el = $('c-paq-info'); if (!el || !ib) return;
+  const n = Math.max(1, Number($('c-cant').value || 1));
+  const ps = ib.prod && (st.escalas || {})[ib.prod] && !ib.precioManual ? paquetesEnc(ib.prod, n) : [];
+  el.innerHTML = ps.length > 1 ? `📦 Se agregará como: ${ps.map(x => x.paq ? `<b>${x.cantidad}</b> (paquete${x.k > 1 ? 's' : ''} de ${x.paq}) a ${S(x.precio_unit)}` : `<b>${x.cantidad}</b> sueltas a ${S(x.precio_unit)}`).join(' + ')} = <b>${S(ps.reduce((a, x) => a + x.cantidad * x.precio_unit, 0))}</b>` : '';
+}
 function pintarRapido() {
   const ib = st.ib, p = ib.prod ? st.prodMap[ib.prod] : null;
   $('c-prod-info').innerHTML = p
@@ -2561,7 +2577,9 @@ function pintarRapido() {
   $('c-precio').value = ib.precio === '' || ib.precio == null ? '' : ib.precio;
   const c = p ? costoDe(p.id) : null;
   $('c-calc-r').innerHTML = `<div class="k"><span>Pedido rápido</span><b>${p ? esc(p.codigo || '') : 'libre'}</b></div>
-    <div class="ayuda" style="margin:6px 0 0">Sin cotizar: el precio es el de carta o el que acuerdes con el cliente. Producción ve el producto, el detalle y las fotos.${c != null ? `<br>Costo registrado del producto: <b>${S(c)}</b>/und.` : ''}</div>`;
+    <div class="ayuda" style="margin:6px 0 0">Sin cotizar: el precio es el de carta o el que acuerdes con el cliente. Producción ve el producto, el detalle y las fotos.${c != null ? `<br>Costo registrado del producto: <b>${S(c)}</b>/und.` : ''}</div>
+    <div class="ayuda" id="c-paq-info" style="margin:6px 0 0;color:#1e6b34"></div>`;
+  infoPaq();
 }
 buscador($('c-prod'), $('c-pres'), p => ['producto_terminado', 'plato', 'mercaderia', 'intermedio'].includes(p.tipo_item), id => {
   const ib = st.ib, p = st.prodMap[id];
@@ -2679,12 +2697,13 @@ function pintarFcReal(cu = calcCot().total) {
   $('c-fcreal').innerHTML = pr > 0 ? `Food cost con este precio: <span class="fc ${fcClase(fc)}">${fc == null ? '—' : fc.toFixed(1) + '%'}</span>${n > 1 ? ` · Subtotal ${n} und: <b>${S(pr * n)}</b>` : ''}${fc != null && fc > 35 ? '<div class="sin-costo" style="margin-top:4px">Por encima del 35%: el precio está bajo para el costo.</div>' : ''}` : '';
 }
 $('c-calc').onclick = e => { const b = e.target.closest('[data-sug]'); if (!b || !b.dataset.sug) return; st.ib.precio = Number(b.dataset.sug); st.ib.precioManual = true; $('c-precio').value = st.ib.precio; pintarFcReal(); };
-$('c-precio').oninput = () => { st.ib.precio = $('c-precio').value === '' ? '' : Number($('c-precio').value); st.ib.precioManual = true; pintarFcReal(); };
+$('c-precio').oninput = () => { st.ib.precio = $('c-precio').value === '' ? '' : Number($('c-precio').value); st.ib.precioManual = true; infoPaq(); pintarFcReal(); };
 $('c-cant').oninput = () => {
   st.ib.cantidad = Math.max(1, Number($('c-cant').value || 1));
   // pedido rápido de un producto de carta: el precio sigue la escala por cantidad (salvo que lo hayas escrito a mano)
   const ib = st.ib;
   if (ib.modo === 'rapido' && ib.prod && !ib.precioManual) { const pr = precioCarta(ib.prod, ib.cantidad); if (pr != null) { ib.precio = pr; $('c-precio').value = pr; } }
+  infoPaq();
   pintarFcReal(); };
 $('c-bcant').oninput = () => { if (st.ib.base) { st.ib.base.cantidad = Number($('c-bcant').value || 0); const k = calcCot(); pintarCalc(k); } };
 $('c-desc').oninput = () => { st.ib.descripcion = $('c-desc').value; st.ib.descAuto = false; };
@@ -2736,7 +2755,13 @@ $('c-ok').onclick = () => {
       fotosNuevas: ib.fotosNuevas, fotosExistentes: ib.fotosExistentes,
     };
     ib.fotosQuitadas.forEach(x => st.f.fotosBorrar.push(x));
-    if (ib.idx != null) st.f.items[ib.idx] = item; else st.f.items.push(item);
+    // bocaditos con paquetes: 30 = una línea "paquete de 25" + una línea "sueltas", cada una con su precio
+    const ps = ib.prod && (st.escalas || {})[ib.prod] && !ib.precioManual ? paquetesEnc(ib.prod, item.cantidad) : [];
+    const lista = ps.length > 1 ? ps.map((x, j) => ({ ...item, cantidad: x.cantidad, precio_unit: x.precio_unit,
+        descripcion: desc + (x.paq ? ` (paquete${x.k > 1 ? 's' : ''} de ${x.paq})` : ' (sueltas)'),
+        personalizacion: j ? '' : item.personalizacion, fotosNuevas: j ? [] : item.fotosNuevas, fotosExistentes: j ? [] : item.fotosExistentes }))
+      : [ps.length === 1 ? { ...item, precio_unit: ps[0].precio_unit } : item];
+    if (ib.idx != null) st.f.items.splice(ib.idx, 1, ...lista); else st.f.items.push(...lista);
     return cerrarCot(), pintarItems();
   }
   const k = calcCot();

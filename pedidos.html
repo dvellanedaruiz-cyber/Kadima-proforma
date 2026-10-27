@@ -473,7 +473,7 @@
           <div class="card-cat">${esc(p.categoria)}</div>
           <div class="card-name">${esc(p.nombre)}</div>
           ${p.descripcion ? `<div class="card-desc">${esc(p.descripcion)}</div>` : ''}
-          ${p.escala.length ? `<div class="escala-web">${p.escala.map(e => `<button data-fijar="${p.id}" data-n="${e.desde}">${e.desde} und · S/ ${soles(e.desde * e.precio)}</button>`).join('')}</div>` : ''}
+          ${p.escala.length ? `<div class="escala-web">${p.escala.map(e => `<button data-fijar="${p.id}" data-n="${e.desde}">Paquete ${e.desde} · S/ ${soles(e.desde * e.precio)}</button>`).join('')}</div>` : ''}
           <div class="card-foot">
             <div class="card-price">S/ ${soles(p.precio)}</div>
             <div id="ctl-${p.id}">${controlCantidad(p.id)}</div>
@@ -498,9 +498,11 @@
   }
 
   // precio por cantidad (bocaditos: medio ciento / ciento); el servidor aplica la misma escala al guardar
-  const precioPor = (p, q) => { const e = (p.escala || []).filter(x => x.desde <= q).pop(); return e ? e.precio : p.precio; };
-  const items = () => Object.entries(cart).map(([id, qty]) => { const p = PRODUCTOS.find(x => x.id == id); return p ? { ...p, precio: precioPor(p, qty), qty } : {}; }).filter(i => i.id && i.qty > 0);
-  const total = () => items().reduce((s, i) => s + i.precio * i.qty, 0);
+  // precios por paquete: 30 = paquete de 25 a su precio + 5 sueltas a precio normal (paquetes grandes primero)
+  const paquetes = (p, n) => { const out = []; (p.escala || []).slice().reverse().forEach(e => { const k = Math.floor(n / e.desde); if (k > 0) { out.push({ c: k * e.desde, pr: e.precio, paq: e.desde, k }); n -= k * e.desde; } }); if (n > 0) out.push({ c: n, pr: p.precio }); return out; };
+  const items = () => Object.entries(cart).map(([id, qty]) => { const p = PRODUCTOS.find(x => x.id == id); if (!p) return {}; const ps = paquetes(p, qty), sub = Math.round(ps.reduce((a, x) => a + x.c * x.pr, 0) * 100) / 100;
+    return { ...p, qty, sub, precio: sub / qty, detalle: ps.some(x => x.paq) ? ps.map(x => x.paq ? `${x.k > 1 ? x.k + ' paq.' : 'paq.'} ${x.paq} a S/ ${soles(x.pr)}` : `${x.c} sueltas a S/ ${soles(x.pr)}`).join(' + ') : '' }; }).filter(i => i.id && i.qty > 0);
+  const total = () => items().reduce((s, i) => s + i.sub, 0);
 
   function actualizarBarra() {
     const its = items();
@@ -520,9 +522,9 @@
     if (!its.length) { $('checkout').style.display = 'none'; return; }
     $('order-lines').innerHTML = its.map(i => `
       <div class="order-line">
-        <span>${esc(i.nombre)}<br><small style="color:var(--muted-2)">S/ ${soles(i.precio)} c/u</small></span>
+        <span>${esc(i.nombre)}<br><small style="color:var(--muted-2)">${i.detalle ? esc(i.detalle) : `S/ ${soles(i.precio)} c/u`}</small></span>
         <div class="stepper"><button data-menos="${i.id}">−</button><span>${i.qty}</span><button data-mas="${i.id}">+</button></div>
-        <span>S/ ${soles(i.precio * i.qty)}</span>
+        <span>S/ ${soles(i.sub)}</span>
       </div>`).join('');
     pintarTotales();
   }
@@ -896,7 +898,7 @@
       `• *Pedido:* ${res.codigo}`,
       `• *Nombre:* ${datos.nombre}`,
       `• *Productos:*`,
-      ...its.map(i => `   - ${i.qty} x ${i.nombre} — S/ ${soles(i.precio * i.qty)}`),
+      ...its.map(i => `   - ${i.qty} x ${i.nombre}${i.detalle ? ` (${i.detalle})` : ''} — S/ ${soles(i.sub)}`),
       `• *Total productos:* S/ ${soles(tp)}`,
       ...(datos.tipo_entrega === 'delivery' ? (dv ? [`• *Delivery:* S/ ${soles(dv)}`, `• *Total pagado:* S/ ${soles(tp + dv)}`] : [`• *Delivery:* por confirmar (fuera de zona)`]) : []),
       `• *Entrega:* ${entregaTxt}`,

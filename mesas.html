@@ -218,6 +218,7 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
   <div class="cab"><b id="pp-nom">Producto</b><span id="pp-precio" style="font-size:16px;opacity:.9"></span><button class="x" id="pp-x">✕</button></div>
   <div class="cont">
     <div class="qty"><button id="pp-menos">−</button><b id="pp-cant">1</b><button id="pp-mas">+</button></div>
+    <div class="chipsg oculto" id="pp-paq" style="margin-bottom:6px"></div>
     <h4>Observaciones de este producto</h4>
     <div class="chipsg" id="pp-chips"></div>
     <h4>Otra indicación (opcional)</h4>
@@ -616,18 +617,18 @@ function abrirProducto(l, idx) {
 function pintarProducto() {
   const l = st.pp.l;
   const p = st.productos.find(x => x.id === l.producto_id);
-  if (p && !p.precio_libre && Array.isArray(p.precios_escala) && p.precios_escala.length) {
-    const otros = st.envio.reduce((a, x, i) => a + (i !== st.pp.idx && x.producto_id === l.producto_id ? x.cantidad : 0), 0);
-    l.precio_unit = precioEscala(p, otros + l.cantidad);
-  }
   $('pp-cant').textContent = l.cantidad;
-  $('pp-precio').textContent = `${S(l.precio_unit)} c/u · ${S(l.precio_unit * l.cantidad)}`;
+  $('pp-paq').classList.toggle('oculto', !conPaquetes(p));
+  if (conPaquetes(p)) $('pp-paq').innerHTML = p.precios_escala.slice().sort((a, b) => a.desde - b.desde).map(e => `<button data-paq="${e.desde}" class="${l.cantidad === Number(e.desde) ? 'on' : ''}">Paquete ${e.desde} · ${S(e.desde * e.precio)}</button>`).join('');
+  if (conPaquetes(p)) { const ps = paquetes(p, l.cantidad); $('pp-precio').textContent = `${S(ps.reduce((a, x) => a + x.cantidad * x.precio_unit, 0))} · ${txtPaq(ps)}`; }
+  else $('pp-precio').textContent = `${S(l.precio_unit)} c/u · ${S(l.precio_unit * l.cantidad)}`;
   $('pp-chips').innerHTML = OBS_PROD.map(c => `<button data-ch="${esc(c)}" class="${l.chips.includes(c) ? 'on' : ''}">${esc(c)}</button>`).join('');
   const n = st.envio.reduce((a, x, i) => a + (i === st.pp.idx ? 0 : x.cantidad), 0) + l.cantidad;
   const coc = l.area === 'cocina' || st.envio.some(x => x.area === 'cocina');
   $('pp-enviar').textContent = `${coc ? 'Enviar a cocina' : 'Agregar a la cuenta'} (${n})`;
 }
 $('pp-chips').onclick = e => { const b = e.target.closest('[data-ch]'); if (!b) return; const c = st.pp.l.chips, k = c.indexOf(b.dataset.ch); k >= 0 ? c.splice(k, 1) : c.push(b.dataset.ch); pintarProducto(); };
+$('pp-paq').onclick = e => { const b = e.target.closest('[data-paq]'); if (b) { st.pp.l.cantidad = Number(b.dataset.paq); pintarProducto(); } };
 $('pp-menos').onclick = () => { if (st.pp.l.cantidad > 1) { st.pp.l.cantidad--; pintarProducto(); } };
 $('pp-mas').onclick = () => { st.pp.l.cantidad++; pintarProducto(); };
 $('pp-x').onclick = () => $('m-prod').classList.add('oculto');
@@ -656,26 +657,32 @@ async function alternarFav(p) {
   const { error } = await sb.from('productos').update({ [col]: nuevo }).eq('id', p.id);
   if (error) { p[col] = !nuevo; pintarProds(); alert(errTxt(error)); }
 }
-// precio por cantidad (bocaditos al medio ciento / ciento): según el total de ese producto en el envío
-function precioEscala(p, cant) {
-  const e = (Array.isArray(p.precios_escala) ? p.precios_escala : []).filter(x => Number(x.desde) <= cant).sort((a, b) => b.desde - a.desde)[0];
-  return e ? Number(e.precio) : Number(p.precio_venta);
+// precios por PAQUETE (bocaditos): 30 und = paquete de 25 a su precio + 5 sueltas a precio unitario
+function paquetes(p, n) {
+  const out = [];
+  (Array.isArray(p.precios_escala) ? p.precios_escala : []).slice().sort((a, b) => b.desde - a.desde).forEach(e => {
+    const d = Number(e.desde), k = Math.floor(n / d);
+    if (d > 0 && k > 0) { out.push({ cantidad: k * d, precio_unit: Number(e.precio), paq: d, k }); n -= k * d; }
+  });
+  if (n > 0) out.push({ cantidad: n, precio_unit: Number(p.precio_venta), paq: null });
+  return out;
 }
+const conPaquetes = p => p && !p.precio_libre && Array.isArray(p.precios_escala) && p.precios_escala.length;
+const txtPaq = ps => ps.map(x => x.paq ? `${x.k > 1 ? x.k + '×' : ''}paq. ${x.paq} a ${S(x.precio_unit)}` : `${x.cantidad} sueltas a ${S(x.precio_unit)}`).join(' + ');
+// cada línea por enviar: si el producto tiene paquetes, se calcula su total y su detalle
 function aplicarEscalas() {
-  const tot = {};
-  st.envio.forEach(l => { tot[l.producto_id] = (tot[l.producto_id] || 0) + l.cantidad; });
   st.envio.forEach(l => {
     const p = st.productos.find(x => x.id === l.producto_id);
-    if (!p || p.precio_libre || !Array.isArray(p.precios_escala) || !p.precios_escala.length) return;
-    l.precio_unit = precioEscala(p, tot[l.producto_id]); l.escala = l.precio_unit < Number(p.precio_venta);
+    if (!conPaquetes(p)) { l.paqs = null; l.total = l.cantidad * l.precio_unit; return; }
+    l.paqs = paquetes(p, l.cantidad); l.total = l.paqs.reduce((a, x) => a + x.cantidad * x.precio_unit, 0);
   });
 }
 function pintarEnvio() {
   aplicarEscalas();
-  const n = st.envio.reduce((a, l) => a + l.cantidad, 0), tot = st.envio.reduce((a, l) => a + l.cantidad * l.precio_unit, 0);
+  const n = st.envio.reduce((a, l) => a + l.cantidad, 0), tot = st.envio.reduce((a, l) => a + l.total, 0);
   $('dm-envbar').classList.toggle('oculto', !st.envio.length);
   $('dm-pend').innerHTML = st.envio.length ? `<div class="pend"><h4><span>⏳ Por enviar (${n})</span><span>${S(tot)}</span></h4>
-    ${st.envio.map((l, i) => `<div class="ln" data-ed="${i}" title="Tocar para editar"><span class="q">${l.cantidad}×</span><span><b>${esc(l.nombre)}</b>${l.escala ? `<span class="nt" style="color:#1e7d3a">precio x cantidad ${S(l.precio_unit)} c/u</span>` : ''}${l.nota ? `<span class="nt">→ ${esc(l.nota)}</span>` : ''}</span><span>${S(l.cantidad * l.precio_unit)}</span></div>`).join('')}
+    ${st.envio.map((l, i) => `<div class="ln" data-ed="${i}" title="Tocar para editar"><span class="q">${l.cantidad}×</span><span><b>${esc(l.nombre)}</b>${l.paqs && l.paqs.some(x => x.paq) ? `<span class="nt" style="color:#1e7d3a">${txtPaq(l.paqs)}</span>` : ''}${l.nota ? `<span class="nt">→ ${esc(l.nota)}</span>` : ''}</span><span>${S(l.total)}</span></div>`).join('')}
     ${st.notaOrden ? `<div class="notaord" id="dm-notaver">📝 ${esc(st.notaOrden)}</div>` : ''}</div>` : '';
   $('dm-notaord').textContent = st.notaOrden ? '📝 Nota ✓' : '📝 Nota';
   const hayCocina = st.envio.some(l => l.area === 'cocina');
@@ -699,7 +706,10 @@ $('dm-enviar').onclick = async () => {
       a = data; st.actual.id = data.id;
     }
     const obs = (st.notaOrden || '').trim() || null;
-    const filas = st.envio.map(l => ({ pedido_id: a.id, producto_id: l.producto_id, cantidad: l.cantidad, precio_unit: l.precio_unit, nota: (l.nota || '').trim() || null, obs_envio: obs }));
+    aplicarEscalas();
+    // un bocadito de 30 se guarda como 2 líneas: paquete de 25 + 5 sueltas (cada una con su precio)
+    const filas = st.envio.flatMap(l => (l.paqs || [{ cantidad: l.cantidad, precio_unit: l.precio_unit }]).map(x =>
+      ({ pedido_id: a.id, producto_id: l.producto_id, cantidad: x.cantidad, precio_unit: x.precio_unit, nota: (l.nota || '').trim() || null, obs_envio: obs })));
     const { error } = await sb.from('pedido_items').insert(filas);
     if (error) throw error;
     const n = st.envio.filter(l => l.area === 'cocina').reduce((x, l) => x + l.cantidad, 0);
