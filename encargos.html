@@ -229,6 +229,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
 .modo-del{display:inline-block;padding:4px 10px;border-radius:999px;background:#fff4e5;color:#9a5b00;font-size:12px;font-weight:700;margin-right:6px}
 .lbl-real{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600}
 .lbl-real input{width:90px}
+.b-borrar{color:var(--mal)!important;border-color:#f0c9c9!important}
 </style>
 </head>
 <body>
@@ -2258,6 +2259,44 @@ $('cm-tabla').addEventListener('change', async e => {
   if (error) return alert(errTxt(error));
   Object.assign(st.cmen.find(c => c.id === id), cambios); toast('Guardado');
 });
+// ===== Proforma mensual (antes de emitir la factura al crédito) =====
+const firmaFM = () => [$('fm-cli').value, $('fm-mes').value, ...st_fm.tortas.filter(p => p.sel).map(p => p.id), '|', ...st_fm.delivs.filter(p => p.sel).map(p => p.id)].join(',');
+async function proformaFM() {
+  const k = totalesFM(), mes = $('fm-mes').value, c = k.c;
+  const tortas = st_fm.tortas.filter(p => p.sel), delivs = st_fm.delivs.filter(p => p.sel);
+  if (!tortas.length && !delivs.length) throw new Error('No hay nada seleccionado.');
+  const hoy = new Date(), fF = d => d.toLocaleDateString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric' });
+  const gravada = r2(k.total / IGV), igv = r2(k.total - gravada);
+  const filas = [
+    ...tortas.flatMap(p => (p.pedidos_encargo_items || []).sort((a, b) => a.orden - b.orden).map(i => `<tr><td>${Number(i.cantidad)}</td><td class="d">${esc(i.descripcion)}${i.personalizacion ? `<br><small style="color:#555">${esc(i.personalizacion)}</small>` : ''}<br><small style="color:#555">Pedido ${esc(p.codigo)} · entrega ${fechaCorta(p.fecha_entrega)}</small></td><td>${SS(i.precio_unit)}</td><td>${SS(Number(i.precio_unit) * Number(i.cantidad))}</td></tr>`)),
+    ...delivs.map(p => `<tr><td>1</td><td class="d">SERVICIO DE DELIVERY<br><small style="color:#555">Pedido ${esc(p.codigo)} · ${fechaCorta(p.fecha_entrega)}</small></td><td>${SS(p.cobro)}</td><td>${SS(p.cobro)}</td></tr>`),
+  ].join('');
+  const nro = `FM-${mes.replace('-', '')}`;
+  const html = `<div class="a4">
+    <div class="cab"><div class="emp"><b>${EMPRESA.razon}</b><div>KADIMA PASTELERÍA & PANADERÍA<br>${EMPRESA.direccion}<br>${EMPRESA.ubigeo}</div></div>
+      <div class="caja-doc">R.U.C. ${EMPRESA.ruc}<br>PROFORMA<br>N° ${nro}</div></div>
+    <div class="datos" style="grid-template-columns:30mm 1fr 28mm 44mm">
+      <span class="k">CLIENTE:</span><span>${esc(c.razon_social || c.nombre_corto || '-')}</span><span class="k">F. EMISIÓN:</span><span>${fF(hoy)}</span>
+      <span class="k">R.U.C.:</span><span>${esc(c.ruc || '-')}</span><span class="k">PERIODO:</span><span>Tortas de ${nombreMes(mes)}${delivs.length ? `<br>Deliveries de ${nombreMes(mesAnterior(mes))}` : ''}</span>
+      <span class="k">DIRECCIÓN:</span><span style="grid-column:span 3">${esc(c.direccion || '-')}</span>
+    </div>
+    <table class="items"><thead><tr><th style="width:14mm">Cant.</th><th>Descripción</th><th style="width:32mm">Precio Unit.</th><th style="width:30mm">Importe</th></tr></thead><tbody>${filas}</tbody></table>
+    <div class="pie"><div class="son">SON: ${letras(k.total)}</div>
+      <table class="tot">
+        <tr><td class="k">Op. Gravada</td><td>${SS(gravada)}</td></tr><tr><td class="k">IGV 18.00%</td><td>${SS(igv)}</td></tr>
+        <tr><td class="k">Total</td><td>${SS(k.total)}</td></tr>
+        ${k.ret ? `<tr><td class="k">Retención 3%</td><td>${SS(k.ret)}</td></tr><tr><td class="k">Neto a pagar</td><td>${SS(k.neto)}</td></tr>` : ''}
+      </table></div>
+    <div class="cred"><b>Condiciones</b>• Precios en soles, incluyen IGV.<br>• Se emitirá una factura al crédito a ${c.dias_credito || 35} días.<br>• Por favor revise el detalle y confírmenos para emitir la factura.</div>
+    <div class="legal">Documento informativo. No es un comprobante de pago.</div>
+  </div>`;
+  $('lienzo').innerHTML = html;
+  const blob = await html2pdf().set({ margin: 0, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } })
+    .from($('lienzo').firstElementChild).outputPdf('blob');
+  $('lienzo').innerHTML = '';
+  st_fm.profFirma = firmaFM();
+  return new File([blob], `Proforma-${nro}-${(c.nombre_corto || c.ruc || '').replace(/[^\w-]+/g, '_')}.pdf`, { type: 'application/pdf' });
+}
 async function cargarFM() {
   const ruc = $('fm-cli').value, mes = $('fm-mes').value; $('fm-error').textContent = ''; $('fm-listo').innerHTML = '';
   if (!ruc || !mes) return;
@@ -2296,8 +2335,24 @@ function pintarFM() {
       ${k.ret ? `<span>Retención 3% (la retiene el cliente)</span><b>− ${S(k.ret)}</b><span>Neto por cobrar</span><b>${S(k.neto)}</b>` : ''}
       <span>Crédito</span><b>${k.c.dias_credito || 35} días · vence ${fechaCorta(k.vence)}</b>
     </div>
-    <div class="acciones-form"><button class="btn" id="fm-emitir" ${k.total > 0 ? '' : 'disabled'}>🧾 Emitir factura al crédito por ${S(k.total)}</button></div>`;
-  $('fm-emitir').onclick = emitirFM;
+    <div class="acciones-form" style="flex-wrap:wrap;gap:8px">
+      <span style="flex-basis:100%;font-size:13px;color:var(--gris)">Paso 1: envía la proforma al cliente para que la revise · Paso 2: emite la factura</span>
+      <button class="btn-sec" id="fm-profd" ${k.total > 0 ? '' : 'disabled'}>📥 1 · Descargar proforma</button>
+      <button class="btn-wa" id="fm-prof" ${k.total > 0 ? '' : 'disabled'}>💬 1 · Enviar proforma</button>
+      <button class="btn" id="fm-emitir" ${k.total > 0 ? '' : 'disabled'}>🧾 2 · Emitir factura al crédito por ${S(k.total)}</button></div>`;
+  $('fm-emitir').onclick = () => {
+    if (st_fm.profFirma !== firmaFM() && !confirm('Aún no generaste la proforma de esta selección. ¿Emitir la factura igual?')) return;
+    emitirFM();
+  };
+  $('fm-profd').onclick = async e => { const b = e.currentTarget; b.disabled = true; try { bajar(await proformaFM()); } catch (er) { alert(errTxt(er)); } b.disabled = false; };
+  $('fm-prof').onclick = async e => {
+    const b = e.currentTarget; b.disabled = true;
+    try {
+      const file = await proformaFM(), k2 = totalesFM(), mes2 = $('fm-mes').value;
+      await compartir(file, `*Kadima · Proforma ${nombreMes(mes2)}*\n${k2.c.razon_social || k2.c.nombre_corto || ''}\nTortas: S/ ${k2.tt.toFixed(2)}${k2.td ? `\nDeliveries: S/ ${k2.td.toFixed(2)}` : ''}\n*Total: S/ ${k2.total.toFixed(2)}*\nPor favor revísala y nos confirmas para emitir la factura. ¡Gracias!`, k2.c.telefono);
+    } catch (er) { alert(errTxt(er)); }
+    b.disabled = false;
+  };
 }
 $('fm-cuerpo').addEventListener('change', e => {
   const t = e.target.closest('[data-fmt]'), d = e.target.closest('[data-fmd]');
@@ -2845,6 +2900,7 @@ function pintarHist() {
         ${p.estado !== 'anulado' ? `<button class="btn-wa" data-hwa="${p.id}">💬 Enviar por WhatsApp</button><button class="btn-sec" data-hprofd="${p.id}">📥 Descargar proforma</button>` : ''}
         ${!['entregado', 'anulado'].includes(p.estado) ? `<button class="btn-sec" data-heditar="${p.id}">${p.estado === 'cotizado' ? '✓ Confirmar / editar' : '✏️ Editar'}</button>` : ''}
         ${p.estado === 'cotizado' ? `<button class="btn-sec" data-hanular="${p.id}">✕ Descartar</button>` : ''}
+        ${esAdmin() ? `<button class="btn-sec b-borrar" data-hborrar="enc:${p.id}:${esc(p.codigo)}" title="Borrar para siempre (solo pruebas)">🗑️ Borrar</button>` : ''}
       </div></div>`;
   }).join('') : '<div class="vacio">Sin resultados. El historial se arma solo con los pedidos y cotizaciones que registres.</div>';
 }
@@ -2859,7 +2915,18 @@ function tarjetaHistWeb(p) {
       <div class="meta">${esc(p.cliente_nombre || 'Sin nombre')}${p.cliente_telefono ? ' · ' + esc(p.cliente_telefono) : ''} · ${p.tipo_entrega === 'delivery' ? '🛵 Delivery' : '🏬 Recojo'} · Total ${S(totalP)}</div>
       ${p.estado !== 'anulado' ? `<div class="meta" style="font-weight:700">Pagado <span style="color:var(--ok)">${S(pag)}</span> · Saldo <span style="color:${sal > 0 ? 'var(--mal)' : 'var(--ok)'}">${sal > 0 ? S(sal) : 'S/ 0.00 ✓'}</span>${p.yape_operacion ? ` · Yape op. ${esc(p.yape_operacion)}` : ''}</div>` : ''}
       <ul>${its.map(i => `<li>${Number(i.cantidad)} × ${esc(i.nombre)} — ${S(i.precio)} c/u</li>`).join('')}</ul></div>
-    <div class="bot">${tel ? `<a class="btn-wa" style="text-align:center;text-decoration:none;padding:9px 14px;border-radius:8px" href="https://wa.me/51${tel}" target="_blank" rel="noopener">💬 Escribir por WhatsApp</a>` : ''}</div></div>`;
+    <div class="bot">${tel ? `<a class="btn-wa" style="text-align:center;text-decoration:none;padding:9px 14px;border-radius:8px" href="https://wa.me/51${tel}" target="_blank" rel="noopener">💬 Escribir por WhatsApp</a>` : ''}${esAdmin() ? `<button class="btn-sec b-borrar" data-hborrar="web:${p.id}:${esc(p.codigo)}" title="Borrar para siempre (solo pruebas)">🗑️ Borrar</button>` : ''}</div></div>`;
+}
+// borrar pedidos de prueba: solo admin; el servidor bloquea si tiene boleta/factura válida
+const esAdmin = () => st.usuario?.rol === 'admin';
+async function borrarPedido(tipo, id, codigo) {
+  const r = prompt(`⚠️ Se borrará ${codigo} PARA SIEMPRE (productos, fotos y pagos sin comprobante).\nSi tiene nota de venta, se anula. Si tiene boleta o factura válida, no se puede borrar.\n\nEscribe ${codigo} para confirmar:`, '');
+  if (r === null) return;
+  if (r.trim().toUpperCase() !== String(codigo).toUpperCase()) return alert('El código no coincide. No se borró nada.');
+  const { data, error } = await sb.rpc('borrar_pedido', { p_tipo: tipo, p_id: id });
+  if (error) return alert(/borrar_pedido/.test(error.message) && /function|not find/i.test(error.message) ? 'Falta correr 53_borrar_pedidos.sql en Supabase.' : errTxt(error));
+  toast(`🗑️ ${codigo} borrado${data && data.notas_anuladas ? ` · ${data.notas_anuladas} nota(s) de venta anulada(s)` : ''}`);
+  cargarHist();
 }
 $('h-q').oninput = pintarHist;
 $('h-tipos').onclick = e => { const b = e.target.closest('[data-k]'); if (!b) return; st.htipo = b.dataset.k; [...$('h-tipos').children].forEach(x => x.classList.toggle('activa', x === b)); pintarHist(); };
@@ -2883,6 +2950,8 @@ $('h-lista').onclick = async e => {
     return abrirWhatsApp(r.cliente_telefono, textoWhatsApp(f, pagado));
   }
   const ed = e.target.closest('[data-heditar]'); if (ed) return editarPedido(Number(ed.dataset.heditar));
+  const hb = e.target.closest('[data-hborrar]');
+  if (hb) { const [t, i, ...c] = hb.dataset.hborrar.split(':'); return borrarPedido(t, Number(i), c.join(':')); }
   const an = e.target.closest('[data-hanular]');
   if (an && confirm('¿Descartar esta cotización? Seguirá en el historial como anulada.')) {
     const { error } = await sb.from('pedidos_encargo').update({ estado: 'anulado', actualizado_por: st.usuario?.nombre || null, actualizado_en: new Date().toISOString() }).eq('id', Number(an.dataset.hanular));
