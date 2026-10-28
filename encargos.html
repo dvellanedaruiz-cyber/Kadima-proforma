@@ -291,7 +291,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
     </div>
     <span class="vivo" id="vivo">● conectando</span>
     <span class="usr" id="usr" title="Cambiar de usuario"></span>
-    <span style="font-size:11px;opacity:.7" title="Versión de la app">v23.10-p</span>
+    <span style="font-size:11px;opacity:.7" title="Versión de la app">v23.10-q</span>
   </div>
 
   <!-- ===== CENTRAL ===== -->
@@ -651,6 +651,8 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script>
 // =====================================================================
 // Kadima Pedidos · toma de pedidos (WhatsApp / tienda) + central para alistar
@@ -2294,58 +2296,88 @@ async function proformaFM() {
   const k = totalesFM(), mes = $('fm-mes').value, c = k.c;
   const tortas = st_fm.tortas.filter(p => p.sel), delivs = st_fm.delivs.filter(p => p.sel);
   if (!tortas.length && !delivs.length) throw new Error('No hay nada seleccionado.');
+  if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('No cargó el generador de PDF. Recarga la página (Ctrl+F5).');
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const W = 210, M = 12, RO = [139, 0, 0], GR = [119, 119, 119], NE = [34, 34, 34];
+  const sol = n => 'S/ ' + Number(n || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const hoy = new Date(), fF = d => d.toLocaleDateString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric' });
-  const gravada = r2(k.total / IGV), igv = r2(k.total - gravada);
   const fEnt = d => d ? new Date(d + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'short', day: '2-digit', month: '2-digit' }) : '-';
+  const gravada = r2(k.total / IGV), igv = r2(k.total - gravada), nro = `FM-${mes.replace('-', '')}`;
+  const txt = (t, x, y, o = {}) => { doc.setFont('helvetica', o.b ? 'bold' : 'normal'); doc.setFontSize(o.s || 9); doc.setTextColor(...(o.c || NE)); doc.text(String(t), x, y, o.a ? { align: o.a, maxWidth: o.w } : (o.w ? { maxWidth: o.w } : undefined)); };
+  const banda = (t, y) => { doc.setFillColor(...RO); doc.roundedRect(M, y, W - 2 * M, 6.5, 0.6, 0.6, 'F'); txt(t, M + 3, y + 4.5, { b: 1, s: 8.5, c: [255, 255, 255] }); return y + 9; };
+  const campo = (lab, val, x, y, w) => { txt(lab, x, y, { b: 1, s: 7, c: GR }); const l = doc.setFont('helvetica', 'normal').setFontSize(9).splitTextToSize(String(val || '-'), w); doc.setTextColor(...NE); doc.text(l, x, y + 4); return y + 4 + l.length * 4; };
+  // encabezado
+  try { doc.addImage(LOGO_KADIMA, 'JPEG', M, 9, 26, 20); } catch (e) {}
+  txt('Kadima Pastelería & Panadería', W - M, 15, { b: 1, s: 15, c: RO, a: 'right' });
+  txt(`${EMPRESA.razon} | RUC: ${EMPRESA.ruc}`, W - M, 20, { s: 8, c: [85, 85, 85], a: 'right' });
+  txt('San Juan de Lurigancho, Lima, Perú', W - M, 24, { s: 8, c: [85, 85, 85], a: 'right' });
+  txt('contacto@kadima.pe', W - M, 28, { s: 8, c: [85, 85, 85], a: 'right' });
+  doc.setDrawColor(...RO); doc.setLineWidth(0.8); doc.line(M, 33, W - M, 33);
+  doc.setLineWidth(0.6); doc.rect(W / 2 - 34, 37, 68, 9);
+  txt('PROFORMA DE PEDIDO', W / 2, 43.2, { b: 1, s: 12.5, c: RO, a: 'center' });
+  txt('N° de proforma: ', M, 53, { b: 1, s: 8.5, c: [85, 85, 85] }); txt(nro, M + 24, 53, { s: 8.5, c: [85, 85, 85] });
+  txt(`Fecha de emisión: ${fF(hoy)}`, W - M, 53, { s: 8.5, c: [85, 85, 85], a: 'right' });
+  // cliente
+  let y = banda('DATOS DEL CLIENTE', 57);
+  const cx = M + 2, cx2 = W / 2 + 2, cw = W / 2 - M - 6;
+  let y1 = campo('Cliente', c.razon_social || c.nombre_corto, cx, y, cw), y2 = campo('RUC', c.ruc, cx2, y, cw);
+  y = Math.max(y1, y2) + 2;
+  y1 = campo('Dirección fiscal', c.direccion, cx, y, cw); y2 = campo('Teléfono', c.telefono, cx2, y, cw);
+  y = Math.max(y1, y2) + 2;
+  y1 = campo('Periodo', `Tortas de ${nombreMes(mes)}${delivs.length ? ` · deliveries de ${nombreMes(mesAnterior(mes))}` : ''}`, cx, y, cw);
+  y2 = campo('Condición', `Factura al crédito · ${c.dias_credito || 35} días`, cx2, y, cw);
+  y = Math.max(y1, y2) + 4;
+  // productos
+  y = banda(`DETALLE DE PRODUCTOS (${tortas.length} pedido${tortas.length === 1 ? '' : 's'})`, y);
   let n = 0;
-  const filasP = tortas.flatMap(p => (p.pedidos_encargo_items || []).sort((a, b) => a.orden - b.orden).map(i => `<tr>
-      <td class="c">${++n}</td><td>${esc(p.codigo)}</td><td>${fEnt(p.fecha_entrega)}</td><td>${esc(i.descripcion)}</td>
-      <td>${i.personalizacion ? esc(i.personalizacion) : '<span class="sub">-</span>'}</td><td class="c">${Number(i.cantidad)}</td>
-      <td class="n">${SS(i.precio_unit)}</td><td class="n">${SS(Number(i.precio_unit) * Number(i.cantidad))}</td></tr>`)).join('');
-  const filasD = delivs.map((p, j) => `<tr><td class="c">${j + 1}</td><td>Delivery ${esc(p.codigo)}</td><td>${fEnt(p.fecha_entrega)}</td><td class="n">${SS(p.cobro)}</td></tr>`).join('');
-  const nro = `FM-${mes.replace('-', '')}`;
-  const html = `<div class="pk">
-    <div class="hd"><img src="${LOGO_KADIMA}" alt="Kadima"><div class="emp"><h1>Kadima Pastelería &amp; Panadería</h1>
-      <p>${EMPRESA.razon} | RUC: ${EMPRESA.ruc}</p><p>San Juan de Lurigancho, Lima, Perú</p><p>contacto@kadima.pe</p></div></div>
-    <div class="tit"><span>PROFORMA DE PEDIDO</span></div>
-    <div class="cod"><span><b>N° de proforma:</b> ${nro}</span><span><b>Fecha de emisión:</b> ${fF(hoy)}</span></div>
-    <div class="sec"><h3>👤 DATOS DEL CLIENTE</h3><div class="g2">
-      <div><label>Cliente</label><span>${esc(c.razon_social || c.nombre_corto || '-')}</span></div>
-      <div><label>RUC</label><span>${esc(c.ruc || '-')}</span></div>
-      <div><label>Dirección fiscal</label><span>${esc(c.direccion || '-')}</span></div>
-      <div><label>Teléfono</label><span>${esc(c.telefono || '-')}</span></div>
-      <div><label>Periodo</label><span>Tortas de ${nombreMes(mes)}${delivs.length ? ` · deliveries de ${nombreMes(mesAnterior(mes))}` : ''}</span></div>
-      <div><label>Condición</label><span>Factura al crédito · ${c.dias_credito || 35} días</span></div>
-    </div></div>
-    <div class="sec"><h3>🎂 DETALLE DE PRODUCTOS (${tortas.length} pedido${tortas.length === 1 ? '' : 's'})</h3>
-      <table><thead><tr><th style="width:6mm">#</th><th style="width:16mm">Cód. Pedido</th><th style="width:20mm">Fecha entrega</th><th>Producto</th><th>Descripción / Personalización</th><th style="width:10mm" class="c">Cant.</th><th style="width:18mm" class="n">P. Unit.</th><th style="width:20mm" class="n">Subtotal</th></tr></thead>
-      <tbody>${filasP || '<tr><td colspan="8" class="c sub">Sin productos</td></tr>'}</tbody>
-      <tfoot><tr><td colspan="7" class="n">Subtotal productos</td><td class="n">${SS(k.tt)}</td></tr></tfoot></table></div>
-    ${delivs.length ? `<div class="sec"><h3>🚚 DELIVERY MES ANTERIOR (${delivs.length})</h3>
-      <table><thead><tr><th style="width:6mm">#</th><th>Delivery</th><th style="width:30mm">Fecha entrega</th><th style="width:24mm" class="n">Monto</th></tr></thead>
-      <tbody>${filasD}</tbody><tfoot><tr><td colspan="3" class="n">Subtotal delivery</td><td class="n">${SS(k.td)}</td></tr></tfoot></table></div>` : ''}
-    <div class="tots"><table>
-      <tr><td>Subtotal productos:</td><td class="n">${SS(k.tt)}</td></tr>
-      <tr><td>Subtotal delivery:</td><td class="n">${SS(k.td)}</td></tr>
-      <tr><td>Op. gravada:</td><td class="n">${SS(gravada)}</td></tr>
-      <tr><td>IGV 18%:</td><td class="n">${SS(igv)}</td></tr>
-      <tr class="total"><td>Total cotizado:</td><td class="n">${SS(k.total)}</td></tr>
-      ${k.ret ? `<tr><td>Retención 3% (la aplica el cliente):</td><td class="n">− ${SS(k.ret)}</td></tr><tr class="fuerte"><td>Neto a pagar:</td><td class="n">${SS(k.neto)}</td></tr>` : ''}
-    </table></div>
-    <div class="obs"><b>Observaciones:</b> Al confirmar esta proforma se emitirá una factura electrónica al crédito por ${SS(k.total)}, con vencimiento a ${c.dias_credito || 35} días.</div>
-    <div class="pago"><div class="sec" style="margin:0"><h3>💳 Medios de pago</h3><div class="g2">
-      <div><label>Yape</label><span>987023767</span></div><div><label>Transferencia BCP</label><span>1912546241005</span></div>
-      <div><label>Interbancario (CCI)</label><span>00219100254624100558</span></div><div><label>Titular</label><span>Inversiones La Sonesta S.A.C.</span></div>
-    </div></div></div>
-    <div class="pie"><span>Este documento es una proforma referencial.<br>No es un comprobante de pago.</span><span style="text-align:right">Proforma ${nro}<br>Generado desde Kadima Pedidos</span></div>
-  </div>`;
-  $('lienzo').innerHTML = html;
-  const blob = await html2pdf().set({ margin: [8, 10, 10, 10], image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
-    pagebreak: { mode: ['css', 'legacy'], avoid: 'tr' }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } })
-    .from($('lienzo').firstElementChild).outputPdf('blob');
-  $('lienzo').innerHTML = '';
+  const filas = tortas.flatMap(p => (p.pedidos_encargo_items || []).sort((a, b) => a.orden - b.orden).map(i =>
+    [++n, p.codigo, fEnt(p.fecha_entrega), i.descripcion, i.personalizacion || '-', Number(i.cantidad), sol(i.precio_unit), sol(Number(i.precio_unit) * Number(i.cantidad))]));
+  const estilo = { theme: 'plain', margin: { left: M, right: M }, styles: { font: 'helvetica', fontSize: 8, cellPadding: 1.3, textColor: NE, lineColor: [235, 235, 235], lineWidth: { bottom: 0.2 } },
+    headStyles: { fillColor: RO, textColor: [255, 255, 255], fontStyle: 'bold' }, alternateRowStyles: { fillColor: [253, 245, 245] },
+    footStyles: { fillColor: [247, 238, 238], textColor: NE, fontStyle: 'bold' },
+  };
+  const alinear = al => ({ didParseCell: d => { if (d.section === 'head' && al[d.column.index]) d.cell.styles.halign = al[d.column.index]; } });
+  doc.autoTable({ ...estilo, ...alinear({ 0: 'center', 5: 'center', 6: 'right', 7: 'right' }), startY: y, head: [['#', 'Cód. Pedido', 'Entrega', 'Producto', 'Descripción / Personalización', 'Cant.', 'P. Unit.', 'Subtotal']], body: filas,
+    foot: [[{ content: 'Subtotal productos', colSpan: 7, styles: { halign: 'right' } }, { content: sol(k.tt), styles: { halign: 'right' } }]],
+    columnStyles: { 0: { cellWidth: 7, halign: 'center' }, 1: { cellWidth: 18 }, 2: { cellWidth: 18 }, 3: { cellWidth: 36 }, 5: { cellWidth: 11, halign: 'center' }, 6: { cellWidth: 19, halign: 'right' }, 7: { cellWidth: 21, halign: 'right' } } });
+  y = doc.lastAutoTable.finalY + 5;
+  // deliveries
+  if (delivs.length) {
+    if (y > 260) { doc.addPage(); y = 15; }
+    y = banda(`DELIVERY MES ANTERIOR (${delivs.length})`, y);
+    doc.autoTable({ ...estilo, ...alinear({ 0: 'center', 3: 'right' }), startY: y, head: [['#', 'Delivery', 'Fecha entrega', 'Monto']], body: delivs.map((p, j) => [j + 1, `Delivery ${p.codigo}`, fEnt(p.fecha_entrega), sol(p.cobro)]),
+      foot: [[{ content: 'Subtotal delivery', colSpan: 3, styles: { halign: 'right' } }, { content: sol(k.td), styles: { halign: 'right' } }]],
+      columnStyles: { 0: { cellWidth: 7, halign: 'center' }, 2: { cellWidth: 35 }, 3: { cellWidth: 26, halign: 'right' } } });
+    y = doc.lastAutoTable.finalY + 5;
+  }
+  // totales (derecha) + medios de pago (izquierda), lado a lado
+  const tot = [['Subtotal productos:', sol(k.tt)], ['Subtotal delivery:', sol(k.td)], ['Op. gravada:', sol(gravada)], ['IGV 18%:', sol(igv)], ['Total cotizado:', sol(k.total)]];
+  if (k.ret) tot.push(['Retención 3% (la aplica el cliente):', '- ' + sol(k.ret)], ['Neto a pagar:', sol(k.neto)]);
+  if (y + 64 > 290) { doc.addPage(); y = 15; }
+  const yT = y, pw = W - 2 * M - 92;
+  doc.setFillColor(243, 233, 216); doc.roundedRect(M, yT, pw, 40, 2, 2, 'F');
+  doc.setFillColor(...RO); doc.roundedRect(M + 3, yT + 3, pw - 6, 6.5, 0.6, 0.6, 'F'); txt('MEDIOS DE PAGO', M + 6, yT + 7.5, { b: 1, s: 8.5, c: [255, 255, 255] });
+  const px = M + 5, px2 = M + pw / 2 + 2, pcw = pw / 2 - 8;
+  campo('Yape', '987023767', px, yT + 15, pcw); campo('Transferencia BCP', '1912546241005', px2, yT + 15, pcw);
+  campo('Interbancario (CCI)', '00219100254624100558', px, yT + 26, pcw + 10); campo('Titular', 'Inversiones La Sonesta S.A.C.', px2, yT + 26, pcw);
+  doc.autoTable({ theme: 'plain', startY: yT, margin: { left: W - M - 88, right: M }, tableWidth: 88, body: tot, pageBreak: 'avoid',
+    styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 1.8, textColor: NE, lineColor: [235, 235, 235], lineWidth: 0.2 }, columnStyles: { 1: { halign: 'right' } },
+    didParseCell: d => { if (d.row.index === 4) { d.cell.styles.fontStyle = 'bold'; d.cell.styles.textColor = RO; d.cell.styles.fontSize = 11; d.cell.styles.fillColor = [253, 245, 245]; }
+      if (d.row.index === 6) { d.cell.styles.fontStyle = 'bold'; d.cell.styles.fillColor = [253, 245, 245]; } } });
+  y = Math.max(doc.lastAutoTable.finalY, yT + 40) + 5;
+  // observaciones
+  const obs = doc.setFont('helvetica', 'normal').setFontSize(8.5).splitTextToSize(`Observaciones: al confirmar esta proforma se emitirá una factura electrónica al crédito por ${sol(k.total)}, con vencimiento a ${c.dias_credito || 35} días.`, W - 2 * M - 8);
+  doc.setFillColor(253, 245, 245); doc.rect(M, y, W - 2 * M, obs.length * 4 + 5, 'F'); doc.setFillColor(...RO); doc.rect(M, y, 1, obs.length * 4 + 5, 'F');
+  doc.setTextColor(...NE); doc.text(obs, M + 4, y + 5); y += obs.length * 4 + 9;
+  // pie
+  doc.setDrawColor(...RO); doc.setLineWidth(0.6); doc.line(M, y, W - M, y);
+  txt('Este documento es una proforma referencial. No es un comprobante de pago.', M, y + 5, { s: 7.5, c: GR });
+  txt(`Proforma ${nro} · Generado desde Kadima Pedidos`, W - M, y + 5, { s: 7.5, c: GR, a: 'right' });
+  const pags = doc.getNumberOfPages();
+  if (pags > 1) for (let p = 1; p <= pags; p++) { doc.setPage(p); txt(`Página ${p} de ${pags}`, W - M, 290, { s: 7, c: GR, a: 'right' }); }
   st_fm.profFirma = firmaFM();
-  return new File([blob], `Proforma-${nro}-${(c.nombre_corto || c.ruc || '').replace(/[^\w-]+/g, '_')}.pdf`, { type: 'application/pdf' });
+  return new File([doc.output('blob')], `Proforma-${nro}-${(c.nombre_corto || c.ruc || '').replace(/[^\w-]+/g, '_')}.pdf`, { type: 'application/pdf' });
 }
 async function cargarFM() {
   const ruc = $('fm-cli').value, mes = $('fm-mes').value; $('fm-error').textContent = ''; $('fm-listo').innerHTML = '';
