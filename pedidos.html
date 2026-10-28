@@ -508,7 +508,8 @@
     const its = items();
     $('cart-bar').style.display = its.length ? 'flex' : 'none';
     $('cart-count').textContent = its.reduce((s, i) => s + i.qty, 0);
-    $('cart-total-mini').textContent = soles(total());
+    const d = typeof precioDelivery === 'function' ? precioDelivery() : 0;
+    $('cart-total-mini').textContent = d ? `${soles(total())} + delivery S/ ${soles(d)} = S/ ${soles(total() + d)}` : soles(total());
   }
 
   function verPedido() {
@@ -538,14 +539,17 @@
     $('fila-total').classList.toggle('oculto', !d);
     if (d) { $('delivery-monto').textContent = soles(d); $('lbl-delivery').textContent = `Delivery (${String(delivery.km).replace('.', ',')} km${delivery.punta ? ', hora punta' : ''})`; $('total-pagar').textContent = soles(total() + d); }
     $('nota-delivery-total').style.display = esDel && !d ? 'block' : 'none';
+    actualizarBarra();
     $('nota-delivery-total').textContent = !esDel ? '' : !ubicacion ? '+ delivery: marca tu ubicación abajo y te mostramos el precio'
       : !confirmada ? '+ delivery: confirma tu ubicación en el mapa y te mostramos el precio'
       : delivery && delivery.motivo === 'fuera_zona' ? '+ delivery: tu dirección está fuera de nuestra zona de reparto; te confirmamos por WhatsApp si llegamos y el costo'
+      : delivery && delivery.motivo === 'error' ? '+ delivery: no pudimos calcularlo ahora; te confirmamos el costo por WhatsApp'
       : delivery ? '+ delivery (te confirmamos el costo por WhatsApp)' : '+ delivery: calculando…';
     $('yape-monto').textContent = soles(total() + d);
     const av = $('aviso-delivery');
     if (av) av.textContent = d ? `🛵 Delivery a tu ubicación: S/ ${soles(d)} (≈ ${String(delivery.km).replace('.', ',')} km${delivery.punta ? ', en hora punta' : ''}). Ya está incluido en el monto a yapear.`
       : delivery && delivery.motivo === 'fuera_zona' ? '🛵 Tu dirección está fuera de nuestra zona de reparto. Yapea solo los productos: te confirmamos por WhatsApp si llegamos y el costo del envío.'
+      : delivery && delivery.motivo === 'error' ? '🛵 No pudimos calcular el delivery en este momento. Yapea solo los productos: te confirmamos el costo del envío por WhatsApp.'
       : (ubicacion && !confirmada ? '🛵 Confirma tu ubicación en el mapa para calcular el delivery.' : '🛵 El costo del delivery depende de la distancia. Marca y confirma tu ubicación para calcularlo.');
   }
   async function cotizarDelivery() {
@@ -558,8 +562,9 @@
         if ($('fecha').value && $('hora').value) { args.p_fecha = $('fecha').value; args.p_hora = $('hora').value; }
         const { data, error } = await sb.rpc('cotizar_delivery', args);
         if (pedido !== cotizarDelivery.n) return;          // llegó una cotización más nueva
+        if (error) console.error('cotizar_delivery:', error.message);
         delivery = !error && data ? data : { ok: false, motivo: 'error' };
-      } catch (e) { delivery = { ok: false, motivo: 'error' }; }
+      } catch (e) { console.error('cotizar_delivery:', e); delivery = { ok: false, motivo: 'error' }; }
     }
     pintarTotales();
   }
