@@ -1427,7 +1427,7 @@ $('p-ok').onclick = async () => {
     if (error) throw error;
     // se confirma solo con 50% o más pagado (adelanto o pago total)
     // canje: la nota de venta del adelanto queda anulada (la reemplaza este comprobante)
-    if (nvIds.length) { const an = await sb.from('ventas').update({ estado: 'anulada' }).in('id', nvIds); if (an.error) toast('Comprobante emitido, pero no se pudo anular la nota de venta: ' + errTxt(an.error)); }
+    if (nvIds.length) { const an = await sb.rpc('canjear_notas_pedido', { p_ids: nvIds }); if (an.error) alert('Comprobante emitido, pero no se pudo anular la nota de venta' + (/canjear_notas_pedido/.test(an.error.message) ? ': falta correr 54_canje_notas.sql en Supabase.' : ': ' + errTxt(an.error))); }
     const pagadoAhora = r2(k.pagado + x.cobrar), llega50 = k.total > 0 && pagadoAhora >= r2(k.total * 0.5) - 0.01;
     if ((c.confirmar || p.estado === 'cotizado') && !c.confirmado && !llega50) toast(`Adelanto menor al 50% (${S(pagadoAhora)} de ${S(k.total)}): el pedido sigue como cotización. Se confirma al llegar a ${S(r2(k.total * 0.5))}.`);
     if ((c.confirmar || p.estado === 'cotizado') && !c.confirmado && llega50) {
@@ -1980,7 +1980,8 @@ function fijarUbicacion(lat, lng, link) {
   pintarUbicacion(true);
 }
 function pintarUbicacion(centrar) {
-  const f = st.f; if (!f || f.tipo_entrega !== 'delivery' || typeof L === 'undefined') return;
+  const f = st.f; if (!f || f.tipo_entrega !== 'delivery') return;
+  if (typeof L === 'undefined') { cotizarFormDelivery(); return; }   // sin mapa igual se cotiza
   if (!st_map.form) {
     st_map.form = L.map('f-mapa', { zoomControl: true }).setView(LIMA, 12);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(st_map.form);
@@ -2464,13 +2465,18 @@ async function cotizarFormDelivery() {
   const f = st.f; if (!f || f.tipo_entrega !== 'delivery') return;
   const box = $('deliv-calc');
   if (f.delivery_modo === 'cliente') { box.innerHTML = '🚕 El cliente manda su propio InDrive: no se cobra delivery.'; return; }
-  if (f.ubicacion_lat == null) { box.innerHTML = ''; return; }
+  if (f.ubicacion_lat == null) { box.innerHTML = '<span style="color:#9a5b00;font-weight:700">📍 Para ver la propuesta de delivery marca el punto en el mapa, pega el link de Google Maps o busca la dirección.</span>'; return; }
   const n = ++cotizarFormDelivery.n;
+  box.innerHTML = '⏳ Calculando delivery…';
   const args = { p_lat: f.ubicacion_lat, p_lng: f.ubicacion_lng };
   if (f.fecha_entrega && f.hora_entrega) { args.p_fecha = f.fecha_entrega; args.p_hora = f.hora_entrega.slice(0, 5); }
   const { data, error } = await sb.rpc('cotizar_delivery', args);
   if (n !== cotizarFormDelivery.n || st.f !== f) return;
-  if (error || !data) { box.innerHTML = /cotizar_delivery/.test(error?.message || '') ? 'Para calcular el delivery solo, corre <b>45_delivery_tarifa.sql</b>.' : ''; return; }
+  if (error || !data) {
+    const m = error?.message || 'sin respuesta';
+    box.innerHTML = /function .*cotizar_delivery|Could not find the function/i.test(m) ? 'Para calcular el delivery solo, corre <b>45_delivery_tarifa.sql</b>.' : `<span style="color:var(--mal)">⚠️ No se pudo calcular el delivery: ${esc(m)}</span>`;
+    return;
+  }
   if (!data.ok) { box.innerHTML = data.motivo === 'fuera_zona' ? `🛵 ≈ ${data.km} km: fuera de cobertura, cotízalo a mano.` : '🛵 Configura la tarifa en <b>🛵 Delivery</b> para calcularlo solo.'; return; }
   if (f.delivery_modo === 'cliente') { box.innerHTML = '🚕 El cliente manda su propio InDrive: no se cobra delivery.'; return; }
   if (f.delivery_modo === 'al_despachar') {
