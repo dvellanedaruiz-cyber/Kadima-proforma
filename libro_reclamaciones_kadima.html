@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Libro de Reclamaciones — Kadima | Panadería y Pastelería</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --espresso: #2E1B12; --cream: #FFFFFF; --wine: #7A2E3D; --wine-dark: #5E212C; --gold: #C98A2B;
+    --line: rgba(46, 27, 18, 0.16);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--cream); color: var(--espresso); font-family: 'Work Sans', sans-serif; line-height: 1.55; }
+  h1, h2, h3 { font-family: 'Fraunces', serif; margin: 0; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 56px 24px 56px; }
+  .kicker { font-size: 15px; color: var(--wine); font-weight: 600; margin-bottom: 10px; }
+  h1 { font-size: 30px; font-weight: 500; margin-bottom: 10px; }
+  .aviso {
+    background: #fff8ea; border: 1px solid #e8cf9a; border-radius: 4px;
+    padding: 14px 18px; font-size: 13.5px; color: #6b4c15; margin: 18px 0 32px;
+  }
+  a.back { display: inline-block; margin-bottom: 24px; color: var(--wine); font-size: 14px; text-decoration: none; }
+  a.back:hover { text-decoration: underline; }
+
+  .form-card { border: 1px solid var(--line); border-radius: 6px; padding: 32px; }
+  .section-label { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--wine); margin: 28px 0 14px; }
+  .section-label:first-child { margin-top: 0; }
+
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 16px; }
+  .field { display: flex; flex-direction: column; }
+  .field.full { grid-column: 1 / -1; }
+  .field label { font-size: 13.5px; font-weight: 500; margin-bottom: 6px; color: #4a352a; }
+  .field input, .field select, .field textarea {
+    font-family: inherit; font-size: 14.5px; padding: 10px 12px;
+    border: 1px solid var(--line); border-radius: 3px; background: #fff; color: var(--espresso);
+  }
+  .field textarea { resize: vertical; min-height: 90px; }
+  .field small { color: #8a7256; font-size: 12px; margin-top: 5px; }
+
+  .tipo-opts { display: flex; gap: 14px; }
+  .tipo-opt { flex: 1; border: 1px solid var(--line); border-radius: 5px; padding: 12px 14px; cursor: pointer; font-size: 14px; }
+  .tipo-opt.selected { border-color: var(--wine); background: #fbf5f6; }
+  .tipo-opt strong { display: block; font-size: 14.5px; margin-bottom: 3px; }
+  .tipo-opt span { font-size: 12px; color: #8a7256; }
+
+  .submit-btn {
+    width: 100%; background: var(--wine); color: #fff; border: none; padding: 15px;
+    font-size: 15.5px; font-weight: 500; border-radius: 4px; cursor: pointer; font-family: inherit; margin-top: 8px;
+  }
+  .submit-btn:hover { background: var(--wine-dark); }
+
+  #resultado { display: none; text-align: center; padding: 20px 0; }
+  .code-box {
+    display: inline-block; border: 1px dashed var(--gold); border-radius: 3px;
+    padding: 14px 28px; font-family: 'Fraunces', serif; font-size: 20px; margin: 16px 0;
+  }
+  .print-btn {
+    background: none; border: 1px solid var(--line); color: var(--espresso);
+    padding: 10px 20px; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 14px; margin-top: 12px;
+  }
+
+  .datos-establecimiento { font-size: 13px; color: #6b5643; border-top: 1px dashed var(--line); margin-top: 32px; padding-top: 16px; }
+
+  @media print {
+    a.back, .submit-btn, #formulario { display: none; }
+  }
+  @media (max-width: 640px) {
+    .field-row, .tipo-opts { grid-template-columns: 1fr; flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/pedidos">← Volver a la tienda</a>
+  <div class="kicker">Kadima | Panadería y Pastelería</div>
+  <h1>Libro de Reclamaciones</h1>
+  <div class="aviso">Conforme a lo establecido en el Código de Protección y Defensa del Consumidor, este establecimiento cuenta con un Libro de Reclamaciones a tu disposición. Al enviar tu reclamo o queja recibirás una copia en tu correo electrónico, y te responderemos en un plazo máximo de 15 días hábiles.</div>
+
+  <!--
+    Nota: verificar el formato oficial en consumidor.indecopi.gob.pe/tul
+    Genera el formato oficial actualizado (Anexo I y el aviso obligatorio) en la
+    herramienta "Tu Libro" de INDECOPI: consumidor.indecopi.gob.pe/tul
+    Ahí sale el texto legal exacto vigente (incluyendo el plazo de respuesta,
+    que cambió recientemente y no quise inventar un número que pudiera estar
+    desactualizado). Cuando lo tengas, reemplaza el texto de este archivo
+    marcado como "TODO" por el texto oficial.
+  -->
+
+  <div class="form-card" id="formulario">
+
+    <div class="section-label">Tipo de reclamación</div>
+    <div class="tipo-opts">
+      <div class="tipo-opt selected" id="opt-reclamo" onclick="selectTipo('reclamo')">
+        <strong>Reclamo</strong>
+        <span>Disconformidad relacionada al producto o servicio</span>
+      </div>
+      <div class="tipo-opt" id="opt-queja" onclick="selectTipo('queja')">
+        <strong>Queja</strong>
+        <span>Disconformidad con la atención, no relacionada al producto/servicio</span>
+      </div>
+    </div>
+
+    <div class="section-label">Datos del consumidor</div>
+    <div class="field-row">
+      <div class="field">
+        <label for="nombres">Nombres y apellidos</label>
+        <input type="text" id="nombres" required>
+      </div>
+      <div class="field">
+        <label for="dni">DNI / CE</label>
+        <input type="text" id="dni" required>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="domicilio">Domicilio</label>
+        <input type="text" id="domicilio">
+      </div>
+      <div class="field">
+        <label for="telefono-rec">Teléfono</label>
+        <input type="tel" id="telefono-rec" required>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field full">
+        <label for="email-rec">Correo electrónico</label>
+        <input type="email" id="email-rec" required>
+        <small>Te enviaremos una copia de este reclamo a este correo.</small>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field full">
+        <label for="menor">Si eres menor de edad: nombre del padre o madre (opcional)</label>
+        <input type="text" id="menor">
+      </div>
+    </div>
+
+    <div class="section-label">Datos del producto o servicio</div>
+    <div class="field-row">
+      <div class="field">
+        <label for="producto">Producto o servicio contratado</label>
+        <input type="text" id="producto">
+      </div>
+      <div class="field">
+        <label for="monto">Monto reclamado (S/)</label>
+        <input type="number" id="monto" step="0.01">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field full">
+        <label for="fecha-hecho">Fecha del pedido o del hecho</label>
+        <input type="date" id="fecha-hecho">
+      </div>
+    </div>
+
+    <div class="section-label">Detalle</div>
+    <div class="field-row">
+      <div class="field full">
+        <label for="detalle">Detalle de la reclamación</label>
+        <textarea id="detalle" required></textarea>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field full">
+        <label for="pedido">Pedido del consumidor (¿qué solicitas?)</label>
+        <textarea id="pedido" required></textarea>
+      </div>
+    </div>
+
+    <p id="err" style="color:#b3261e;font-size:14px;margin:10px 0 0"></p>
+    <button class="submit-btn" id="btn-enviar" onclick="enviarReclamo()">Enviar reclamación</button>
+  </div>
+
+  <div id="resultado">
+    <h3>Reclamación registrada</h3>
+    <p id="msg-correo">Te enviamos una copia a tu correo.</p>
+    <div class="code-box" id="codigo-reclamo">000000000</div>
+    <div id="hoja-resumen" style="text-align:left; font-size:14px; margin-top:20px;"></div>
+  </div>
+
+  <div class="datos-establecimiento">
+    <strong>Datos del establecimiento:</strong><br>
+    Inversiones La Sonesta S.A.C. — RUC 20535962236<br>
+    Mz K2 Lt. 3A, San Juan de Lurigancho 15434, Lima, Perú<br>
+    WhatsApp: 987 023 767 — Correo: contacto@kadima.pe
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
+<script>
+  const SB_URL = 'https://odhcnrjbmydjghafichc.supabase.co', SB_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
+  let tipoSeleccionado = "reclamo";
+  function selectTipo(tipo) {
+    tipoSeleccionado = tipo;
+    document.getElementById("opt-reclamo").classList.toggle("selected", tipo === "reclamo");
+    document.getElementById("opt-queja").classList.toggle("selected", tipo === "queja");
+  }
+  const v = id => document.getElementById(id).value.trim();
+  const esc = t => String(t || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  async function enviarReclamo() {
+    const err = document.getElementById("err"); err.textContent = '';
+    for (const id of ["nombres", "dni", "telefono-rec", "email-rec", "detalle", "pedido"])
+      if (!v(id)) { err.textContent = 'Completa todos los campos obligatorios.'; document.getElementById(id).focus(); return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v("email-rec"))) { err.textContent = 'Revisa tu correo electrónico: ahí te llegará la copia.'; return; }
+    const p = {
+      tipo: tipoSeleccionado, nombres: v("nombres"), dni: v("dni"), domicilio: v("domicilio"), telefono: v("telefono-rec"),
+      email: v("email-rec"), menor_apoderado: v("menor"), producto: v("producto"), monto: v("monto"),
+      fecha_hecho: v("fecha-hecho"), detalle: v("detalle"), pedido: v("pedido"),
+    };
+    const btn = document.getElementById("btn-enviar"); btn.disabled = true; btn.textContent = 'Enviando…';
+    let r = null;
+    try {
+      const res = await fetch(SB_URL + '/functions/v1/reclamo', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SB_KEY }, body: JSON.stringify(p) });
+      r = await res.json().catch(() => null);
+      if (!res.ok || !r || !r.ok) throw new Error((r && r.error) || 'sin respuesta');
+    } catch (e) {
+      // respaldo: si el envío por correo falla, igual se guarda el reclamo
+      try {
+        const sb = supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false } });
+        const { data, error } = await sb.rpc('registrar_reclamo', { p });
+        if (error) throw error;
+        r = { ok: true, codigo: data.codigo, fecha: new Date(data.creado_en).toLocaleString('es-PE'), correo_cliente: false };
+      } catch (e2) {
+        btn.disabled = false; btn.textContent = 'Enviar reclamación';
+        err.textContent = 'No pudimos registrar tu reclamo por un problema de conexión. Intenta de nuevo o escríbenos a contacto@kadima.pe.';
+        return;
+      }
+    }
+    document.getElementById("codigo-reclamo").textContent = r.codigo;
+    document.getElementById("msg-correo").innerHTML = r.correo_cliente
+      ? `Te enviamos una copia a <b>${esc(p.email)}</b>. Si no la ves, revisa tu carpeta de spam. Te responderemos en un plazo máximo de 15 días hábiles.`
+      : `Tu reclamo quedó registrado. Te enviaremos la copia a <b>${esc(p.email)}</b> y te responderemos en un plazo máximo de 15 días hábiles.`;
+    document.getElementById("hoja-resumen").innerHTML = `
+      <p><strong>Tipo:</strong> ${p.tipo === "reclamo" ? "Reclamo" : "Queja"}</p>
+      <p><strong>Consumidor:</strong> ${esc(p.nombres)} — DNI/CE: ${esc(p.dni)}</p>
+      <p><strong>Contacto:</strong> ${esc(p.telefono)} / ${esc(p.email)}</p>
+      <p><strong>Detalle:</strong> ${esc(p.detalle)}</p>
+      <p><strong>Pedido del consumidor:</strong> ${esc(p.pedido)}</p>
+      <p><strong>Fecha:</strong> ${esc(r.fecha)}</p>`;
+    document.getElementById("formulario").style.display = "none";
+    document.getElementById("resultado").style.display = "block";
+    window.scrollTo(0, 0);
+  }
+</script>
+</body>
+</html>
