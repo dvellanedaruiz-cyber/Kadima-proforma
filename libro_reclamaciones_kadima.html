@@ -142,10 +142,10 @@
     <div class="section-label">Datos del producto o servicio</div>
     <div class="field-row">
       <div class="field">
-        <label for="producto">Producto o servicio contratado</label>
+        <label for="producto" id="lbl-producto">Producto o servicio contratado</label>
         <input type="text" id="producto">
       </div>
-      <div class="field">
+      <div class="field" id="campo-monto">
         <label for="monto">Monto reclamado (S/)</label>
         <input type="number" id="monto" step="0.01">
       </div>
@@ -160,7 +160,7 @@
     <div class="section-label">Detalle</div>
     <div class="field-row">
       <div class="field full">
-        <label for="detalle">Detalle de la reclamación</label>
+        <label for="detalle" id="lbl-detalle">Detalle del reclamo</label>
         <textarea id="detalle" required></textarea>
       </div>
     </div>
@@ -198,6 +198,12 @@
     tipoSeleccionado = tipo;
     document.getElementById("opt-reclamo").classList.toggle("selected", tipo === "reclamo");
     document.getElementById("opt-queja").classList.toggle("selected", tipo === "queja");
+    // en una queja (atención) no hay monto reclamado
+    const q = tipo === "queja";
+    document.getElementById("campo-monto").style.display = q ? "none" : "";
+    if (q) document.getElementById("monto").value = "";
+    document.getElementById("lbl-producto").textContent = q ? "Producto o servicio relacionado (opcional)" : "Producto o servicio contratado";
+    document.getElementById("lbl-detalle").textContent = q ? "Detalle de la queja" : "Detalle del reclamo";
   }
   const v = id => document.getElementById(id).value.trim();
   const esc = t => String(t || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
