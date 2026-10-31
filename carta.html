@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Carta — Kadima | Panadería y Pastelería</title>
+<meta name="description" content="Carta de platos, bebidas y más de Kadima Pastelería & Panadería, San Juan de Lurigancho.">
+<meta name="theme-color" content="#FBF4EE">
+<link rel="icon" href="/Kadima_Logo.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Italianno&family=Lora:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root { --fondo:#FBF4EE; --papel:#FFFDFB; --vino:#A8323E; --vino-osc:#7E2430; --rosa:#F3DCDC; --tinta:#2B1A16; --gris:#7B6A64; --linea:#E8D3CF; }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 70px; }
+  body { margin: 0; background: var(--fondo); color: var(--tinta); font-family: 'Lora', Georgia, serif; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 16px 110px; }
+  header { text-align: center; padding: 26px 0 8px; }
+  header img { width: 74px; height: 74px; object-fit: contain; border-radius: 50%; background: #fff; }
+  header h1 { margin: 10px 0 2px; font-size: 14px; letter-spacing: .2em; color: var(--vino); text-transform: uppercase; font-weight: 600; }
+  header p { margin: 0; color: var(--gris); font-size: 13.5px; font-style: italic; }
+  /* categorías */
+  nav { position: sticky; top: 0; z-index: 20; background: var(--fondo); border-bottom: 1px solid var(--linea); margin: 14px -16px 0; padding: 10px 16px; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+  nav::-webkit-scrollbar { display: none; }
+  nav a { flex: 0 0 auto; text-decoration: none; color: var(--vino-osc); border: 1px solid var(--linea); background: var(--papel); border-radius: 999px; padding: 7px 14px; font-size: 13.5px; font-weight: 600; white-space: nowrap; }
+  nav a.activa { background: var(--vino); color: #fff; border-color: var(--vino); }
+  section { padding-top: 22px; }
+  h2 { font-family: 'Italianno', cursive; font-weight: 400; font-size: 42px; color: var(--vino); margin: 0 0 4px; line-height: 1.1; display: flex; align-items: center; gap: 10px; }
+  h2 span.ico { font-size: 22px; }
+  .sep { border-top: 1.5px solid var(--rosa); margin-bottom: 8px; }
+  h3.sub { font-size: 14px; letter-spacing: .12em; text-transform: uppercase; color: var(--vino); margin: 18px 0 2px; }
+  .item { padding: 12px 0; border-bottom: 1px dotted var(--linea); }
+  .item:last-child { border-bottom: none; }
+  .fila { display: flex; align-items: baseline; gap: 8px; }
+  .fila b { font-size: 16.5px; font-weight: 700; }
+  .fila i.dots { flex: 1; border-bottom: 2px dotted #D9B9B6; transform: translateY(-4px); min-width: 16px; }
+  .fila .precio { font-weight: 700; color: var(--vino); font-size: 16px; white-space: nowrap; }
+  .desc { margin: 3px 0 0; color: var(--gris); font-style: italic; font-size: 14px; line-height: 1.45; }
+  .extras { background: #F6E6E4; border-radius: 10px; padding: 12px 14px; margin: 14px 0 4px; font-size: 13.5px; line-height: 1.6; }
+  .extras b { display: block; font-size: 12px; letter-spacing: .14em; color: var(--vino); margin-bottom: 2px; }
+  .nota { font-size: 13px; color: var(--vino); font-style: italic; margin: 2px 0 8px; }
+  .combo { background: var(--papel); border: 1px solid var(--linea); border-radius: 12px; padding: 14px 16px; margin: 12px 0; }
+  .combo .para { font-size: 12px; letter-spacing: .12em; color: var(--gris); text-transform: uppercase; margin: 2px 0 6px; }
+  .combo ul { margin: 0; padding-left: 18px; color: #4D3B36; font-size: 14.5px; line-height: 1.55; }
+  footer { text-align: center; color: var(--gris); font-size: 12.5px; margin-top: 34px; line-height: 1.6; }
+  footer a { color: var(--vino); }
+  /* botón opinión */
+  #b-op { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(16px, env(safe-area-inset-bottom)); z-index: 30; background: var(--vino); color: #fff; border: none; border-radius: 999px; padding: 14px 22px; font-family: inherit; font-size: 15.5px; font-weight: 600; box-shadow: 0 6px 20px rgba(126,36,48,.35); cursor: pointer; white-space: nowrap; }
+  /* modal */
+  .velo { position: fixed; inset: 0; background: rgba(43,26,22,.45); z-index: 40; display: none; align-items: flex-end; justify-content: center; }
+  .velo.ver { display: flex; }
+  .hoja { background: var(--papel); width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto; border-radius: 18px 18px 0 0; padding: 20px 18px calc(20px + env(safe-area-inset-bottom)); }
+  @media (min-width: 600px) { .velo { align-items: center; } .hoja { border-radius: 18px; } }
+  .hoja h4 { font-size: 20px; margin: 0 0 4px; color: var(--vino-osc); }
+  .hoja .intro { color: var(--gris); font-size: 14px; margin: 0 0 14px; font-style: italic; }
+  .x { float: right; background: none; border: none; font-size: 22px; color: var(--gris); cursor: pointer; }
+  .q { margin: 12px 0; }
+  .q label, .q .lbl { display: block; font-weight: 600; font-size: 14.5px; margin-bottom: 6px; }
+  .estrellas { display: flex; gap: 6px; }
+  .estrellas button { background: none; border: none; font-size: 32px; line-height: 1; color: #DCC7C3; cursor: pointer; padding: 0 2px; }
+  .estrellas button.on { color: #E3A23B; }
+  .mini { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 10px; }
+  .mini .estrellas button { font-size: 24px; }
+  .mini span { font-size: 14px; }
+  .hoja input, .hoja textarea { width: 100%; font-family: inherit; font-size: 15px; padding: 10px 12px; border: 1px solid var(--linea); border-radius: 8px; background: #fff; color: var(--tinta); }
+  .hoja textarea { min-height: 90px; resize: vertical; }
+  .dos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: end; }
+  @media (max-width: 460px) { .dos { grid-template-columns: 1fr; gap: 0; } }
+  .enviar { width: 100%; margin-top: 14px; background: var(--vino); color: #fff; border: none; border-radius: 10px; padding: 14px; font-family: inherit; font-size: 16px; font-weight: 600; cursor: pointer; }
+  .enviar:disabled { opacity: .6; }
+  .err { color: #B3261E; font-size: 14px; min-height: 18px; margin-top: 8px; }
+  .gracias { text-align: center; padding: 24px 6px; }
+  .gracias .big { font-size: 46px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="/Kadima_Logo.jpg" alt="Kadima" onerror="this.style.display='none'">
+    <h1>Carta de platos, bebidas y más</h1>
+    <p>Kadima Pastelería &amp; Panadería</p>
+  </header>
+  <nav id="nav"></nav>
+  <main id="carta"></main>
+  <footer>
+    Precios en soles, incluyen IGV.<br>
+    Mz K2 Lt. 3A, San Juan de Lurigancho · WhatsApp 987 023 767<br>
+    <a href="/libro_reclamaciones_kadima.html">Libro de Reclamaciones</a>
+  </footer>
+</div>
+
+<button id="b-op" type="button">💬 Déjanos tu recomendación</button>
+
+<div class="velo" id="velo" role="dialog" aria-modal="true" aria-labelledby="op-tit">
+  <div class="hoja">
+    <button class="x" id="op-x" aria-label="Cerrar">✕</button>
+    <div id="op-form">
+      <h4 id="op-tit">¿Cómo te fue hoy?</h4>
+      <p class="intro">Estamos estrenando carta. Tu opinión nos ayuda a mejorar cada plato.</p>
+      <div class="q"><span class="lbl">Tu experiencia en general</span><div class="estrellas" data-k="general"></div></div>
+      <div class="q mini">
+        <span>Sabor de la comida</span><div class="estrellas" data-k="comida"></div>
+        <span>Atención</span><div class="estrellas" data-k="atencion"></div>
+        <span>Tiempo de espera</span><div class="estrellas" data-k="tiempo"></div>
+      </div>
+      <div class="q"><label for="op-prod">¿Qué pediste? (opcional)</label><input id="op-prod" list="lista-prod" placeholder="Ej. Desayuno Americano, Capuccino"><datalist id="lista-prod"></datalist></div>
+      <div class="q"><label for="op-com">Tu recomendación</label><textarea id="op-com" placeholder="¿Qué te gustó? ¿Qué mejorarías? ¿Qué te gustaría que agreguemos?"></textarea></div>
+      <div class="dos">
+        <div class="q"><label for="op-nom">Nombre (opcional)</label><input id="op-nom" autocomplete="name"></div>
+        <div class="q"><label for="op-con">Celular o correo (opcional)</label><input id="op-con" autocomplete="tel"></div>
+      </div>
+      <div class="err" id="op-err"></div>
+      <button class="enviar" id="op-env">Enviar</button>
+    </div>
+    <div class="gracias" id="op-ok" style="display:none">
+      <div class="big">🧡</div>
+      <h4>¡Gracias por tu recomendación!</h4>
+      <p class="intro">La leeremos con todo el equipo.</p>
+      <button class="enviar" id="op-cerrar">Volver a la carta</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ====== CARTA (para cambiar un precio o plato, edita esta lista) ======
+const CARTA = [
+  { id: 'desayunos', t: 'Desayunos', ico: '☀️', items: [
+    ['Desayuno Americano', 19, 'Huevos, tocino, pan a elección, café pasado o infusión clásica y jugo de la casa.'],
+    ['Tostón de Palta', 18, 'Pan de masa madre, huevos revueltos, palta, café pasado o infusión clásica y jugo de la casa.'],
+    ['Desayuno Proteico', 20, 'Pan de masa madre, huevos revueltos y palta, acompañado de yogurt griego con granola, café pasado o infusión clásica y jugo de la casa.'],
+    ['Tostada Francesa', 16, 'Pan humedecido en almíbar especial de la casa, dorado con mantequilla y decorado con fresa, plátano y miel, acompañado de café pasado o infusión clásica.'] ] },
+  { id: 'bowls-dulces', t: 'Bowls dulces', ico: '🥣', items: [
+    ['Bowl de Avena', 14, 'Avena cremosa acompañada de fresa, plátano, miel y pecanas.'],
+    ['Blueberry Smoothie Bowl', 19, 'Base de arándanos con plátano cremoso, arándanos frescos, plátano, cañihua pop, granola y un toque de chía.'],
+    ['Mango Smoothie Bowl', 19, 'Base de mango cremoso con trozos de mango fresco, fresas en láminas, cañihua pop, granola y un toque de chía.'],
+    ['Fresa Smoothie Bowl', 17, 'Base de fresa cremosa con láminas de fresa y plátano, cañihua pop, granola y un toque de chía.'],
+    ['Chocolate Smoothie Bowl', 16, 'Base de plátano cremosa con cocoa, plátano en láminas, chocolate rallado, cañihua pop y granola.'],
+    ['Bowl de Frutas', 16, 'Cuatro frutas de temporada acompañadas de yogurt de vainilla, cañihua pop, chía y miel.'] ],
+    extras: ['Extras para los bowls', 'Miel · Algarrobina (+S/ 2.00) · Manjar · Fudge (+S/ 2.50) · Mantequilla de maní · Mantequilla de choco avellana (+S/ 3.00) · Cañihua pop (+S/ 1.50) · Yogurt griego (+S/ 3.50)'] },
+  { id: 'bowls-salados', t: 'Bowls salados', ico: '🥗', items: [
+    ['Chicken Bowl', 20, 'Pollo trozado a la plancha, palta, cebolla blanca, zanahoria, lechuga americana, col morada, pepino, tomate y aliño de la casa.'],
+    ['Crispy Chicken Bowl', 23, 'Pollo crocante, lechuga americana, col morada, tomate cherry, arroz blanco, tequeños en tiras y salsa de guacamole.'],
+    ['Teriyaki Bowl', 25, 'Pollo teriyaki, cebolla china, col morada, zanahoria en tiras, ajonjolí, tequeños en tiras, arroz blanco y salsa de guacamole.'] ] },
+  { id: 'sandwiches', t: 'Sándwiches', ico: '🥪', items: [
+    ['Cheeseburguer Clásico', 20, 'Pan brioche, carne molida, queso cheddar, lechuga, tomate y papas fritas.'],
+    ['Cheeseburguer Kadima', 24, 'Pan brioche, carne molida, queso cheddar, tocino con cebolla caramelizada, lechuga, tomate y papas fritas.'],
+    ['Chicken Crispy Sándwich', 19, 'Pan brioche, pollo crocante, queso edam, lechuga, tomate y papas fritas.'],
+    ['Tres Jamones', 12, 'Jamón inglés, jamón del país y jamón de pavita con queso edam derretido, lechuga y tomate en pan ciabatta.'],
+    ['Croissant con Pollo', 11, 'Pollo deshilachado con mayonesa, lechuga y papas al hilo.'],
+    ['Croissant con Pollo y Durazno', 12, 'Pollo deshilachado con mayonesa, trozos de durazno en almíbar y lechuga.'],
+    ['Croissant con Pollo Apaltado', 15, 'Pollo deshilachado con mayonesa, rodajas de palta y lechuga.'],
+    ['Club Sandwich', 25, 'Pan pullman con pollo deshilachado con mayonesa, huevo, tocino, queso edam, jamón inglés, lechuga y tomate, acompañado de papas fritas.'],
+    ['Sándwich Mixto', 12, 'Pan pullman con pollo deshilachado con mayonesa, lechuga y huevo frito.'],
+    ['Mixto Simple', 10, 'Pan pullman, jamón inglés y queso edam.'],
+    ['Butifarra', 15, 'Jamón del país de la casa con sarza criolla en pan ciabatta.'],
+    ['Sándwich Vegetariano', 15, 'Zucchini, berenjena, champiñones y cebolla blanca con queso derretido en pan ciabatta.'],
+    ['Triple de Durazno', 13, 'Pan pullman, jamón inglés, pollo deshilachado con mayonesa y durazno en almíbar.'],
+    ['Triple de Pollo', 12, 'Pollo deshilachado con mayonesa, palta y tomate.'],
+    ['Sándwich Pizzero', 15, 'Pan de masa madre tostado acompañado de salsa de tomate, pepperoni y queso mozzarella flameado.'] ] },
+  { id: 'jugos', t: 'Jugos', ico: '🍹', grupos: [
+    ['Jugos clásicos', [
+      ['Jugo de Piña', 9, 'Piña fresca.'], ['Jugo de Papaya', 9, 'Papaya fresca.'], ['Jugo de Fresa', 9, ''],
+      ['Jugo de Fresa con Leche', 11, 'Fresa con leche.'], ['Jugo Especial', 11, 'Papaya, plátano, leche, huevo y miel.'],
+      ['Jugo de Guanábana con Leche', 15, 'Guanábana con leche.'], ['Papaya con Piña', 11, 'Papaya y piña.'],
+      ['Lúcuma con Leche', 14, 'Lúcuma con leche.'], ['Jugo Surtido', 13, 'Mix de frutas del día con beterraga.'], ['Jugo de Naranja', 10, ''] ]],
+    ['Jugos especiales', [
+      ['Maracumango', 14, 'Mango y maracuyá.'], ['Fruit Passion', 11, 'Plátano y maracuyá.'], ['Milk Blueberries', 16, 'Arándanos con leche.'],
+      ['Strawberry Blueberry', 17, 'Arándanos, fresa y leche.'], ['Mango Berries', 16, 'Mango, fresa y leche.'], ['Mango Milk', 15, 'Mango con leche.'],
+      ['Banana Creamy', 11, 'Plátano con leche, vainilla y canela.'], ['Banana Berries', 12, 'Fresa, plátano y leche.'] ]] ] },
+  { id: 'milkshakes', t: 'Milkshakes', ico: '🥤', items: [
+    ['Milkshake de Oreo', 15, 'Shake cremoso a base de leche y helado con galleta Oreo.'],
+    ['Milkshake de Fresa', 15, 'Shake cremoso a base de leche y helado con fresa.'],
+    ['Milkshake de Lúcuma', 17, 'Shake cremoso a base de leche y helado con lúcuma.'],
+    ['Milkshake de Mango', 17, 'Shake cremoso a base de leche y helado con mango.'] ] },
+  { id: 'frappuccino', t: 'Frappuccino', ico: '🧋', items: [
+    ['Frappuccino de Fresa', 17, 'Bebida refrescante a base de hielo, leche, shot de café, fresas, decorado con chantilly y jalea de fresa.'],
+    ['Frappuccino de Moka', 17, 'Bebida refrescante a base de hielo, leche, shot de café y chocolate, decorado con chantilly y fudge.'],
+    ['Frappuccino de Chocolúcuma', 18, 'Bebida refrescante a base de hielo, leche, shot de café con lúcuma cremosa y chocolate, decorado con chantilly y fudge.'],
+    ['Frappuccino de Oreo', 18, 'Bebida refrescante a base de hielo, leche, shot de café y oreo en trozos, decorado con chantilly y fudge.'] ] },
+  { id: 'calientes', t: 'Bebidas calientes', ico: '☕', items: [
+    ['Café Americano', 7, 'Expreso doble con agua caliente.'],
+    ['Café Pasado', 5, 'Café molido filtrado con agua caliente.'],
+    ['Capuccino', 9, 'Café expreso con leche espumosa.'],
+    ['Capuccino con Crema', 10, 'Café expreso con leche espumosa y crema chantilly.'],
+    ['Mocaccino', 9.5, 'Café expreso con leche espumosa y cacao en polvo.'],
+    ['Chococacao con Leche', 9, 'Cacao orgánico 100% y leche.'],
+    ['Chocobombón', 10, 'Cacao orgánico 100%, leche y marshmallow.'],
+    ['Mate de Hierba Natural', 5, 'Manzanilla o hierba luisa, a elección.'],
+    ['Té Verde', 6, 'Infusión rica en antioxidantes, estimulante en la oxidación de grasa.'],
+    ['Té de Jamaica', 6, 'Infusión que favorece la pérdida de peso, reduce la retención de líquidos y mejora la digestión.'] ],
+    extras: ['Extras para bebidas calientes', 'Chantilly (+S/ 2.50) · Leche deslactosada (+S/ 2.00) · Leche de almendra / coco / avena (+S/ 3.50)'] },
+  { id: 'frias', t: 'Bebidas frías', ico: '🧊', items: [
+    ['Jarra de Maracuyá (1 litro)', 20, ''],
+    ['Jarra de Limonada (1 litro)', 18, ''],
+    ['Jarra de Limonada de Hierba Luisa (1 litro)', 19, ''],
+    ['Vaso de Emoliente (frío o caliente)', 6, ''] ] },
+  { id: 'compartir', t: 'Para compartir', ico: '🤝', nota: '* Válido solo para consumo en tienda', combos: [
+    ['Combo 1', 25, 'Entre 2 personas', ['6 mini hamburguesas clásicas', '6 sanguchitos de pollo', '8 boliquesos', '2 mates de hierba natural o ½ jarra de limonada']],
+    ['Combo 2', 38, 'Entre 2 a 4 personas', ['8 mini croissants con manjar', '8 mini hamburguesas clásicas', '8 sanguchitos de pollo', '12 boliquesos', '1 tetera de mate de hierba natural o 1 jarra de limonada']],
+    ['Combo 3', 65, 'Entre 4 a 6 personas', ['12 mini croissants con manjar', '12 mini hamburguesas clásicas', '12 sanguchitos de pollo', '12 boliquesos', '12 tequeños de jamón y queso', '2 teteras de mate de hierba natural o 2 jarras de limonada']] ] },
+];
+// ======================================================================
+const SB_URL = 'https://odhcnrjbmydjghafichc.supabase.co', SB_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
+const $ = id => document.getElementById(id);
+const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const sol = n => 'S/ ' + Number(n).toFixed(2);
+const itemHTML = ([n, p, d]) => `<div class="item"><div class="fila"><b>${esc(n)}</b><i class="dots"></i><span class="precio">${sol(p)}</span></div>${d ? `<p class="desc">${esc(d)}</p>` : ''}</div>`;
+
+$('nav').innerHTML = CARTA.map(c => `<a href="#${c.id}" data-id="${c.id}">${c.t}</a>`).join('');
+$('carta').innerHTML = CARTA.map(c => `<section id="${c.id}">
+  <h2><span class="ico">${c.ico}</span>${c.t}</h2><div class="sep"></div>
+  ${c.nota ? `<p class="nota">${esc(c.nota)}</p>` : ''}
+  ${(c.items || []).map(itemHTML).join('')}
+  ${(c.grupos || []).map(([g, its]) => `<h3 class="sub">${esc(g)}</h3>${its.map(itemHTML).join('')}`).join('')}
+  ${(c.combos || []).map(([n, p, para, l]) => `<div class="combo"><div class="fila"><b>${esc(n)}</b><i class="dots"></i><span class="precio">${sol(p)}</span></div><div class="para">${esc(para)}</div><ul>${l.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`).join('')}
+  ${c.extras ? `<div class="extras"><b>${esc(c.extras[0]).toUpperCase()}</b>${esc(c.extras[1])}</div>` : ''}
+</section>`).join('');
+$('lista-prod').innerHTML = CARTA.flatMap(c => [...(c.items || []), ...(c.grupos || []).flatMap(g => g[1]), ...(c.combos || [])].map(i => `<option value="${esc(i[0])}">`)).join('');
+
+// categoría activa al hacer scroll
+const links = [...document.querySelectorAll('nav a')];
+const obs = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return;
+  links.forEach(a => a.classList.toggle('activa', a.dataset.id === e.target.id));
+  const a = links.find(x => x.dataset.id === e.target.id); if (a) a.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+}), { rootMargin: '-80px 0px -70% 0px' });
+document.querySelectorAll('main section').forEach(s => obs.observe(s));
+
+// ====== recomendaciones ======
+const notas = {};
+document.querySelectorAll('.estrellas').forEach(box => {
+  const k = box.dataset.k;
+  box.innerHTML = [1, 2, 3, 4, 5].map(n => `<button type="button" data-n="${n}" aria-label="${n} de 5">★</button>`).join('');
+  box.onclick = e => { const b = e.target.closest('button'); if (!b) return; notas[k] = Number(b.dataset.n); [...box.children].forEach(x => x.classList.toggle('on', Number(x.dataset.n) <= notas[k])); };
+});
+const abrir = () => { $('velo').classList.add('ver'); document.body.style.overflow = 'hidden'; };
+const cerrar = () => { $('velo').classList.remove('ver'); document.body.style.overflow = ''; };
+$('b-op').onclick = abrir; $('op-x').onclick = cerrar; $('op-cerrar').onclick = cerrar;
+$('velo').onclick = e => { if (e.target === $('velo')) cerrar(); };
+if (location.hash === '#opinion') abrir();
+$('op-env').onclick = async () => {
+  const p = { ...notas, productos: $('op-prod').value, comentario: $('op-com').value, nombre: $('op-nom').value, contacto: $('op-con').value };
+  if (!p.general && !p.comentario.trim()) { $('op-err').textContent = 'Califica tu experiencia con las estrellas o escribe tu recomendación.'; return; }
+  $('op-err').textContent = ''; const b = $('op-env'); b.disabled = true; b.textContent = 'Enviando…';
+  try {
+    const r = await fetch(SB_URL + '/rest/v1/rpc/registrar_recomendacion', { method: 'POST', headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ p }) });
+    if (!r.ok) throw new Error(await r.text());
+    $('op-form').style.display = 'none'; $('op-ok').style.display = 'block';
+  } catch (e) {
+    console.error(e); $('op-err').textContent = 'No pudimos enviarlo. Revisa tu conexión e intenta otra vez.';
+  } finally { b.disabled = false; b.textContent = 'Enviar'; }
+};
+</script>
+</body>
+</html>
