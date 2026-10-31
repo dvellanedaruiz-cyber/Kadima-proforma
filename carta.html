@@ -13,7 +13,8 @@
 <style>
   :root { --fondo:#FBF4EE; --papel:#FFFDFB; --vino:#A8323E; --vino-osc:#7E2430; --rosa:#F3DCDC; --tinta:#2B1A16; --gris:#7B6A64; --linea:#E8D3CF; }
   * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; scroll-padding-top: 70px; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { overscroll-behavior-y: none; }
   body { margin: 0; background: var(--fondo); color: var(--tinta); font-family: 'Lora', Georgia, serif; -webkit-font-smoothing: antialiased; }
   .wrap { max-width: 720px; margin: 0 auto; padding: 0 16px 110px; }
   header { text-align: center; padding: 26px 0 8px; }
@@ -30,8 +31,48 @@
   h2 span.ico { font-size: 22px; }
   .sep { border-top: 1.5px solid var(--rosa); margin-bottom: 8px; }
   h3.sub { font-size: 14px; letter-spacing: .12em; text-transform: uppercase; color: var(--vino); margin: 18px 0 2px; }
-  .item { padding: 12px 0; border-bottom: 1px dotted var(--linea); }
+  .item { padding: 12px 0; border-bottom: 1px dotted var(--linea); display: flex; gap: 12px; align-items: flex-start; }
+  .item .txt { flex: 1; min-width: 0; }
+  .item img { width: 84px; height: 84px; object-fit: cover; border-radius: 12px; flex: 0 0 84px; background: #F1E4E1; cursor: zoom-in; }
+  .lb { position: fixed; inset: 0; background: rgba(20,12,10,.85); z-index: 50; display: none; align-items: center; justify-content: center; padding: 20px; }
+  .lb.ver { display: flex; }
+  .lb img { max-width: 100%; max-height: 80vh; border-radius: 14px; }
+  .lb p { position: absolute; bottom: 24px; left: 0; right: 0; text-align: center; color: #fff; font-size: 16px; margin: 0; }
   .item:last-child { border-bottom: none; }
+  .combo { display: flex; gap: 12px; align-items: flex-start; }
+  .combo .txt { flex: 1; min-width: 0; }
+  /* modo edición de fotos (kadima.pe/carta?editar) */
+  .ed-barra { position: sticky; top: 0; z-index: 25; background: #2E1B12; color: #fff; font-size: 13.5px; padding: 9px 16px; margin: 0 -16px; display: flex; align-items: center; gap: 10px; }
+  .ed-barra b { flex: 1; }
+  .ed-barra button { background: #fff; color: #2E1B12; border: none; border-radius: 999px; padding: 6px 12px; font-family: inherit; font-weight: 600; font-size: 13px; cursor: pointer; }
+  .ed-bot { display: flex; flex-direction: column; gap: 6px; flex: 0 0 84px; }
+  .ed-bot button { font-family: inherit; font-size: 12.5px; font-weight: 600; border-radius: 8px; padding: 7px 4px; cursor: pointer; border: 1px dashed var(--vino); background: #fff; color: var(--vino); }
+  .ed-bot button.quitar { border-style: solid; border-color: var(--linea); color: var(--gris); }
+  .ed-bot img { cursor: default; }
+  .subiendo { opacity: .5; pointer-events: none; }
+  /* mapa de calor */
+  .ed-barra button.on { background: #E3A23B; color: #2E1B12; }
+  .calor [data-plato] { position: relative; background: rgba(214, 64, 40, var(--c, 0)); border-radius: 10px; padding-left: 8px; padding-right: 8px; margin: 0 -8px; transition: background .3s; }
+  .calor .ed-bot { display: none; }
+  .cbadge { display: inline-block; margin-top: 6px; font-size: 12px; font-weight: 600; background: #2E1B12; color: #fff; border-radius: 999px; padding: 3px 9px; font-style: normal; }
+  .cbadge.sec { white-space: nowrap; margin: 0 0 0 auto; font-family: 'Lora', serif; font-size: 12px; align-self: center; }
+  .cpanel { background: #fff; border: 1px solid var(--linea); border-radius: 14px; padding: 14px; margin: 14px 0 6px; font-size: 13.5px; }
+  .cpanel h5 { margin: 0 0 8px; font-size: 15px; color: var(--vino-osc); }
+  .cper { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .cper button { border: 1px solid var(--linea); background: var(--papel); border-radius: 999px; padding: 5px 11px; font-family: inherit; font-size: 13px; cursor: pointer; }
+  .cper button.on { background: var(--vino); color: #fff; border-color: var(--vino); }
+  .ckpi { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
+  .ckpi div { background: var(--fondo); border-radius: 10px; padding: 8px 10px; }
+  .ckpi b { display: block; font-size: 20px; color: var(--vino); }
+  .cbar { display: grid; grid-template-columns: 110px 1fr 46px; gap: 6px; align-items: center; margin: 4px 0; }
+  .cbar span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cbar i { display: block; height: 10px; border-radius: 5px; background: linear-gradient(90deg, #F2B36B, #D64028); }
+  .cbar span:last-child { text-align: right; color: var(--gris); }
+  .choras { display: flex; align-items: flex-end; gap: 2px; height: 60px; margin-top: 6px; }
+  .choras i { flex: 1; background: #E7C3BC; border-radius: 3px 3px 0 0; min-height: 2px; }
+  .chlbl { display: flex; justify-content: space-between; font-size: 11px; color: var(--gris); }
+  .cleyenda { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--gris); margin-top: 10px; }
+  .cleyenda i { flex: 1; height: 8px; border-radius: 4px; background: linear-gradient(90deg, rgba(214,64,40,.04), rgba(214,64,40,.55)); }
   .fila { display: flex; align-items: baseline; gap: 8px; }
   .fila b { font-size: 16.5px; font-weight: 700; }
   .fila i.dots { flex: 1; border-bottom: 2px dotted #D9B9B6; transform: translateY(-4px); min-width: 16px; }
@@ -72,6 +113,7 @@
   .err { color: #B3261E; font-size: 14px; min-height: 18px; margin-top: 8px; }
   .gracias { text-align: center; padding: 24px 6px; }
   .gracias .big { font-size: 46px; }
+  .editando #b-op { display: none; }
 </style>
 </head>
 <body>
@@ -205,7 +247,31 @@ const SB_URL = 'https://odhcnrjbmydjghafichc.supabase.co', SB_KEY = 'sb_publisha
 const $ = id => document.getElementById(id);
 const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const sol = n => 'S/ ' + Number(n).toFixed(2);
-const itemHTML = ([n, p, d]) => `<div class="item"><div class="fila"><b>${esc(n)}</b><i class="dots"></i><span class="precio">${sol(p)}</span></div>${d ? `<p class="desc">${esc(d)}</p>` : ''}</div>`;
+
+// ====== estadísticas anónimas (qué miran y qué tocan los clientes) ======
+// No guarda datos personales: solo un código de visita al azar. No mide cuando estás en ?editar.
+const MIDE = !new URLSearchParams(location.search).has('editar');
+const VISITA = (() => { try { let v = sessionStorage.getItem('kc_v'); if (!v) { v = Math.random().toString(36).slice(2, 12); sessionStorage.setItem('kc_v', v); } return v; } catch { return Math.random().toString(36).slice(2, 12); } })();
+const cola = [], acum = {};   // acum: tiempo visto (ms) por 'tipo|ref'
+const ev = (tipo, ref, valor = 1) => { if (MIDE) cola.push([tipo, String(ref ?? '').slice(0, 120), valor]); };
+const suma = (tipo, ref, ms) => { const k = tipo + '|' + ref; acum[k] = (acum[k] || 0) + ms; };
+function enviar() {
+  if (!MIDE) return;
+  for (const k in acum) { const [t, r] = k.split('|'); cola.push([t, r, acum[k]]); delete acum[k]; }
+  if (!cola.length) return;
+  const e = cola.splice(0, 300);
+  fetch(SB_URL + '/rest/v1/rpc/registrar_eventos_carta', { method: 'POST', keepalive: true, headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ p: { s: VISITA, e } }) }).catch(() => {});
+}
+if (MIDE) {
+  const qs = new URLSearchParams(location.search);
+  let primera = true; try { primera = !sessionStorage.getItem('kc_ok'); sessionStorage.setItem('kc_ok', 1); } catch {}
+  if (primera) ev('visita', qs.get('m') || (document.referrer ? new URL(document.referrer).hostname : 'directo'));
+  setInterval(enviar, 15000);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) enviar(); });
+  window.addEventListener('pagehide', enviar);
+}
+// Las fotos NO se escriben aquí: se suben desde el CRM › 🍽️ Carta digital (quedan guardadas en Supabase)
+const itemHTML = ([n, p, d]) => `<div class="item" data-plato="${esc(n)}"><div class="txt"><div class="fila"><b>${esc(n)}</b><i class="dots"></i><span class="precio">${sol(p)}</span></div>${d ? `<p class="desc">${esc(d)}</p>` : ''}</div></div>`;
 
 $('nav').innerHTML = CARTA.map(c => `<a href="#${c.id}" data-id="${c.id}">${c.t}</a>`).join('');
 $('carta').innerHTML = CARTA.map(c => `<section id="${c.id}">
@@ -213,19 +279,191 @@ $('carta').innerHTML = CARTA.map(c => `<section id="${c.id}">
   ${c.nota ? `<p class="nota">${esc(c.nota)}</p>` : ''}
   ${(c.items || []).map(itemHTML).join('')}
   ${(c.grupos || []).map(([g, its]) => `<h3 class="sub">${esc(g)}</h3>${its.map(itemHTML).join('')}`).join('')}
-  ${(c.combos || []).map(([n, p, para, l]) => `<div class="combo"><div class="fila"><b>${esc(n)}</b><i class="dots"></i><span class="precio">${sol(p)}</span></div><div class="para">${esc(para)}</div><ul>${l.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`).join('')}
+  ${(c.combos || []).map(([n, p, para, l]) => `<div class="combo" data-plato="${esc(n)}"><div class="txt"><div class="fila"><b>${esc(n)}</b><i class="dots"></i><span class="precio">${sol(p)}</span></div><div class="para">${esc(para)}</div><ul>${l.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div></div>`).join('')}
   ${c.extras ? `<div class="extras"><b>${esc(c.extras[0]).toUpperCase()}</b>${esc(c.extras[1])}</div>` : ''}
 </section>`).join('');
 $('lista-prod').innerHTML = CARTA.flatMap(c => [...(c.items || []), ...(c.grupos || []).flatMap(g => g[1]), ...(c.combos || [])].map(i => `<option value="${esc(i[0])}">`)).join('');
 
-// categoría activa al hacer scroll
-const links = [...document.querySelectorAll('nav a')];
-const obs = new IntersectionObserver(es => es.forEach(e => {
-  if (!e.isIntersecting) return;
-  links.forEach(a => a.classList.toggle('activa', a.dataset.id === e.target.id));
-  const a = links.find(x => x.dataset.id === e.target.id); if (a) a.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
-}), { rootMargin: '-80px 0px -70% 0px' });
-document.querySelectorAll('main section').forEach(s => obs.observe(s));
+// categoría activa al hacer scroll (sin mover la página: solo se desplaza la barra de categorías)
+const nav = $('nav'), links = [...nav.querySelectorAll('a')], secs = [...document.querySelectorAll('main section')];
+const altoNav = () => nav.getBoundingClientRect().height;
+let activa = null, saltando = false;
+function marcar(id) {
+  if (id === activa) return; activa = id;
+  links.forEach(a => a.classList.toggle('activa', a.dataset.id === id));
+  const a = links.find(x => x.dataset.id === id);
+  if (a) nav.scrollTo({ left: a.offsetLeft - (nav.clientWidth - a.offsetWidth) / 2, behavior: 'smooth' });
+}
+function calcular() {
+  if (saltando) return;
+  const lim = altoNav() + 12; let id = secs[0].id;
+  for (const s of secs) { if (s.getBoundingClientRect().top - lim <= 0) id = s.id; else break; }
+  if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) id = secs[secs.length - 1].id;
+  marcar(id);
+}
+let tic = false;
+window.addEventListener('scroll', () => { if (!tic) { tic = true; requestAnimationFrame(() => { tic = false; calcular(); }); } }, { passive: true });
+nav.addEventListener('click', e => {
+  const a = e.target.closest('a'); if (!a) return; e.preventDefault();
+  const sec = document.getElementById(a.dataset.id);
+  const y = sec.getBoundingClientRect().top + window.scrollY - altoNav() + 2;
+  marcar(a.dataset.id); saltando = true; ev('chip', a.dataset.id);
+  window.scrollTo({ top: y, behavior: 'smooth' });
+  clearTimeout(marcar.t); marcar.t = setTimeout(() => { saltando = false; calcular(); }, 700);
+});
+calcular();
+// cada segundo: suma tiempo a los platos que están en pantalla y a la sección activa
+if (MIDE) {
+  const enPantalla = new Set();
+  const io = new IntersectionObserver(es => es.forEach(x => x.isIntersecting ? enPantalla.add(x.target.dataset.plato) : enPantalla.delete(x.target.dataset.plato)), { threshold: 0.6 });
+  document.querySelectorAll('[data-plato]').forEach(b => io.observe(b));
+  setInterval(() => {
+    if (document.hidden || $('velo').classList.contains('ver')) return;
+    suma('tiempo', '', 1000);
+    if (activa) suma('seccion', activa, 1000);
+    enPantalla.forEach(n => suma('plato', n, 1000));
+  }, 1000);
+}
+// foto ampliada
+document.body.insertAdjacentHTML('beforeend', '<div class="lb" id="lb"><img alt=""><p></p></div>');
+$('carta').addEventListener('click', e => { const im = e.target.closest('img[data-zoom]'); if (!im) return; const lb = $('lb'); lb.querySelector('img').src = im.src; lb.querySelector('p').textContent = im.dataset.zoom; lb.classList.add('ver'); ev('foto', im.dataset.zoom); });
+$('lb').onclick = () => $('lb').classList.remove('ver');
+
+// ====== fotos (tabla carta_fotos en Supabase) ======
+let FOTOS = {}, sbc = null;
+const bloques = () => [...document.querySelectorAll('[data-plato]')];
+function pintarFotos() {
+  bloques().forEach(b => {
+    const n = b.dataset.plato, url = FOTOS[n];
+    b.querySelector(':scope > img, :scope > .ed-bot')?.remove();
+    if (sbc) {   // modo edición
+      b.insertAdjacentHTML('beforeend', `<div class="ed-bot">${url ? `<img src="${esc(url)}" alt="">` : ''}<button type="button" data-subir>${url ? '🔄 Cambiar' : '📷 Foto'}</button>${url ? '<button type="button" class="quitar" data-quitar>Quitar</button>' : ''}</div>`);
+    } else if (url) {
+      b.insertAdjacentHTML('beforeend', `<img src="${esc(url)}" alt="${esc(n)}" loading="lazy" data-zoom="${esc(n)}" onerror="this.remove()">`);
+    }
+  });
+}
+async function cargarFotos() {
+  try {
+    const r = await fetch(SB_URL + '/rest/v1/carta_fotos?select=plato,url', { headers: { apikey: SB_KEY } });
+    if (!r.ok) throw new Error(await r.text());
+    FOTOS = Object.fromEntries((await r.json()).map(f => [f.plato, f.url]));
+  } catch (e) { console.warn('fotos:', e); }
+  pintarFotos();
+}
+cargarFotos();
+
+// ====== modo edición: se abre desde el CRM › 🍽️ Carta digital (usa la misma sesión del CRM) ======
+const slug = t => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+function achicar(file) {   // la deja en máx. 900 px y JPG liviano (~100-200 KB)
+  return new Promise((ok, mal) => {
+    const img = new Image(); img.onerror = () => mal(new Error('No se pudo leer la imagen'));
+    img.onload = () => {
+      const k = Math.min(1, 900 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(b => b ? ok(b) : mal(new Error('No se pudo convertir')), 'image/jpeg', 0.82);
+    };
+    img.src = URL.createObjectURL(file);
+  });
+}
+async function entrarEdicion() {
+  await new Promise((ok, mal) => { const sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js'; sc.onload = ok; sc.onerror = mal; document.head.appendChild(sc); });
+  const cli = supabase.createClient(SB_URL, SB_KEY, { auth: { storageKey: 'kadima-crm-auth' } });
+  let { data: { session } } = await cli.auth.getSession();
+  if (!session) session = await new Promise(ok => {
+    document.body.insertAdjacentHTML('beforeend', `<div class="velo ver" id="ed-login"><form class="hoja" id="ed-f">
+      <h4>✏️ Editar la carta</h4><p class="intro">Entra con el correo y contraseña del CRM de Kadima.</p>
+      <div class="q"><label for="ed-mail">Correo</label><input id="ed-mail" type="email" autocomplete="username" required></div>
+      <div class="q"><label for="ed-pass">Contraseña</label><input id="ed-pass" type="password" autocomplete="current-password" required></div>
+      <button class="enviar" id="ed-ent">Entrar</button><div class="err" id="ed-err"></div></form></div>`);
+    $('ed-f').onsubmit = async ev => {
+      ev.preventDefault(); $('ed-ent').disabled = true; $('ed-err').textContent = '';
+      const r = await cli.auth.signInWithPassword({ email: $('ed-mail').value.trim(), password: $('ed-pass').value });
+      $('ed-ent').disabled = false;
+      if (r.error) return $('ed-err').textContent = /Invalid login/i.test(r.error.message) ? 'Correo o contraseña incorrectos.' : r.error.message;
+      $('ed-login').remove(); ok(r.data.session);
+    };
+  });
+  sbc = cli; document.body.classList.add('editando');
+  const qp = new URLSearchParams(location.search);
+  if (!qp.has('embed')) {   // abierta sola (fuera del CRM): barra propia
+    document.querySelector('.wrap').insertAdjacentHTML('afterbegin', '<div class="ed-barra"><b>✏️ Editando la carta</b><button type="button" id="ed-calor">🔥 Mapa de calor</button><button type="button" id="ed-salir">Salir</button></div>');
+    nav.style.top = document.querySelector('.ed-barra').offsetHeight + 'px';
+    $('ed-calor').onclick = () => alternarCalor();
+    $('ed-salir').onclick = () => { location.href = location.pathname; };   // no cierra la sesión del CRM
+  }
+  if (qp.has('calor')) setTimeout(alternarCalor, 0);
+  const inp = Object.assign(document.createElement('input'), { type: 'file', accept: 'image/*', hidden: true }); document.body.appendChild(inp);
+  let destino = null;
+  $('carta').addEventListener('click', async e => {
+    const b = e.target.closest('[data-plato]'); if (!b) return;
+    if (e.target.closest('[data-subir]')) { destino = b; inp.value = ''; inp.click(); }
+    if (e.target.closest('[data-quitar]') && confirm(`¿Quitar la foto de "${b.dataset.plato}"?`)) {
+      b.classList.add('subiendo');
+      const { error } = await sbc.from('carta_fotos').delete().eq('plato', b.dataset.plato);
+      b.classList.remove('subiendo');
+      if (error) return alert('No se pudo quitar: ' + error.message);
+      delete FOTOS[b.dataset.plato]; pintarFotos();
+    }
+  });
+  inp.onchange = async () => {
+    const f = inp.files[0], b = destino; if (!f || !b) return;
+    const n = b.dataset.plato; b.classList.add('subiendo');
+    try {
+      const blob = await achicar(f), ruta = `${slug(n)}-${Date.now()}.jpg`;
+      const up = await sbc.storage.from('carta').upload(ruta, blob, { contentType: 'image/jpeg', cacheControl: '31536000' });
+      if (up.error) throw up.error;
+      const url = sbc.storage.from('carta').getPublicUrl(ruta).data.publicUrl;
+      const { error } = await sbc.from('carta_fotos').upsert({ plato: n, url, actualizado_en: new Date().toISOString() });
+      if (error) throw error;
+      FOTOS[n] = url; pintarFotos();
+    } catch (err) { alert('No se pudo subir la foto: ' + (err.message || err)); }
+    b.classList.remove('subiendo');
+  };
+  pintarFotos();
+}
+// ====== mapa de calor (solo en ?editar) ======
+let periodo = 7;
+const seg = ms => { const s = Math.round(ms / 1000); return s < 60 ? s + ' s' : s < 3600 ? Math.round(s / 60) + ' min' : (s / 3600).toFixed(1) + ' h'; };
+async function alternarCalor() {
+  const on = !document.body.classList.contains('calor');
+  $('ed-calor')?.classList.toggle('on', on);
+  if (!on) { document.body.classList.remove('calor'); document.querySelectorAll('.cbadge, .cpanel').forEach(x => x.remove()); return; }
+  document.body.classList.add('calor'); await pintarCalor();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+async function pintarCalor() {
+  document.querySelectorAll('.cbadge, .cpanel').forEach(x => x.remove());
+  $('carta').insertAdjacentHTML('beforebegin', '<div class="cpanel" id="cpanel"><h5>🔥 Cómo usan la carta</h5><p>Cargando…</p></div>');
+  const desde = periodo ? new Date(Date.now() - (periodo === 1 ? new Date().getHours() * 3600e3 + new Date().getMinutes() * 60e3 : periodo * 864e5)).toISOString() : '2000-01-01';
+  const { data: d, error } = await sbc.rpc('stats_carta', { p_desde: desde });
+  if (error) { $('cpanel').innerHTML = '<p>No se pudieron leer las estadísticas: ' + esc(error.message) + '</p>'; return; }
+  const P = Object.fromEntries((d.platos || []).map(x => [x.ref, x]));
+  const max = Math.max(1, ...(d.platos || []).map(x => x.ms));
+  document.querySelectorAll('[data-plato]').forEach(b => {
+    const x = P[b.dataset.plato]; const r = x ? x.ms / max : 0;
+    b.style.setProperty('--c', (0.04 + r * 0.51).toFixed(3));
+    b.querySelector('.txt').insertAdjacentHTML('beforeend', `<span class="cbadge">👁 ${x ? seg(x.ms) : '0 s'} · ${x ? x.visitas : 0} visitas${x && x.fotos ? ` · 🔍 ${x.fotos} fotos` : ''}</span>`);
+  });
+  const totSec = (d.secciones || []).reduce((a, x) => a + x.ms, 0) || 1;
+  const S = Object.fromEntries((d.secciones || []).map(x => [x.ref, x]));
+  secs.forEach(s => { const x = S[s.id]; s.querySelector('h2').insertAdjacentHTML('beforeend', `<span class="cbadge sec">${x ? Math.round(x.ms / totSec * 100) : 0}% del tiempo</span>`); });
+  const nombreSec = Object.fromEntries(CARTA.map(c => [c.id, c.t]));
+  const barras = (arr, lbl, val, txt) => { const m = Math.max(1, ...arr.map(val)); return arr.map(x => `<div class="cbar"><span>${esc(lbl(x))}</span><i style="width:${Math.max(3, val(x) / m * 100)}%"></i><span>${txt(x)}</span></div>`).join('') || '<p style="color:var(--gris)">Aún sin datos.</p>'; };
+  const horas = Array.from({ length: 24 }, (_, h) => (d.horas || []).find(x => x.h === h)?.n || 0), mh = Math.max(1, ...horas);
+  $('cpanel').innerHTML = `<h5>🔥 Cómo usan la carta</h5>
+    <div class="cper">${[[1, 'Hoy'], [7, '7 días'], [30, '30 días'], [0, 'Todo']].map(([v, t]) => `<button type="button" data-per="${v}" class="${v === periodo ? 'on' : ''}">${t}</button>`).join('')}</div>
+    <div class="ckpi"><div><b>${d.visitas || 0}</b>visitas</div><div><b>${d.visitas ? seg(d.tiempo_ms / d.visitas) : '0 s'}</b>tiempo promedio</div><div><b>${d.fotos || 0}</b>fotos ampliadas</div><div><b>${d.opiniones_enviadas || 0} / ${d.opiniones_abiertas || 0}</b>opiniones enviadas / abiertas</div></div>
+    <h5>Platos más mirados</h5>${barras((d.platos || []).slice(0, 8), x => x.ref, x => x.ms, x => seg(x.ms))}
+    <h5 style="margin-top:12px">Fotos más ampliadas</h5>${barras((d.platos || []).filter(x => x.fotos).sort((a, b) => b.fotos - a.fotos).slice(0, 5), x => x.ref, x => x.fotos, x => x.fotos)}
+    <h5 style="margin-top:12px">Categorías más tocadas</h5>${barras(d.chips || [], x => nombreSec[x.ref] || x.ref, x => x.n, x => x.n)}
+    <h5 style="margin-top:12px">Horas con más visitas</h5><div class="choras">${horas.map((n, h) => `<i title="${h}:00 · ${n}" style="height:${n / mh * 100}%"></i>`).join('')}</div><div class="chlbl"><span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>23h</span></div>
+    <div class="cleyenda">Poco mirado<i></i>Muy mirado</div>
+    <p style="color:var(--gris);font-size:12px;margin:8px 0 0">El color de cada plato muestra cuánto tiempo estuvo en pantalla de los clientes. Baja para verlo.</p>`;
+  $('cpanel').querySelector('.cper').onclick = e => { const b = e.target.closest('[data-per]'); if (b) { periodo = Number(b.dataset.per); pintarCalor(); } };
+}
+if (new URLSearchParams(location.search).has('editar')) entrarEdicion().catch(e => alert('No se pudo abrir el modo edición: ' + e.message));
 
 // ====== recomendaciones ======
 const notas = {};
@@ -236,7 +474,7 @@ document.querySelectorAll('.estrellas').forEach(box => {
 });
 const abrir = () => { $('velo').classList.add('ver'); document.body.style.overflow = 'hidden'; };
 const cerrar = () => { $('velo').classList.remove('ver'); document.body.style.overflow = ''; };
-$('b-op').onclick = abrir; $('op-x').onclick = cerrar; $('op-cerrar').onclick = cerrar;
+$('b-op').onclick = () => { abrir(); ev('opinion', 'abrir'); }; $('op-x').onclick = cerrar; $('op-cerrar').onclick = cerrar;
 $('velo').onclick = e => { if (e.target === $('velo')) cerrar(); };
 if (location.hash === '#opinion') abrir();
 $('op-env').onclick = async () => {
@@ -246,7 +484,7 @@ $('op-env').onclick = async () => {
   try {
     const r = await fetch(SB_URL + '/rest/v1/rpc/registrar_recomendacion', { method: 'POST', headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ p }) });
     if (!r.ok) throw new Error(await r.text());
-    $('op-form').style.display = 'none'; $('op-ok').style.display = 'block';
+    $('op-form').style.display = 'none'; $('op-ok').style.display = 'block'; ev('opinion', 'enviada');
   } catch (e) {
     console.error(e); $('op-err').textContent = 'No pudimos enviarlo. Revisa tu conexión e intenta otra vez.';
   } finally { b.disabled = false; b.textContent = 'Enviar'; }

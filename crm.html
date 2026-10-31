@@ -141,6 +141,20 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
 .ubi-info a{color:var(--azul);font-weight:700;text-decoration:none}
 .ubi-ok{color:var(--ok);font-weight:700}
 #s-mapa .mapa-grande{height:calc(100vh - 128px);min-height:420px}
+#s-carta{max-width:none;padding:10px 14px 0}
+.c-tabs{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.c-tabs button{background:#fff;border:1px solid var(--borde);padding:8px 14px;font-weight:600;border-radius:20px}
+.c-tabs button.activa{background:var(--rojo);color:#fff;border-color:var(--rojo)}
+.c-tabs a{margin-left:auto;font-size:13px;color:var(--rojo)}
+#carta-ifr{width:100%;max-width:560px;display:block;margin:0 auto;height:calc(100vh - 150px);min-height:480px;border:1px solid var(--borde);border-radius:16px;background:#fff}
+.op-res{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px}
+.op-res div{background:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.op-res b{display:block;font-size:22px;color:var(--rojo)}
+.op-it{background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 1px 4px rgba(0,0,0,.05);margin-bottom:10px}
+.op-it.rev{opacity:.55}
+.op-it .est{color:#e3a23b;letter-spacing:1px}
+.op-it .meta{font-size:12px;color:var(--gris);margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.op-it .meta button{margin-left:auto;background:var(--fondo);padding:5px 10px;font-size:12px;font-weight:600}
 .mapa-stats{font-size:13px;color:var(--gris);margin-left:auto}
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1f1f1f;color:#fff;padding:10px 16px;border-radius:10px;z-index:90;font-weight:600;max-width:92vw}
 
@@ -197,9 +211,10 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
       <button data-s="cot">📝 Cotizaciones</button>
       <button data-s="camp">📣 Campañas</button>
       <button data-s="mapa">🗺️ Mapa de clientes</button>
+      <button data-s="carta">🍽️ Carta digital</button>
     </div>
     <span class="usr" id="usr" title="Cambiar de usuario"></span>
-    <span style="font-size:11px;opacity:.7">v1.2</span>
+    <span style="font-size:11px;opacity:.7">v1.3</span>
   </div>
 
   <!-- ===== CLIENTES ===== -->
@@ -255,6 +270,18 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
       <span class="mapa-stats" id="mp-stats"></span>
     </div>
     <div id="mp-mapa" class="mapa-grande"></div>
+  </div>
+
+  <!-- ===== CARTA DIGITAL (kadima.pe/carta) ===== -->
+  <div id="s-carta" class="pag oculto">
+    <div class="c-tabs" id="c-tabs">
+      <button data-c="fotos" class="activa">📷 Fotos</button>
+      <button data-c="calor">🔥 Mapa de calor</button>
+      <button data-c="opiniones">💬 Opiniones</button>
+      <a href="/carta" target="_blank" rel="noopener">Ver como cliente ↗</a>
+    </div>
+    <iframe id="carta-ifr" title="Carta digital"></iframe>
+    <div id="carta-op" class="oculto"></div>
   </div>
 
   <!-- ===== CAMPAÑAS ===== -->
@@ -448,7 +475,8 @@ function abrirApp() {
 function irSeccion(s) {
   st.sec = s;
   document.querySelectorAll('#secc [data-s]').forEach(b => b.classList.toggle('activa', b.dataset.s === s));
-  ['cli', 'fechas', 'cot', 'camp', 'mapa'].forEach(x => $('s-' + x).classList.toggle('oculto', x !== s));
+  ['cli', 'fechas', 'cot', 'camp', 'mapa', 'carta'].forEach(x => $('s-' + x).classList.toggle('oculto', x !== s));
+  if (s === 'carta' && !st.cartaTab) irCarta('fotos');
   if (s === 'mapa') abrirMapa();
   if (s === 'cli') cargarClientes();
   if (s === 'fechas') cargarFechas();
@@ -457,6 +485,42 @@ function irSeccion(s) {
   window.scrollTo(0, 0);
 }
 $('secc').onclick = e => { const b = e.target.closest('[data-s]'); if (b) irSeccion(b.dataset.s); };
+
+// ===================== CARTA DIGITAL =====================
+// La carta se abre aquí mismo en modo edición (usa esta misma sesión del CRM, no pide otro login)
+function irCarta(t) {
+  st.cartaTab = t;
+  document.querySelectorAll('#c-tabs [data-c]').forEach(b => b.classList.toggle('activa', b.dataset.c === t));
+  $('carta-ifr').classList.toggle('oculto', t === 'opiniones'); $('carta-op').classList.toggle('oculto', t !== 'opiniones');
+  if (t === 'opiniones') return cargarOpiniones();
+  $('carta-ifr').src = 'carta.html?editar&embed' + (t === 'calor' ? '&calor' : '') + '&t=' + Date.now();
+}
+$('c-tabs').onclick = e => { const b = e.target.closest('[data-c]'); if (b) irCarta(b.dataset.c); };
+async function cargarOpiniones() {
+  const box = $('carta-op'); box.innerHTML = '<div class="vacio">Cargando…</div>';
+  const { data, error } = await sb.from('carta_recomendaciones').select('*').order('id', { ascending: false }).limit(300);
+  if (error) return box.innerHTML = `<div class="vacio">${esc(errTxt(error))}</div>`;
+  if (!data.length) return box.innerHTML = '<div class="vacio">Aún no hay opiniones. Aparecen aquí cuando un cliente las deja desde la carta.</div>';
+  const prom = k => { const v = data.map(x => x[k]).filter(Boolean); return v.length ? (v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) : '—'; };
+  const est = n => n ? '★'.repeat(n) + '<span style="color:#ddd">' + '★'.repeat(5 - n) + '</span>' : '';
+  const pend = data.filter(x => !x.revisado).length;
+  box.innerHTML = `<div class="op-res">
+      <div><b>${data.length}</b>opiniones</div><div><b>${pend}</b>sin revisar</div>
+      <div><b>${prom('general')}</b>general ★</div><div><b>${prom('comida')}</b>comida ★</div>
+      <div><b>${prom('atencion')}</b>atención ★</div><div><b>${prom('tiempo')}</b>tiempo de espera ★</div></div>
+    ${data.map(x => `<div class="op-it${x.revisado ? ' rev' : ''}">
+      ${x.general ? `<div class="est">${est(x.general)}</div>` : ''}
+      ${x.comentario ? `<div style="margin-top:4px">${esc(x.comentario)}</div>` : ''}
+      ${x.productos ? `<div style="font-size:13px;margin-top:4px"><b>Pidió:</b> ${esc(x.productos)}</div>` : ''}
+      <div class="meta"><span>${fechaCorta(x.creado_en)}</span>${x.nombre ? `<span>👤 ${esc(x.nombre)}</span>` : ''}${x.contacto ? `<span>📞 ${esc(x.contacto)}</span>` : ''}
+        ${[['comida', 'Comida'], ['atencion', 'Atención'], ['tiempo', 'Espera']].filter(([k]) => x[k]).map(([k, l]) => `<span>${l} ${x[k]}★</span>`).join('')}
+        <button data-rev="${x.id}" data-v="${x.revisado ? 0 : 1}">${x.revisado ? '↩ Pendiente' : '✓ Revisado'}</button></div></div>`).join('')}`;
+}
+$('carta-op').onclick = async e => {
+  const b = e.target.closest('[data-rev]'); if (!b) return;
+  const { error } = await sb.from('carta_recomendaciones').update({ revisado: b.dataset.v === '1' }).eq('id', Number(b.dataset.rev));
+  if (error) return toast(errTxt(error)); cargarOpiniones();
+};
 
 // ===================== CLIENTES =====================
 function segmento(c) {
