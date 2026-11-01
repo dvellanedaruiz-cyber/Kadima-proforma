@@ -116,6 +116,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 .linea{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:10px 16px;border-bottom:1px solid #f1eeeb}
 .linea .n{font-size:14px;font-weight:600}
 .chips-peso button.activa{background:var(--rojo);color:#fff}
+.seg-peso{display:flex;background:var(--fondo);border-radius:10px;padding:3px;gap:3px;margin:4px 0 10px}.seg-peso button{flex:1;background:transparent;border:none;padding:9px;font-weight:700;color:var(--gris);border-radius:8px;cursor:pointer}.seg-peso button.activa{background:#fff;color:var(--rojo);box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .chips-peso{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.chips-peso button{background:var(--fondo);border:none;border-radius:16px;padding:6px 12px;font-weight:600;cursor:pointer}
 .linea .u button{background:none;border:none;padding:0;color:var(--rojo);font:inherit;text-decoration:underline;cursor:pointer}
 .linea .u{font-size:12px;color:var(--gris)}
@@ -135,6 +136,9 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 .docs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .docs button{background:var(--fondo);padding:10px 4px;font-size:13px;font-weight:600}
 .docs button.activa{background:var(--rojo);color:#fff}
+.cli-res{position:absolute;left:-156px;right:0;bottom:100%;margin-bottom:4px;background:#fff;border:1px solid var(--borde);border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.15);max-height:260px;overflow:auto;z-index:6}
+.cli-res div{padding:9px 11px;cursor:pointer;border-bottom:1px solid #f1eeeb;font-size:14px}.cli-res div:hover,.cli-res div.foco{background:var(--rojo-suave)}
+.cli-res small{display:block;color:var(--gris);font-size:12px}.cli-res .nuevo{color:var(--rojo);font-weight:700}
 .cliente{display:grid;grid-template-columns:150px 1fr;gap:6px}
 .totales{display:flex;justify-content:space-between;align-items:baseline}
 .totales .g{font-size:13px;color:var(--gris)}
@@ -207,6 +211,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
   .grilla{grid-template-columns:repeat(2,1fr)}
   .barra .info{display:none}
   .cliente{grid-template-columns:1fr}
+  .cli-res{left:0}
 }
 </style>
 </head>
@@ -291,7 +296,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
       </div>
       <div class="cliente">
         <input id="c-doc" placeholder="DNI (opcional)" inputmode="numeric" maxlength="11">
-        <input id="c-nombre" placeholder="Nombre del cliente">
+        <div style="position:relative"><input id="c-nombre" placeholder="Nombre del cliente" autocomplete="off" style="width:100%"><div class="cli-res oculto" id="c-res"></div></div>
       </div>
       <label class="ret-check oculto" id="c-ret-box"><input type="checkbox" id="c-ret"> El cliente es agente de retención (retiene 3% en facturas de más de S/ 700)</label>
       <div class="totales">
@@ -326,8 +331,15 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
   <div class="caja" style="max-width:360px">
     <h3 id="ps-titulo">Peso</h3>
     <p class="sub" id="ps-sub">Precio por kilo</p>
-    <div class="campo"><label id="ps-label">Gramos</label><input id="ps-gramos" type="number" step="1" min="1" inputmode="numeric" placeholder="Otro peso, ej. 180"></div>
-    <div class="chips-peso" id="ps-chips"></div>
+    <div class="seg-peso" id="ps-modo"><button data-m="peso" class="activa">⚖️ Por peso</button><button data-m="monto">💵 Por monto</button></div>
+    <div id="ps-w-peso">
+      <div class="campo"><label id="ps-label">Gramos</label><input id="ps-gramos" type="number" step="1" min="1" inputmode="numeric" placeholder="Otro peso, ej. 180"></div>
+      <div class="chips-peso" id="ps-chips"></div>
+    </div>
+    <div id="ps-w-monto" class="oculto">
+      <div class="campo"><label>¿Cuánto quiere llevar? (S/)</label><input id="ps-monto" type="number" step="0.10" min="0.10" inputmode="decimal" placeholder="Ej. 2.00"></div>
+      <div class="chips-peso" id="ps-chips-m"><button data-s="1">S/ 1</button><button data-s="2">S/ 2</button><button data-s="3">S/ 3</button><button data-s="5">S/ 5</button><button data-s="10">S/ 10</button></div>
+    </div>
     <div style="font-size:22px;font-weight:800;margin:10px 0" id="ps-total">S/ 0.00</div>
     <div class="fila">
       <button class="btn-sec" id="ps-cancelar">Cancelar</button>
@@ -495,6 +507,21 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
   </div>
 </div>
 
+<!-- MODAL NUEVO CLIENTE -->
+<div class="modal oculto" id="m-cli">
+  <div class="caja">
+    <h3>➕ Registrar cliente</h3>
+    <p class="sub">Con el DNI o RUC se completan los datos de RENIEC / SUNAT.</p>
+    <div class="campo"><label>DNI o RUC</label><div style="display:flex;gap:6px"><input id="nc-doc" inputmode="numeric" maxlength="11" placeholder="8 u 11 dígitos"><button class="btn-sec" id="nc-buscar" style="white-space:nowrap">🔍 Buscar</button></div></div>
+    <div class="campo"><label>Nombre o razón social</label><input id="nc-nombre"></div>
+    <div class="campo"><label>Dirección (opcional, sale en la factura)</label><input id="nc-dir"></div>
+    <div class="campo"><label>Celular (opcional)</label><input id="nc-tel" inputmode="numeric" maxlength="9" placeholder="9xxxxxxxx"></div>
+    <label class="ret-check oculto" id="nc-ret-box"><input type="checkbox" id="nc-ret"> Es agente de retención</label>
+    <div class="fila" style="margin-top:12px"><button class="btn-sec" id="nc-cancelar">Cancelar</button><button class="btn" id="nc-ok">Guardar y usar</button></div>
+    <div class="error" id="nc-error"></div>
+  </div>
+</div>
+
 <!-- MODAL CIERRE DE CAJA -->
 <div class="modal oculto" id="m-cierre">
   <div class="caja">
@@ -503,9 +530,18 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
     <table class="tabla" id="ci-tabla"></table>
     <div class="campo"><label>Efectivo contado en caja (S/)</label><input id="ci-contado" type="number" step="0.10" min="0" inputmode="decimal"></div>
     <div class="resumen"><span>Diferencia</span><b id="ci-dif">—</b></div>
-    <div class="fila" style="margin-top:12px">
+    <div class="fila" style="margin-top:12px" id="ci-paso1">
       <button class="btn-sec" id="ci-cancelar">Volver</button>
       <button class="btn" id="ci-ok">Cerrar caja</button>
+    </div>
+    <div id="ci-conf" class="oculto" style="margin-top:12px;background:#fff4e5;border:1.5px solid #f0c27a;border-radius:12px;padding:12px">
+      <div style="font-weight:800;font-size:16px;margin-bottom:6px">⚠️ ¿Confirmas el cierre de caja?</div>
+      <div id="ci-conf-txt" style="font-size:14px;line-height:1.5"></div>
+      <div style="font-size:12.5px;color:var(--gris);margin-top:6px">Al cerrar ya no se pueden registrar ventas en este turno.</div>
+      <div class="fila" style="margin-top:10px">
+        <button class="btn-sec" id="ci-corregir">← Corregir</button>
+        <button class="btn" id="ci-si">✓ Sí, cerrar caja</button>
+      </div>
     </div>
     <div class="error" id="ci-error"></div>
   </div>
@@ -580,6 +616,10 @@ function vista(id) {
   ['v-login','v-equipo','v-pin','v-turno','v-pos'].forEach(v => $(v).classList.toggle('oculto', v !== id));
 }
 function msg(id, t) { $(id).textContent = t || ''; }
+function toast(t) {
+  let d = $('toast-c'); if (!d) { d = document.createElement('div'); d.id = 'toast-c'; d.style.cssText = 'position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1f1f1f;color:#fff;padding:11px 16px;border-radius:10px;z-index:90;font-weight:600;max-width:92vw'; document.body.appendChild(d); }
+  d.textContent = t; d.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => d.style.display = 'none', 3500);
+}
 
 // ===== 1. LOGIN =====
 $('f-login').addEventListener('submit', async ev => {
@@ -812,10 +852,10 @@ let pesoDe = null;
 let cantDe = null;
 function pedirCantidad(p) {
   cantDe = p;
-  const esc = st.escalas[p.id].slice().sort((a, b) => b.desde - a.desde);
+  const paqs = st.escalas[p.id].slice().sort((a, b) => b.desde - a.desde);
   $('ct-titulo').textContent = p.nombre;
-  $('ct-sub').textContent = `Suelta ${S(p.precio_venta)} c/u · ` + esc.map(e => `paquete de ${e.desde}: ${S(e.precio)} c/u`).join(' · ');
-  $('ct-chips').innerHTML = esc.map(e => `<button data-n="${e.desde}" style="font-size:16px;padding:12px 16px">${e.desde} und · ${S(r2(e.desde * e.precio))}</button>`).join('');
+  $('ct-sub').textContent = `Suelta ${S(p.precio_venta)} c/u · ` + paqs.map(e => `paquete de ${e.desde}: ${S(e.precio)} c/u`).join(' · ');
+  $('ct-chips').innerHTML = paqs.map(e => `<button data-n="${e.desde}" style="font-size:16px;padding:12px 16px">${e.desde} und · ${S(r2(e.desde * e.precio))}</button>`).join('');
   $('ct-n').value = ''; msg('ct-error'); totalCant();
   $('m-cant').classList.remove('oculto'); setTimeout(() => $('ct-n').focus(), 50);
 }
@@ -836,24 +876,57 @@ $('ct-ok').onclick = () => {
   if (l) l.cantidad += n; else st.carrito.push({ producto_id: p.id, nombre: p.nombre, precio_unit: Number(p.precio_venta), cantidad: n, afecto_igv: p.afecto_igv, area: p.area_preparacion, nota: null });
   $('m-cant').classList.add('oculto'); dibujarCarrito();
 };
+// granel: el monto siempre se redondea hacia arriba a 10 céntimos (3.45 → 3.50).
+// "Por monto": el cliente dice cuánto quiere gastar (ej. S/ 2) y se calculan los gramos a servir.
+const redondeo10 = x => Math.ceil(Math.round(x * 1000) / 100 - 1e-9) / 10;
+let modoPeso = 'peso';
 function pedirPeso(p, i) {
   pesoDe = { p, i }; const g = GRANEL[p.unidad_medida];
   $('ps-titulo').textContent = p.nombre; $('ps-sub').textContent = `${S(p.precio_venta / 10)} cada 100 ${g.sub} · ${S(p.precio_venta)} por ${g.u}`; $('ps-label').textContent = g.label;
   $('ps-chips').innerHTML = [100, 150, 200, 250].map(v => `<button data-g="${v}">${v} ${g.sub}</button>`).join('');
-  $('ps-gramos').value = i === undefined ? '' : Math.round(st.carrito[i].cantidad * 1000); msg('ps-error'); totalPeso();
-  $('m-peso').classList.remove('oculto'); setTimeout(() => $('ps-gramos').focus(), 50);
+  const l = i === undefined ? null : st.carrito[i];
+  $('ps-gramos').value = l ? Math.round(l.cantidad * 1000) : '';
+  $('ps-monto').value = l && l.porMonto ? l.monto : '';
+  msg('ps-error'); ponerModoPeso(l && l.porMonto ? 'monto' : 'peso');
+  $('m-peso').classList.remove('oculto');
 }
-function totalPeso() { $('ps-total').textContent = S(r2(Number($('ps-gramos').value || 0) / 1000 * Number(pesoDe.p.precio_venta))); }
-$('ps-gramos').oninput = totalPeso;
+function ponerModoPeso(m) {
+  modoPeso = m;
+  [...$('ps-modo').children].forEach(b => b.classList.toggle('activa', b.dataset.m === m));
+  $('ps-w-peso').classList.toggle('oculto', m !== 'peso'); $('ps-w-monto').classList.toggle('oculto', m !== 'monto');
+  totalPeso(); setTimeout(() => $(m === 'peso' ? 'ps-gramos' : 'ps-monto').focus(), 50);
+}
+$('ps-modo').onclick = e => { const b = e.target.closest('[data-m]'); if (b) ponerModoPeso(b.dataset.m); };
+// devuelve { g: gramos, monto: soles redondeados } según el modo
+function calcPeso() {
+  const pk = Number(pesoDe.p.precio_venta) || 0;
+  if (modoPeso === 'monto') {
+    const m = r2(Number($('ps-monto').value || 0));
+    return { g: pk > 0 ? Math.round(m / pk * 1000) : 0, monto: m, porMonto: true };
+  }
+  const g = Math.round(Number($('ps-gramos').value || 0));
+  return { g, monto: redondeo10(g / 1000 * pk), porMonto: false };
+}
+function totalPeso() {
+  const c = calcPeso(), sub = GRANEL[pesoDe.p.unidad_medida].sub;
+  $('ps-total').innerHTML = !(c.g > 0) ? S(0) : modoPeso === 'monto'
+    ? `${S(c.monto)}<div style="font-size:15px;color:var(--rojo);margin-top:2px">Servir ≈ <b>${c.g} ${sub}</b></div>`
+    : `${S(c.monto)}${Math.abs(c.monto - c.g / 1000 * Number(pesoDe.p.precio_venta)) > 0.004 ? `<div style="font-size:12px;font-weight:600;color:var(--gris)">redondeado de ${S(c.g / 1000 * Number(pesoDe.p.precio_venta))}</div>` : ''}`;
+}
+$('ps-gramos').oninput = totalPeso; $('ps-monto').oninput = totalPeso;
 $('ps-gramos').onkeydown = e => { if (e.key === 'Enter') $('ps-ok').click(); };
+$('ps-monto').onkeydown = e => { if (e.key === 'Enter') $('ps-ok').click(); };
 $('ps-chips').onclick = e => { const g = e.target.dataset.g; if (g) { $('ps-gramos').value = g; totalPeso(); } };
+$('ps-chips-m').onclick = e => { const v = e.target.dataset.s; if (v) { $('ps-monto').value = v; totalPeso(); } };
 $('ps-cancelar').onclick = () => $('m-peso').classList.add('oculto');
 $('ps-ok').onclick = () => {
-  const g = Math.round(Number($('ps-gramos').value));
-  if (!(g > 0)) return msg('ps-error', 'Escribe el peso');
-  const cant = Math.round(g) / 1000, { p, i } = pesoDe;
-  if (i !== undefined) st.carrito[i].cantidad = cant;
-  else st.carrito.push({ producto_id: p.id, nombre: p.nombre, precio_unit: Number(p.precio_venta), cantidad: cant, afecto_igv: p.afecto_igv, area: p.area_preparacion, nota: null, unidad: p.unidad_medida });
+  const c = calcPeso(), { p, i } = pesoDe;
+  if (!(c.g > 0) || !(c.monto > 0)) return msg('ps-error', modoPeso === 'monto' ? 'Escribe el monto' : 'Escribe el peso');
+  const cant = c.g / 1000;
+  // el precio unitario se ajusta para que cantidad × precio = monto redondeado (el peso real queda para el stock)
+  const linea = { cantidad: cant, precio_unit: Math.round(c.monto / cant * 1e6) / 1e6, monto: c.monto, porMonto: c.porMonto, base: Number(p.precio_venta) };
+  if (i !== undefined) Object.assign(st.carrito[i], linea);
+  else st.carrito.push({ producto_id: p.id, nombre: p.nombre, afecto_igv: p.afecto_igv, area: p.area_preparacion, nota: null, unidad: p.unidad_medida, ...linea });
   $('m-peso').classList.add('oculto'); dibujarCarrito();
 };
 // productos con precio libre (delivery, dedicatoria, empaque…): la cajera escribe el monto
@@ -919,7 +992,7 @@ function dibujarCarrito() {
   aplicarEscalas();
   $('carrito').innerHTML = st.carrito.length ? st.carrito.map((l, i) => `
     <div class="linea">
-      <div><div class="n">${esc(l.nombre)} ${l.fijo ? '' : `<button data-nota="${i}" title="Agregar nota para cocina">nota</button>`}</div>${l.nota ? `<div class="nota">→ ${esc(l.nota)}</div>` : ''}<div class="u">${GRANEL[l.unidad] ? `${S(l.precio_unit / 10)} /100 ${GRANEL[l.unidad].sub}` : l.libre ? `<button data-precio="${i}" title="Cambiar precio">${S(l.precio_unit)} c/u ✎</button>` : `${S(l.precio_unit)} c/u${l.paq ? ` <b style="color:#1e7d3a">· ${l.k > 1 ? l.k + ' paquetes' : 'paquete'} de ${l.paq}</b>` : (st.escalas && st.escalas[l.producto_id] && !l.libre && !l.fijo ? ' <span style="color:var(--gris)">· sueltas</span>' : '')}`}</div></div>
+      <div><div class="n">${esc(l.nombre)} ${l.fijo ? '' : `<button data-nota="${i}" title="Agregar nota para cocina">nota</button>`}</div>${l.nota ? `<div class="nota">→ ${esc(l.nota)}</div>` : ''}<div class="u">${GRANEL[l.unidad] ? `${S((l.base || l.precio_unit) / 10)} /100 ${GRANEL[l.unidad].sub}${l.porMonto ? ' · por monto' : ''}` : l.libre ? `<button data-precio="${i}" title="Cambiar precio">${S(l.precio_unit)} c/u ✎</button>` : `${S(l.precio_unit)} c/u${l.paq ? ` <b style="color:#1e7d3a">· ${l.k > 1 ? l.k + ' paquetes' : 'paquete'} de ${l.paq}</b>` : (st.escalas && st.escalas[l.producto_id] && !l.libre && !l.fijo ? ' <span style="color:var(--gris)">· sueltas</span>' : '')}`}</div></div>
       ${l.fijo ? '<div class="cant"></div>' : GRANEL[l.unidad] ? `<div class="cant"><button data-i="${i}" data-a="x" title="Quitar">✕</button><button data-peso="${i}" style="width:auto;padding:0 8px">${fmtCant(l)} ✎</button></div>` : `<div class="cant"><button data-i="${i}" data-a="-">−</button><span>${l.cantidad}</span><button data-i="${i}" data-a="+">+</button></div>`}
       <div class="imp">${S(l.cantidad * l.precio_unit)}</div>
     </div>`).join('') : '<div class="vacio">Toca un producto para agregarlo.</div>';
@@ -962,12 +1035,92 @@ $('docs').onclick = e => {
   $('c-nombre').placeholder = d === 'factura' ? 'Razón social' : 'Nombre del cliente';
   $('c-ret-box').classList.toggle('oculto', d !== 'factura');
 };
-// si el cliente ya compró antes, se completan sus datos solos
+// si el cliente ya compró antes, se completan sus datos solos; si no, se consulta RENIEC / SUNAT
 $('c-doc').onchange = async () => {
   const doc = $('c-doc').value.trim();
   if (!/^(\d{8}|\d{11})$/.test(doc) || !navigator.onLine) return;
   const { data } = await sb.from('clientes').select('nombre,agente_retencion').eq('num_doc', doc).maybeSingle();
-  if (data) { if (!$('c-nombre').value.trim()) $('c-nombre').value = data.nombre; $('c-ret').checked = !!data.agente_retencion; }
+  if (data) { if (!$('c-nombre').value.trim()) $('c-nombre').value = data.nombre; $('c-ret').checked = !!data.agente_retencion; return; }
+  const d = await consultarDoc(doc);
+  if (d && !$('c-nombre').value.trim()) { $('c-nombre').value = d.nombre; if (d.agente_retencion) $('c-ret').checked = true; }
+};
+// ===== Buscar cliente por nombre (persona o empresa) o registrarlo =====
+async function consultarDoc(n) {
+  try { const { data, error } = await sb.functions.invoke('consulta-doc', { body: { numero: n } }); return !error && data && data.ok ? data : null; } catch (e) { return null; }
+}
+let cliRes = [], cliFoco = 0, cliTimer = null;
+$('c-nombre').oninput = () => {
+  clearTimeout(cliTimer);
+  const q = $('c-nombre').value.trim();
+  if (q.length < 3 || !navigator.onLine) return $('c-res').classList.add('oculto');
+  cliTimer = setTimeout(() => buscarClientes(q), 250);
+};
+async function buscarClientes(q) {
+  const pat = '%' + q.replace(/[%_,()]/g, ' ') + '%';
+  const [a, b] = await Promise.all([
+    sb.from('clientes').select('num_doc,nombre,agente_retencion').ilike('nombre', pat).limit(8),
+    sb.from('crm_clientes').select('num_doc,nombre,telefono').ilike('nombre', pat).not('num_doc', 'is', null).limit(8),
+  ]);
+  const vistos = new Set(); cliRes = [];
+  [...(a.data || []), ...(b.data || [])].forEach(c => { const k = c.num_doc || c.nombre; if (!c.num_doc || vistos.has(k)) return; vistos.add(k); cliRes.push(c); });
+  // en factura solo sirven RUC; en boleta, DNI o RUC
+  if (st.doc === 'factura') cliRes = cliRes.filter(c => c.num_doc.length === 11);
+  cliRes = cliRes.slice(0, 8); cliFoco = 0;
+  $('c-res').innerHTML = cliRes.map((c, i) => `<div data-i="${i}" class="${i ? '' : 'foco'}">${esc(c.nombre)}<small>${c.num_doc.length === 11 ? 'RUC' : 'DNI'} ${c.num_doc}${c.agente_retencion ? ' · agente de retención' : ''}</small></div>`).join('')
+    + `<div data-nuevo="1" class="nuevo">➕ Registrar cliente nuevo${cliRes.length ? '' : ` “${esc(q)}”`}</div>`;
+  $('c-res').classList.remove('oculto');
+}
+function elegirCliente(c) {
+  $('c-doc').value = c.num_doc; $('c-nombre').value = c.nombre; $('c-ret').checked = !!c.agente_retencion;
+  $('c-res').classList.add('oculto');
+  if (c.num_doc.length === 11 && st.doc === 'boleta') toast('Es un RUC: si necesita factura, cambia a Factura.');
+}
+$('c-res').onmousedown = e => {
+  e.preventDefault();
+  if (e.target.closest('[data-nuevo]')) return abrirNuevoCliente();
+  const d = e.target.closest('[data-i]'); if (d) elegirCliente(cliRes[Number(d.dataset.i)]);
+};
+$('c-nombre').onkeydown = e => {
+  if ($('c-res').classList.contains('oculto')) return;
+  const n = $('c-res').children.length;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); cliFoco = Math.max(0, Math.min(n - 1, cliFoco + (e.key === 'ArrowDown' ? 1 : -1))); [...$('c-res').children].forEach((d, i) => d.classList.toggle('foco', i === cliFoco)); }
+  if (e.key === 'Enter') { e.preventDefault(); cliFoco < cliRes.length ? elegirCliente(cliRes[cliFoco]) : abrirNuevoCliente(); }
+  if (e.key === 'Escape') $('c-res').classList.add('oculto');
+};
+$('c-nombre').onblur = () => setTimeout(() => $('c-res').classList.add('oculto'), 150);
+function abrirNuevoCliente() {
+  $('c-res').classList.add('oculto');
+  const q = $('c-nombre').value.trim(), soloNum = /^\d+$/.test(q);
+  $('nc-doc').value = soloNum ? q : ($('c-doc').value.trim() || ''); $('nc-nombre').value = soloNum ? '' : q; $('nc-dir').value = ''; $('nc-tel').value = ''; $('nc-ret').checked = false;
+  $('nc-ret-box').classList.add('oculto'); msg('nc-error');
+  $('m-cli').classList.remove('oculto'); setTimeout(() => $('nc-doc').focus(), 50);
+}
+async function ncBuscar() {
+  const n = $('nc-doc').value.replace(/\D/g, '');
+  if (!/^(\d{8}|(10|15|17|20)\d{9})$/.test(n)) return msg('nc-error', 'El DNI tiene 8 dígitos y el RUC 11.');
+  msg('nc-error', 'Buscando…');
+  const d = await consultarDoc(n);
+  if (!d) return msg('nc-error', 'No se encontró. Escribe el nombre a mano.');
+  msg('nc-error'); $('nc-nombre').value = d.nombre;
+  if (d.direccion) $('nc-dir').value = [d.direccion, d.distrito].filter(Boolean).join(', ');
+  $('nc-ret-box').classList.toggle('oculto', n.length !== 11); $('nc-ret').checked = !!d.agente_retencion;
+}
+$('nc-buscar').onclick = ncBuscar;
+$('nc-doc').onchange = () => { const n = $('nc-doc').value.replace(/\D/g, ''); $('nc-ret-box').classList.toggle('oculto', n.length !== 11); if (/^(\d{8}|\d{11})$/.test(n) && !$('nc-nombre').value.trim()) ncBuscar(); };
+$('nc-cancelar').onclick = () => $('m-cli').classList.add('oculto');
+$('nc-ok').onclick = async () => {
+  const doc = $('nc-doc').value.replace(/\D/g, ''), nombre = $('nc-nombre').value.trim(), tel = $('nc-tel').value.replace(/\D/g, '');
+  if (!/^(\d{8}|(10|15|17|20)\d{9})$/.test(doc)) return msg('nc-error', 'Ingresa un DNI (8) o RUC (11) válido.');
+  if (nombre.length < 3) return msg('nc-error', 'Ingresa el nombre o razón social.');
+  if (tel && !/^9\d{8}$/.test(tel)) return msg('nc-error', 'El celular debe tener 9 dígitos y empezar con 9.');
+  $('nc-ok').disabled = true;
+  const reg = { num_doc: doc, nombre, direccion: $('nc-dir').value.trim() || null, origen: 'caja', ...(tel ? { telefono: tel } : {}) };
+  const { error } = await sb.from('crm_clientes').upsert(reg, { onConflict: 'num_doc' });
+  $('nc-ok').disabled = false;
+  if (error && !/crm_clientes/.test(error.message)) return msg('nc-error', /telefono/.test(error.message) ? 'Ese celular ya está registrado con otro cliente.' : errorTexto(error));
+  if (doc.length === 11 && st.doc !== 'factura') document.querySelector('#docs [data-doc="factura"]').click();
+  elegirCliente({ num_doc: doc, nombre, agente_retencion: $('nc-ret').checked });
+  $('m-cli').classList.add('oculto'); toast('✓ Cliente registrado');
 };
 // retención 3%: factura + cliente agente de retención + total mayor a S/ 700
 function retencion() {
@@ -1510,7 +1663,7 @@ $('b-cerrar').onclick = async () => {
   if (!navigator.onLine) return msg('v-error', 'Cerrar caja necesita internet.');
   await enviarCola();
   if (cola().length) return msg('v-error', 'Aún hay ventas sin enviar. Espera a que se envíen para cerrar la caja.');
-  msg('ci-error'); $('ci-contado').value = ''; $('ci-dif').textContent = '—';
+  msg('ci-error'); $('ci-contado').value = ''; $('ci-dif').textContent = '—'; ciPaso(1);
   const { data, error } = await sb.from('ventas').select('total,estado,contado_credito,retencion_monto,tipo_cobro,venta_pagos(metodo,monto)').eq('turno_id', st.turno.id);
   if (error) return msg('v-error', errorTexto(error));
   // los cobros de pedidos se cobran y cuadran en la app de Pedidos: aquí no se suman ni se muestran
@@ -1548,14 +1701,25 @@ $('ci-contado').oninput = () => {
   $('ci-dif').textContent = (d > 0 ? '+' : '') + S(d) + (d === 0 ? ' (cuadra)' : d > 0 ? ' (sobra)' : ' (falta)');
   $('ci-dif').style.color = d === 0 ? 'var(--ok)' : 'var(--aviso)';
 };
-$('ci-cancelar').onclick = () => $('m-cierre').classList.add('oculto');
-$('ci-ok').onclick = async () => {
+$('ci-cancelar').onclick = () => { ciPaso(1); $('m-cierre').classList.add('oculto'); };
+// paso 1: revisar · paso 2: confirmar
+function ciPaso(n) { $('ci-paso1').classList.toggle('oculto', n !== 1); $('ci-conf').classList.toggle('oculto', n !== 2); $('ci-contado').disabled = n === 2; }
+$('ci-ok').onclick = () => {
+  msg('ci-error');
   if ($('ci-contado').value === '') return msg('ci-error', 'Ingresa el efectivo contado.');
+  const c = r2(Number($('ci-contado').value)), d = r2(c - resumenCierre.efectivoEsperado);
+  $('ci-conf-txt').innerHTML = `Efectivo contado: <b>${S(c)}</b><br>Debería haber: <b>${S(resumenCierre.efectivoEsperado)}</b><br>Diferencia: <b style="color:${d === 0 ? 'var(--ok)' : 'var(--aviso)'}">${(d > 0 ? '+' : '') + S(d)} ${d === 0 ? '(cuadra)' : d > 0 ? '(sobra)' : '(falta)'}</b>`;
+  ciPaso(2);
+};
+$('ci-corregir').onclick = () => { ciPaso(1); $('ci-contado').focus(); };
+$('ci-si').onclick = async () => {
+  $('ci-si').disabled = true;
   const { error } = await sb.from('turnos_caja').update({
     estado: 'cerrado', cerrado_en: new Date().toISOString(), efectivo_contado: Number($('ci-contado').value)
   }).eq('id', st.turno.id);
+  $('ci-si').disabled = false;
   if (error) return msg('ci-error', errorTexto(error));
-  $('m-cierre').classList.add('oculto'); st.turno = null; guardar('turno', null); st.carrito = []; pedirPin();
+  ciPaso(1); $('m-cierre').classList.add('oculto'); st.turno = null; guardar('turno', null); st.carrito = []; pedirPin();
 };
 
 $('b-salir').onclick = () => { st.carrito = []; pedirPin(); };

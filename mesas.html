@@ -219,8 +219,12 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
   <div class="cont">
     <div class="qty"><button id="pp-menos">−</button><b id="pp-cant">1</b><button id="pp-mas">+</button></div>
     <div class="chipsg oculto" id="pp-paq" style="margin-bottom:6px"></div>
-    <h4>Observaciones de este producto</h4>
+    <h4 style="display:flex;align-items:center;gap:10px">Observaciones de este producto <button id="pp-editobs" style="margin-left:auto;background:#fff3c4;color:#6b4c15;padding:6px 12px;font-size:13px;font-weight:700;border-radius:8px">✎ Editar opciones</button></h4>
     <div class="chipsg" id="pp-chips"></div>
+    <div id="pp-obsed" class="oculto" style="background:#fff;border:1.5px dashed #e0a800;border-radius:12px;padding:10px;margin-top:8px">
+      <div id="pp-obslista"></div>
+      <div style="display:flex;gap:8px;margin-top:8px"><input id="pp-obsnueva" placeholder="Nueva opción, ej. Sin crema" maxlength="40" style="flex:1"><button class="btn" id="pp-obsmas" style="padding:10px 16px">＋ Agregar</button></div>
+    </div>
     <h4>Otra indicación (opcional)</h4>
     <textarea id="pp-texto" maxlength="120" placeholder="Ej. sin mayonesa, cortado en 4"></textarea>
   </div>
@@ -346,6 +350,7 @@ $('usr').onclick = () => { if (confirm('¿Cambiar de usuario?')) pedirPin(); };
 let canalRT = null;
 async function abrirApp() {
   vista('v-app'); $('usr').textContent = st.usuario.nombre;
+  cargarObs();
   try {
     // la caja de tienda: sus series, su caja física y el canal Tienda (la venta de mesa entra al turno abierto de esa caja)
     const [d, prods, cats, canales] = await Promise.all([
@@ -605,10 +610,59 @@ $('dm-prods').onclick = e => {
   abrirProducto({ producto_id: p.id, nombre: p.nombre, precio_unit: precio, cantidad: 1, chips: [], texto: '', area: p.area_preparacion }, null);
 };
 // ===== producto a pantalla completa =====
-const OBS_PROD = ['Para llevar', 'Sin hielo', 'Poco azúcar', 'Sin azúcar', 'Al tiempo', 'Bien caliente'];
+// opciones de observación: salen de la tabla obs_rapidas (las editan los mozos); si no existe, estas por defecto
+let OBS_PROD = ['Para llevar', 'Sin hielo', 'Poco azúcar', 'Sin azúcar', 'Al tiempo', 'Bien caliente'];
+st.obs = null;   // [{id, texto, orden}]
+async function cargarObs() {
+  const { data, error } = await sb.from('obs_rapidas').select('id,texto,orden').eq('activo', true).order('orden').order('id');
+  if (error) { st.obs = null; return; }
+  st.obs = data || []; OBS_PROD = st.obs.map(o => o.texto);
+}
+function pintarObsEd() {
+  if (!st.obs) { $('pp-obslista').innerHTML = '<p style="color:var(--mal);margin:0">Falta correr 65_vitrina_mesa_y_observaciones.sql en Supabase.</p>'; return; }
+  $('pp-obslista').innerHTML = st.obs.map((o, i) => `<div style="display:flex;gap:6px;align-items:center;padding:4px 0">
+    <button data-oarr="${i}" title="Subir" style="background:var(--fondo);width:38px;height:38px">↑</button>
+    <input data-oed="${o.id}" value="${esc(o.texto)}" maxlength="40" style="flex:1">
+    <button data-odel="${o.id}" title="Quitar" style="background:var(--rojo-s);color:var(--rojo);width:38px;height:38px">✕</button></div>`).join('') || '<p style="color:var(--gris);margin:0">Sin opciones.</p>';
+}
+$('pp-editobs').onclick = async () => {
+  const ab = $('pp-obsed').classList.toggle('oculto') === false;
+  $('pp-editobs').textContent = ab ? '✓ Listo' : '✎ Editar opciones';
+  if (ab) { await cargarObs(); pintarObsEd(); } pintarProducto();
+};
+$('pp-obsmas').onclick = async () => {
+  const t = $('pp-obsnueva').value.trim(); if (!t || !st.obs) return;
+  if (st.obs.some(o => o.texto.toLowerCase() === t.toLowerCase())) return toast('Esa opción ya existe');
+  const { error } = await sb.from('obs_rapidas').insert({ texto: t, orden: (st.obs.length ? Math.max(...st.obs.map(o => o.orden)) : 0) + 1 });
+  if (error) return toast(errTxt(error));
+  $('pp-obsnueva').value = ''; await cargarObs(); pintarObsEd(); pintarProducto();
+};
+$('pp-obsnueva').onkeydown = e => { if (e.key === 'Enter') $('pp-obsmas').click(); };
+$('pp-obslista').onchange = async e => {
+  const id = e.target.dataset.oed; if (!id) return;
+  const t = e.target.value.trim(); if (!t) return pintarObsEd();
+  const { error } = await sb.from('obs_rapidas').update({ texto: t }).eq('id', Number(id));
+  if (error) toast(errTxt(error)); await cargarObs(); pintarObsEd(); pintarProducto();
+};
+$('pp-obslista').onclick = async e => {
+  const d = e.target.closest('[data-odel]'), u = e.target.closest('[data-oarr]');
+  if (d) {
+    const o = st.obs.find(x => x.id === Number(d.dataset.odel));
+    if (!confirm(`¿Quitar la opción "${o.texto}"?`)) return;
+    const { error } = await sb.from('obs_rapidas').update({ activo: false }).eq('id', o.id); if (error) return toast(errTxt(error));
+  }
+  if (u) {
+    const i = Number(u.dataset.oarr); if (i === 0) return;
+    const l = st.obs.slice(); [l[i - 1], l[i]] = [l[i], l[i - 1]];
+    const r = await Promise.all(l.map((o, k) => o.orden === k + 1 ? null : sb.from('obs_rapidas').update({ orden: k + 1 }).eq('id', o.id)));
+    const er = r.find(x => x && x.error); if (er) return toast(errTxt(er.error));
+  }
+  if (d || u) { await cargarObs(); pintarObsEd(); pintarProducto(); }
+};
 const notaDe = l => [...l.chips, l.texto.trim()].filter(Boolean).join(', ');
 function abrirProducto(l, idx) {
   st.pp = { l: { ...l, chips: [...l.chips] }, idx };
+  $('pp-obsed').classList.add('oculto'); $('pp-editobs').textContent = '✎ Editar opciones';
   $('pp-nom').textContent = l.nombre; $('pp-texto').value = l.texto;
   $('pp-quitar').classList.toggle('oculto', idx == null);
   $('pp-agregar').textContent = idx == null ? '＋ Agregar y seguir eligiendo' : '✓ Guardar cambios';

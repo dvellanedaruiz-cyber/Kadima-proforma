@@ -358,7 +358,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
             </div>
             <label>📍 Ubicación: pega el link de Google Maps o la ubicación de WhatsApp, o marca el punto en el mapa</label>
             <div class="fila" style="margin-bottom:0">
-              <div style="flex:3"><input id="ubi-link" placeholder="https://maps.app.goo.gl/…  ó  -12.0123, -76.9876"></div>
+              <div style="flex:3"><input id="ubi-link" placeholder="Pega aquí el link o el mensaje (maps.app.goo.gl, ubicación de WhatsApp, coordenadas)"></div>
               <div style="flex:2"><input id="ubi-buscar" placeholder="o busca la dirección y Enter"></div>
             </div>
             <div id="f-ubis" class="oculto" style="margin:6px 0"></div>
@@ -1937,7 +1937,9 @@ const LIMA = [-12.0, -77.0];
 function leerCoordenadas(texto) {
   let t = String(texto || ''); try { t = decodeURIComponent(t); } catch (e) {}
   const pats = [/!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/, /[?&](?:q|query|ll|destination|daddr|center)=(-?\d{1,2}\.\d+),\s*\+?(-?\d{1,3}\.\d+)/,
-    /@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/, /\/place\/(-?\d{1,2}\.\d+),\s*\+?(-?\d{1,3}\.\d+)/, /^\s*(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)\s*$/];
+    /@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/, /\/(?:place|search|dir)\/(?:[^/]*\/)?(-?\d{1,2}\.\d+),\s*\+?(-?\d{1,3}\.\d+)/,
+    // coordenadas sueltas en cualquier parte del texto (ubicación copiada de WhatsApp, "Lat: -12.03 Lng: -76.98", etc.)
+    /(-?\d{1,2}\.\d{4,})\s*[,;\s]\s*\+?(-?\d{1,3}\.\d{4,})/, /lat\w*[\s:=]+(-?\d{1,2}\.\d+)[\s,;]+(?:lng|lon)\w*[\s:=]+(-?\d{1,3}\.\d+)/i];
   for (const p of pats) { const m = t.match(p); if (m) { const lat = Number(m[1]), lng = Number(m[2]); if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng }; } }
   return null;
 }
@@ -2575,20 +2577,34 @@ async function cotizarFormDelivery() {
   if ($('deliv-usar')) $('deliv-usar').onclick = ev => { ev.preventDefault(); f.delivAuto = false; f.costo_delivery = ''; cotizarFormDelivery(); };
 }
 cotizarFormDelivery.n = 0;
+// acepta: link largo, link corto (maps.app.goo.gl), el mensaje completo copiado de WhatsApp/Maps,
+// la ubicación compartida por WhatsApp (maps.google.com/?q=lat,lng) o coordenadas sueltas
+const extraerUrl = t => (String(t || '').match(/https?:\/\/[^\s"'<>]+/i) || [])[0] || '';
+async function geocodificar(q) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=pe&q=${encodeURIComponent(q + (/lima/i.test(q) ? '' : ', Lima'))}`, { headers: { 'Accept-Language': 'es' } });
+    const j = await r.json(); return j.length ? { lat: Number(j[0].lat), lng: Number(j[0].lon) } : null;
+  } catch (e) { return null; }
+}
 async function leerLink() {
   const v = $('ubi-link').value.trim(); if (!v) return;
+  const url = extraerUrl(v);
   const c = leerCoordenadas(v);
-  if (c) return fijarUbicacion(c.lat, c.lng, /^https?:/i.test(v) ? v : null);
-  if (/goo\.gl|g\.co\//i.test(v)) {
+  if (c) return fijarUbicacion(c.lat, c.lng, url || null);
+  if (url && /goo\.gl|g\.co\/|google\.[a-z.]+\/maps|maps\.google/i.test(url)) {
     $('ubi-info').innerHTML = '<span>⏳ Leyendo el link…</span>';
-    try {
-      const { data, error } = await sb.functions.invoke('resolver-mapa', { body: { url: v } });
-      if (!error && data && data.lat != null) return fijarUbicacion(data.lat, data.lng, v);
-    } catch (e) {}
-    $('ubi-info').innerHTML = '<span class="sin-costo">No pude leer ese link corto. Ábrelo, copia el link largo de la barra del navegador, o marca el punto en el mapa.</span>';
+    let data = null, fallo = '';
+    try { const r = await sb.functions.invoke('resolver-mapa', { body: { url } }); data = r.data; if (r.error) fallo = r.error.message || 'error'; } catch (e) { fallo = String(e.message || e); }
+    if (data && data.lat != null) return fijarUbicacion(data.lat, data.lng, url);
+    // el link apunta a un lugar por nombre/dirección: se busca y se pide confirmar el punto
+    const q = data && data.q;
+    if (q) { const g = await geocodificar(q); if (g) { fijarUbicacion(g.lat, g.lng, url); $('ubi-info').insertAdjacentHTML('afterbegin', `<span class="sin-costo">⚠ Ubicación aproximada de “${esc(q)}”: revisa y mueve el pin si hace falta.</span><br>`); return; } }
+    $('ubi-info').innerHTML = `<span class="sin-costo">${/not found|404|Failed to send|FunctionsFetchError|FunctionsRelayError/i.test(fallo) ? 'Falta publicar la función <b>resolver-mapa</b> en Supabase (Edge Functions).' : 'No pude leer ese link.'} Mientras tanto: ábrelo en el navegador y copia el link largo, o marca el punto en el mapa.</span>`;
     return;
   }
-  $('ubi-info').innerHTML = '<span class="sin-costo">Ese texto no trae coordenadas. Pega un link de Google Maps o marca el punto en el mapa.</span>';
+  // texto sin link ni coordenadas: se intenta como dirección
+  if (!url && v.length > 6) { const g = await geocodificar(v); if (g) { fijarUbicacion(g.lat, g.lng, null); $('ubi-info').insertAdjacentHTML('afterbegin', '<span class="sin-costo">⚠ Ubicación aproximada por dirección: mueve el pin al punto exacto.</span><br>'); return; } }
+  $('ubi-info').innerHTML = '<span class="sin-costo">Ese texto no trae coordenadas. Pega un link de Google Maps, la ubicación de WhatsApp o marca el punto en el mapa.</span>';
 }
 $('ubi-link').addEventListener('change', leerLink);
 $('ubi-link').addEventListener('paste', () => setTimeout(leerLink, 30));
