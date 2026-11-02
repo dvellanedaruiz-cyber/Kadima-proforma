@@ -139,6 +139,9 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 .cli-res{position:absolute;left:-156px;right:0;bottom:100%;margin-bottom:4px;background:#fff;border:1px solid var(--borde);border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.15);max-height:260px;overflow:auto;z-index:6}
 .cli-res div{padding:9px 11px;cursor:pointer;border-bottom:1px solid #f1eeeb;font-size:14px}.cli-res div:hover,.cli-res div.foco{background:var(--rojo-suave)}
 .cli-res small{display:block;color:var(--gris);font-size:12px}.cli-res .nuevo{color:var(--rojo);font-weight:700}
+#bc-lista div.it{padding:10px 12px;border-bottom:1px solid #f1eeeb;cursor:pointer;display:flex;justify-content:space-between;gap:10px;align-items:center}
+#bc-lista div.it:hover,#bc-lista div.it.foco{background:var(--rojo-suave)}
+#bc-lista div.it small{color:var(--gris);font-size:12px;white-space:nowrap}
 .cliente{display:grid;grid-template-columns:150px 1fr;gap:6px}
 .totales{display:flex;justify-content:space-between;align-items:baseline}
 .totales .g{font-size:13px;color:var(--gris)}
@@ -296,7 +299,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
       </div>
       <div class="cliente">
         <input id="c-doc" placeholder="DNI (opcional)" inputmode="numeric" maxlength="11">
-        <div style="position:relative"><input id="c-nombre" placeholder="Nombre del cliente" autocomplete="off" style="width:100%"><div class="cli-res oculto" id="c-res"></div></div>
+        <div style="position:relative;display:flex;gap:6px"><input id="c-nombre" placeholder="Nombre del cliente" autocomplete="off" style="flex:1;min-width:0"><button class="btn-sec" id="c-lupa" title="Buscar cliente en la lista" style="padding:0 12px;font-size:17px">🔍</button><div class="cli-res oculto" id="c-res"></div></div>
       </div>
       <label class="ret-check oculto" id="c-ret-box"><input type="checkbox" id="c-ret"> El cliente es agente de retención (retiene 3% en facturas de más de S/ 700)</label>
       <div class="totales">
@@ -504,6 +507,17 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
       <button class="btn-sec" id="ok-imprimir">Imprimir ticket</button>
       <button class="btn" id="ok-nueva">Nueva venta</button>
     </div>
+  </div>
+</div>
+
+<!-- MODAL BUSCAR CLIENTE -->
+<div class="modal oculto" id="m-bcli">
+  <div class="caja" style="max-width:560px">
+    <h3>🔍 Buscar cliente</h3>
+    <input id="bc-q" placeholder="Escribe nombre, razón social, DNI o RUC…" autocomplete="off" style="margin:6px 0 8px">
+    <div class="seg-peso" id="bc-tipo"><button data-t="" class="activa">Todos</button><button data-t="dni">Personas (DNI)</button><button data-t="ruc">Empresas (RUC)</button></div>
+    <div id="bc-lista" style="max-height:48vh;overflow:auto;border:1px solid var(--borde);border-radius:10px"></div>
+    <div class="fila" style="margin-top:12px"><button class="btn-sec" id="bc-cerrar">Cerrar</button><button class="btn" id="bc-nuevo">➕ Registrar cliente nuevo</button></div>
   </div>
 </div>
 
@@ -1058,8 +1072,8 @@ $('c-nombre').oninput = () => {
 async function buscarClientes(q) {
   const pat = '%' + q.replace(/[%_,()]/g, ' ') + '%';
   const [a, b] = await Promise.all([
-    sb.from('clientes').select('num_doc,nombre,agente_retencion').ilike('nombre', pat).limit(8),
-    sb.from('crm_clientes').select('num_doc,nombre,telefono').ilike('nombre', pat).not('num_doc', 'is', null).limit(8),
+    sb.from('clientes').select('num_doc,nombre,agente_retencion').or(`nombre.ilike.${pat},num_doc.ilike.${pat}`).limit(8),
+    sb.from('crm_clientes').select('num_doc,nombre,telefono').or(`nombre.ilike.${pat},num_doc.ilike.${pat}`).not('num_doc', 'is', null).limit(8),
   ]);
   const vistos = new Set(); cliRes = [];
   [...(a.data || []), ...(b.data || [])].forEach(c => { const k = c.num_doc || c.nombre; if (!c.num_doc || vistos.has(k)) return; vistos.add(k); cliRes.push(c); });
@@ -1088,6 +1102,44 @@ $('c-nombre').onkeydown = e => {
   if (e.key === 'Escape') $('c-res').classList.add('oculto');
 };
 $('c-nombre').onblur = () => setTimeout(() => $('c-res').classList.add('oculto'), 150);
+// ===== Lista de clientes con filtro (lupa) =====
+async function cargarListaClientes() {
+  const [a, b] = await Promise.all([
+    sb.from('clientes').select('num_doc,nombre,agente_retencion').not('num_doc', 'is', null).order('nombre').limit(2000),
+    sb.from('crm_clientes').select('num_doc,nombre').not('num_doc', 'is', null).order('nombre').limit(2000),
+  ]);
+  const m = new Map();
+  [...(b.data || []), ...(a.data || [])].forEach(c => { if (c.num_doc && /^(\d{8}|\d{11})$/.test(c.num_doc)) m.set(c.num_doc, { ...(m.get(c.num_doc) || {}), ...c }); });
+  st.cliLista = [...m.values()].sort((x, y) => x.nombre.localeCompare(y.nombre, 'es'));
+}
+const sinTildes = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+let bcFoco = 0, bcVis = [];
+function pintarListaClientes() {
+  const q = sinTildes($('bc-q').value.trim()), t = $('bc-tipo').querySelector('.activa').dataset.t;
+  const palabras = q.split(/\s+/).filter(Boolean);
+  bcVis = (st.cliLista || []).filter(c => (!t || (t === 'ruc') === (c.num_doc.length === 11)) && (st.doc !== 'factura' || c.num_doc.length === 11)
+    && palabras.every(w => sinTildes(c.nombre).includes(w) || c.num_doc.includes(w))).slice(0, 200);
+  bcFoco = 0;
+  $('bc-lista').innerHTML = !st.cliLista ? '<div style="padding:14px;color:var(--gris)">Cargando…</div>'
+    : bcVis.map((c, i) => `<div class="it ${i ? '' : 'foco'}" data-i="${i}"><span>${esc(c.nombre)}</span><small>${c.num_doc.length === 11 ? 'RUC' : 'DNI'} ${c.num_doc}${c.agente_retencion ? ' · retención' : ''}</small></div>`).join('')
+      || `<div style="padding:14px;color:var(--gris)">No hay clientes con “${esc($('bc-q').value.trim())}”. Usa <b>➕ Registrar cliente nuevo</b>.</div>`;
+}
+$('c-lupa').onclick = async () => {
+  if (!navigator.onLine) return msg('v-error', 'Buscar clientes necesita internet.');
+  $('bc-q').value = $('c-nombre').value.trim(); $('c-res').classList.add('oculto');
+  [...$('bc-tipo').children].forEach(b => b.classList.toggle('activa', b.dataset.t === (st.doc === 'factura' ? 'ruc' : '')));
+  $('m-bcli').classList.remove('oculto'); pintarListaClientes(); setTimeout(() => $('bc-q').focus(), 50);
+  if (!st.cliLista) { await cargarListaClientes(); pintarListaClientes(); }
+};
+$('bc-q').oninput = pintarListaClientes;
+$('bc-tipo').onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; [...$('bc-tipo').children].forEach(x => x.classList.toggle('activa', x === b)); pintarListaClientes(); };
+$('bc-q').onkeydown = e => {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); bcFoco = Math.max(0, Math.min(bcVis.length - 1, bcFoco + (e.key === 'ArrowDown' ? 1 : -1))); [...$('bc-lista').children].forEach((d, i) => d.classList.toggle('foco', i === bcFoco)); $('bc-lista').children[bcFoco]?.scrollIntoView({ block: 'nearest' }); }
+  if (e.key === 'Enter' && bcVis[bcFoco]) { e.preventDefault(); elegirCliente(bcVis[bcFoco]); $('m-bcli').classList.add('oculto'); }
+};
+$('bc-lista').onclick = e => { const d = e.target.closest('[data-i]'); if (!d) return; elegirCliente(bcVis[Number(d.dataset.i)]); $('m-bcli').classList.add('oculto'); };
+$('bc-cerrar').onclick = () => $('m-bcli').classList.add('oculto');
+$('bc-nuevo').onclick = () => { $('m-bcli').classList.add('oculto'); $('c-nombre').value = $('bc-q').value.trim(); abrirNuevoCliente(); };
 function abrirNuevoCliente() {
   $('c-res').classList.add('oculto');
   const q = $('c-nombre').value.trim(), soloNum = /^\d+$/.test(q);
@@ -1117,7 +1169,8 @@ $('nc-ok').onclick = async () => {
   const reg = { num_doc: doc, nombre, direccion: $('nc-dir').value.trim() || null, origen: 'caja', ...(tel ? { telefono: tel } : {}) };
   const { error } = await sb.from('crm_clientes').upsert(reg, { onConflict: 'num_doc' });
   $('nc-ok').disabled = false;
-  if (error && !/crm_clientes/.test(error.message)) return msg('nc-error', /telefono/.test(error.message) ? 'Ese celular ya está registrado con otro cliente.' : errorTexto(error));
+  if (error && !/does not exist|no existe/i.test(error.message)) return msg('nc-error', /telefono/.test(error.message) ? 'Ese celular ya está registrado con otro cliente.' : errorTexto(error));
+  st.cliLista = null;   // la próxima búsqueda vuelve a cargar la lista
   if (doc.length === 11 && st.doc !== 'factura') document.querySelector('#docs [data-doc="factura"]').click();
   elegirCliente({ num_doc: doc, nombre, agente_retencion: $('nc-ret').checked });
   $('m-cli').classList.add('oculto'); toast('✓ Cliente registrado');
