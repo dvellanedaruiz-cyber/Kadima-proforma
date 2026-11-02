@@ -264,6 +264,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
     <div class="sub-barra">
       <div class="chips" id="mp-rango"><button data-d="30">30 días</button><button data-d="90" class="activa">90 días</button><button data-d="365">12 meses</button><button data-d="0">Todo</button></div>
       <select id="mp-canal"><option value="">Todos los canales</option><option value="web">Web</option><option value="whatsapp">WhatsApp</option><option value="tienda">Tienda</option></select>
+      <div class="chips" id="mp-tipo"><button data-t="" class="activa">👥 Todos</button><button data-t="natural">🧑 Personas</button><button data-t="juridica">🏢 Empresas</button></div>
       <select id="mp-peso"><option value="n">Intensidad: N° de pedidos</option><option value="s">Intensidad: monto vendido</option></select>
       <div class="chips" id="mp-vista"><button data-v="calor" class="activa">🔥 Calor</button><button data-v="puntos">📍 Puntos</button></div>
       <button class="btn-sec" id="mp-csv">📥 CSV para MyMaps</button>
@@ -916,7 +917,7 @@ $('k-lista').onclick = async e => {
 // =====================================================================
 const MAPA_CENTRO = [-12.0, -77.0];
 const st_map = { grande: null, capa: null, datos: [] };
-const mp = { dias: 90, canal: '', peso: 'n', vista: 'calor' };
+const mp = { dias: 90, canal: '', peso: 'n', vista: 'calor', tipo: '' };
 const diasISO = n => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 async function abrirMapa() {
   if (typeof L === 'undefined') return $('mp-stats').textContent = 'No cargó el mapa (sin internet).';
@@ -935,29 +936,35 @@ async function abrirMapa() {
   pintarMapa(true);
 }
 function pintarMapa(encuadrar) {
-  const m = st_map.grande, d = st_map.datos; if (!m) return;
+  const m = st_map.grande; if (!m) return;
+  // persona natural (DNI / RUC 10 / sin documento) vs. empresa (RUC 20): las empresas compran montos grandes y distorsionan el mapa
+  const sinTipo = st_map.datos.length && st_map.datos.every(x => x.tipo_cliente === undefined);
+  const d = mp.tipo && !sinTipo ? st_map.datos.filter(x => x.tipo_cliente === mp.tipo) : st_map.datos;
   if (st_map.capa) { m.removeLayer(st_map.capa); st_map.capa = null; }
   const maxS = Math.max(1, ...d.map(x => Number(x.total || 0)));
   if (mp.vista === 'calor' && L.heatLayer) {
     st_map.capa = L.heatLayer(d.map(x => [Number(x.lat), Number(x.lng), mp.peso === 's' ? Math.max(0.15, Number(x.total || 0) / maxS) : 0.6]), { radius: 26, blur: 20, maxZoom: 15, minOpacity: 0.35 }).addTo(m);
   } else {
-    st_map.capa = L.layerGroup(d.map(x => L.circleMarker([Number(x.lat), Number(x.lng)], { radius: mp.peso === 's' ? 5 + 10 * Number(x.total || 0) / maxS : 7, color: '#8B0000', weight: 1, fillColor: x.origen === 'web' ? '#742284' : '#d1495b', fillOpacity: 0.7 })
-      .bindPopup(`<b>${esc(x.codigo)}</b><br>${x.fecha_entrega ? fechaCorta(x.fecha_entrega) : ''} · ${esc(x.canal)}<br>${esc(x.distrito || '')}<br>${S(x.total)}`))).addTo(m);
+    st_map.capa = L.layerGroup(d.map(x => L.circleMarker([Number(x.lat), Number(x.lng)], { radius: mp.peso === 's' ? 5 + 10 * Number(x.total || 0) / maxS : 7, color: '#8B0000', weight: 1, fillColor: x.tipo_cliente === 'juridica' ? '#1f5fbf' : x.origen === 'web' ? '#742284' : '#d1495b', fillOpacity: 0.7 })
+      .bindPopup(`<b>${esc(x.codigo)}</b><br>${x.fecha_entrega ? fechaCorta(x.fecha_entrega) : ''} · ${esc(x.canal)}<br>${esc(x.distrito || '')}<br>${S(x.total)}${x.tipo_cliente === 'juridica' ? ' · 🏢 Empresa' : ''}`))).addTo(m);
   }
   if (encuadrar && d.length) m.fitBounds(L.latLngBounds(d.map(x => [Number(x.lat), Number(x.lng)])).pad(0.15), { maxZoom: 15 });
   const tot = d.reduce((a, x) => a + Number(x.total || 0), 0);
   const porDist = {}; d.forEach(x => { const k = (x.distrito || 'Sin distrito').trim(); porDist[k] = (porDist[k] || 0) + 1; });
   const top = Object.entries(porDist).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, n]) => `${k} (${n})`).join(', ');
-  $('mp-stats').textContent = d.length ? `${d.length} deliveries · ${S(tot)}${top ? ' · más pedidos: ' + top : ''}` : 'Aún no hay deliveries con ubicación en este rango.';
+  const nJ = st_map.datos.filter(x => x.tipo_cliente === 'juridica').length;
+  $('mp-stats').textContent = (sinTipo && mp.tipo ? '⚠ Para separar personas y empresas corre 66_mapa_tipo_cliente.sql · ' : '')
+    + (d.length ? `${d.length} deliveries · ${S(tot)}${top ? ' · más pedidos: ' + top : ''}${!mp.tipo && nJ ? ` · ${st_map.datos.length - nJ} personas / ${nJ} empresas` : ''}` : 'Aún no hay deliveries con ubicación en este rango.');
 }
 $('mp-rango').onclick = e => { const b = e.target.closest('[data-d]'); if (!b) return; mp.dias = Number(b.dataset.d); [...$('mp-rango').children].forEach(x => x.classList.toggle('activa', x === b)); abrirMapa(); };
 $('mp-vista').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; mp.vista = b.dataset.v; [...$('mp-vista').children].forEach(x => x.classList.toggle('activa', x === b)); pintarMapa(false); };
 $('mp-canal').onchange = e => { mp.canal = e.target.value; abrirMapa(); };
 $('mp-peso').onchange = e => { mp.peso = e.target.value; pintarMapa(false); };
+$('mp-tipo').onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; mp.tipo = b.dataset.t; [...$('mp-tipo').children].forEach(x => x.classList.toggle('activa', x === b)); pintarMapa(true); };
 $('mp-csv').onclick = () => {
-  const d = st_map.datos; if (!d.length) return toast('No hay puntos para exportar');
+  const d = mp.tipo ? st_map.datos.filter(x => x.tipo_cliente === mp.tipo) : st_map.datos; if (!d.length) return toast('No hay puntos para exportar');
   const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const filas = [['Pedido', 'Latitud', 'Longitud', 'Fecha', 'Canal', 'Distrito', 'Total'], ...d.map(x => [x.codigo, x.lat, x.lng, x.fecha_entrega, x.canal, x.distrito, Number(x.total || 0).toFixed(2)])];
+  const filas = [['Pedido', 'Latitud', 'Longitud', 'Fecha', 'Canal', 'Distrito', 'Total', 'Tipo cliente'], ...d.map(x => [x.codigo, x.lat, x.lng, x.fecha_entrega, x.canal, x.distrito, Number(x.total || 0).toFixed(2), x.tipo_cliente === 'juridica' ? 'Empresa' : 'Persona'])];
   const blob = new Blob(['﻿' + filas.map(f => f.map(q).join(',')).join('\n')], { type: 'text/csv;charset=utf-8' });
   const u = URL.createObjectURL(blob), a = document.createElement('a');
   a.href = u; a.download = `kadima_deliveries_${diasISO(0)}.csv`; document.body.appendChild(a); a.click(); a.remove();
