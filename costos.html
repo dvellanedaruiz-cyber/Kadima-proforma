@@ -1001,12 +1001,13 @@ function tabCargar() {
   $('x-file').onchange = leerExcel;
   $('m-ok').onclick = guardarUno;
   // presentación: el costo se puede escribir por balde/saco y se convierte solo a costo por kg / L / und
-  const eqPres = () => { const p = buscarProd($('m-prod').value), f = Number($('m-pres').value || 1), c = parseCosto($('m-costo').value);
+  const eqPres = () => { const p = buscarProd($('m-prod').value), f = Number($('m-pres').value || 1) || 1, c = parseCosto($('m-costo').value);
     $('m-eq').textContent = p && f > 1 && c > 0 ? `= ${S(c / f, 4)} por ${UNI(p.unidad_medida)}` : ''; };
   $('m-prod').oninput = $('m-prod').onchange = () => {
     const p = buscarProd($('m-prod').value), ps = p ? (st.pres[p.id] || []) : [];
     $('m-pres').innerHTML = p ? `<option value="1">por ${UNI(p.unidad_medida) || 'unidad'}</option>` + ps.map(x => `<option value="${x.factor}">por ${esc(x.nombre)}</option>`).join('') : '';
-    $('m-pres').classList.toggle('oculto', !ps.length);
+    $('m-pres').classList.toggle('oculto', !p);
+    if (p && !ps.length) $('m-pres').innerHTML += '<option value="" disabled>— sin presentaciones (créalas en Recetas → Productos) —</option>';
     $('m-uni').textContent = p ? 'por ' + (UNI(p.unidad_medida) || 'unidad (sin unidad en el maestro)') : ''; eqPres(); };
   $('m-pres').onchange = () => { const f = Number($('m-pres').value || 1), p = buscarProd($('m-prod').value); $('m-uni').textContent = p ? (f > 1 ? 'por ' + $('m-pres').selectedOptions[0].textContent.replace(/^por /, '') : 'por ' + UNI(p.unidad_medida)) : ''; eqPres(); };
   $('m-costo').addEventListener('input', eqPres);
@@ -1015,15 +1016,16 @@ function tabCargar() {
   listarHistoricos();
 }
 function descargarPlantilla() {
-  const filas = [['Código', 'Producto', 'Unidad', 'Fecha', 'Costo unitario S/', 'Incluye IGV', 'Proveedor', 'Nota']];
-  st.prods.forEach(p => filas.push([p.codigo, p.nombre, p.unidad_medida || '', '', '', 'No', '', '']));
+  const filas = [['Código', 'Producto', 'Unidad', 'Fecha', 'Costo unitario S/', 'Presentación', 'Incluye IGV', 'Proveedor', 'Nota', 'Presentaciones disponibles']];
+  st.prods.forEach(p => filas.push([p.codigo, p.nombre, p.unidad_medida || '', '', '', '', 'No', '', '', (st.pres[p.id] || []).map(x => x.nombre).join(' | ')]));
   const ws = XLSX.utils.aoa_to_sheet(filas);
-  ws['!cols'] = [{ wch: 10 }, { wch: 34 }, { wch: 8 }, { wch: 12 }, { wch: 16 }, { wch: 11 }, { wch: 22 }, { wch: 28 }];
+  ws['!cols'] = [{ wch: 10 }, { wch: 34 }, { wch: 8 }, { wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 11 }, { wch: 22 }, { wch: 28 }, { wch: 30 }];
   const ins = XLSX.utils.aoa_to_sheet([
     ['Cómo llenar'],
     ['1. Una fila por insumo y fecha. Si tienes varios meses del mismo insumo, copia la fila y cambia la fecha.'],
     ['2. Fecha: dd/mm/aaaa, o solo el mes (03/2026, mar-2026). Si pones solo el mes, se toma el día 1.'],
-    ['3. Costo unitario por unidad base (kg, L o unidad, la columna Unidad).'],
+    ['3. Costo unitario por unidad base (kg, L o unidad, la columna Unidad)… o por presentación: escribe en "Presentación" el nombre tal cual (ej. Balde 25 L) y el costo de ese balde. El sistema lo divide solo.'],
+    ['   Deja "Presentación" vacía si el costo es por kg / L / und. Las presentaciones de cada insumo están en la última columna (se crean en Recetas → Productos).'],
     ['4. Incluye IGV: Sí si el precio es con IGV; No si es sin IGV. El sistema calcula el otro.'],
     ['5. Las filas sin costo se ignoran. No borres la columna Código.'],
   ]);
@@ -1078,15 +1080,20 @@ async function leerExcel(ev) {
     if (costoRaw === '' || costoRaw == null) return;
     const codigo = String(col(r, 'código', 'codigo')).trim();
     const fecha = parseFecha(col(r, 'fecha'));
-    const costo = parseCosto(costoRaw);
+    const costo0 = parseCosto(costoRaw);
     const igvTxt = String(col(r, 'incluye')).trim().toLowerCase();
     const p = porCod.get(codigo.toUpperCase());
+    const presTxt = String(col(r, 'presentación', 'presentacion')).trim();
+    const pr = p && presTxt ? (st.pres[p.id] || []).find(x => x.nombre.trim().toLowerCase() === presTxt.toLowerCase()) : null;
+    const costo = costo0 == null ? null : pr ? Math.round(costo0 / pr.factor * 1e6) / 1e6 : costo0;
     let err = '';
+    if (p && presTxt && !pr) err = `No existe la presentación "${presTxt}"`;
     if (!p) err = 'Código no existe';
+    else if (err) {}
     else if (!fecha) err = 'Fecha no válida';
     else if (fecha > hoyIso) err = 'Fecha futura';
     else if (costo == null || costo < 0) err = 'Costo no válido';
-    filasExcel.push({ fila: i + 2, codigo, nombre: p ? p.nombre : String(col(r, 'producto')), unidad: p ? p.unidad_medida : '', fecha, costo,
+    filasExcel.push({ fila: i + 2, codigo, nombre: p ? p.nombre : String(col(r, 'producto')), unidad: p ? p.unidad_medida : '', fecha, costo, pres: pr ? `${S(costo0, 2)} por ${pr.nombre}` : '',
       incluye_igv: /^s/.test(igvTxt), proveedor: String(col(r, 'proveedor')).trim(), nota: String(col(r, 'nota')).trim(), err });
   });
   ev.target.value = '';
@@ -1100,7 +1107,7 @@ function pintarPrevia() {
     <div class="tablawrap" style="max-height:340px;overflow:auto"><table class="t">
       <tr><th>Fila</th><th>Insumo</th><th>Fecha</th><th class="n">Costo</th><th>IGV</th><th class="m-ocultar">Proveedor</th><th>Estado</th></tr>
       ${filasExcel.map(f => `<tr><td>${f.fila}</td><td>${esc(f.nombre)}<br><span class="cod">${esc(f.codigo)}${f.unidad ? ' · por ' + UNI(f.unidad) : ''}</span></td><td>${f.fecha ? fechaTxt(f.fecha) : '—'}</td>
-        <td class="n">${S(f.costo, 3)}</td><td>${f.incluye_igv ? 'Con' : 'Sin'}</td><td class="m-ocultar">${esc(f.proveedor)}</td>
+        <td class="n">${S(f.costo, 3)}${f.pres ? `<br><span class="cod">${esc(f.pres)}</span>` : ''}</td><td>${f.incluye_igv ? 'Con' : 'Sin'}</td><td class="m-ocultar">${esc(f.proveedor)}</td>
         <td>${f.err ? `<span class="error">${esc(f.err)}</span>` : '<span class="okmsg">✓</span>'}</td></tr>`).join('')}
     </table></div>
     <div style="margin-top:10px"><button class="btn" id="x-cargar" ${ok.length ? '' : 'disabled'}>Cargar ${ok.length} filas</button> <span id="x-msg"></span></div>`;
