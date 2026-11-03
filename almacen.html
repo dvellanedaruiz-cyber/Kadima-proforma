@@ -188,6 +188,10 @@ async function abrirApp() {
     sb.from('productos').select('id,codigo,nombre,tipo_item,unidad_medida,producto_padre_id,porciones_por_unidad,activo').eq('activo', true).order('nombre')
   ]);
   st.almacenes = a.data || []; st.productos = p.data || [];
+  // presentaciones (balde 25 L, saco 50 kg…): si no se corrió 67, no hay y todo va en unidad base
+  st.pres = {};
+  const pr = await sb.from('producto_presentaciones').select('producto_id,nombre,factor').eq('activo', true).order('orden').order('id');
+  (pr.data || []).forEach(x => (st.pres[x.producto_id] = st.pres[x.producto_id] || []).push({ nombre: x.nombre, factor: Number(x.factor) }));
   $('b-almacen').innerHTML = st.almacenes.map(x => `<option value="${x.id}">${esc(x.nombre)} · ${esc(x.sedes ? x.sedes.nombre : '')}</option>`).join('');
   const previo = leer('almacen_sel');
   st.alm = st.almacenes.find(x => x.id === previo) || st.almacenes[0];
@@ -245,31 +249,47 @@ function editorLineas(cont, op) {
     leerDom();
     if (lineas.some(l => l.producto_id === id)) { bq.value = ''; res.classList.add('oculto'); return; }
     const p = st.productos.find(x => x.id === id);
-    lineas.push({ producto_id: id, nombre: p.nombre, codigo: p.codigo, unidad: p.unidad_medida, cantidad: '', importe: '' });
+    lineas.push({ producto_id: id, nombre: p.nombre, codigo: p.codigo, unidad: p.unidad_medida, cantidad: '', importe: '', f: 1 });
     bq.value = ''; res.classList.add('oculto'); pintar();
     const ins = lis.querySelectorAll('.l-cant'); ins[ins.length - 1].focus();
   }
   function pintar() {
     lis.innerHTML = lineas.map((l, i) => `<div class="ln">
       <div class="nom">${esc(l.nombre)}<small>${l.codigo}${op.stock ? ' · stock ' + C(stockDe(l.producto_id), l.unidad) : ''}</small></div>
-      <div><input class="l-cant" type="number" step="0.001" min="0" placeholder="Cantidad" value="${l.cantidad}"><span class="u">en ${UNI[l.unidad]}</span></div>
-      ${op.precio ? `<div><input class="l-imp" type="number" step="0.0001" min="0" placeholder="${op.costoUnit ? 'Costo unit. sin IGV' : 'Importe con IGV'}" value="${l.importe}"><span class="u">${op.costoUnit ? 'por ' + UNI[l.unidad] + ' (sin IGV)' : 'total de la línea'}</span></div>` : ''}
+      <div><input class="l-cant" type="number" step="0.001" min="0" placeholder="Cantidad" value="${l.cantidad}">${selPres(l)}<span class="u l-eq">${eqTxt(l)}</span></div>
+      ${op.precio ? `<div><input class="l-imp" type="number" step="0.0001" min="0" placeholder="${op.costoUnit ? 'Costo unit. sin IGV' : 'Importe con IGV'}" value="${l.importe}"><span class="u">${op.costoUnit ? 'por ' + nomUni(l) + ' (sin IGV)' : 'total de la línea'}</span></div>` : ''}
       <div class="u l-pu" style="text-align:right">${op.precio ? precioUnit(l) : ''}</div>
       <button class="x" data-q="${i}" title="Quitar">✕</button></div>`).join('') || '<div class="vacio">Busca y agrega productos.</div>';
     if (op.onCambio) op.onCambio(lineas);
   }
-  const precioUnit = l => op.costoUnit ? (Number(l.cantidad) > 0 && Number(l.importe) > 0 ? `valor ${S(Number(l.importe) * Number(l.cantidad))}` : '')
-    : Number(l.cantidad) > 0 && Number(l.importe) > 0 ? `${S(Number(l.importe) / Number(l.cantidad))} / ${UNI[l.unidad]}` : '';
+  // presentación de la línea: la cantidad se escribe en baldes/sacos y se convierte a la unidad base
+  const nomUni = l => l.f > 1 ? (presDe(l.producto_id).find(x => x.factor === l.f)?.nombre || UNI[l.unidad]) : UNI[l.unidad];
+  const eqTxt = l => l.f > 1 ? (Number(l.cantidad) > 0 ? `= ${C(Number(l.cantidad) * l.f, l.unidad)}` : `de ${C(l.f, l.unidad)} c/u`) : (presDe(l.producto_id).length ? '' : `en ${UNI[l.unidad]}`);
+  const selPres = l => presDe(l.producto_id).length ? `<select class="l-pres" style="margin-top:4px;padding:5px 6px;font-size:13px"><option value="1">${UNI[l.unidad]}</option>${presDe(l.producto_id).map(x => `<option value="${x.factor}" ${x.factor === l.f ? 'selected' : ''}>${esc(x.nombre)}</option>`).join('')}</select>` : '';
+  const base = l => ({ cant: Number(l.cantidad) * (l.f || 1), costoU: op.costoUnit && l.importe !== '' ? Number(l.importe) / (l.f || 1) : null });
+  const precioUnit = l => op.costoUnit ? (Number(l.cantidad) > 0 && Number(l.importe) > 0 ? `valor ${S(Number(l.importe) * Number(l.cantidad))}${l.f > 1 ? ` · ${S(base(l).costoU)} / ${UNI[l.unidad]}` : ''}` : '')
+    : Number(l.cantidad) > 0 && Number(l.importe) > 0 ? `${S(Number(l.importe) / base(l).cant)} / ${UNI[l.unidad]}${l.f > 1 ? ` · ${S(Number(l.importe) / Number(l.cantidad))} / ${esc(nomUni(l))}` : ''}` : '';
   function leerDom() {
-    const c = lis.querySelectorAll('.l-cant'), m = lis.querySelectorAll('.l-imp'), pu = lis.querySelectorAll('.l-pu');
-    lineas.forEach((l, i) => { if (!c[i]) return; l.cantidad = c[i].value; if (m[i]) { l.importe = m[i].value; pu[i].textContent = precioUnit(l); } });
+    const filas = lis.querySelectorAll('.ln');
+    lineas.forEach((l, i) => {
+      const r = filas[i]; if (!r) return;
+      const c = r.querySelector('.l-cant'), m = r.querySelector('.l-imp'), ps = r.querySelector('.l-pres');
+      l.cantidad = c.value; if (ps) l.f = Number(ps.value) || 1;
+      r.querySelector('.l-eq').textContent = eqTxt(l);
+      if (m) { l.importe = m.value; r.querySelector('.l-pu').textContent = precioUnit(l); }
+      const um = m && m.nextElementSibling; if (um && op.costoUnit) um.textContent = 'por ' + nomUni(l) + ' (sin IGV)';
+    });
     if (op.onCambio) op.onCambio(lineas);
   }
+  lis.onchange = leerDom;
   lis.oninput = leerDom;
   lis.onclick = e => { const q = e.target.dataset.q; if (q !== undefined) { leerDom(); lineas.splice(Number(q), 1); pintar(); } };
   pintar();
-  return { lineas: () => { leerDom(); return lineas; }, limpiar: () => { lineas.length = 0; pintar(); } };
+  // devuelve las líneas ya convertidas a unidad base (cantidad y, si aplica, costo unitario)
+  return { lineas: () => { leerDom(); return lineas.map(l => l.f > 1 ? { ...l, cantidad: l.cantidad === '' ? '' : base(l).cant, importe: op.costoUnit && l.importe !== '' ? base(l).costoU : l.importe } : l); },
+    limpiar: () => { lineas.length = 0; pintar(); } };
 }
+const presDe = id => (st.pres && st.pres[id]) || [];
 async function stockMapa(almId) {
   const { data } = await sb.from('stock_actual').select('producto_id,cantidad').eq('almacen_id', almId);
   const m = {}; (data || []).forEach(r => m[r.producto_id] = Number(r.cantidad)); return m;
@@ -403,7 +423,7 @@ let edCompra;
 async function tabCompra() {
   const { data: provs } = await sb.from('proveedores').select('id,ruc,nombre').eq('activo', true).order('nombre');
   $('main').innerHTML = `<div class="bloque"><h3>Ingreso por compra · ${esc(st.alm.nombre)}</h3>
-    <p class="ayuda">Registra lo que llegó según el comprobante. La cantidad va en la unidad base del producto (kg, L o und) y el importe es el total de la línea con IGV.</p>
+    <p class="ayuda">Registra lo que llegó según el comprobante. La cantidad va en la unidad base (kg, L o und) o en su presentación (balde, saco, caja…) si el insumo la tiene; el sistema convierte solo. El importe es el total de la línea con IGV.</p>
     <div class="fila">
       <div class="campo" style="max-width:160px"><label>Fecha</label><input type="date" id="c-fecha" value="${hoy()}"></div>
       <div class="campo"><label>Proveedor</label><input id="c-prov" list="provs" placeholder="Nombre del proveedor"><datalist id="provs">${(provs || []).map(p => `<option value="${esc(p.nombre)}" data-ruc="${esc(p.ruc || '')}">`).join('')}</datalist></div>
@@ -665,20 +685,27 @@ async function tabConteo() {
     <div class="error" id="k-error"></div><div class="okmsg" id="k-okmsg"></div></div>
     <div class="bloque"><h3>Resultado de conteos</h3><div class="fila" style="margin-bottom:10px"><div class="campo" style="max-width:170px"><input type="date" id="k-dia" value="${hoy()}"></div></div><div id="k-hist" class="vacio">Cargando…</div></div>`;
   const { data } = await sb.from('v_stock').select('producto_id,codigo,nombre,tipo_item,unidad_medida,cantidad').eq('almacen_id', st.alm.id).order('nombre');
-  const filas = (data || []).map(r => ({ ...r, contado: '' }));
+  const filas = (data || []).map(r => ({ ...r, contado: '', n: '', f: 1 }));
   let tipo = '';
   const pintar = () => {
     const q = $('k-q').value.trim().toLowerCase();
     $('k-filas').innerHTML = filas.map((r, i) => ({ r, i })).filter(({ r }) => (!tipo || r.tipo_item === tipo) && (!q || r.nombre.toLowerCase().includes(q) || r.codigo.toLowerCase().includes(q)))
       .map(({ r, i }) => { const d = r.contado === '' ? null : Number(r.cantidad) - Number(r.contado);
         return `<tr><td>${esc(r.nombre)} <small style="color:#999">${r.codigo}</small></td><td>${tipoTag(r.tipo_item)}</td><td class="n">${C(r.cantidad, r.unidad_medida)}</td>
-        <td class="n"><input type="number" step="0.001" min="0" class="conteo-in" data-i="${i}" value="${r.contado}"></td>
+        <td class="n"><input type="number" step="0.001" min="0" class="conteo-in" data-i="${i}" value="${r.n}">${presDe(r.producto_id).length ? `<br><select class="k-pres" data-i="${i}" style="margin-top:3px;padding:4px;font-size:12px;width:auto"><option value="1">${UNI[r.unidad_medida]}</option>${presDe(r.producto_id).map(x => `<option value="${x.factor}" ${x.factor === r.f ? 'selected' : ''}>${esc(x.nombre)}</option>`).join('')}</select><small class="k-eq" style="display:block;color:var(--gris)">${r.f > 1 && r.n !== '' ? '= ' + C(r.contado, r.unidad_medida) : ''}</small>` : ''}</td>
         <td class="n ${d > 0 ? 'neg' : d < 0 ? 'pos' : ''}">${d === null ? '' : d === 0 ? '✓' : (d > 0 ? '−' : '+') + C(Math.abs(d), r.unidad_medida)}</td></tr>`; }).join('') || '<tr><td colspan="5" class="vacio">Sin productos.</td></tr>';
     resumen();
   };
   const resumen = () => { const n = filas.filter(r => r.contado !== '').length; $('k-resumen').textContent = `${n} producto(s) contados de ${filas.length}`; };
-  $('k-filas').oninput = e => { const i = e.target.dataset.i; if (i === undefined) return; filas[i].contado = e.target.value;
-    const tr = e.target.closest('tr'), r = filas[i], d = r.contado === '' ? null : Number(r.cantidad) - Number(r.contado);
+  // se cuenta en baldes/sacos si el producto tiene presentaciones: contado = n × factor (en unidad base)
+  const leerFila = e => { const i = e.target.dataset.i; if (i === undefined) return; const r = filas[i], tr = e.target.closest('tr');
+    if (e.target.classList.contains('k-pres')) r.f = Number(e.target.value) || 1; else r.n = e.target.value;
+    r.contado = r.n === '' ? '' : Math.round(Number(r.n) * r.f * 1000) / 1000;
+    const eq = tr.querySelector('.k-eq'); if (eq) eq.textContent = r.f > 1 && r.n !== '' ? '= ' + C(r.contado, r.unidad_medida) : '';
+    return { i, tr, r }; };
+  $('k-filas').onchange = e => { if (e.target.classList.contains('k-pres')) $('k-filas').oninput(e); };
+  $('k-filas').oninput = e => { const x = leerFila(e); if (!x) return;
+    const { tr, r } = x, d = r.contado === '' ? null : Number(r.cantidad) - Number(r.contado);
     tr.lastElementChild.className = 'n ' + (d > 0 ? 'neg' : d < 0 ? 'pos' : ''); tr.lastElementChild.textContent = d === null ? '' : d === 0 ? '✓' : (d > 0 ? '−' : '+') + C(Math.abs(d), r.unidad_medida); resumen(); };
   $('k-filas').onkeydown = e => { if (e.key === 'Enter') { const ins = [...$('k-filas').querySelectorAll('input')]; const k = ins.indexOf(e.target); if (ins[k + 1]) ins[k + 1].focus(); } };
   $('k-tipos').onclick = e => { const k = e.target.dataset.k; if (k === undefined) return; tipo = k; [...$('k-tipos').children].forEach(b => b.classList.toggle('activa', b.dataset.k === k)); pintar(); };
@@ -690,7 +717,7 @@ async function tabConteo() {
     $('k-res').classList.remove('oculto');
   };
   $('k-res').onclick = e => { const d = e.target.closest('[data-p]'); if (!d) return; const p = st.productos.find(x => x.id === Number(d.dataset.p));
-    filas.unshift({ producto_id: p.id, codigo: p.codigo, nombre: p.nombre, tipo_item: p.tipo_item, unidad_medida: p.unidad_medida, cantidad: 0, contado: '' });
+    filas.unshift({ producto_id: p.id, codigo: p.codigo, nombre: p.nombre, tipo_item: p.tipo_item, unidad_medida: p.unidad_medida, cantidad: 0, contado: '', n: '', f: 1 });
     $('k-add').value = ''; $('k-res').classList.add('oculto'); pintar(); $('k-filas').querySelector('input').focus(); };
   $('k-ok').onclick = async () => {
     $('k-error').textContent = ''; $('k-okmsg').textContent = '';

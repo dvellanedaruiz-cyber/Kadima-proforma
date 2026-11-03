@@ -221,6 +221,9 @@ async function cargarProductos() {
   try {
     st.prods = await traerTodo(() => sb.from('productos').select('id,codigo,nombre,tipo_item,unidad_medida,afecto_igv').in('tipo_item', ['insumo', 'paqueteria', 'mercaderia']).order('nombre'));
   } catch (e) { st.prods = []; }
+  st.pres = {};
+  const pr = await sb.from('producto_presentaciones').select('producto_id,nombre,factor').eq('activo', true).order('orden');
+  (pr.data || []).forEach(x => (st.pres[x.producto_id] = st.pres[x.producto_id] || []).push({ nombre: x.nombre, factor: Number(x.factor) }));
 }
 async function cargarCatalogo() {
   if (st.catalogo) return st.catalogo;
@@ -469,7 +472,7 @@ function pintarDetalle(it) {
         ${it.filas.slice().reverse().map(r => `<tr><td>${fechaTxt(r.fecha)}</td><td>${tagF(r.fuente)}</td><td class="n">${S(precioEv(r), 3)}</td>
           <td class="n m-ocultar">${r.cantidad ? Number(r.cantidad).toLocaleString('es-PE') : '—'}</td>
           <td>${esc(r.proveedor || '')}<br><span class="cod">${esc(r.referencia || '')}</span></td>
-          <td>${r.hist_id ? `<button class="cerrar" style="font-size:16px" title="Borrar registro histórico" data-borrar="${r.hist_id}">🗑</button>` : ''}</td></tr>`).join('')}
+          <td style="white-space:nowrap">${r.hist_id ? `<button class="cerrar" style="font-size:16px" title="Editar" data-editar="${r.hist_id}">✏️</button><button class="cerrar" style="font-size:16px" title="Borrar registro histórico" data-borrar="${r.hist_id}">🗑</button>` : ''}</td></tr>`).join('')}
       </table></div>
       <div class="tablawrap"><table class="t">
         <tr><th>Proveedor</th><th class="n">Prom.</th><th class="n">Último</th></tr>
@@ -479,6 +482,7 @@ function pintarDetalle(it) {
   </div>`;
   $('d-cerrar').onclick = () => { st.sel = null; pintar(); };
   $('d-imp').onclick = () => { st.imp.id = it.id; guardar('imp_id', it.id); irTab('impacto'); };
+  $('detalle').querySelectorAll('[data-editar]').forEach(b => b.onclick = () => editarHistorico({ ...it.filas.find(r => String(r.hist_id) === b.dataset.editar), codigo: it.codigo, producto_id: it.id }));
   $('detalle').querySelectorAll('[data-borrar]').forEach(b => b.onclick = async () => {
     if (!confirm('¿Borrar este costo histórico? No afecta stock ni compras.')) return;
     const { error } = await sb.from('costos_historicos').delete().eq('id', Number(b.dataset.borrar));
@@ -982,11 +986,11 @@ function tabCargar() {
       <label>Insumo<input id="m-prod" list="m-lista" placeholder="Escribe nombre o código"></label>
       <datalist id="m-lista">${st.prods.map(p => `<option value="${esc(opcionInsumo(p))}"></option>`).join('')}</datalist>
       <label>Fecha (o 1.º del mes)<input id="m-fecha" type="date" max="${iso(hoy)}"></label>
-      <label><span>Costo unitario S/ <b id="m-uni" style="color:var(--vino)"></b></span><input id="m-costo" type="number" step="0.0001" min="0" inputmode="decimal"></label>
+      <label><span>Costo unitario S/ <b id="m-uni" style="color:var(--vino)"></b></span><input id="m-costo" type="number" step="0.0001" min="0" inputmode="decimal"><select id="m-pres" class="oculto" style="margin-top:4px"></select><small id="m-eq" style="color:var(--gris)"></small></label>
       <label class="chk"><input type="checkbox" id="m-igv"> Incluye IGV</label>
       <label>Proveedor (opcional)<input id="m-prov"></label>
       <label class="full">Nota (opcional)<input id="m-nota" placeholder="Ej.: precio de lista, factura antigua…"></label>
-      <div class="full"><button class="btn" id="m-ok">Guardar</button> <span id="m-msg"></span></div>
+      <div class="full"><button class="btn" id="m-ok">Guardar</button> <button class="btn-sec oculto" id="m-cancel-ed" type="button">Cancelar edición</button> <span id="m-msg"></span></div>
     </div>
   </div>
   <div class="bloque">
@@ -996,7 +1000,18 @@ function tabCargar() {
   $('x-plantilla').onclick = descargarPlantilla;
   $('x-file').onchange = leerExcel;
   $('m-ok').onclick = guardarUno;
-  $('m-prod').oninput = $('m-prod').onchange = () => { const p = buscarProd($('m-prod').value); $('m-uni').textContent = p ? 'por ' + (UNI(p.unidad_medida) || 'unidad (sin unidad en el maestro)') : ''; };
+  // presentación: el costo se puede escribir por balde/saco y se convierte solo a costo por kg / L / und
+  const eqPres = () => { const p = buscarProd($('m-prod').value), f = Number($('m-pres').value || 1), c = parseCosto($('m-costo').value);
+    $('m-eq').textContent = p && f > 1 && c > 0 ? `= ${S(c / f, 4)} por ${UNI(p.unidad_medida)}` : ''; };
+  $('m-prod').oninput = $('m-prod').onchange = () => {
+    const p = buscarProd($('m-prod').value), ps = p ? (st.pres[p.id] || []) : [];
+    $('m-pres').innerHTML = p ? `<option value="1">por ${UNI(p.unidad_medida) || 'unidad'}</option>` + ps.map(x => `<option value="${x.factor}">por ${esc(x.nombre)}</option>`).join('') : '';
+    $('m-pres').classList.toggle('oculto', !ps.length);
+    $('m-uni').textContent = p ? 'por ' + (UNI(p.unidad_medida) || 'unidad (sin unidad en el maestro)') : ''; eqPres(); };
+  $('m-pres').onchange = () => { const f = Number($('m-pres').value || 1), p = buscarProd($('m-prod').value); $('m-uni').textContent = p ? (f > 1 ? 'por ' + $('m-pres').selectedOptions[0].textContent.replace(/^por /, '') : 'por ' + UNI(p.unidad_medida)) : ''; eqPres(); };
+  $('m-costo').addEventListener('input', eqPres);
+  $('m-cancel-ed').onclick = cancelarEdicion;
+  if (st.editarPend) { const r = st.editarPend; st.editarPend = null; editarHistorico(r); }
   listarHistoricos();
 }
 function descargarPlantilla() {
@@ -1107,17 +1122,40 @@ async function guardarUno() {
   const txt = $('m-prod').value.trim(); $('m-msg').textContent = '';
   const p = buscarProd(txt);
   if (!p) return $('m-msg').innerHTML = '<span class="error">Elige un insumo de la lista.</span>';
-  const fecha = $('m-fecha').value, costo = parseCosto($('m-costo').value);
+  const fecha = $('m-fecha').value, costo0 = parseCosto($('m-costo').value), f = Number($('m-pres').value || 1) || 1;
+  const costo = costo0 == null ? null : Math.round(costo0 / f * 1e6) / 1e6;
   if (!fecha) return $('m-msg').innerHTML = '<span class="error">Pon la fecha.</span>';
   if (costo == null || costo < 0) return $('m-msg').innerHTML = '<span class="error">Pon el costo.</span>';
   $('m-ok').disabled = true;
+  // editar = se reemplaza el registro anterior por el corregido (si algo falla, se restaura el anterior)
+  const ed = st.editHist;
+  if (ed) { const del = await sb.from('costos_historicos').delete().eq('id', ed.id); if (del.error) { $('m-ok').disabled = false; return $('m-msg').innerHTML = `<span class="error">${esc(errTxt(del.error))}</span>`; } }
   const { data, error } = await sb.rpc('cargar_costos_historicos', { p_filas: [{ fila: 1, codigo: p.codigo, fecha, costo, incluye_igv: $('m-igv').checked, proveedor: $('m-prov').value, nota: $('m-nota').value }], p_usuario: usuarioId() });
+  const fallo = error ? errTxt(error) : data.errores && data.errores.length ? data.errores[0].error : null;
+  if (fallo && ed) await sb.rpc('cargar_costos_historicos', { p_filas: [ed.antes], p_usuario: usuarioId() });
   $('m-ok').disabled = false;
-  if (error) return $('m-msg').innerHTML = `<span class="error">${esc(errTxt(error))}</span>`;
-  if (data.errores && data.errores.length) return $('m-msg').innerHTML = `<span class="error">${esc(data.errores[0].error)}</span>`;
-  $('m-msg').innerHTML = `<span class="okmsg">✓ Guardado: ${esc(p.nombre)} ${fechaTxt(fecha)}</span>`;
+  if (fallo) return $('m-msg').innerHTML = `<span class="error">${esc(fallo)}${ed ? ' (se dejó el registro anterior)' : ''}</span>`;
+  $('m-msg').innerHTML = `<span class="okmsg">✓ ${ed ? 'Corregido' : 'Guardado'}: ${esc(p.nombre)} ${fechaTxt(fecha)}</span>`;
+  if (ed) cancelarEdicion(true);
   $('m-costo').value = ''; $('m-nota').value = ''; $('m-costo').focus(); st.evolCache = {};
   listarHistoricos();
+}
+// ===== editar un costo histórico ya registrado =====
+function editarHistorico(r) {
+  if (st.tab !== 'cargar' || !$('m-prod')) { st.editarPend = r; return irTab('cargar'); }
+  const p = st.prods.find(x => x.codigo === r.codigo) || st.prods.find(x => x.id === r.producto_id);
+  if (!p) return alert('No encontré ese insumo en el maestro.');
+  st.editHist = { id: r.hist_id, antes: { fila: 1, codigo: p.codigo, fecha: r.fecha, costo: Number(r.costo_neto), incluye_igv: false, proveedor: r.proveedor || '', nota: r.referencia === 'Registro histórico' ? '' : (r.referencia || '') } };
+  $('m-prod').value = opcionInsumo(p); $('m-prod').onchange();
+  $('m-fecha').value = String(r.fecha).slice(0, 10); $('m-costo').value = Number(r.costo_neto); $('m-igv').checked = false;
+  $('m-prov').value = r.proveedor || ''; $('m-nota').value = st.editHist.antes.nota; $('m-pres').value = '1';
+  $('m-ok').textContent = '💾 Guardar cambios'; $('m-cancel-ed').classList.remove('oculto');
+  $('m-msg').innerHTML = `<span style="color:var(--vino);font-weight:700">✏️ Editando ${esc(p.nombre)} del ${fechaTxt(r.fecha)} (costo sin IGV)</span>`;
+  $('m-prod').closest('.bloque').scrollIntoView({ behavior: 'smooth', block: 'center' }); $('m-costo').focus();
+}
+function cancelarEdicion(silencio) {
+  st.editHist = null; $('m-ok').textContent = 'Guardar'; $('m-cancel-ed').classList.add('oculto');
+  if (silencio !== true) { $('m-msg').textContent = ''; $('m-costo').value = ''; $('m-nota').value = ''; }
 }
 async function listarHistoricos() {
   const { data, error } = await sb.from('v_costos_evolucion').select('*').eq('fuente', 'histórico').order('fecha', { ascending: false }).order('nombre').limit(200);
@@ -1129,8 +1167,9 @@ async function listarHistoricos() {
     ${data.map(r => `<tr><td>${fechaTxt(r.fecha)}</td><td>${esc(r.nombre)}<br><span class="cod">${esc(r.codigo)} · por ${UNI(r.unidad_medida)}</span></td>
       <td class="n">${S(r.costo_neto, 3)}</td><td class="n m-ocultar">${S(r.costo_bruto, 3)}</td><td class="m-ocultar">${esc(r.proveedor || '')}</td>
       <td class="m-ocultar cod">${esc(r.referencia === 'Registro histórico' ? '' : r.referencia)}</td>
-      <td><button class="cerrar" style="font-size:16px" data-borrar="${r.hist_id}" title="Borrar">🗑</button></td></tr>`).join('')}
+      <td style="white-space:nowrap"><button class="cerrar" style="font-size:16px" data-editar="${r.hist_id}" title="Editar">✏️</button><button class="cerrar" style="font-size:16px" data-borrar="${r.hist_id}" title="Borrar">🗑</button></td></tr>`).join('')}
   </table></div>${data.length === 200 ? '<p class="ayuda">Mostrando los últimos 200.</p>' : ''}` : '<div class="vacio">Aún no hay costos históricos.</div>';
+  $('h-lista').querySelectorAll('[data-editar]').forEach(b => b.onclick = () => editarHistorico(data.find(r => String(r.hist_id) === b.dataset.editar)));
   $('h-lista').querySelectorAll('[data-borrar]').forEach(b => b.onclick = async () => {
     if (!confirm('¿Borrar este costo histórico? No afecta stock ni compras.')) return;
     const { error } = await sb.from('costos_historicos').delete().eq('id', Number(b.dataset.borrar));

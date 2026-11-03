@@ -58,6 +58,9 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 .tm{border:2px solid var(--borde);border-radius:12px;background:#fff;padding:10px 4px;text-align:center;min-height:72px;display:flex;flex-direction:column;justify-content:center;gap:2px}
 .tm b{font-size:15px}.tm span{font-size:12px}
 .tm.libre{background:#f4f2f0;color:#b3aca6;border-style:dashed;cursor:not-allowed}
+.plano.elegir .tm{cursor:pointer}.plano.elegir .tm.libre{background:#fff;color:var(--texto);border-style:solid}
+.plano.elegir .tm.libre:hover{border-color:var(--rojo)}.plano.elegir .tm.elegida{outline:4px solid #f2a900;outline-offset:2px}
+.plano.elegir .tm.actual{opacity:.4;cursor:not-allowed}
 .tm.abierta{background:var(--rojo);border-color:var(--rojo);color:#fff;cursor:pointer}
 .tm.abierta.listos{background:#1e7d3a;border-color:#1e7d3a}
 .tm.abierta.elegida{outline:4px solid #f2a900;outline-offset:2px}
@@ -388,11 +391,11 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 
 <!-- MODAL ENVIAR A MESA -->
 <div class="modal oculto" id="m-mesa">
-  <div class="caja">
+  <div class="caja" style="max-width:720px">
     <h3>Enviar a mesa</h3>
     <p class="sub">Los productos de cocina aparecen al instante en la pantalla de cocina.</p>
-    <div id="mm-abiertas" class="mm-abiertas"></div>
-    <div class="campo"><label>Mesa (si ya está abierta, se suma a su cuenta · "3+4" si se juntaron)</label><input id="mm-mesa" placeholder="Ej. 3" autocomplete="off"></div>
+    <div class="campo"><label>Elige la mesa (si está ocupada, se suma a su cuenta)</label><div class="plano" id="mm-plano"></div></div>
+    <div class="campo oculto" id="mm-mesa-w"><label>Mesa</label><input id="mm-mesa" placeholder="Ej. 3" autocomplete="off"></div>
     <div class="campo"><label>Mozo</label><select id="mm-mozo"></select></div>
     <div class="campo"><label>Observación de cada producto (opcional)</label><div id="mm-items" class="mm-items"></div></div>
     <div class="campo"><label>Observación para todo el envío (opcional)</label>
@@ -518,6 +521,17 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
     <div class="seg-peso" id="bc-tipo"><button data-t="" class="activa">Todos</button><button data-t="dni">Personas (DNI)</button><button data-t="ruc">Empresas (RUC)</button></div>
     <div id="bc-lista" style="max-height:48vh;overflow:auto;border:1px solid var(--borde);border-radius:10px"></div>
     <div class="fila" style="margin-top:12px"><button class="btn-sec" id="bc-cerrar">Cerrar</button><button class="btn" id="bc-nuevo">➕ Registrar cliente nuevo</button></div>
+  </div>
+</div>
+
+<!-- MODAL ELEGIR MESA (cambiar de mesa) -->
+<div class="modal oculto" id="m-elegir">
+  <div class="caja" style="max-width:760px">
+    <h3 id="em-tit">Cambiar mesa</h3>
+    <p class="sub" id="em-sub">Si eliges una mesa ocupada (en rojo), las dos cuentas se juntan.</p>
+    <div class="plano" id="em-plano"></div>
+    <div class="fila" style="margin-top:12px"><button class="btn-sec" id="em-cancelar">Cancelar</button></div>
+    <div class="error" id="em-error"></div>
   </div>
 </div>
 
@@ -1465,6 +1479,38 @@ $('pd-ok').onclick = () => {
   canalVenta($('pd-canal').value);
   $('m-pedido').classList.add('oculto'); dibujarCarrito();
 };
+// ===== Plano para ELEGIR mesa (enviar a mesa / cambiar de mesa): libres y ocupadas se pueden tocar =====
+async function cargarPlanoMesas() {
+  const [pl, ab] = await Promise.all([
+    sb.from('mesas').select('*').eq('sede_id', st.disp.sede_id).eq('activo', true).order('orden').order('id'),
+    sb.from('v_mesas_abiertas').select('id,mesa,total,listos').eq('sede_id', st.disp.sede_id).order('mesa'),
+  ]);
+  return { plano: pl.error ? [] : (pl.data || []), abiertas: ab.data || [] };
+}
+function planoElegirHtml(plano, abiertas, elegida, actualId) {
+  const usadas = new Set();
+  const cuenta = n => abiertas.find(a => cuadrosMesa(a.mesa).includes(n.toLowerCase()));
+  const tile = (nombre, a) => {
+    if (a) usadas.add(a.id);
+    const cls = ['tm', a ? 'abierta' : 'libre', a && Number(a.listos) ? 'listos' : '', nombre === elegida ? 'elegida' : '', a && a.id === actualId ? 'actual' : ''].join(' ');
+    return `<div class="${cls}" data-pick="${esc(a && cuadrosMesa(a.mesa).length > 1 ? a.mesa : nombre)}"><b>${esc(nombre)}</b><span>${a ? S(a.total) : 'Libre'}</span>${a && cuadrosMesa(a.mesa).length > 1 ? `<span>🔗 ${esc(a.mesa)}</span>` : ''}</div>`;
+  };
+  const zonas = []; plano.forEach(m => { const z = (m.zona || 'Zona 1').trim(); if (!zonas.includes(z)) zonas.push(z); });
+  let html = zonas.map(z => `<div class="zh">${esc(z)}</div>` + plano.filter(m => (m.zona || 'Zona 1').trim() === z).map(m => tile(m.nombre, cuenta(m.nombre))).join('')).join('');
+  const fuera = abiertas.filter(a => !usadas.has(a.id));
+  if (fuera.length) html += `<div class="zh">Otras cuentas</div>` + fuera.map(a => tile(a.mesa, a)).join('');
+  return html;
+}
+let emCallback = null;
+async function elegirMesaCaja(titulo, actualId, alElegir) {
+  const d = await cargarPlanoMesas();
+  if (!d.plano.length) { const n = prompt(titulo + ' (no hay plano de mesas: escribe la mesa)'); if (n && n.trim()) alElegir(n.trim()); return; }
+  $('em-tit').textContent = titulo; msg('em-error'); emCallback = alElegir;
+  $('em-plano').className = 'plano elegir'; $('em-plano').innerHTML = planoElegirHtml(d.plano, d.abiertas, null, actualId);
+  $('m-elegir').classList.remove('oculto');
+}
+$('em-plano').onclick = e => { const t = e.target.closest('[data-pick]'); if (!t || t.classList.contains('actual')) return; $('m-elegir').classList.add('oculto'); emCallback && emCallback(t.dataset.pick); };
+$('em-cancelar').onclick = () => $('m-elegir').classList.add('oculto');
 $('enviar-mesa').onclick = async () => {
   msg('v-error');
   if (!navigator.onLine) return msg('v-error', 'Enviar a mesa necesita internet (la cocina lo recibe en línea).');
@@ -1473,18 +1519,20 @@ $('enviar-mesa').onclick = async () => {
   const { data } = await sb.from('usuarios').select('id,nombre').eq('rol', 'mozo').eq('activo', true).order('nombre');
   st.mozos = data || [];
   $('mm-mozo').innerHTML = '<option value="">— Sin mozo —</option>' + st.mozos.map(m => `<option value="${m.id}">${esc(m.nombre)}</option>`).join('');
-  const ab = await sb.from('v_mesas_abiertas').select('id,mesa,total').eq('sede_id', st.disp.sede_id).order('mesa');
-  $('mm-abiertas').innerHTML = (ab.data || []).length ? '<div style="width:100%;font-size:12px;color:var(--gris)">Mesas abiertas (toca para agregar):</div>' +
-    ab.data.map(m => `<button data-mesa="${esc(m.mesa)}">${esc(m.mesa)}<small>${S(m.total)}</small></button>`).join('') : '';
-  $('m-mesa').classList.remove('oculto'); $('mm-mesa').focus();
+  const d = await cargarPlanoMesas();
+  st.mmPlano = d;
+  // con plano: se toca la mesa; sin plano (no se corrió 54/62): se escribe
+  $('mm-mesa-w').classList.toggle('oculto', !!d.plano.length);
+  $('mm-plano').className = 'plano elegir'; $('mm-plano').innerHTML = d.plano.length ? planoElegirHtml(d.plano, d.abiertas, $('mm-mesa').value || null) : '';
+  $('m-mesa').classList.remove('oculto'); if (!d.plano.length) $('mm-mesa').focus();
 };
 $('mm-cancelar').onclick = () => $('m-mesa').classList.add('oculto');
 $('mm-mesa').onkeydown = e => { if (e.key === 'Enter') $('mm-ok').click(); };
 $('mm-chips').onclick = e => { if (e.target.tagName !== 'BUTTON') return; const t = $('mm-obs').value.trim(); $('mm-obs').value = t ? t + ', ' + e.target.textContent.toLowerCase() : e.target.textContent; $('mm-obs').focus(); };
-$('mm-abiertas').onclick = e => { const b = e.target.closest('[data-mesa]'); if (b) { $('mm-mesa').value = b.dataset.mesa; $('mm-ok').click(); } };
+$('mm-plano').onclick = e => { const t = e.target.closest('[data-pick]'); if (!t) return; $('mm-mesa').value = t.dataset.pick; $('mm-plano').innerHTML = planoElegirHtml(st.mmPlano.plano, st.mmPlano.abiertas, t.dataset.pick); };
 $('mm-ok').onclick = async () => {
   const mesa = $('mm-mesa').value.trim();
-  if (!mesa) return msg('mm-error', 'Escribe la mesa.');
+  if (!mesa) return msg('mm-error', 'Toca la mesa a la que va el pedido.');
   $('mm-ok').disabled = true;
   // si la mesa ya está abierta, devuelve esa misma cuenta
   const { data, error } = await sb.rpc('mesa_abierta', { p_sede: st.disp.sede_id, p_canal: st.canal.id, p_mesa: mesa,
@@ -1624,12 +1672,14 @@ $('ms-lista').onclick = async e => {
       armarPrecuenta(m, items); window.print();
     }
     if (acc === 'mover') {
-      const nueva = prompt(`Nueva mesa para ${m.mesa} (si ya está abierta, se juntan las cuentas)`, m.mesa);
-      if (!nueva || !nueva.trim()) return;
-      const { data: r, error } = await sb.rpc('cambiar_mesa', { p_pedido: m.id, p_nueva: nueva });
-      if (error) throw error;
-      await abrirMesas(); contarMesas();
-      if (r.unida) msg('ms-error', `✓ Se juntó con ${r.mesa}`);
+      return elegirMesaCaja(`Mover ${m.mesa} a…`, m.id, async nueva => {
+        const destino = st.mesasAbiertas.find(x => cuadrosMesa(x.mesa).includes(nueva.toLowerCase()) && x.id !== m.id);
+        if (destino && !confirm(`${destino.mesa} ya tiene cuenta. ¿Juntar ambas cuentas?`)) return;
+        const { data: r, error } = await sb.rpc('cambiar_mesa', { p_pedido: m.id, p_nueva: nueva });
+        if (error) return msg('ms-error', errorTexto(error));
+        await abrirMesas(); contarMesas();
+        msg('ms-error', r && r.unida ? `✓ Se juntó con ${r.mesa}` : `✓ Ahora es ${r?.mesa || nueva}`);
+      });
     }
     if (acc === 'anular') {
       if (e.target.dataset.seguro !== '1') { e.target.dataset.seguro = '1'; e.target.textContent = '¿Seguro? Toca otra vez'; return; }

@@ -485,6 +485,11 @@ function formProducto(p, alGuardar) {
       <div class="campo"><label>Unidad base de inventario</label><select id="f-uni">${['Kilo','Litro','Unidad'].map(u => `<option ${u === p.unidad_medida ? 'selected' : ''}>${u}</option>`).join('')}</select></div>
       <div></div>
     </div>
+    <div id="f-pres-box" style="margin-top:10px;background:#faf7f4;border:1px solid var(--borde);border-radius:10px;padding:8px 10px">
+      <div style="font-weight:700;font-size:13px">Presentaciones <span style="font-weight:400;color:var(--gris)">(opcional: para contar y comprar en balde, saco, caja… el sistema convierte solo a la unidad base)</span></div>
+      <div id="f-pres" style="margin-top:6px"></div>
+      <button type="button" class="btn-sec" id="f-pres-mas" style="margin-top:6px;padding:5px 10px;font-size:13px">+ Agregar presentación</button>
+    </div>
     <div style="margin-top:12px;display:flex;gap:18px;flex-wrap:wrap">
       <label class="check"><input type="checkbox" id="f-vend" ${p.vendible ? 'checked' : ''}> Se vende en caja</label>
       <label class="check"><input type="checkbox" id="f-igv" ${p.afecto_igv ? 'checked' : ''}> Afecto a IGV</label>
@@ -543,6 +548,7 @@ function formProducto(p, alGuardar) {
     $('f-vend').disabled = insumo;
     const vend = $('f-vend').checked; $('f-venta').classList.toggle('oculto', !vend); $('f-fav-box').classList.toggle('oculto', !vend);
     $('f-rpe-box').classList.toggle('oculto', insumo);
+    $('f-pres-box').classList.toggle('oculto', ['plato', 'servicio'].includes(t));
     const porc = $('f-modo').value === 'porcion'; $('f-padre-box').classList.toggle('oculto', !porc); $('f-porc-box').classList.toggle('oculto', !porc);
     $('f-precio-u').textContent = $('f-uni').value === 'Kilo' ? ' · por kilo' : $('f-uni').value === 'Litro' ? ' · por litro' : '';
   };
@@ -573,6 +579,23 @@ function formProducto(p, alGuardar) {
   $('f-libre').addEventListener('change', () => $('f-esc-box').classList.toggle('oculto', $('f-libre').checked));
   $('f-esc-box').classList.toggle('oculto', !!p.precio_libre);
   pintarEsc();
+  // presentaciones: [{id?, nombre, factor}] — ej. "Balde 25 L" = 25 L
+  const pres = [], presQuitadas = [];
+  const uniTxt = () => ({ Kilo: 'kg', Litro: 'L', Unidad: 'und' })[$('f-uni').value] || '';
+  const pintarPres = () => {
+    $('f-pres').innerHTML = pres.map((x, i) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px;font-size:13px">
+      <input data-pr="${i}" data-k="nombre" value="${esc(x.nombre)}" placeholder="Ej. Balde 25 L" style="flex:1;min-width:0">
+      trae <input data-pr="${i}" data-k="factor" type="number" min="0.001" step="0.001" value="${x.factor ?? ''}" placeholder="25" style="width:90px"> ${uniTxt()}
+      <button type="button" data-qp="${i}" style="background:none;color:var(--rojo);font-size:16px">✕</button></div>`).join('')
+      || `<div style="font-size:12.5px;color:var(--gris)">Sin presentaciones: se cuenta y compra en ${uniTxt() || 'la unidad base'}.</div>`;
+  };
+  $('f-pres').oninput = e => { const i = e.target.dataset.pr; if (i != null) pres[i][e.target.dataset.k] = e.target.value; };
+  $('f-pres').onclick = e => { const q = e.target.dataset.qp; if (q == null) return; const [x] = pres.splice(Number(q), 1); if (x.id) presQuitadas.push(x.id); pintarPres(); };
+  $('f-pres-mas').onclick = () => { pres.push({ nombre: '', factor: '' }); pintarPres(); $('f-pres').querySelector(`[data-pr="${pres.length - 1}"]`).focus(); };
+  pintarPres();
+  if (!n) sb.from('producto_presentaciones').select('id,nombre,factor').eq('producto_id', p.id).eq('activo', true).order('orden').order('id')
+    .then(({ data, error }) => { if (error) { $('f-pres-box').dataset.sinTabla = '1'; return; } pres.push(...(data || []).map(x => ({ id: x.id, nombre: x.nombre, factor: Number(x.factor) }))); pintarPres(); });
+  $('f-uni').addEventListener('change', pintarPres);
   $('f-vend').onchange = sinc; $('f-modo').onchange = sinc; $('f-uni').onchange = sinc;
   sinc(); if (n) codigo();
   $('f-ok').onclick = async () => {
@@ -598,10 +621,23 @@ function formProducto(p, alGuardar) {
     escOk.sort((a, b) => a.desde - b.desde);
     if (escOk.length || (p && 'precios_escala' in p)) reg.precios_escala = escOk.length ? escOk : null;
     if (modo === 'porcion' && (!reg.producto_padre_id || !reg.porciones_por_unidad)) return $('f-err').textContent = 'Para porción indica el producto entero y cuántas porciones salen.';
+    const presOk = pres.filter(x => String(x.nombre).trim() || x.factor !== '');
+    if (presOk.some(x => !String(x.nombre).trim() || !(Number(x.factor) > 0))) return $('f-err').textContent = 'Cada presentación necesita nombre y cuánto trae (mayor a 0).';
     let res;
     if (n) res = await sb.from('productos').insert(reg).select().single();
     else res = await sb.from('productos').update(reg).eq('id', p.id).select().single();
     if (res.error) return $('f-err').textContent = /duplicate|unique/i.test(res.error.message) ? 'Ese código ya existe.' : errTxt(res.error);
+    // presentaciones
+    if (presOk.length || presQuitadas.length) {
+      const pid = res.data.id;
+      const ops = [
+        ...presQuitadas.map(id => sb.from('producto_presentaciones').update({ activo: false }).eq('id', id)),
+        ...presOk.map((x, k) => x.id ? sb.from('producto_presentaciones').update({ nombre: x.nombre.trim(), factor: Number(x.factor), orden: k + 1 }).eq('id', x.id)
+          : sb.from('producto_presentaciones').insert({ producto_id: pid, nombre: x.nombre.trim(), factor: Number(x.factor), orden: k + 1 })),
+      ];
+      const r = (await Promise.all(ops)).find(x => x.error);
+      if (r) return $('f-err').textContent = 'Producto guardado, pero no las presentaciones: ' + (/producto_presentaciones/.test(r.error.message) ? 'falta correr 67_presentaciones.sql.' : errTxt(r.error));
+    }
     // enlace con restaurant.pe
     if (!['insumo', 'intermedio'].includes(tipo)) {
       const sep = v => v.split('|').map(x => x.trim()).filter(Boolean);
