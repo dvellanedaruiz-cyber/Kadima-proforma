@@ -82,6 +82,14 @@ table.t{width:100%;border-collapse:collapse}
 .pr-row:hover{background:#fbf9f7}.pr-row .nm{flex:1;min-width:0}.pr-row small{color:var(--gris)}
 .pr-row select{width:auto;max-width:220px;padding:5px 6px;font-size:12px}
 @media (max-width:900px){.arbol-w{grid-template-columns:1fr}.arbol-col{max-height:none}}
+.modal .tarjeta.ancho{max-width:980px}
+.fg-ficha{display:grid;grid-template-columns:280px 1fr;gap:16px}
+.lbl{display:block;font-size:12px;color:var(--gris);margin-bottom:4px;font-weight:600}
+.ff-foto{height:200px;border:2px dashed var(--borde);border-radius:12px;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--gris);cursor:pointer;overflow:hidden;background:#faf8f6}
+.ff-foto img{width:100%;height:100%;object-fit:cover}
+.ff-row{display:flex;gap:5px;align-items:center;margin-bottom:5px}.ff-row input[type=text],.ff-row input:not([type]){padding:6px 8px}
+.ff-n{background:var(--rojo);color:#fff;border-radius:50%;min-width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+@media (max-width:900px){.fg-ficha{grid-template-columns:1fr}}
 .embebido #b-salir,.embebido #b-usr,.embebido .barra>b{display:none!important}
 </style>
 </head>
@@ -110,7 +118,7 @@ table.t{width:100%;border-collapse:collapse}
   <div id="t-recetas" class="cuerpo">
     <div class="lista">
       <div class="f">
-        <button class="btn" id="r-nueva">+ Nueva receta</button>
+        <div style="display:flex;gap:6px"><button class="btn" id="r-nueva" style="flex:1">+ Nueva receta</button><button class="btn-sec" id="r-fichas" title="Imprimir fichas de cocina">🖨️ Fichas</button></div>
         <div class="chips" id="r-tipos"><button data-k="" class="activa">Todas</button><button data-k="producto_terminado">Terminados</button><button data-k="intermedio">Bases</button><button data-k="plato">Platos</button></div>
         <input id="r-q" placeholder="Buscar receta">
       </div>
@@ -214,6 +222,7 @@ async function cargarMaestros() {
   ]);
   st.productos = p.data || []; st.categorias = c.data || []; st.recetas = r.data || [];
   st.costos = {}; (k.data || []).forEach(x => st.costos[x.producto_id] = x.costo == null ? null : Number(x.costo));
+  await cargarFichas();
 }
 async function abrirApp() {
   vista('v-app'); $('b-usr').textContent = st.usuario.nombre;
@@ -236,6 +245,7 @@ function pintarLista() {
 }
 $('r-lista').onclick = e => { const d = e.target.closest('[data-p]'); if (d) abrirReceta(Number(d.dataset.p)); };
 $('r-nueva').onclick = () => abrirReceta(null);
+$('r-fichas').onclick = () => { if (!st.fichasOk) return alert('Falta correr 71_fichas_cocina.sql en Supabase.'); elegirImpresion(); };
 
 // ===== EDITOR DE RECETA =====
 async function abrirReceta(prodId) {
@@ -270,8 +280,10 @@ function pintarEditor() {
     </div>
     <div class="bloque"><div class="kpis" id="e-kpis"></div></div>
     <div class="bloque"><h3>Preparación / notas</h3><textarea id="e-notas" rows="4" placeholder="Pasos, temperatura, tiempo de horno…">${esc(ed.notas)}</textarea></div>
+    ${bloqueFicha()}
     <div class="fila" style="justify-content:flex-end"><button class="btn" id="e-guardar">Guardar receta</button></div>
     <div class="error" id="e-error"></div><div class="okmsg" id="e-ok"></div>`;
+  enlazarBloqueFicha();
   buscadorProducto();
   buscadorInsumo();
   pintarLineas();
@@ -484,7 +496,7 @@ function pintarProductos() {
     if (e.target.dataset.rec) { $('tabs').querySelector('[data-t="recetas"]').click(); abrirReceta(Number(e.target.dataset.rec)); }
   };
 }
-function cerrarModal() { $('modal').classList.add('oculto'); }
+function cerrarModal() { $('modal').classList.add('oculto'); $('modal-c').classList.remove('ancho'); }
 // se cierra solo si el clic EMPIEZA y TERMINA en el fondo gris (no al arrastrar desde un campo hacia afuera)
 let downFondo = false;
 $('modal').addEventListener('mousedown', e => { downFondo = e.target === $('modal'); });
@@ -761,8 +773,18 @@ $('a-arbol').onclick = async e => {
     const acc = b.dataset.acc, c = st.categorias.find(x => x.id === catId);
     if (acc === 'nueva-c') {
       const nom = prompt(`Nueva categoría dentro de "${pri}":`); if (!nom || !nom.trim()) return;
+      // si ya existe con ese nombre en otra principal, se ofrece traerla aquí (con sus productos)
+      const ya = st.categorias.find(x => x.nombre.trim().toLowerCase() === nom.trim().toLowerCase());
+      if (ya) {
+        const donde = ya.categoria_principal || 'Sin principal';
+        if (donde === pri) return alert(`"${ya.nombre}" ya está en ${pri}.`);
+        if (!confirm(`Ya existe la categoría "${ya.nombre}" en ${donde} (${prodsDe(ya.id).length} producto/s).\n\n¿Moverla a ${pri}?`)) return;
+        const { error } = await sb.from('categorias').update({ categoria_principal: pri === 'Sin principal' ? null : pri }).eq('id', ya.id);
+        if (error) return alert(errTxt(error));
+        ya.categoria_principal = pri === 'Sin principal' ? null : pri; ar.abiertos.add('p:' + pri); ar.sel = ya.id; guardarAbiertos(); return pintarArbol();
+      }
       const { data, error } = await sb.from('categorias').insert({ nombre: nom.trim(), categoria_principal: pri === 'Sin principal' ? null : pri }).select('id,nombre,categoria_principal').single();
-      if (error) return alert(/duplicate|unique/i.test(error.message) ? 'Ya existe una categoría con ese nombre.' : errTxt(error));
+      if (error) return alert(/duplicate|unique/i.test(error.message) ? 'Ya existe una categoría con ese nombre (puede estar en otra principal: búscala arriba).' : errTxt(error));
       st.categorias.push(data); ar.nuevasP = ar.nuevasP.filter(x => x !== pri); ar.abiertos.add('p:' + pri); ar.sel = data.id; guardarAbiertos(); return pintarArbol();
     }
     if (acc === 'ren-p') {
@@ -825,6 +847,236 @@ $('a-arbol').addEventListener('drop', e => {
   const pid = Number(e.dataTransfer.getData('text/plain')); if (!pid) return;
   moverProducto(pid, n.dataset.cat === SIN ? SIN : Number(n.dataset.cat));
 });
+
+// ===================== FICHAS DE COCINA (guía visual para imprimir y enmicar) =====================
+const FICHA_BUCKET = 'fichas-cocina';
+const fichaVacia = pid => ({ producto_id: pid, foto: null, porcion: '', tiempo_min: null, utensilios: '', montaje_tipo: 'capas', montaje: [], pasos: [], emplatado: '', consejo: '', no_hacer: '' });
+const fotoUrl = ruta => ruta ? sb.storage.from(FICHA_BUCKET).getPublicUrl(ruta).data.publicUrl : '';
+async function cargarFichas() {
+  const { data, error } = await sb.from('fichas_cocina').select('*');
+  st.fichas = {}; st.fichasOk = !error;
+  (data || []).forEach(f => st.fichas[f.producto_id] = f);
+}
+const fichaDe = pid => (st.fichas && st.fichas[pid]) || null;
+function bloqueFicha() {
+  const ed = st.ed; if (!ed || !ed.producto_id) return '';
+  const f = fichaDe(ed.producto_id);
+  const estado = !st.fichasOk ? '<span class="sin-costo">Falta correr 71_fichas_cocina.sql</span>'
+    : f ? `✓ Ficha lista${f.foto ? ' · 📷 con foto' : ' · <span class="sin-costo">sin foto</span>'} · ${(f.montaje || []).length} capas · ${(f.pasos || []).length} pasos` : '<span class="sin-costo">Aún sin ficha</span>';
+  return `<div class="bloque"><h3>🧑‍🍳 Ficha de cocina <small style="font-weight:400;color:var(--gris)">guía visual para el equipo</small></h3>
+    <div class="fila" style="align-items:center"><span style="flex:1">${estado}</span>
+      <button class="btn-sec" id="e-ficha" ${st.fichasOk ? '' : 'disabled'}>✏️ ${f ? 'Editar' : 'Crear'} ficha</button>
+      <button class="btn-sec" id="e-ficha-ver" ${f ? '' : 'disabled'}>🖨️ Ver / imprimir</button></div></div>`;
+}
+function enlazarBloqueFicha() {
+  if ($('e-ficha')) $('e-ficha').onclick = () => editarFicha(st.ed.producto_id);
+  if ($('e-ficha-ver')) $('e-ficha-ver').onclick = () => elegirImpresion([st.ed.producto_id]);
+}
+// ----- editor -----
+function editarFicha(pid) {
+  const p = prodDe(pid), ed = st.ed && st.ed.producto_id === pid ? st.ed : null;
+  const f = JSON.parse(JSON.stringify(fichaDe(pid) || fichaVacia(pid)));
+  f.montaje = f.montaje || []; f.pasos = f.pasos || [];
+  let nuevaFoto = null;
+  $('modal-c').classList.add('ancho');
+  $('modal-c').innerHTML = `<h3 style="margin-top:0">🧑‍🍳 Ficha de cocina · ${esc(p.nombre)}</h3>
+    <p class="ayuda" style="margin:0 0 10px">Lo que va en la ficha impresa. Escribe corto y claro: una acción por línea.</p>
+    <div class="fg-ficha">
+      <div><label class="lbl">📷 Foto del producto terminado</label>
+        <div class="ff-foto" id="ff-foto">${f.foto ? `<img src="${fotoUrl(f.foto)}">` : '<span>Toca para subir la foto<br><small>(como debe salir al cliente)</small></span>'}</div>
+        <input type="file" accept="image/*" id="ff-file" class="oculto">
+        ${f.foto ? '<button class="btn-mini" id="ff-quitar" style="margin-top:4px">Quitar foto</button>' : ''}
+        <div class="grid2" style="margin-top:8px">
+          <div class="campo"><label>⏱ Tiempo (min)</label><input id="ff-t" type="number" min="0" value="${f.tiempo_min ?? ''}" placeholder="8"></div>
+          <div class="campo"><label>🍽 Porción / se sirve en</label><input id="ff-por" value="${esc(f.porcion || '')}" placeholder="Plato tendido 27 cm"></div>
+        </div>
+        <div class="campo" style="margin-top:8px"><label>🔪 Utensilios / equipos</label><input id="ff-ut" value="${esc(f.utensilios || '')}" placeholder="Plancha, espátula, pinza"></div>
+      </div>
+      <div>
+        <div class="fila" style="align-items:center;margin-bottom:4px"><label class="lbl" style="margin:0;flex:1">🧱 Montaje / orden de ingredientes</label>
+          <select id="ff-mt" style="width:auto;padding:5px"><option value="capas" ${f.montaje_tipo === 'capas' ? 'selected' : ''}>Por capas (1 = abajo)</option><option value="orden" ${f.montaje_tipo === 'orden' ? 'selected' : ''}>En orden (1 = primero)</option></select></div>
+        <div id="ff-mon"></div>
+        <div class="fila" style="margin-top:4px"><button class="btn-mini" id="ff-mon-mas">+ Capa / ingrediente</button>${ed && ed.lineas.length ? '<button class="btn-mini" id="ff-traer">⤵ Traer ingredientes de la receta</button>' : ''}</div>
+        <label class="lbl" style="margin-top:12px">👣 Pasos de preparación</label>
+        <div id="ff-pas"></div>
+        <button class="btn-mini" id="ff-pas-mas" style="margin-top:4px">+ Paso</button>
+      </div>
+    </div>
+    <div class="grid2" style="margin-top:10px">
+      <div class="campo"><label>🍽 Emplatado / cómo sale al cliente</label><textarea id="ff-emp" rows="2" placeholder="Cortar en diagonal, papas a la derecha, salsa en pocillo">${esc(f.emplatado || '')}</textarea></div>
+      <div class="campo"><label>💡 Consejo</label><textarea id="ff-con" rows="2" placeholder="Tostar el pan para que no se humedezca">${esc(f.consejo || '')}</textarea></div>
+    </div>
+    <div class="campo" style="margin-top:8px"><label>🚫 No hacer (errores típicos)</label><input id="ff-no" value="${esc(f.no_hacer || '')}" placeholder="No poner el tomate directo sobre el pan"></div>
+    <div class="fila" style="justify-content:flex-end;margin-top:12px"><button class="btn-sec" id="ff-cancel">Cancelar</button><button class="btn-sec" id="ff-prev">👁 Vista previa</button><button class="btn" id="ff-ok">Guardar ficha</button></div>
+    <div class="error" id="ff-err"></div>`;
+  $('modal').classList.remove('oculto');
+  const fila = (arr, i, campos) => `<div class="ff-row" data-i="${i}"><span class="ff-n">${i + 1}</span>${campos}
+      <button class="btn-mini" data-up="${i}" title="Subir">↑</button><button class="btn-mini" data-dn="${i}" title="Bajar">↓</button><button class="btn-mini" data-del="${i}" title="Quitar" style="color:var(--mal)">✕</button></div>`;
+  const pintarMon = () => $('ff-mon').innerHTML = f.montaje.map((m, i) => fila(f.montaje, i, `<input data-k="texto" value="${esc(m.texto)}" placeholder="${i ? 'Ingrediente' : 'Pan de abajo'}" style="flex:2"><input data-k="cantidad" value="${esc(m.cantidad || '')}" placeholder="cant. (30 g)" style="flex:1">`)).join('') || '<div class="ayuda" style="margin:4px 0">Sin capas todavía.</div>';
+  const pintarPas = () => $('ff-pas').innerHTML = f.pasos.map((x, i) => fila(f.pasos, i, `<input data-k="texto" value="${esc(x.texto)}" placeholder="Acción corta: Sellar la carne 2 min por lado" style="flex:3"><input data-k="tiempo" value="${esc(x.tiempo || '')}" placeholder="⏱ 2 min" style="flex:1"><label class="check" title="Paso crítico" style="font-size:12px"><input type="checkbox" data-k="alerta" ${x.alerta ? 'checked' : ''}>⚠</label>`)).join('') || '<div class="ayuda" style="margin:4px 0">Sin pasos todavía.</div>';
+  const lista = (cont, arr, pintar) => {
+    cont.oninput = cont.onchange = e => { const r = e.target.closest('.ff-row'); if (!r || !e.target.dataset.k) return; const it = arr[Number(r.dataset.i)]; it[e.target.dataset.k] = e.target.type === 'checkbox' ? e.target.checked : e.target.value; };
+    cont.onclick = e => { const b = e.target.closest('button'); if (!b) return; const u = b.dataset.up, d = b.dataset.dn, x = b.dataset.del;
+      if (u != null && u > 0) [arr[u - 1], arr[u]] = [arr[u], arr[u - 1]];
+      if (d != null && d < arr.length - 1) [arr[+d + 1], arr[d]] = [arr[d], arr[+d + 1]];
+      if (x != null) arr.splice(Number(x), 1);
+      pintar(); };
+  };
+  lista($('ff-mon'), f.montaje, pintarMon); lista($('ff-pas'), f.pasos, pintarPas);
+  pintarMon(); pintarPas();
+  $('ff-mon-mas').onclick = () => { f.montaje.push({ texto: '', cantidad: '' }); pintarMon(); [...$('ff-mon').querySelectorAll('input[data-k="texto"]')].pop().focus(); };
+  $('ff-pas-mas').onclick = () => { f.pasos.push({ texto: '', tiempo: '', alerta: false }); pintarPas(); [...$('ff-pas').querySelectorAll('input[data-k="texto"]')].pop().focus(); };
+  if ($('ff-traer')) $('ff-traer').onclick = () => {
+    const rend = Number(ed.rendimiento) > 0 ? Number(ed.rendimiento) : 1;
+    ed.lineas.forEach(l => { const ins = prodDe(l.insumo_id); if (!ins || f.montaje.some(m => m.texto === ins.nombre)) return;
+      const c = Number(l.cantidad) / rend; f.montaje.push({ texto: ins.nombre, cantidad: c ? `${N(c, 2)} ${l.unidad || ''}`.trim() : '' }); });
+    pintarMon();
+  };
+  $('ff-foto').onclick = () => $('ff-file').click();
+  $('ff-file').onchange = async e => { const file = e.target.files[0]; if (!file) return; nuevaFoto = await achicarFoto(file); $('ff-foto').innerHTML = `<img src="${URL.createObjectURL(nuevaFoto)}">`; };
+  if ($('ff-quitar')) $('ff-quitar').onclick = () => { f.foto = null; nuevaFoto = null; $('ff-foto').innerHTML = '<span>Toca para subir la foto</span>'; $('ff-quitar').remove(); };
+  const leer = () => Object.assign(f, { tiempo_min: $('ff-t').value === '' ? null : Math.round(Number($('ff-t').value)), porcion: $('ff-por').value.trim(), utensilios: $('ff-ut').value.trim(),
+    montaje_tipo: $('ff-mt').value, emplatado: $('ff-emp').value.trim(), consejo: $('ff-con').value.trim(), no_hacer: $('ff-no').value.trim(),
+    montaje: f.montaje.filter(m => String(m.texto).trim()), pasos: f.pasos.filter(x => String(x.texto).trim()) });
+  $('ff-cancel').onclick = cerrarFicha;
+  $('ff-prev').onclick = () => { leer(); imprimirFichas([{ f: { ...f, _fotoLocal: nuevaFoto ? URL.createObjectURL(nuevaFoto) : null }, p }], 'A5', true); };
+  $('ff-ok').onclick = async () => {
+    leer(); $('ff-ok').disabled = true; $('ff-err').textContent = '';
+    try {
+      if (nuevaFoto) {
+        const ruta = `${pid}/${Date.now()}.jpg`;
+        const up = await sb.storage.from(FICHA_BUCKET).upload(ruta, nuevaFoto, { contentType: 'image/jpeg', upsert: true });
+        if (up.error) throw up.error;
+        f.foto = ruta;
+      }
+      const reg = { ...f, actualizado_en: new Date().toISOString(), actualizado_por: st.usuario?.nombre || null };
+      delete reg._fotoLocal;
+      const { error } = await sb.from('fichas_cocina').upsert(reg, { onConflict: 'producto_id' });
+      if (error) throw error;
+      st.fichas[pid] = reg; cerrarFicha(); if (st.ed && st.ed.producto_id === pid) pintarEditor();
+    } catch (er) { $('ff-err').textContent = /bucket|storage/i.test(er.message || '') ? 'No se pudo subir la foto: ¿corriste 71_fichas_cocina.sql? ' + errTxt(er) : errTxt(er); }
+    $('ff-ok').disabled = false;
+  };
+}
+function cerrarFicha() { cerrarModal(); $('modal-c').classList.remove('ancho'); }
+// la foto se achica antes de subir (máx. 1400 px, JPG) para que pese poco
+async function achicarFoto(file) {
+  const img = await new Promise((ok, mal) => { const i = new Image(); i.onload = () => ok(i); i.onerror = mal; i.src = URL.createObjectURL(file); });
+  const k = Math.min(1, 1400 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+  c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return await new Promise(ok => c.toBlob(b => ok(new File([b], 'foto.jpg', { type: 'image/jpeg' })), 'image/jpeg', 0.85));
+}
+// ----- elegir qué imprimir -----
+function elegirImpresion(preseleccion) {
+  const conFicha = st.productos.filter(p => fichaDe(p.id)).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+  if (!conFicha.length) return alert('Aún no hay fichas. Abre una receta y toca "Crear ficha".');
+  const sel = new Set(preseleccion || conFicha.map(p => p.id));
+  const cat = id => { const c = st.categorias.find(x => x.id === id); return c ? c.nombre : 'Sin categoría'; };
+  $('modal-c').classList.remove('ancho');
+  $('modal-c').innerHTML = `<h3 style="margin-top:0">🖨️ Imprimir fichas de cocina</h3>
+    <div class="campo"><label>Tamaño de cada ficha</label><div class="chips" id="fi-tam"><button data-t="A5" class="activa">½ A4 (A5) · 2 por hoja</button><button data-t="A6">¼ A4 (A6) · 4 por hoja</button></div></div>
+    <div class="fila" style="margin:10px 0 6px;align-items:center"><b style="flex:1">${conFicha.length} ficha(s)</b><button class="btn-mini" id="fi-todas">Todas</button><button class="btn-mini" id="fi-ninguna">Ninguna</button></div>
+    <div style="max-height:46vh;overflow:auto;border:1px solid var(--borde);border-radius:8px">${conFicha.map(p => `<label class="check" style="padding:7px 10px;border-bottom:1px solid #f3f0ed"><input type="checkbox" data-fp="${p.id}" ${sel.has(p.id) ? 'checked' : ''}> ${esc(p.nombre)} <small style="color:var(--gris);margin-left:auto">${esc(cat(p.categoria_id))}${fichaDe(p.id).foto ? ' · 📷' : ''}</small></label>`).join('')}</div>
+    <p class="ayuda" style="margin-top:8px">Se imprime en hojas A4 con líneas de corte. Para enmicar, usa papel de 120–160 g e imprime a color.</p>
+    <div class="fila" style="justify-content:flex-end;margin-top:10px"><button class="btn-sec" onclick="cerrarModal()">Cerrar</button><button class="btn" id="fi-ok">🖨️ Imprimir</button></div>`;
+  $('modal').classList.remove('oculto');
+  let tam = 'A5';
+  $('fi-tam').onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; tam = b.dataset.t; [...$('fi-tam').children].forEach(x => x.classList.toggle('activa', x === b)); };
+  $('fi-todas').onclick = () => $('modal-c').querySelectorAll('[data-fp]').forEach(x => x.checked = true);
+  $('fi-ninguna').onclick = () => $('modal-c').querySelectorAll('[data-fp]').forEach(x => x.checked = false);
+  $('fi-ok').onclick = () => {
+    const ids = [...$('modal-c').querySelectorAll('[data-fp]:checked')].map(x => Number(x.dataset.fp));
+    if (!ids.length) return alert('Elige al menos una ficha.');
+    imprimirFichas(ids.map(id => ({ f: fichaDe(id), p: prodDe(id) })), tam);
+  };
+}
+// ----- la ficha impresa -----
+function htmlFicha({ f, p }, tam, cara) {
+  // cara: undefined = todo en una cara (A5) · 'frente' = foto + armado · 'dorso' = pasos (A6, para imprimir a doble cara)
+  const foto = f._fotoLocal || fotoUrl(f.foto);
+  const cat = (st.categorias.find(c => c.id === p.categoria_id) || {}).nombre || '';
+  const mon = f.montaje || [], capas = f.montaje_tipo !== 'orden';
+  const filasMon = (capas ? mon.map((m, i) => ({ ...m, n: i + 1 })).reverse() : mon.map((m, i) => ({ ...m, n: i + 1 })));
+  const tonos = ['#f6d7a7', '#e9f1d8', '#fde2e2', '#e3eefc', '#fff1c2', '#efe3f8', '#dff5ef', '#f9e4d4'];
+  const izq = `${foto ? `<div class="fc-foto"><img src="${foto}"><span>ASÍ DEBE SALIR</span></div>` : ''}
+    ${mon.length ? `<div class="fc-tit">${capas ? '🧱 ARMADO · de abajo ↑ hacia arriba' : '🧱 ORDEN DE INGREDIENTES'}</div>
+      <div class="fc-mon ${capas ? 'capas' : ''}">${filasMon.map(m => `<div class="fc-capa" style="background:${tonos[(m.n - 1) % tonos.length]}"><b class="fc-num">${m.n}</b><span class="fc-txt">${esc(m.texto)}</span>${m.cantidad ? `<b class="fc-cant">${esc(m.cantidad)}</b>` : ''}</div>`).join('')}</div>` : ''}`;
+  const der = `${f.utensilios ? `<div class="fc-ut">🔪 ${esc(f.utensilios)}</div>` : ''}
+    ${(f.pasos || []).length ? `<div class="fc-tit">👣 PASOS</div><ol class="fc-pasos">${f.pasos.map(x => `<li class="${x.alerta ? 'alerta' : ''}"><span>${x.alerta ? '⚠ ' : ''}${esc(x.texto)}</span>${x.tiempo ? `<em>${esc(x.tiempo)}</em>` : ''}</li>`).join('')}</ol>` : ''}
+    ${f.emplatado ? `<div class="fc-caja emp"><b>🍽 SALE ASÍ</b>${esc(f.emplatado)}</div>` : ''}
+    ${f.consejo ? `<div class="fc-caja con"><b>💡 CONSEJO</b>${esc(f.consejo)}</div>` : ''}
+    ${f.no_hacer ? `<div class="fc-caja no"><b>🚫 NO HACER</b>${esc(f.no_hacer)}</div>` : ''}`;
+  const cuerpo = cara === 'frente' ? `<div class="fc-col">${izq}</div>` : cara === 'dorso' ? `<div class="fc-col">${der}</div>` : `<div class="fc-col">${izq}</div><div class="fc-col">${der}</div>`;
+  return `<div class="fc ${tam} ${cara ? 'una' : ''}">
+    <div class="fc-cab"><div><div class="fc-nom">${esc(p.nombre)}</div><div class="fc-sub">${esc(cat)}${p.codigo ? ' · ' + esc(p.codigo) : ''}${cara === 'dorso' ? ' · PREPARACIÓN' : cara === 'frente' ? ' · ARMADO' : ''}</div></div>
+      <div class="fc-meta">${f.tiempo_min ? `<span>⏱ ${f.tiempo_min} min</span>` : ''}${f.porcion ? `<span>🍽 ${esc(f.porcion)}</span>` : ''}</div></div>
+    <div class="fc-cuerpo">${cuerpo}</div>
+    <div class="fc-pie">Kadima · Ficha de cocina${cara ? (cara === 'frente' ? ' · voltea para ver los pasos ↻' : '') : ''}</div>
+  </div>`;
+}
+const CSS_FICHA = `@page{size:A4 portrait;margin:0}*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#1f1f1f;-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#eee}
+.hoja{width:210mm;height:297mm;background:#fff;display:grid;page-break-after:always;margin:0 auto 6mm;position:relative;overflow:hidden}
+.hoja.A5{grid-template-rows:148.5mm 148.5mm}.hoja.A6{grid-template-columns:105mm 105mm;grid-template-rows:148.5mm 148.5mm}
+.hoja .celda{border:0.2mm dashed #bbb;padding:4mm;overflow:hidden;min-height:0;min-width:0}
+.hoja .celda.vacia{border-color:transparent}
+.fc{width:100%;height:100%;border:0.6mm solid #8B0000;border-radius:3mm;display:flex;flex-direction:column;overflow:hidden;font-size:var(--fs,11pt)}
+.fc-cab{background:#8B0000;color:#fff;padding:.45em .7em;display:flex;justify-content:space-between;align-items:center;gap:.6em;flex-shrink:0}
+.fc-nom{font-size:1.6em;font-weight:900;line-height:1.05;text-transform:uppercase}.fc-sub{font-size:.72em;opacity:.85}
+.fc-meta{display:flex;flex-direction:column;gap:.2em;align-items:flex-end}.fc-meta span{background:#fff;color:#8B0000;font-weight:800;border-radius:.4em;padding:.1em .5em;font-size:.85em;white-space:nowrap}
+.fc-cuerpo{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:.7em;padding:.6em;min-height:0;overflow:hidden}
+.fc.una .fc-cuerpo{grid-template-columns:1fr}
+.fc-col{min-width:0;min-height:0}
+.fc-foto{position:relative;border-radius:.45em;overflow:hidden;height:13em;margin-bottom:.5em;background:#f6f4f2}
+.fc.una .fc-foto{height:15em}
+.fc-foto img{width:100%;height:100%;object-fit:cover;display:block}
+.fc-foto span{position:absolute;left:.4em;bottom:.4em;background:#1e7d3a;color:#fff;font-weight:800;font-size:.68em;padding:.15em .6em;border-radius:.4em}
+.fc-tit{font-weight:900;color:#8B0000;font-size:.8em;letter-spacing:.3px;margin:.25em 0 .3em}
+.fc-mon{display:flex;flex-direction:column;gap:.22em}
+.fc-capa{display:flex;align-items:center;gap:.5em;border-radius:.4em;padding:.25em .5em;border:.25mm solid rgba(0,0,0,.08)}
+.fc-mon.capas .fc-capa:last-child{border-bottom:.22em solid #8B0000}
+.fc-num{background:#8B0000;color:#fff;border-radius:50%;min-width:1.45em;height:1.45em;display:flex;align-items:center;justify-content:center;font-size:.85em}
+.fc-txt{flex:1;font-weight:700}.fc-cant{white-space:nowrap;font-size:.95em}
+.fc-ut{background:#f6f4f2;border-radius:.4em;padding:.3em .5em;font-size:.85em;margin-bottom:.35em}
+.fc-pasos{margin:0;padding-left:0;list-style:none;counter-reset:p;display:flex;flex-direction:column;gap:.3em}
+.fc-pasos li{counter-increment:p;display:flex;gap:.5em;align-items:flex-start;line-height:1.25}
+.fc-pasos li::before{content:counter(p);background:#1f1f1f;color:#fff;border-radius:50%;min-width:1.4em;height:1.4em;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8em;flex-shrink:0}
+.fc-pasos li span{flex:1;font-weight:600}.fc-pasos li em{font-style:normal;font-weight:800;background:#fff1c2;border-radius:.35em;padding:0 .4em;white-space:nowrap;font-size:.85em}
+.fc-pasos li.alerta span{color:#b00020}
+.fc-caja{border-radius:.4em;padding:.35em .5em;margin-top:.4em;font-size:.88em;line-height:1.25}.fc-caja b{display:block;font-size:.85em;margin-bottom:.1em}
+.fc-caja.emp{background:#e7f6ec}.fc-caja.con{background:#fff6dc}.fc-caja.no{background:#fde8e8;color:#8b1a1a}
+.fc-pie{font-size:.6em;color:#888;text-align:right;padding:0 .8em .35em;flex-shrink:0}
+@media print{body{background:#fff}.hoja{margin:0}.barra-imp{display:none}}
+.barra-imp{position:sticky;top:0;background:#8B0000;color:#fff;padding:10px;text-align:center;font-family:Arial;z-index:5;font-size:14px}.barra-imp button{font:inherit;font-weight:700;padding:8px 16px;border:0;border-radius:8px;margin-left:8px;cursor:pointer}`;
+function imprimirFichas(lista, tam, soloVer) {
+  const hojas = [];
+  if (tam === 'A6') {
+    // ¼ A4 a DOBLE CARA: hoja de frentes (foto + armado) y luego hoja de dorsos (pasos), en espejo
+    // para que al imprimir por ambas caras (borde largo) cada dorso caiga detrás de su frente
+    for (let i = 0; i < lista.length; i += 4) {
+      const g = lista.slice(i, i + 4), celdas = k => g[k] ? `<div class="celda">${htmlFicha(g[k], tam, 'frente')}</div>` : '<div class="celda vacia"></div>';
+      const dorso = k => g[k] ? `<div class="celda">${htmlFicha(g[k], tam, 'dorso')}</div>` : '<div class="celda vacia"></div>';
+      hojas.push(`<div class="hoja A6">${[0, 1, 2, 3].map(celdas).join('')}</div>`);
+      hojas.push(`<div class="hoja A6">${[1, 0, 3, 2].map(dorso).join('')}</div>`);
+    }
+  } else for (let i = 0; i < lista.length; i += 2) hojas.push(`<div class="hoja A5">${lista.slice(i, i + 2).map(x => `<div class="celda">${htmlFicha(x, tam)}</div>`).join('')}</div>`);
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Fichas de cocina · Kadima</title><style>${CSS_FICHA}</style></head><body>
+    <div class="barra-imp">${lista.length} ficha(s) · ${tam === 'A6' ? '¼ A4 · imprime a DOBLE CARA (voltear por el borde largo)' : '½ A4 · una cara'} <button onclick="print()">🖨️ Imprimir</button></div>
+    ${hojas.join('')}
+    <script>
+      // si el contenido no entra en la ficha, se achica todo (letra, cajas y foto) hasta que entre
+      function ajustar(){ document.querySelectorAll('.fc').forEach(function(fc){ var c = fc.querySelector('.fc-cuerpo'), fs = ${tam === 'A6' ? 11 : 11.5};
+        fc.style.setProperty('--fs', fs + 'pt'); var n = 0;
+        function sobra(){ var cols = c.querySelectorAll('.fc-col'), m = false; for (var i = 0; i < cols.length; i++) if (cols[i].scrollHeight > c.clientHeight - 2) m = true; return m || c.scrollHeight > c.clientHeight + 1; }
+        while (sobra() && fs > 5.5 && n++ < 60) { fs -= 0.25; fc.style.setProperty('--fs', fs + 'pt'); } }); }
+      var imgs = [].slice.call(document.images), faltan = imgs.length;
+      function listo(){ ajustar(); ${soloVer ? '' : 'setTimeout(function(){ print(); }, 300);'} }
+      if (!faltan) listo(); else imgs.forEach(function(i){ if (i.complete) { if (!--faltan) listo(); } else { i.onload = i.onerror = function(){ if (!--faltan) listo(); }; } });
+    <\/script></body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) return alert('El navegador bloqueó la ventana. Permite ventanas emergentes para kadima.pe.');
+  w.document.open(); w.document.write(html); w.document.close();
+}
 
 iniciar();
 </script>
