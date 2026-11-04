@@ -66,6 +66,22 @@ table.t{width:100%;border-collapse:collapse}
 .check{display:flex;gap:8px;align-items:center;font-size:14px}.check input{width:auto}
 .prods td{font-size:13px}
 @media (max-width:900px){.cuerpo{grid-template-columns:1fr}.lista{position:static;max-height:40vh}.kpis{grid-template-columns:1fr 1fr}}
+/* árbol de categorías */
+.arbol-w{display:grid;grid-template-columns:minmax(300px,420px) 1fr;gap:14px;align-items:start}
+.arbol-col{max-height:calc(100vh - 100px);overflow:auto}
+.nodo{display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:8px;cursor:pointer;user-select:none}
+.nodo:hover{background:#fbf6f3}.nodo.sel{background:#fff0f0;outline:1.5px solid var(--rojo)}
+.nodo.drop{background:#e9f5ef;outline:2px dashed var(--ok)}
+.nodo .fl{width:18px;color:var(--gris);font-size:12px;flex-shrink:0}
+.nodo .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nodo.pri .nm{font-weight:800;color:var(--rojo)}.nodo.cat{margin-left:22px}.nodo.prod{margin-left:46px;font-size:13px;color:#444;cursor:grab}
+.nodo .ct{font-size:11px;background:var(--fondo);color:var(--gris);border-radius:10px;padding:1px 7px;font-weight:700}
+.nodo .ac{display:none;gap:3px}.nodo:hover .ac,.nodo.sel .ac{display:flex}
+.nodo .ac button{background:var(--fondo);padding:3px 7px;font-size:12px}
+.pr-row{display:flex;align-items:center;gap:8px;padding:7px 6px;border-bottom:1px solid #f3f0ed;cursor:grab}
+.pr-row:hover{background:#fbf9f7}.pr-row .nm{flex:1;min-width:0}.pr-row small{color:var(--gris)}
+.pr-row select{width:auto;max-width:220px;padding:5px 6px;font-size:12px}
+@media (max-width:900px){.arbol-w{grid-template-columns:1fr}.arbol-col{max-height:none}}
 .embebido #b-salir,.embebido #b-usr,.embebido .barra>b{display:none!important}
 </style>
 </head>
@@ -89,7 +105,7 @@ table.t{width:100%;border-collapse:collapse}
 
 <section id="v-app" class="oculto">
   <div class="barra"><b>KADIMA</b>
-    <div class="tabs" id="tabs"><button data-t="recetas" class="activa">Recetas y food cost</button><button data-t="productos">Productos</button></div>
+    <div class="tabs" id="tabs"><button data-t="recetas" class="activa">Recetas y food cost</button><button data-t="productos">Productos</button><button data-t="categorias">🌳 Categorías</button></div>
     <span class="usr" id="b-usr"></span><button id="b-salir">Cambiar usuario</button></div>
   <div id="t-recetas" class="cuerpo">
     <div class="lista">
@@ -115,6 +131,20 @@ table.t{width:100%;border-collapse:collapse}
       </div>
       <div id="p-resultado" class="oculto" style="background:#faf8f6;border-radius:10px;padding:12px;margin-bottom:12px;font-size:13px"></div>
       <div style="overflow:auto;max-height:75vh"><table class="t prods"><thead><tr><th>Código</th><th>Nombre</th><th>Tipo</th><th>Unidad</th><th>Categoría</th><th class="n">Precio venta</th><th>Se descuenta</th><th>Receta</th><th></th></tr></thead><tbody id="p-filas"></tbody></table></div>
+    </div>
+  </div>
+  <div id="t-categorias" class="oculto" style="padding:16px;max-width:1300px;margin:0 auto">
+    <div class="arbol-w">
+      <div class="bloque arbol-col">
+        <div class="fila" style="margin-bottom:10px;align-items:center">
+          <h3 style="margin:0">Árbol de categorías</h3>
+          <button class="btn" id="a-nueva-p" style="margin-left:auto;padding:7px 12px">+ Categoría principal</button>
+        </div>
+        <input id="a-q" placeholder="Buscar categoría o producto…" style="margin-bottom:8px">
+        <p class="ayuda" style="margin:0 0 8px">Abre cada rama con ▸. Arrastra productos de la derecha y suéltalos sobre una categoría para moverlos.</p>
+        <div id="a-arbol"></div>
+      </div>
+      <div class="bloque arbol-col" id="a-panel"><div class="vacio">Elige una categoría del árbol para ver y asignar sus productos.</div></div>
     </div>
   </div>
 </section>
@@ -190,7 +220,8 @@ async function abrirApp() {
   await cargarMaestros(); pintarLista();
 }
 $('tabs').onclick = e => { const t = e.target.dataset.t; if (!t) return; [...$('tabs').children].forEach(b => b.classList.toggle('activa', b.dataset.t === t));
-  $('t-recetas').classList.toggle('oculto', t !== 'recetas'); $('t-productos').classList.toggle('oculto', t !== 'productos'); if (t === 'productos') pintarProductos(); };
+  $('t-recetas').classList.toggle('oculto', t !== 'recetas'); $('t-productos').classList.toggle('oculto', t !== 'productos'); $('t-categorias').classList.toggle('oculto', t !== 'categorias');
+  if (t === 'productos') pintarProductos(); if (t === 'categorias') pintarArbol(); };
 
 // ===== LISTA DE RECETAS =====
 $('r-tipos').onclick = e => { const k = e.target.dataset.k; if (k === undefined) return; st.filtro = k; [...$('r-tipos').children].forEach(b => b.classList.toggle('activa', b.dataset.k === k)); pintarLista(); };
@@ -647,6 +678,153 @@ function formProducto(p, alGuardar) {
     cerrarModal(); await cargarMaestros(); pintarLista(); alGuardar && alGuardar(res.data);
   };
 }
+
+// ===================== ÁRBOL DE CATEGORÍAS =====================
+// categoría principal (texto) → categoría (tabla categorias) → productos (productos.categoria_id)
+const ar = { abiertos: new Set(JSON.parse(localStorage.getItem('kadima_arbol') || '[]')), sel: null, nuevasP: [], verInact: false };
+const guardarAbiertos = () => { try { localStorage.setItem('kadima_arbol', JSON.stringify([...ar.abiertos])); } catch (e) {} };
+const SIN = '__sin__';
+function principales() {
+  const l = [...new Set(st.categorias.map(c => c.categoria_principal || 'Sin principal'))];
+  ar.nuevasP.forEach(x => { if (!l.includes(x)) l.push(x); });
+  return l.sort((a, b) => a.localeCompare(b, 'es'));
+}
+const catsDe = pri => st.categorias.filter(c => (c.categoria_principal || 'Sin principal') === pri).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+const prodsDe = catId => st.productos.filter(p => (catId === SIN ? !p.categoria_id || !st.categorias.some(c => c.id === p.categoria_id) : p.categoria_id === catId) && (ar.verInact || p.activo));
+function pintarArbol() {
+  const q = ($('a-q').value || '').trim().toLowerCase();
+  const coincide = t => !q || String(t || '').toLowerCase().includes(q);
+  let html = '';
+  principales().forEach(pri => {
+    const cats = catsDe(pri);
+    const catsVis = cats.filter(c => coincide(pri) || coincide(c.nombre) || (q && prodsDe(c.id).some(p => coincide(p.nombre) || coincide(p.codigo))));
+    if (q && !catsVis.length && !coincide(pri)) return;
+    const kp = 'p:' + pri, abiertoP = ar.abiertos.has(kp) || !!q;
+    const n = cats.reduce((a, c) => a + prodsDe(c.id).length, 0);
+    html += `<div class="nodo pri" data-pri="${esc(pri)}"><span class="fl">${abiertoP ? '▾' : '▸'}</span><span class="nm">📁 ${esc(pri)}</span><span class="ct">${cats.length} cat · ${n}</span>
+      <span class="ac"><button data-acc="nueva-c" title="Nueva categoría dentro">＋</button><button data-acc="ren-p" title="Renombrar">✎</button></span></div>`;
+    if (!abiertoP) return;
+    (q ? catsVis : cats).forEach(c => html += nodoCat(c, q, coincide));
+    if (!cats.length) html += `<div class="nodo cat" style="color:var(--gris);cursor:default"><span class="fl"></span><span class="nm">Sin categorías: toca ＋ para crear la primera</span></div>`;
+  });
+  const sin = prodsDe(SIN);
+  html += nodoCat({ id: SIN, nombre: 'Sin categoría' }, q, coincide, sin.length);
+  $('a-arbol').innerHTML = html || '<div class="vacio">Sin resultados.</div>';
+  pintarPanel();
+}
+function nodoCat(c, q, coincide) {
+  const ps = prodsDe(c.id), kc = 'c:' + c.id, abierto = ar.abiertos.has(kc) || (q && ps.some(p => coincide(p.nombre) || coincide(p.codigo)));
+  const vis = q ? ps.filter(p => coincide(p.nombre) || coincide(p.codigo) || coincide(c.nombre)) : ps;
+  return `<div class="nodo cat ${ar.sel === c.id ? 'sel' : ''}" data-cat="${c.id}"${c.id === SIN ? ' style="margin:10px 0 0;border-top:1px dashed var(--borde);border-radius:0;padding-top:12px"' : ''}><span class="fl">${ps.length ? (abierto ? '▾' : '▸') : ''}</span><span class="nm">${c.id === SIN ? '❔' : '🏷️'} ${esc(c.nombre)}</span><span class="ct">${ps.length}</span>
+    ${c.id === SIN ? '' : `<span class="ac"><button data-acc="ren-c" title="Renombrar">✎</button><button data-acc="mov-c" title="Mover a otra categoría principal">⇄</button>${ps.length ? '' : '<button data-acc="del-c" title="Eliminar (está vacía)">🗑</button>'}</span>`}</div>`
+    + (abierto ? vis.map(p => `<div class="nodo prod" draggable="true" data-prod="${p.id}" title="Arrástralo a otra categoría"><span class="fl"></span><span class="nm">${esc(p.nombre)}</span><span class="ct">${esc(p.codigo)}</span></div>`).join('') : '');
+}
+function pintarPanel() {
+  if (ar.sel == null) return;
+  const c = ar.sel === SIN ? { id: SIN, nombre: 'Sin categoría' } : st.categorias.find(x => x.id === ar.sel);
+  if (!c) { ar.sel = null; $('a-panel').innerHTML = '<div class="vacio">Elige una categoría del árbol.</div>'; return; }
+  const ps = prodsDe(c.id);
+  const opciones = principales().map(pri => `<optgroup label="${esc(pri)}">${catsDe(pri).map(x => `<option value="${x.id}">${esc(x.nombre)}</option>`).join('')}</optgroup>`).join('');
+  $('a-panel').innerHTML = `<div class="fila" style="align-items:center;margin-bottom:6px"><h3 style="margin:0">${c.id === SIN ? '❔' : '🏷️'} ${esc(c.nombre)} <small style="color:var(--gris);font-weight:400">${c.id === SIN ? '' : '· ' + esc(c.categoria_principal || 'Sin principal')} · ${ps.length} producto(s)</small></h3>
+      <label class="check" style="margin-left:auto;font-size:12px;color:var(--gris)"><input type="checkbox" id="a-inact" ${ar.verInact ? 'checked' : ''}> Ver inactivos</label></div>
+    ${c.id === SIN ? '' : `<div class="buscador" style="margin-bottom:10px"><input id="a-add" placeholder="＋ Agregar producto a ${esc(c.nombre)}: escribe nombre o código" autocomplete="off"><div class="resultados oculto" id="a-res"></div></div>`}
+    <div id="a-prods">${ps.map(p => `<div class="pr-row" draggable="true" data-prod="${p.id}"><span class="nm"><b>${esc(p.nombre)}</b> <small>${esc(p.codigo)}</small> ${tipoTag(p.tipo_item)}${p.activo ? '' : ' <small>(inactivo)</small>'}</span>
+      <select data-mover="${p.id}"><option value="">Mover a…</option>${opciones}<option value="0">— Sin categoría —</option></select></div>`).join('') || '<div class="vacio">Aún no hay productos aquí. Agrégalos con el buscador o arrástralos desde el árbol.</div>'}</div>
+    <p class="ayuda" style="margin-top:10px">También puedes arrastrar un producto y soltarlo sobre una categoría del árbol.</p>`;
+  $('a-inact').onchange = e => { ar.verInact = e.target.checked; pintarArbol(); };
+  if ($('a-add')) {
+    let enc = [];
+    $('a-add').oninput = () => {
+      const q = $('a-add').value.trim().toLowerCase(); if (q.length < 2) return $('a-res').classList.add('oculto');
+      enc = st.productos.filter(p => p.categoria_id !== c.id && (p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q))).slice(0, 15);
+      $('a-res').innerHTML = enc.map(p => { const cc = st.categorias.find(x => x.id === p.categoria_id); return `<div data-p="${p.id}"><span>${esc(p.nombre)} <small>${esc(p.codigo)}</small></span><small>${cc ? 'está en ' + esc(cc.nombre) : 'sin categoría'}</small></div>`; }).join('') || '<div>Sin resultados</div>';
+      $('a-res').classList.remove('oculto');
+    };
+    $('a-res').onclick = async e => { const d = e.target.closest('[data-p]'); if (!d) return; $('a-add').value = ''; $('a-res').classList.add('oculto'); await moverProducto(Number(d.dataset.p), c.id); };
+  }
+  $('a-prods').onchange = e => { const id = e.target.dataset.mover; if (!id || e.target.value === '') return; moverProducto(Number(id), Number(e.target.value) || null); };
+}
+async function moverProducto(pid, catId) {
+  if (catId === SIN) catId = null;
+  const p = st.productos.find(x => x.id === pid); if (!p || p.categoria_id === catId) return;
+  const { error } = await sb.from('productos').update({ categoria_id: catId }).eq('id', pid);
+  if (error) return alert(errTxt(error));
+  p.categoria_id = catId;
+  if (catId) { const c = st.categorias.find(x => x.id === catId); ar.abiertos.add('c:' + catId); if (c) ar.abiertos.add('p:' + (c.categoria_principal || 'Sin principal')); guardarAbiertos(); }
+  pintarArbol();
+}
+$('a-q').oninput = pintarArbol;
+$('a-arbol').onclick = async e => {
+  const b = e.target.closest('[data-acc]'), n = e.target.closest('.nodo'); if (!n) return;
+  const pri = n.dataset.pri, catId = n.dataset.cat ? (n.dataset.cat === SIN ? SIN : Number(n.dataset.cat)) : null;
+  if (b) {
+    const acc = b.dataset.acc, c = st.categorias.find(x => x.id === catId);
+    if (acc === 'nueva-c') {
+      const nom = prompt(`Nueva categoría dentro de "${pri}":`); if (!nom || !nom.trim()) return;
+      const { data, error } = await sb.from('categorias').insert({ nombre: nom.trim(), categoria_principal: pri === 'Sin principal' ? null : pri }).select('id,nombre,categoria_principal').single();
+      if (error) return alert(/duplicate|unique/i.test(error.message) ? 'Ya existe una categoría con ese nombre.' : errTxt(error));
+      st.categorias.push(data); ar.nuevasP = ar.nuevasP.filter(x => x !== pri); ar.abiertos.add('p:' + pri); ar.sel = data.id; guardarAbiertos(); return pintarArbol();
+    }
+    if (acc === 'ren-p') {
+      const nom = prompt('Nuevo nombre de la categoría principal:', pri); if (!nom || !nom.trim() || nom.trim() === pri) return;
+      const ids = catsDe(pri).map(x => x.id);
+      if (ids.length) { const { error } = await sb.from('categorias').update({ categoria_principal: nom.trim() }).in('id', ids); if (error) return alert(errTxt(error)); }
+      st.categorias.forEach(x => { if (ids.includes(x.id)) x.categoria_principal = nom.trim(); });
+      ar.nuevasP = ar.nuevasP.map(x => x === pri ? nom.trim() : x); ar.abiertos.add('p:' + nom.trim()); guardarAbiertos(); return pintarArbol();
+    }
+    if (acc === 'ren-c' && c) {
+      const nom = prompt('Nuevo nombre de la categoría:', c.nombre); if (!nom || !nom.trim() || nom.trim() === c.nombre) return;
+      const { error } = await sb.from('categorias').update({ nombre: nom.trim() }).eq('id', c.id); if (error) return alert(errTxt(error));
+      c.nombre = nom.trim(); return pintarArbol();
+    }
+    if (acc === 'mov-c' && c) {
+      $('modal-c').innerHTML = `<h3 style="margin-top:0">Mover "${esc(c.nombre)}"</h3><p class="ayuda" style="margin:0 0 10px">Elige la categoría principal donde va. Sus productos se van con ella.</p>
+        <div class="campo"><label>Categoría principal</label><select id="mc-dest">${principales().map(x => `<option ${x === (c.categoria_principal || 'Sin principal') ? 'selected' : ''}>${esc(x)}</option>`).join('')}<option value="__nueva__">＋ Nueva categoría principal…</option></select></div>
+        <div class="campo oculto" id="mc-nueva-w" style="margin-top:8px"><label>Nombre de la nueva principal</label><input id="mc-nueva"></div>
+        <div class="fila" style="justify-content:flex-end;margin-top:14px"><button class="btn-sec" onclick="cerrarModal()">Cancelar</button><button class="btn" id="mc-ok">Mover</button></div><div class="error" id="mc-err"></div>`;
+      $('modal').classList.remove('oculto');
+      $('mc-dest').onchange = () => $('mc-nueva-w').classList.toggle('oculto', $('mc-dest').value !== '__nueva__');
+      $('mc-ok').onclick = async () => {
+        const dest = $('mc-dest').value === '__nueva__' ? $('mc-nueva').value.trim() : $('mc-dest').value;
+        if (!dest) return $('mc-err').textContent = 'Escribe el nombre de la nueva principal.';
+        const { error } = await sb.from('categorias').update({ categoria_principal: dest === 'Sin principal' ? null : dest }).eq('id', c.id);
+        if (error) return $('mc-err').textContent = errTxt(error);
+        c.categoria_principal = dest === 'Sin principal' ? null : dest; ar.abiertos.add('p:' + dest); guardarAbiertos(); cerrarModal(); pintarArbol();
+      };
+      return;
+    }
+    if (acc === 'del-c' && c) {
+      if (prodsDe(c.id).length || st.productos.some(p => p.categoria_id === c.id)) return alert('Solo se puede eliminar una categoría vacía (incluidos inactivos).');
+      if (!confirm(`¿Eliminar la categoría "${c.nombre}"?`)) return;
+      const { error } = await sb.from('categorias').delete().eq('id', c.id); if (error) return alert(errTxt(error));
+      st.categorias = st.categorias.filter(x => x.id !== c.id); if (ar.sel === c.id) ar.sel = null; return pintarArbol();
+    }
+    return;
+  }
+  if (n.dataset.prod) return;
+  if (pri) { const k = 'p:' + pri; ar.abiertos.has(k) ? ar.abiertos.delete(k) : ar.abiertos.add(k); guardarAbiertos(); return pintarArbol(); }
+  if (catId != null) { const k = 'c:' + catId; if (ar.sel === catId) { ar.abiertos.has(k) ? ar.abiertos.delete(k) : ar.abiertos.add(k); } else ar.abiertos.add(k); ar.sel = catId; guardarAbiertos(); pintarArbol(); }
+};
+$('a-nueva-p').onclick = async () => {
+  const pri = prompt('Nombre de la nueva categoría principal (ej. Postres, Insumos secos):'); if (!pri || !pri.trim()) return;
+  if (principales().some(x => x.toLowerCase() === pri.trim().toLowerCase())) return alert('Esa categoría principal ya existe.');
+  const cat = prompt(`Primera categoría dentro de "${pri.trim()}" (ej. Extras). Déjalo vacío para crearla después:`);
+  if (cat && cat.trim()) {
+    const { data, error } = await sb.from('categorias').insert({ nombre: cat.trim(), categoria_principal: pri.trim() }).select('id,nombre,categoria_principal').single();
+    if (error) return alert(/duplicate|unique/i.test(error.message) ? 'Ya existe una categoría con ese nombre.' : errTxt(error));
+    st.categorias.push(data); ar.sel = data.id;
+  } else ar.nuevasP.push(pri.trim());
+  ar.abiertos.add('p:' + pri.trim()); guardarAbiertos(); pintarArbol();
+};
+// arrastrar productos (del árbol o del panel) y soltarlos sobre una categoría
+document.addEventListener('dragstart', e => { const d = e.target.closest && e.target.closest('[data-prod]'); if (d && $('t-categorias') && !$('t-categorias').classList.contains('oculto')) e.dataTransfer.setData('text/plain', d.dataset.prod); });
+$('a-arbol').addEventListener('dragover', e => { const n = e.target.closest('.nodo.cat'); if (!n) return; e.preventDefault(); document.querySelectorAll('.nodo.drop').forEach(x => x !== n && x.classList.remove('drop')); n.classList.add('drop'); });
+$('a-arbol').addEventListener('dragleave', e => { const n = e.target.closest('.nodo.cat'); if (n && !n.contains(e.relatedTarget)) n.classList.remove('drop'); });
+$('a-arbol').addEventListener('drop', e => {
+  const n = e.target.closest('.nodo.cat'); if (!n) return; e.preventDefault(); n.classList.remove('drop');
+  const pid = Number(e.dataTransfer.getData('text/plain')); if (!pid) return;
+  moverProducto(pid, n.dataset.cat === SIN ? SIN : Number(n.dataset.cat));
+});
 
 iniciar();
 </script>
