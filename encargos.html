@@ -2729,7 +2729,7 @@ function pintarRapido() {
   const ib = st.ib, p = ib.prod ? st.prodMap[ib.prod] : null;
   $('c-prod-info').innerHTML = p
     ? `Producto: <b>${esc(p.nombre)}</b>${p.codigo ? ' · ' + esc(p.codigo) : ''}${p.precio_venta ? ` · precio de carta <b>${S(p.precio_venta)}</b>${textoEscala(p.id)}` : ' · sin precio en carta'} <a href="#" id="c-quitar-prod">quitar</a>`
-    : 'Elige un producto de la carta o escribe el nombre directo en “Producto”.';
+    : (ib.descripcion ? `✍️ <b>Producto único</b> (no está en la carta): “${esc(ib.descripcion)}”. Pon el precio por unidad y el detalle para producción.` : 'Elige un producto de la carta, o escribe uno nuevo y toca <b>✍️ Usar como producto único</b>.');
   if (p) $('c-quitar-prod').onclick = ev => { ev.preventDefault(); ib.prod = null; pintarRapido(); };
   $('c-desc').value = ib.descripcion || '';
   $('c-precio').value = ib.precio === '' || ib.precio == null ? '' : ib.precio;
@@ -2744,25 +2744,34 @@ buscador($('c-prod'), $('c-pres'), p => ['producto_terminado', 'plato', 'mercade
   ib.prod = id; ib.descripcion = p.nombre; ib.descAuto = false;
   if (!ib.precioManual && p.precio_venta) ib.precio = precioCarta(id, Math.max(1, Number($('c-cant').value || 1)));
   pintarRapido(); $('c-pers').focus();
+}, texto => {
+  // producto a pedido que no existe en el sistema (ej. "Chicha morada 250 ml en botella"): solo para este pedido
+  const ib = st.ib; ib.prod = null; ib.descripcion = texto; ib.descAuto = false;
+  pintarRapido(); $('c-cant').focus(); $('c-cant').select();
+  toast('Producto único: pon unidades, precio y el detalle para producción');
 });
 function cerrarCot() { $('m-cot').classList.add('oculto'); st.ib = null; }
 $('c-cerrar').onclick = cerrarCot;
 
-function buscador(inp, res, filtro, elegir) {
+// libre(texto): opcional; agrega la opción "usar como producto único (no está en la carta)"
+function buscador(inp, res, filtro, elegir, libre) {
   let enc = [], foco = 0;
+  const n = () => enc.length + (libre ? 1 : 0);
   inp.oninput = () => {
     const q = inp.value.trim().toLowerCase(); if (q.length < 2) return res.classList.add('oculto');
     enc = st.productos.filter(p => filtro(p) && (p.nombre.toLowerCase().includes(q) || (p.codigo || '').toLowerCase().includes(q))).slice(0, 15); foco = 0;
-    res.innerHTML = enc.map((p, i) => { const c = costoDe(p.id); return `<div data-p="${p.id}" class="${i ? '' : 'foco'}"><span>${esc(p.nombre)} <small>${esc(p.codigo || '')}</small></span><small>${c != null ? S(c) + '/' + UNI[p.unidad_medida] : 'sin costo'}</small></div>`; }).join('') || '<div>Sin resultados</div>';
+    res.innerHTML = enc.map((p, i) => { const c = costoDe(p.id); return `<div data-p="${p.id}" class="${i ? '' : 'foco'}"><span>${esc(p.nombre)} <small>${esc(p.codigo || '')}</small></span><small>${c != null ? S(c) + '/' + UNI[p.unidad_medida] : 'sin costo'}</small></div>`; }).join('')
+      + (libre ? `<div data-libre="1" class="${enc.length ? '' : 'foco'}" style="color:var(--rojo);font-weight:700"><span>✍️ Usar “${esc(inp.value.trim())}” como producto único</span><small>no está en la carta</small></div>` : (enc.length ? '' : '<div>Sin resultados</div>'));
     res.classList.remove('oculto');
   };
   inp.onkeydown = e => {
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); foco = Math.max(0, Math.min(enc.length - 1, foco + (e.key === 'ArrowDown' ? 1 : -1))); [...res.children].forEach((d, i) => d.classList.toggle('foco', i === foco)); }
-    if (e.key === 'Enter' && enc[foco]) { e.preventDefault(); listo(enc[foco].id); }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); foco = Math.max(0, Math.min(n() - 1, foco + (e.key === 'ArrowDown' ? 1 : -1))); [...res.children].forEach((d, i) => d.classList.toggle('foco', i === foco)); }
+    if (e.key === 'Enter') { e.preventDefault(); if (enc[foco]) listo(enc[foco].id); else if (libre && inp.value.trim()) usarLibre(); }
     if (e.key === 'Escape') res.classList.add('oculto');
   };
-  res.onclick = e => { const d = e.target.closest('[data-p]'); if (d) listo(Number(d.dataset.p)); };
+  res.onclick = e => { if (e.target.closest('[data-libre]')) return usarLibre(); const d = e.target.closest('[data-p]'); if (d) listo(Number(d.dataset.p)); };
   function listo(id) { inp.value = ''; res.classList.add('oculto'); elegir(id); }
+  function usarLibre() { const t = inp.value.trim(); inp.value = ''; res.classList.add('oculto'); libre(t); }
 }
 buscador($('c-base'), $('c-bres'), p => ['producto_terminado', 'intermedio', 'plato'].includes(p.tipo_item), id => {
   st.ib.base = { producto_id: id, cantidad: 1 };
