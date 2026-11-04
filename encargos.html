@@ -1625,33 +1625,73 @@ async function proformaDe(pid) {
   const hoy = new Date(), vence = new Date(hoy.getTime() + PROFORMA_DIAS * 864e5);
   const fF = d => d.toLocaleDateString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric' });
   const gravada = r2(total / IGV), igv = r2(total - gravada), saldo = Math.max(r2(total - pagado), 0);
-  const entrega = p.tipo_entrega === 'delivery' ? `DELIVERY: ${esc([p.direccion, p.distrito].filter(Boolean).join(', ') || '-')}${p.referencia ? ' (' + esc(p.referencia) + ')' : ''}` : 'RECOJO EN TIENDA';
-  const html = `<div class="a4">
-    <div class="cab"><div class="emp"><b>${EMPRESA.razon}</b><div>KADIMA PASTELERÍA & PANADERÍA<br>${EMPRESA.direccion}<br>${EMPRESA.ubigeo}</div></div>
-      <div class="caja-doc">R.U.C. ${EMPRESA.ruc}<br>PROFORMA<br>N° ${esc(p.codigo)}</div></div>
-    <div class="datos" style="grid-template-columns:30mm 1fr 28mm 44mm">
-      <span class="k">CLIENTE:</span><span>${esc(p.cliente_nombre || '-')}</span><span class="k">F. EMISIÓN:</span><span>${fF(hoy)}</span>
-      <span class="k">DNI / RUC:</span><span>${esc(p.cliente_doc || '-')}</span><span class="k">VÁLIDA HASTA:</span><span>${fF(vence)}</span>
-      <span class="k">CELULAR:</span><span>${esc(p.cliente_telefono || '-')}</span><span class="k">F. ENTREGA:</span><span>${p.fecha_entrega ? fechaCorta(p.fecha_entrega) : 'por definir'}${p.hora_entrega ? ' · ' + hora12(p.hora_entrega) : ''}</span>
-      <span class="k">ENTREGA:</span><span style="grid-column:span 3">${entrega}</span>
-    </div>
-    <table class="items"><thead><tr><th style="width:14mm">Cant.</th><th>Descripción</th><th style="width:32mm">Precio Unit.</th><th style="width:30mm">Importe</th></tr></thead>
-      <tbody>${its.map(i => `<tr><td>${Number(i.cantidad)}</td><td class="d">${esc(i.descripcion)}${i.personalizacion ? `<br><small style="color:#555">${esc(i.personalizacion)}</small>` : ''}</td><td>${SS(i.precio_unit)}</td><td>${SS(Number(i.precio_unit) * Number(i.cantidad))}</td></tr>`).join('')}
-      ${del ? `<tr><td>1</td><td class="d">SERVICIO DE DELIVERY</td><td>${SS(del)}</td><td>${SS(del)}</td></tr>`
-        : p.tipo_entrega === 'delivery' && p.delivery_modo === 'al_despachar' ? `<tr><td>1</td><td class="d">SERVICIO DE DELIVERY (se cobra al despachar: costo real de la movilidad + IGV)</td><td>-</td><td>-</td></tr>` : ''}</tbody></table>
-    <div class="pie"><div class="son">SON: ${letras(total)}</div>
-      <table class="tot">
-        <tr><td class="k">Op. Gravada</td><td>${SS(gravada)}</td></tr><tr><td class="k">IGV 18.00%</td><td>${SS(igv)}</td></tr>
-        <tr><td class="k">Total</td><td>${SS(total)}</td></tr>
-        ${pagado > 0 ? `<tr><td class="k">A cuenta</td><td>${SS(pagado)}</td></tr><tr><td class="k">Saldo</td><td>${SS(saldo)}</td></tr>` : ''}
-      </table></div>
-    <div class="cred"><b>Condiciones</b>• Precios en soles, incluyen IGV.<br>• Proforma válida hasta el ${fF(vence)}, sujeta a disponibilidad de la fecha de entrega.<br>• El pedido se confirma con el pago del adelanto; el comprobante (boleta o factura) se emite al pagar.</div>
-    <div class="legal">Documento informativo. No es un comprobante de pago.</div>
-  </div>`;
-  $('lienzo').innerHTML = html;
-  const blob = await html2pdf().set({ margin: 0, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } })
-    .from($('lienzo').firstElementChild).outputPdf('blob');
-  $('lienzo').innerHTML = '';
+  // PDF con TEXTO real (se puede seleccionar, buscar y copiar), mismo estilo que la proforma mensual
+  if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('No cargó el generador de PDF. Recarga la página (Ctrl+F5).');
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const W = 210, M = 12, RO = [139, 0, 0], GR = [119, 119, 119], NE = [34, 34, 34];
+  const sol = n => 'S/ ' + Number(n || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const txt = (t, x, y, o = {}) => { doc.setFont('helvetica', o.b ? 'bold' : 'normal'); doc.setFontSize(o.s || 9); doc.setTextColor(...(o.c || NE)); doc.text(String(t), x, y, o.a ? { align: o.a, maxWidth: o.w } : (o.w ? { maxWidth: o.w } : undefined)); };
+  const banda = (t, y) => { doc.setFillColor(...RO); doc.roundedRect(M, y, W - 2 * M, 6.5, 0.6, 0.6, 'F'); txt(t, M + 3, y + 4.5, { b: 1, s: 8.5, c: [255, 255, 255] }); return y + 9; };
+  const campo = (lab, val, x, y, w) => { txt(lab, x, y, { b: 1, s: 7, c: GR }); const l = doc.setFont('helvetica', 'normal').setFontSize(9).splitTextToSize(String(val || '-'), w); doc.setTextColor(...NE); doc.text(l, x, y + 4); return y + 4 + l.length * 4; };
+  // encabezado
+  try { if (typeof LOGO_KADIMA !== 'undefined') doc.addImage(LOGO_KADIMA, 'JPEG', M, 9, 26, 20); } catch (e) {}
+  txt('Kadima Pastelería & Panadería', W - M, 15, { b: 1, s: 15, c: RO, a: 'right' });
+  txt(`${EMPRESA.razon} | RUC: ${EMPRESA.ruc}`, W - M, 20, { s: 8, c: [85, 85, 85], a: 'right' });
+  txt('San Juan de Lurigancho, Lima, Perú', W - M, 24, { s: 8, c: [85, 85, 85], a: 'right' });
+  txt('contacto@kadima.pe', W - M, 28, { s: 8, c: [85, 85, 85], a: 'right' });
+  doc.setDrawColor(...RO); doc.setLineWidth(0.8); doc.line(M, 33, W - M, 33);
+  doc.setLineWidth(0.6); doc.rect(W / 2 - 34, 37, 68, 9);
+  txt('PROFORMA DE PEDIDO', W / 2, 43.2, { b: 1, s: 12.5, c: RO, a: 'center' });
+  txt('N° de proforma: ', M, 53, { b: 1, s: 8.5, c: [85, 85, 85] }); txt(p.codigo, M + 24, 53, { s: 8.5, c: [85, 85, 85] });
+  txt(`Emisión: ${fF(hoy)} · Válida hasta: ${fF(vence)}`, W - M, 53, { s: 8.5, c: [85, 85, 85], a: 'right' });
+  // cliente y entrega
+  let y = banda('DATOS DEL CLIENTE Y ENTREGA', 57);
+  const cx = M + 2, cx2 = W / 2 + 2, cw = W / 2 - M - 6;
+  let y1 = campo('Cliente', p.cliente_nombre, cx, y, cw), y2 = campo('DNI / RUC', p.cliente_doc, cx2, y, cw);
+  y = Math.max(y1, y2) + 2;
+  y1 = campo('Celular', p.cliente_telefono, cx, y, cw);
+  y2 = campo('Fecha de entrega', `${p.fecha_entrega ? fechaCorta(p.fecha_entrega) : 'por definir'}${p.hora_entrega ? ' · ' + hora12(p.hora_entrega) : ''}`, cx2, y, cw);
+  y = Math.max(y1, y2) + 2;
+  y = campo('Entrega', p.tipo_entrega === 'delivery' ? `Delivery: ${[p.direccion, p.distrito].filter(Boolean).join(', ') || '-'}${p.referencia ? ' (' + p.referencia + ')' : ''}` : 'Recojo en tienda', cx, y, W - 2 * M - 4) + 4;
+  // detalle
+  y = banda(`DETALLE DEL PEDIDO (${its.length} producto${its.length === 1 ? '' : 's'})`, y);
+  const filas = its.map((i, k) => [k + 1, i.descripcion, i.personalizacion || '-', Number(i.cantidad), sol(i.precio_unit), sol(Number(i.precio_unit) * Number(i.cantidad))]);
+  if (del) filas.push([filas.length + 1, 'Servicio de delivery', '-', 1, sol(del), sol(del)]);
+  else if (p.tipo_entrega === 'delivery' && p.delivery_modo === 'al_despachar') filas.push([filas.length + 1, 'Servicio de delivery', 'Se cobra al despachar: costo real de la movilidad + IGV', 1, '-', '-']);
+  const estilo = { theme: 'plain', margin: { left: M, right: M }, styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 1.5, textColor: NE, lineColor: [235, 235, 235], lineWidth: { bottom: 0.2 } },
+    headStyles: { fillColor: RO, textColor: [255, 255, 255], fontStyle: 'bold' }, alternateRowStyles: { fillColor: [253, 245, 245] } };
+  doc.autoTable({ ...estilo, startY: y, head: [['#', 'Producto', 'Descripción / Personalización', 'Cant.', 'P. Unit.', 'Subtotal']], body: filas,
+    didParseCell: d => { if (d.section === 'head' && [0, 3].includes(d.column.index)) d.cell.styles.halign = 'center'; if (d.section === 'head' && [4, 5].includes(d.column.index)) d.cell.styles.halign = 'right'; },
+    columnStyles: { 0: { cellWidth: 7, halign: 'center' }, 1: { cellWidth: 48 }, 3: { cellWidth: 12, halign: 'center' }, 4: { cellWidth: 22, halign: 'right' }, 5: { cellWidth: 24, halign: 'right' } } });
+  y = doc.lastAutoTable.finalY + 5;
+  // medios de pago (izquierda) + totales (derecha)
+  const tot = [['Op. gravada:', sol(gravada)], ['IGV 18%:', sol(igv)], ['Total:', sol(total)]];
+  if (pagado > 0) tot.push(['A cuenta:', sol(pagado)], ['Saldo:', sol(saldo)]);
+  if (y + 64 > 290) { doc.addPage(); y = 15; }
+  const yT = y, pw = W - 2 * M - 92;
+  doc.setFillColor(243, 233, 216); doc.roundedRect(M, yT, pw, 40, 2, 2, 'F');
+  doc.setFillColor(...RO); doc.roundedRect(M + 3, yT + 3, pw - 6, 6.5, 0.6, 0.6, 'F'); txt('MEDIOS DE PAGO', M + 6, yT + 7.5, { b: 1, s: 8.5, c: [255, 255, 255] });
+  const px = M + 5, px2 = M + pw / 2 + 2, pcw = pw / 2 - 8;
+  campo('Yape', '987023767', px, yT + 15, pcw); campo('Transferencia BCP', '1912546241005', px2, yT + 15, pcw);
+  campo('Interbancario (CCI)', '00219100254624100558', px, yT + 26, pcw + 10); campo('Titular', 'Inversiones La Sonesta S.A.C.', px2, yT + 26, pcw);
+  doc.autoTable({ theme: 'plain', startY: yT, margin: { left: W - M - 88, right: M }, tableWidth: 88, body: tot, pageBreak: 'avoid',
+    styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 1.8, textColor: NE, lineColor: [235, 235, 235], lineWidth: 0.2 }, columnStyles: { 1: { halign: 'right' } },
+    didParseCell: d => { if (d.row.index === 2) { d.cell.styles.fontStyle = 'bold'; d.cell.styles.textColor = RO; d.cell.styles.fontSize = 11; d.cell.styles.fillColor = [253, 245, 245]; }
+      if (d.row.index === 4) { d.cell.styles.fontStyle = 'bold'; d.cell.styles.fillColor = [253, 245, 245]; } } });
+  y = Math.max(doc.lastAutoTable.finalY, yT + 40) + 4;
+  txt(`SON: ${letras(total)}`, M, y + 2, { b: 1, s: 8 }); y += 6;
+  // condiciones
+  const obs = doc.setFont('helvetica', 'normal').setFontSize(8.5).splitTextToSize(`Condiciones: precios en soles, incluyen IGV. Proforma válida hasta el ${fF(vence)}, sujeta a disponibilidad de la fecha de entrega. El pedido se confirma con el pago del adelanto; el comprobante (boleta o factura) se emite al pagar.${p.notas ? '  Observaciones: ' + p.notas : ''}`, W - 2 * M - 8);
+  if (y + obs.length * 4 + 20 > 290) { doc.addPage(); y = 15; }
+  doc.setFillColor(253, 245, 245); doc.rect(M, y, W - 2 * M, obs.length * 4 + 5, 'F'); doc.setFillColor(...RO); doc.rect(M, y, 1, obs.length * 4 + 5, 'F');
+  doc.setTextColor(...NE); doc.text(obs, M + 4, y + 5); y += obs.length * 4 + 9;
+  doc.setDrawColor(...RO); doc.setLineWidth(0.6); doc.line(M, y, W - M, y);
+  txt('Documento informativo. No es un comprobante de pago.', M, y + 5, { s: 7.5, c: GR });
+  txt(`Proforma ${p.codigo} · Kadima Pedidos`, W - M, y + 5, { s: 7.5, c: GR, a: 'right' });
+  const pags = doc.getNumberOfPages();
+  if (pags > 1) for (let k = 1; k <= pags; k++) { doc.setPage(k); txt(`Página ${k} de ${pags}`, W - M, 290, { s: 7, c: GR, a: 'right' }); }
+  const blob = doc.output('blob');
   const f = { ...p, items: its.map(i => ({ descripcion: i.descripcion, personalizacion: i.personalizacion, cantidad: Number(i.cantidad), precio_unit: Number(i.precio_unit) })) };
   return { file: new File([blob], `Proforma-${p.codigo}.pdf`, { type: 'application/pdf' }), texto: textoWhatsApp(f, pagado) + '\nTe adjunto la proforma en PDF.', tel: p.cliente_telefono };
 }
