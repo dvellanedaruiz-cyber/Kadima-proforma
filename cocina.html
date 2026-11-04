@@ -49,6 +49,7 @@ input,select{font:inherit;padding:10px 12px;border:1px solid var(--borde);border
 .item{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-top:1px solid var(--borde);width:100%;text-align:left;background:none;color:inherit;border-radius:0}
 .item .q{font-size:24px;font-weight:800;min-width:42px}
 .item .n{font-size:19px;font-weight:600;line-height:1.25}
+.extra{display:inline-block;margin-top:4px;background:#2d6cdf;color:#fff;font-weight:800;font-size:15px;padding:2px 9px;border-radius:6px}
 .item .nota{display:inline-block;margin-top:4px;background:var(--ambar);color:#000;font-weight:700;font-size:14px;padding:2px 8px;border-radius:6px}
 .item .est{margin-left:auto;font-size:12px;font-weight:700;padding:4px 8px;border-radius:6px;white-space:nowrap;background:#333;color:var(--gris)}
 .item.preparando .est{background:var(--azul);color:#fff}
@@ -201,7 +202,8 @@ window.addEventListener('online', () => { estadoRed(true); cargar(); });
 let cargando = false;
 async function cargar() {
   if (cargando) return; cargando = true;
-  const { data, error } = await sb.from('v_cocina').select('*').eq('sede_id', st.disp.sede_id).order('enviado_en');
+  let { data, error } = await sb.from('v_cocina').select('*').eq('sede_id', st.disp.sede_id).order('enviado_en');
+  if (!error) data = await conExtras(data);
   cargando = false;
   if (error) return estadoRed(false);
   estadoRed(true);
@@ -217,6 +219,19 @@ async function cargar() {
   st.items = data; dibujar();
 }
 
+// EXTRAS (manjar, fudge…): van debajo de su plato y siguen su estado (si no se corrió 68, no hay)
+async function conExtras(data) {
+  st.extras = {};
+  if (st.sinExtras || !data.length) return data;
+  const r = await sb.from('pedido_items').select('id,extra_de,cantidad,estado_cocina,productos(nombre)').in('extra_de', data.map(i => i.id)).neq('estado_cocina', 'anulado');
+  if (r.error) { if (/extra_de/.test(r.error.message)) st.sinExtras = true; return data; }
+  const ids = new Set();
+  (r.data || []).forEach(x => { ids.add(x.id); (st.extras[x.extra_de] = st.extras[x.extra_de] || []).push({ id: x.id, cantidad: Number(x.cantidad), nombre: x.productos?.nombre || 'extra' }); });
+  return data.filter(i => !ids.has(i.id));   // un extra de cocina no sale como plato aparte
+}
+const extrasDe = i => (st.extras && st.extras[i.id]) || [];
+const extrasHtml = i => extrasDe(i).map(x => `<br><span class="extra">➕ ${x.cantidad > 1 ? x.cantidad + '× ' : ''}${esc(x.nombre)}</span>`).join('');
+const conSusExtras = ids => ids.concat(...ids.map(id => extrasDe({ id }).map(x => x.id)));
 function agrupar() {
   const g = new Map();
   st.items.forEach(i => {
@@ -237,11 +252,13 @@ function tandas() {
     .slice().sort((a, b) => a.enviado_en.localeCompare(b.enviado_en));
   const abiertas = new Map(), out = [];
   lista.forEach(i => {
-    const clave = [i.producto, normObs(i.nota), normObs(i.obs_envio)].join('|');
+    const ex = extrasDe(i).map(x => x.nombre + 'x' + (x.cantidad / Number(i.cantidad))).sort().join(',');
+    const clave = [i.producto, normObs(i.nota), normObs(i.obs_envio), ex].join('|');
     const t0 = new Date(i.enviado_en).getTime();
     let t = abiertas.get(clave);
     const cabe = t && t0 - t.inicio <= VENTANA_MIN * 60000 && (t.prep ? i.estado_cocina === 'preparando' : i.estado_cocina === 'pendiente');
-    if (!cabe) { t = { clave, producto: i.producto, nota: i.nota, obs: i.obs_envio, inicio: t0, prep: i.estado_cocina === 'preparando', items: [] }; abiertas.set(clave, t); out.push(t); }
+    if (!cabe) { t = { clave, producto: i.producto, nota: i.nota, obs: i.obs_envio, inicio: t0, prep: i.estado_cocina === 'preparando', items: [], ex: {} }; abiertas.set(clave, t); out.push(t); }
+    extrasDe(i).forEach(x => t.ex[x.nombre] = (t.ex[x.nombre] || 0) + x.cantidad);
     t.items.push(i);
   });
   return out;
@@ -255,7 +272,7 @@ function dibujarTandas() {
     const resta = Math.ceil((t.inicio + VENTANA_MIN * 60000 - Date.now()) / 60000);
     return `<div class="tanda ${t.prep ? 'prep' : ''}">
       <span class="q">${q}</span>
-      <span><span class="n">${esc(t.producto)}</span>${t.nota ? `<br><span class="nota">${esc(t.nota)}</span>` : ''}${t.obs ? `<br><span class="nota">📝 ${esc(t.obs)}</span>` : ''}
+      <span><span class="n">${esc(t.producto)}</span>${Object.entries(t.ex).map(([n, c]) => `<br><span class="extra">➕ ${c}× ${esc(n)}</span>`).join('')}${t.nota ? `<br><span class="nota">${esc(t.nota)}</span>` : ''}${t.obs ? `<br><span class="nota">📝 ${esc(t.obs)}</span>` : ''}
         <div class="de">${de} · hace ${Math.max(0, Math.floor((Date.now() - t.inicio) / 60000))} min</div>
         ${!t.prep && resta > 0 ? `<div class="ventana">abierta ${resta} min más para sumar pedidos iguales</div>` : ''}</span>
       <span class="bt">${t.prep ? '' : `<button class="b-prep" data-tprep="${k}">Preparando</button>`}<button class="b-listo" data-tlisto="${k}">Listo</button></span></div>`;
@@ -281,7 +298,7 @@ function dibujar() {
       <div class="sub">#${p.id}${p.mozo ? ' · ' + esc(p.mozo) : ''} · ${new Date(p.desde).toLocaleTimeString('es-PE', { hour:'2-digit', minute:'2-digit' })}</div>
       ${p.items.map(i => `<button class="item ${i.estado_cocina}" data-id="${i.id}" data-e="${i.estado_cocina}">
           <span class="q">${Number(i.cantidad)}×</span>
-          <span><span class="n">${esc(i.producto)}</span>${i.nota ? `<br><span class="nota">${esc(i.nota)}</span>` : ''}${i.obs_envio ? `<br><span class="nota">📝 ${esc(i.obs_envio)}</span>` : ''}</span>
+          <span><span class="n">${esc(i.producto)}</span>${extrasHtml(i)}${i.nota ? `<br><span class="nota">${esc(i.nota)}</span>` : ''}${i.obs_envio ? `<br><span class="nota">📝 ${esc(i.obs_envio)}</span>` : ''}</span>
           <span class="est">${ESTADO[i.estado_cocina]}</span></button>`).join('')}
       <div class="acciones">${todosListos
         ? `<button class="b-entregar" data-entregar="${p.id}">Entregado ✓</button>`
@@ -302,6 +319,7 @@ $('tablero').onclick = async e => {
 };
 async function cambiar(ids, estado) {
   if (!ids.length) return;
+  ids = conSusExtras(ids);   // el extra cambia junto con su plato
   const ahora = new Date().toISOString();
   const cambios = { estado_cocina: estado };
   if (estado === 'listo') cambios.listo_en = ahora;
@@ -332,7 +350,7 @@ function imprimirComanda(items) {
   items.forEach(i => { if (!g.has(i.pedido_id)) g.set(i.pedido_id, { ...i, lista: [] }); g.get(i.pedido_id).lista.push(i); });
   $('comanda').innerHTML = [...g.values()].map(p => `
     <div class="c"><b>COMANDA</b><br><b style="font-size:18px">${titulo(p)}</b><br>#${p.pedido_id}${p.mozo ? ' · ' + esc(p.mozo) : ''}<br>${new Date().toLocaleTimeString('es-PE')}</div><hr>
-    ${p.lista.map(i => `<div><b>${Number(i.cantidad)} x ${esc(i.producto)}</b>${i.nota ? `<br>&nbsp;&nbsp;* ${esc(i.nota)}` : ''}${i.obs_envio ? `<br>&nbsp;&nbsp;* ${esc(i.obs_envio)}` : ''}</div>`).join('')}<hr>`).join('<br>');
+    ${p.lista.map(i => `<div><b>${Number(i.cantidad)} x ${esc(i.producto)}</b>${extrasDe(i).map(x => `<br>&nbsp;&nbsp;+ EXTRA: ${x.cantidad} ${esc(x.nombre)}`).join('')}${i.nota ? `<br>&nbsp;&nbsp;* ${esc(i.nota)}` : ''}${i.obs_envio ? `<br>&nbsp;&nbsp;* ${esc(i.obs_envio)}` : ''}</div>`).join('')}<hr>`).join('<br>');
   window.print();
 }
 

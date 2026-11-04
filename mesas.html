@@ -111,6 +111,9 @@ input,select,textarea{font:inherit;padding:10px 12px;border:1px solid var(--bord
 .pp h4{margin:14px 0 8px;font-size:15px;color:var(--gris)}
 .chipsg{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
 .chipsg button{background:#fff;border:2px solid var(--borde);padding:16px 10px;font-size:17px;font-weight:700;border-radius:14px}
+.extras-g button{position:relative}.extras-g button small{display:block;font-size:13px;font-weight:600;opacity:.8}
+.extras-g button .xq{position:absolute;top:-8px;right:-8px;background:#1f1f1f;color:#fff;border-radius:12px;font-size:12px;padding:2px 7px}
+.it.extra{padding-top:2px}.it.extra .n{font-weight:500}.it.extra .q{color:var(--gris)}
 .chipsg button.on{background:var(--rojo);border-color:var(--rojo);color:#fff}
 .pp textarea{width:100%;font:inherit;font-size:16px;padding:12px;border:1px solid var(--borde);border-radius:12px;min-height:70px;resize:vertical}
 .pp .pie{padding:12px 16px;background:#fff;border-top:1px solid var(--borde);display:flex;gap:10px;flex-wrap:wrap}
@@ -219,6 +222,8 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
   <div class="cont">
     <div class="qty"><button id="pp-menos">−</button><b id="pp-cant">1</b><button id="pp-mas">+</button></div>
     <div class="chipsg oculto" id="pp-paq" style="margin-bottom:6px"></div>
+    <div id="pp-ext-w" class="oculto"><h4>➕ Extras <span style="font-weight:500">(se cobran aparte · toca para sumar, toca ✕ para quitar)</span></h4>
+    <div class="chipsg extras-g" id="pp-ext"></div></div>
     <h4 style="display:flex;align-items:center;gap:10px">Observaciones de este producto <button id="pp-editobs" style="margin-left:auto;background:#fff3c4;color:#6b4c15;padding:6px 12px;font-size:13px;font-weight:700;border-radius:8px">✎ Editar opciones</button></h4>
     <div class="chipsg" id="pp-chips"></div>
     <div id="pp-obsed" class="oculto" style="background:#fff;border:1.5px dashed #e0a800;border-radius:12px;padding:10px;margin-top:8px">
@@ -351,6 +356,7 @@ let canalRT = null;
 async function abrirApp() {
   vista('v-app'); $('usr').textContent = st.usuario.nombre;
   cargarObs();
+  st.extrasOk = !(await sb.from('pedido_items').select('extra_de').limit(1)).error;
   try {
     // la caja de tienda: sus series, su caja física y el canal Tienda (la venta de mesa entra al turno abierto de esa caja)
     const [d, prods, cats, canales] = await Promise.all([
@@ -393,7 +399,7 @@ async function cargar() {
   st.mesas = m.data || []; st.abiertas = a.data || [];
   st.items = {};
   if (st.abiertas.length) {
-    const r = await sb.from('pedido_items').select('id,pedido_id,producto_id,cantidad,precio_unit,nota,obs_envio,estado_cocina,enviado_en,productos(nombre,area_preparacion)')
+    const r = await sb.from('pedido_items').select('id,pedido_id,producto_id,cantidad,precio_unit,nota,obs_envio,estado_cocina,enviado_en,productos(nombre,area_preparacion)' + (st.extrasOk ? ',extra_de' : ''))
       .in('pedido_id', st.abiertas.map(x => x.id)).neq('estado_cocina', 'anulado').order('id');
     (r.data || []).forEach(i => (st.items[i.pedido_id] = st.items[i.pedido_id] || []).push(i));
   }
@@ -558,9 +564,11 @@ function pintarDetalle() {
   const its = a ? (st.items[a.id] || []) : [];
   $('dm-tit').textContent = a ? a.mesa : st.actual.nombre;
   $('dm-sub').textContent = a ? `${minDesde(a.creado_en)} min${a.mozo ? ' · ' + a.mozo : ''} · cuenta #${a.id}` : 'Mesa libre: agrega productos para abrirla';
-  $('dm-items').innerHTML = its.length ? its.map(i => `<div class="it">
-      <span class="q">${Number(i.cantidad)}×</span>
-      <span><span class="n">${esc(i.productos?.nombre)}</span> <span class="est ${i.estado_cocina}">${EST[i.estado_cocina] || ''}</span>
+  // los extras se muestran debajo de su plato
+  const orden = []; its.filter(i => !i.extra_de || !its.some(x => x.id === i.extra_de)).forEach(i => { orden.push(i); its.filter(x => x.extra_de === i.id).forEach(x => orden.push(x)); });
+  $('dm-items').innerHTML = its.length ? orden.map(i => `<div class="it ${i.extra_de ? 'extra' : ''}">
+      <span class="q">${i.extra_de ? '↳' : ''}${Number(i.cantidad)}×</span>
+      <span><span class="n">${i.extra_de ? '+ ' : ''}${esc(i.productos?.nombre)}</span> <span class="est ${i.estado_cocina}">${EST[i.estado_cocina] || ''}</span>
         ${i.nota ? `<br><span class="nota">${esc(i.nota)}</span>` : ''}${i.obs_envio ? `<br><span class="nota">📝 ${esc(i.obs_envio)}</span>` : ''}
         <span class="acc">${i.estado_cocina !== 'entregado' ? `<button data-obs="${i.id}">✎ obs.</button>` : ''}<button data-anu="${i.id}">✕ anular</button></span></span>
       <span>${S(i.cantidad * i.precio_unit)}</span></div>`).join('')
@@ -660,8 +668,13 @@ $('pp-obslista').onclick = async e => {
   if (d || u) { await cargarObs(); pintarObsEd(); pintarProducto(); }
 };
 const notaDe = l => [...l.chips, l.texto.trim()].filter(Boolean).join(', ');
+// productos de la categoría "Extras" (manjar, fudge, miel…): se cuelgan de un plato y se cobran aparte
+const esExtra = p => { const c = catDe(p.categoria_id); return !!c && (/^extras?$/i.test(c.nombre) || /^extras?$/i.test(c.categoria_principal || '')); };
+const extrasLista = () => st.productos.filter(esExtra);
+const extrasTxt = l => (l.extras || []).map(e => `+ ${e.cant > 1 ? e.cant + '× ' : ''}${e.nombre}`).join(', ');
+const firma = l => (l.nota || '') + '|' + (l.extras || []).map(e => e.producto_id + 'x' + e.cant).sort().join(',');
 function abrirProducto(l, idx) {
-  st.pp = { l: { ...l, chips: [...l.chips] }, idx };
+  st.pp = { l: { ...l, chips: [...l.chips], extras: (l.extras || []).map(e => ({ ...e })) }, idx };
   $('pp-obsed').classList.add('oculto'); $('pp-editobs').textContent = '✎ Editar opciones';
   $('pp-nom').textContent = l.nombre; $('pp-texto').value = l.texto;
   $('pp-quitar').classList.toggle('oculto', idx == null);
@@ -676,11 +689,24 @@ function pintarProducto() {
   if (conPaquetes(p)) $('pp-paq').innerHTML = p.precios_escala.slice().sort((a, b) => a.desde - b.desde).map(e => `<button data-paq="${e.desde}" class="${l.cantidad === Number(e.desde) ? 'on' : ''}">Paquete ${e.desde} · ${S(e.desde * e.precio)}</button>`).join('');
   if (conPaquetes(p)) { const ps = paquetes(p, l.cantidad); $('pp-precio').textContent = `${S(ps.reduce((a, x) => a + x.cantidad * x.precio_unit, 0))} · ${txtPaq(ps)}`; }
   else $('pp-precio').textContent = `${S(l.precio_unit)} c/u · ${S(l.precio_unit * l.cantidad)}`;
+  const exs = esExtra(p || {}) ? [] : extrasLista();
+  $('pp-ext-w').classList.toggle('oculto', !exs.length || !st.extrasOk);
+  $('pp-ext').innerHTML = exs.map(x => { const e = l.extras.find(y => y.producto_id === x.id);
+    return `<button data-ex="${x.id}" class="${e ? 'on' : ''}">${e ? `<span class="xq" data-exq="${x.id}">${e.cant}× ✕</span>` : ''}${esc(x.nombre)}<small>+ ${S(x.precio_venta)}</small></button>`; }).join('');
+  if (l.extras.length) $('pp-precio').textContent += ` · extras + ${S(l.extras.reduce((a, e) => a + e.cant * e.precio_unit, 0) * l.cantidad)}`;
   $('pp-chips').innerHTML = OBS_PROD.map(c => `<button data-ch="${esc(c)}" class="${l.chips.includes(c) ? 'on' : ''}">${esc(c)}</button>`).join('');
   const n = st.envio.reduce((a, x, i) => a + (i === st.pp.idx ? 0 : x.cantidad), 0) + l.cantidad;
   const coc = l.area === 'cocina' || st.envio.some(x => x.area === 'cocina');
   $('pp-enviar').textContent = `${coc ? 'Enviar a cocina' : 'Agregar a la cuenta'} (${n})`;
 }
+$('pp-ext').onclick = e => {
+  const ex = st.pp.l.extras, q = e.target.closest('[data-exq]');
+  if (q) { const i = ex.findIndex(y => y.producto_id === Number(q.dataset.exq)); if (i >= 0) ex.splice(i, 1); return pintarProducto(); }
+  const b = e.target.closest('[data-ex]'); if (!b) return;
+  const x = st.productos.find(y => y.id === Number(b.dataset.ex)), e0 = ex.find(y => y.producto_id === x.id);
+  if (e0) e0.cant++; else ex.push({ producto_id: x.id, nombre: x.nombre, precio_unit: Number(x.precio_venta || 0), cant: 1 });
+  pintarProducto();
+};
 $('pp-chips').onclick = e => { const b = e.target.closest('[data-ch]'); if (!b) return; const c = st.pp.l.chips, k = c.indexOf(b.dataset.ch); k >= 0 ? c.splice(k, 1) : c.push(b.dataset.ch); pintarProducto(); };
 $('pp-paq').onclick = e => { const b = e.target.closest('[data-paq]'); if (b) { st.pp.l.cantidad = Number(b.dataset.paq); pintarProducto(); } };
 $('pp-menos').onclick = () => { if (st.pp.l.cantidad > 1) { st.pp.l.cantidad--; pintarProducto(); } };
@@ -690,7 +716,7 @@ function guardarProducto() {
   const l = st.pp.l; l.texto = $('pp-texto').value; l.nota = notaDe(l);
   if (st.pp.idx != null) st.envio[st.pp.idx] = l;
   else {
-    const igual = st.envio.find(x => x.producto_id === l.producto_id && x.precio_unit === l.precio_unit && x.nota === l.nota);
+    const igual = st.envio.find(x => x.producto_id === l.producto_id && x.precio_unit === l.precio_unit && firma(x) === firma(l));
     if (igual) igual.cantidad += l.cantidad; else st.envio.push(l);
   }
   $('m-prod').classList.add('oculto'); pintarEnvio();
@@ -727,8 +753,9 @@ const txtPaq = ps => ps.map(x => x.paq ? `${x.k > 1 ? x.k + '×' : ''}paq. ${x.p
 function aplicarEscalas() {
   st.envio.forEach(l => {
     const p = st.productos.find(x => x.id === l.producto_id);
-    if (!conPaquetes(p)) { l.paqs = null; l.total = l.cantidad * l.precio_unit; return; }
-    l.paqs = paquetes(p, l.cantidad); l.total = l.paqs.reduce((a, x) => a + x.cantidad * x.precio_unit, 0);
+    const ext = (l.extras || []).reduce((a, e) => a + e.cant * e.precio_unit, 0) * l.cantidad;
+    if (!conPaquetes(p)) { l.paqs = null; l.total = l.cantidad * l.precio_unit + ext; return; }
+    l.paqs = paquetes(p, l.cantidad); l.total = l.paqs.reduce((a, x) => a + x.cantidad * x.precio_unit, 0) + ext;
   });
 }
 function pintarEnvio() {
@@ -736,7 +763,7 @@ function pintarEnvio() {
   const n = st.envio.reduce((a, l) => a + l.cantidad, 0), tot = st.envio.reduce((a, l) => a + l.total, 0);
   $('dm-envbar').classList.toggle('oculto', !st.envio.length);
   $('dm-pend').innerHTML = st.envio.length ? `<div class="pend"><h4><span>⏳ Por enviar (${n})</span><span>${S(tot)}</span></h4>
-    ${st.envio.map((l, i) => `<div class="ln" data-ed="${i}" title="Tocar para editar"><span class="q">${l.cantidad}×</span><span><b>${esc(l.nombre)}</b>${l.paqs && l.paqs.some(x => x.paq) ? `<span class="nt" style="color:#1e7d3a">${txtPaq(l.paqs)}</span>` : ''}${l.nota ? `<span class="nt">→ ${esc(l.nota)}</span>` : ''}</span><span>${S(l.total)}</span></div>`).join('')}
+    ${st.envio.map((l, i) => `<div class="ln" data-ed="${i}" title="Tocar para editar"><span class="q">${l.cantidad}×</span><span><b>${esc(l.nombre)}</b>${l.paqs && l.paqs.some(x => x.paq) ? `<span class="nt" style="color:#1e7d3a">${txtPaq(l.paqs)}</span>` : ''}${l.extras && l.extras.length ? `<span class="nt" style="color:var(--azul)">${esc(extrasTxt(l))}</span>` : ''}${l.nota ? `<span class="nt">→ ${esc(l.nota)}</span>` : ''}</span><span>${S(l.total)}</span></div>`).join('')}
     ${st.notaOrden ? `<div class="notaord" id="dm-notaver">📝 ${esc(st.notaOrden)}</div>` : ''}</div>` : '';
   $('dm-notaord').textContent = st.notaOrden ? '📝 Nota ✓' : '📝 Nota';
   const hayCocina = st.envio.some(l => l.area === 'cocina');
@@ -762,10 +789,14 @@ $('dm-enviar').onclick = async () => {
     const obs = (st.notaOrden || '').trim() || null;
     aplicarEscalas();
     // un bocadito de 30 se guarda como 2 líneas: paquete de 25 + 5 sueltas (cada una con su precio)
-    const filas = st.envio.flatMap(l => (l.paqs || [{ cantidad: l.cantidad, precio_unit: l.precio_unit }]).map(x =>
-      ({ pedido_id: a.id, producto_id: l.producto_id, cantidad: x.cantidad, precio_unit: x.precio_unit, nota: (l.nota || '').trim() || null, obs_envio: obs })));
-    const { error } = await sb.from('pedido_items').insert(filas);
-    if (error) throw error;
+    const filas = st.envio.flatMap(l => (l.paqs || [{ cantidad: l.cantidad, precio_unit: l.precio_unit }]).map((x, k) =>
+      ({ pedido_id: a.id, producto_id: l.producto_id, cantidad: x.cantidad, precio_unit: x.precio_unit, nota: (l.nota || '').trim() || null, obs_envio: obs,
+         extras: k ? [] : (l.extras || []).map(e => ({ producto_id: e.producto_id, cantidad: e.cant * l.cantidad, precio_unit: e.precio_unit })) })));
+    // con extras: platos y extras se guardan juntos (la cocina los recibe en el mismo momento)
+    const r = filas.some(f => f.extras.length) && st.extrasOk
+      ? await sb.rpc('agregar_items_mesa', { p_pedido: a.id, p_items: filas, p_obs: obs })
+      : await sb.from('pedido_items').insert(filas.map(({ extras, ...f }) => f));
+    if (r.error) throw r.error;
     const n = st.envio.filter(l => l.area === 'cocina').reduce((x, l) => x + l.cantidad, 0);
     st.envio = []; st.notaOrden = ''; pintarEnvio();
     toast(`✓ Enviado a ${a.mesa}${n ? ` · ${n} a cocina` : ''}`);
