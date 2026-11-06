@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>¿Qué tal tu pedido? · Kadima</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Work+Sans:wght@400;500;600&display=swap">
+<style>
+  :root { --espresso:#2E1B12; --wine:#7A2E3D; --wine-dark:#5E212C; --wine-soft:#fbf5f6; --gold:#C98A2B; --muted:#6b5643; --line:rgba(46,27,18,.16); --ok:#1e7d3a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#fff; color:var(--espresso); font-family:'Work Sans',sans-serif; line-height:1.5; }
+  h1, h2 { font-family:'Fraunces',serif; font-weight:500; margin:0; }
+  .wrap { max-width:560px; margin:0 auto; padding:28px 16px 60px; }
+  .oculto { display:none !important; }
+  .marca { font-family:'Fraunces',serif; font-size:15px; letter-spacing:4px; color:var(--wine); text-transform:uppercase; margin-bottom:18px; }
+  h1 { font-size:28px; line-height:1.2; }
+  .sub { color:var(--muted); margin:8px 0 0; font-size:15px; }
+  .pedido { background:var(--wine-soft); border-radius:12px; padding:10px 14px; margin:18px 0 6px; font-size:14px; color:var(--muted); }
+  .pedido b { color:var(--espresso); }
+  .preg { border-top:1px solid var(--line); padding:20px 0 4px; }
+  .preg h2 { font-size:18px; margin-bottom:12px; }
+  .nps { display:grid; grid-template-columns:repeat(11,1fr); gap:4px; }
+  .nps button { aspect-ratio:1; border:1px solid var(--line); background:#fff; border-radius:8px; font:600 15px 'Work Sans',sans-serif; color:var(--espresso); cursor:pointer; padding:0; }
+  .nps button.sel { background:var(--wine); border-color:var(--wine); color:#fff; }
+  .nps-l { display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-top:6px; }
+  .est { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; }
+  .est span { font-size:15px; }
+  .est .s { display:flex; gap:2px; flex-shrink:0; }
+  .est .s button { background:none; border:0; font-size:30px; line-height:1; color:#ddd3cc; cursor:pointer; padding:2px; }
+  .est .s button.on { color:var(--gold); }
+  textarea { width:100%; border:1px solid var(--line); border-radius:12px; padding:12px; font:15px 'Work Sans',sans-serif; resize:vertical; min-height:96px; }
+  textarea:focus { outline:2px solid var(--wine); border-color:transparent; }
+  .chk { display:flex; gap:10px; align-items:flex-start; font-size:14px; padding:6px 0; cursor:pointer; }
+  .chk input { width:20px; height:20px; accent-color:var(--wine); flex-shrink:0; margin-top:1px; }
+  .legal { font-size:12px; color:var(--muted); margin:10px 0 0; }
+  .btn { display:block; width:100%; margin-top:22px; background:var(--wine); color:#fff; border:0; border-radius:12px; padding:15px; font:600 16px 'Work Sans',sans-serif; cursor:pointer; text-align:center; text-decoration:none; }
+  .btn:disabled { opacity:.6; }
+  .btn.sec { background:#fff; color:var(--wine); border:1.5px solid var(--wine); }
+  .error { color:#b00020; font-size:14px; min-height:20px; margin-top:10px; text-align:center; }
+  .fin { text-align:center; padding-top:40px; }
+  .fin .ic { font-size:54px; }
+  .fin p { color:var(--muted); font-size:16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="marca">Kadima</div>
+
+  <div id="v-carga"><p class="sub">Cargando…</p></div>
+
+  <div id="v-error" class="oculto fin"><div class="ic">🔗</div><h1>Este enlace no es válido</h1><p>Revisa que lo hayas abierto completo desde el mensaje de WhatsApp.</p></div>
+
+  <div id="v-ya" class="oculto fin"><div class="ic">💛</div><h1>¡Ya recibimos tu opinión!</h1><p>Gracias por tomarte el tiempo. Nos ayuda muchísimo.</p></div>
+
+  <form id="v-form" class="oculto">
+    <h1 id="saludo">¿Qué tal tu pedido?</h1>
+    <p class="sub">Son 30 segundos. Lo leemos todo y nos ayuda a mejorar.</p>
+    <div class="pedido" id="pedido"></div>
+
+    <div class="preg">
+      <h2>Del 0 al 10, ¿qué tan probable es que nos recomiendes a un amigo o familiar?</h2>
+      <div class="nps" id="nps"></div>
+      <div class="nps-l"><span>Nada probable</span><span>Muy probable</span></div>
+    </div>
+
+    <div class="preg">
+      <h2>¿Cómo calificarías…?</h2>
+      <div id="estrellas"></div>
+    </div>
+
+    <div class="preg">
+      <h2>¿Algo que quieras contarnos?</h2>
+      <textarea id="comentario" maxlength="1500" placeholder="Lo que más te gustó, o lo que podemos hacer mejor"></textarea>
+    </div>
+
+    <div class="preg">
+      <label class="chk"><input type="checkbox" id="pub"> Pueden publicar mi comentario (solo con mi primer nombre).</label>
+      <label class="chk"><input type="checkbox" id="promo"> Quiero recibir novedades y promociones de Kadima por WhatsApp.</label>
+      <p class="legal">Tus datos se usan solo para mejorar nuestro servicio y, si lo aceptas, para enviarte novedades (Ley N.º 29733). Puedes darte de baja cuando quieras respondiendo "baja".</p>
+    </div>
+
+    <button class="btn" id="enviar" type="submit">Enviar mi opinión</button>
+    <div class="error" id="err"></div>
+  </form>
+
+  <div id="v-gracias" class="oculto fin">
+    <div class="ic">💛</div>
+    <h1>¡Gracias!</h1>
+    <p id="gr-txt">Tu opinión ya llegó a nuestro equipo.</p>
+    <div id="gr-google" class="oculto">
+      <p>¿Nos ayudas contándolo también en Google? Así más personas nos conocen.</p>
+      <a class="btn" id="gr-link" target="_blank" rel="noopener">⭐ Dejar una reseña en Google</a>
+    </div>
+    <a class="btn sec" href="https://kadima.pe/pedidos">Ver la carta y hacer otro pedido</a>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
+<script>
+// Encuesta de satisfacción pública: kadima.pe/opina?t=TOKEN (el link lo genera el CRM → ⭐ Encuestas)
+const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
+// Link para dejar reseña en Google (Google Business Profile → "Pedir reseñas"). Vacío = no se muestra el botón.
+const GOOGLE_RESENA = '';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const vista = id => ['v-carga', 'v-error', 'v-ya', 'v-form', 'v-gracias'].forEach(v => $(v).classList.toggle('oculto', v !== id));
+const token = new URLSearchParams(location.search).get('t') || '';
+const r = { nps: null, sabor: null, presentacion: null, como_pedido: null, atencion: null, puntualidad: null };
+const PREG = [['sabor', 'El sabor'], ['presentacion', 'La presentación'], ['como_pedido', '¿Fue lo que pediste?'], ['atencion', 'La atención'], ['puntualidad', 'La puntualidad']];
+
+$('nps').innerHTML = Array.from({ length: 11 }, (_, i) => `<button type="button" data-n="${i}">${i}</button>`).join('');
+$('nps').onclick = e => { const b = e.target.closest('[data-n]'); if (!b) return; r.nps = Number(b.dataset.n); [...$('nps').children].forEach(x => x.classList.toggle('sel', x === b)); $('err').textContent = ''; };
+$('estrellas').innerHTML = PREG.map(([k, t]) => `<div class="est"><span>${t}</span><div class="s" data-k="${k}">${[1, 2, 3, 4, 5].map(n => `<button type="button" data-v="${n}" aria-label="${n} de 5">★</button>`).join('')}</div></div>`).join('');
+$('estrellas').onclick = e => {
+  const b = e.target.closest('[data-v]'); if (!b) return;
+  const g = b.parentElement, v = Number(b.dataset.v); r[g.dataset.k] = v;
+  [...g.children].forEach(x => x.classList.toggle('on', Number(x.dataset.v) <= v));
+};
+
+async function cargar() {
+  if (!/^[0-9a-f]{20,}$/i.test(token)) return vista('v-error');
+  const { data, error } = await sb.rpc('encuesta_ver', { p_token: token });
+  if (error || !data) return vista('v-error');
+  if (data.respondida) return vista('v-ya');
+  const n = String(data.nombre || '').trim();
+  $('saludo').textContent = n ? `${n.charAt(0).toUpperCase() + n.slice(1).toLowerCase()}, ¿qué tal tu pedido?` : '¿Qué tal tu pedido?';
+  const f = data.fecha ? new Date(data.fecha + 'T12:00:00').toLocaleDateString('es-PE', { day: 'numeric', month: 'long' }) : '';
+  $('pedido').innerHTML = `Pedido <b>${esc(data.codigo || '')}</b>${f ? ' · ' + f : ''}${data.productos ? '<br>' + esc(data.productos) : ''}`;
+  vista('v-form');
+}
+
+$('v-form').onsubmit = async e => {
+  e.preventDefault();
+  if (r.nps == null) { $('err').textContent = 'Elige un número del 0 al 10 en la primera pregunta.'; $('nps').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+  $('enviar').disabled = true; $('err').textContent = '';
+  const { data, error } = await sb.rpc('encuesta_responder', { p_token: token, p: { ...r, comentario: $('comentario').value, permiso_publicar: $('pub').checked, acepta_promos: $('promo').checked } });
+  $('enviar').disabled = false;
+  if (error) return $('err').textContent = /fetch|network/i.test(error.message) ? 'Sin conexión. Inténtalo de nuevo.' : 'No se pudo enviar. Inténtalo de nuevo.';
+  if (data === 'ya') return vista('v-ya');
+  if (r.nps <= 6) $('gr-txt').textContent = 'Sentimos que no haya sido lo que esperabas. Alguien de nuestro equipo te escribirá para solucionarlo.';
+  if (r.nps >= 9 && GOOGLE_RESENA) { $('gr-link').href = GOOGLE_RESENA; $('gr-google').classList.remove('oculto'); }
+  vista('v-gracias'); window.scrollTo(0, 0);
+};
+
+cargar();
+</script>
+</body>
+</html>
