@@ -210,6 +210,8 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
 .comp .nm{font-weight:700}.comp .der{margin-left:auto;display:flex;gap:6px;align-items:center}
 .comp button{padding:6px 10px;font-weight:600;font-size:12.5px;background:var(--fondo)}
 .comp .anul{color:var(--mal);font-weight:700}
+.an-box{width:100%;background:#fff5f5;border:1px solid #f1c9c9;border-radius:10px;padding:10px;margin-top:4px}
+.an-box select,.an-box input{margin-bottom:6px}.an-box .fila-b{display:flex;gap:6px;justify-content:flex-end}
 .estado-sunat{font-size:11px;font-weight:700;padding:1px 7px;border-radius:8px;background:var(--fondo)}
 .estado-sunat.aceptado{background:#e7f6ec;color:var(--ok)}.estado-sunat.pendiente{background:#fff3c4;color:#7a5300}.estado-sunat.rechazado{background:#fde8ea;color:var(--mal)}
 .p-calc{background:var(--fondo);border-radius:10px;padding:10px 12px;margin:10px 0;display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-size:14px}
@@ -1251,13 +1253,19 @@ async function abrirPago(id, opts = {}) {
   const ped = pd.data;
   const v = await sb.from('ventas').select('id,tipo_doc,serie,numero,total,estado,estado_sunat,pdf_url,emitida_en,tipo_cobro,venta_items(descripcion,importe)').eq('pedido_externo', ped.codigo).order('emitida_en');
   $('p-reg').checked = false;
-  st.cobro = { ped, ventas: v.data || [], manual: man.data || [], doc: 'boleta', tipo: 'adelanto', listos: {}, det: 'resumen', reg: false,
+  st.cobro = { anulando: null, ped, ventas: v.data || [], manual: man.data || [], doc: 'boleta', tipo: 'adelanto', listos: {}, det: 'resumen', reg: false,
     confirmar: !!opts.confirmar && ped.estado === 'cotizado', confirmado: false, post: opts.post || null };
   $('p-aviso-conf').classList.toggle('oculto', !st.cobro.confirmar);
   $('p-cod').textContent = ped.codigo;
   $('p-form').classList.remove('oculto'); $('p-listo').classList.add('oculto');
   $('p-docnum').value = ped.cliente_doc || ''; $('p-nombre').value = ped.cliente_nombre || ''; $('p-ret').checked = false;
   pintarCobro();
+  st.cobro.soloVer = ['anulado', 'cotizado'].includes(ped.estado) && !st.cobro.confirmar;
+  if (st.cobro.soloVer) {
+    $('p-form').classList.add('oculto'); $('p-listo').classList.remove('oculto');
+    $('p-listo').innerHTML = `<div class="ayuda" style="margin-top:10px">Este pedido está <b>${ped.estado === 'anulado' ? 'anulado' : 'como cotización'}</b>: aquí solo puedes anular sus comprobantes (✕ Anular). Después ya se puede borrar.</div>`;
+    $('m-pago').classList.remove('oculto'); return;
+  }
   const k = cuentasCobro();
   elegirTipo(k.pagado > 0 && !st.cobro.confirmar ? 'saldo' : 'adelanto');
   elegirDoc((ped.cliente_doc || '').length === 11 ? 'factura' : 'boleta');
@@ -1280,7 +1288,8 @@ function pintarCobro() {
     c.ventas.map(v => `<div class="comp"><span class="nm">${CORTO[v.tipo_doc]} ${v.serie}-${String(v.numero).padStart(8, '0')}</span>
       <span>${COBRO[v.tipo_cobro] ? COBRO[v.tipo_cobro].toLowerCase() : ''} · ${S(v.total)}</span>
       ${v.estado === 'anulada' ? `<span class="anul">${v.tipo_doc === 'nota_venta' && v.tipo_cobro === 'adelanto' ? 'ANULADA · canjeada' : 'ANULADA'}</span>` : v.tipo_doc !== 'nota_venta' ? `<span class="estado-sunat ${v.estado_sunat}">${v.estado_sunat}</span>` : ''}
-      ${v.estado === 'emitida' ? `<span class="der">${['pendiente', 'rechazado'].includes(v.estado_sunat) ? `<button data-vre="${v.id}" title="Reenviar a SUNAT">🔁 Reenviar</button>` : ''}<button data-vpdf="${v.id}">📄 PDF</button><button data-vwa="${v.id}">${c.listos[v.id] ? '💬 Enviar' : '💬 WhatsApp'}</button></span>` : ''}</div>`).join('') +
+      ${v.estado === 'emitida' ? `<span class="der">${['pendiente', 'rechazado'].includes(v.estado_sunat) ? `<button data-vre="${v.id}" title="Reenviar a SUNAT">🔁 Reenviar</button>` : ''}<button data-vpdf="${v.id}">📄 PDF</button><button data-vwa="${v.id}">${c.listos[v.id] ? '💬 Enviar' : '💬 WhatsApp'}</button><button data-van="${v.id}" title="Anular este comprobante" style="color:var(--mal)">✕ Anular</button></span>` : ''}
+      ${c.anulando === v.id ? cajaAnular(v) : ''}</div>`).join('') +
     c.manual.map(x => `<div class="comp"><span class="nm">Pago sin comprobante</span><span>${x.tipo} · ${x.metodo} · ${S(x.monto)}</span></div>`).join('')
     : '';
 }
@@ -1505,6 +1514,46 @@ async function mostrarEmitido(ventaId, sunat) {
   $('l-wa').disabled = false; $('l-wa').textContent = '💬 Enviar por WhatsApp';
   $('l-wa').onclick = () => compartir(archivo, textoComprobante(v), st.cobro.ped.cliente_telefono, v.pdf_url);
 }
+// ---- ANULAR un comprobante del pedido (desde aquí mismo; no pasa por la caja de tienda) ----
+const MOTIVOS_ANUL = ['Error de digitación', 'Comprobante con datos de cliente errados', 'Monto equivocado', 'Error en el cobro o medio de pago', 'Cliente desistió del pedido', 'Venta duplicada', 'Otro'];
+function cajaAnular(v) {
+  const dias = Math.floor((Date.now() - new Date(v.emitida_en)) / 864e5);
+  const aviso = v.tipo_doc === 'nota_venta' ? 'La nota de venta es interna: no se informa a SUNAT.'
+    : dias > 6 ? `⚠ Este comprobante tiene ${dias} días. SUNAT solo deja anular hasta 7 días después de emitido; si lo rechaza, lo que corresponde es una nota de crédito.`
+    : 'Se anula aquí y se informa a SUNAT (comunicación de baja).';
+  return `<div class="an-box"><b>Anular ${CORTO[v.tipo_doc]} ${v.serie}-${String(v.numero).padStart(8, '0')} · ${S(v.total)}</b>
+    <div class="ayuda" style="margin:4px 0 8px">${aviso}</div>
+    <select id="an-mot"><option value="">— Motivo —</option>${MOTIVOS_ANUL.map(m => `<option>${m}</option>`).join('')}</select>
+    <input id="an-just" placeholder="¿Qué pasó? (mínimo 10 letras)" maxlength="200">
+    <input id="an-pin" type="password" inputmode="numeric" maxlength="6" placeholder="PIN del administrador que autoriza">
+    <div class="error" id="an-err" style="margin:0 0 6px"></div>
+    <div class="fila-b"><button data-ancancel>Cancelar</button><button data-anok="${v.id}" style="background:var(--mal);color:#fff">Anular comprobante</button></div></div>`;
+}
+$('p-comps').addEventListener('click', async e => {
+  const ba = e.target.closest('[data-van]'), bc = e.target.closest('[data-ancancel]'), bo = e.target.closest('[data-anok]');
+  if (!ba && !bc && !bo) return;
+  e.stopImmediatePropagation();
+  if (ba) { st.cobro.anulando = Number(ba.dataset.van); pintarCobro(); return $('an-mot').focus(); }
+  if (bc) { st.cobro.anulando = null; return pintarCobro(); }
+  const id = Number(bo.dataset.anok), v = st.cobro.ventas.find(x => x.id === id);
+  const mot = $('an-mot').value, just = $('an-just').value.trim(), pinA = $('an-pin').value.trim(), fallo = t => { $('an-err').textContent = t; };
+  if (!mot) return fallo('Elige el motivo.');
+  if (just.length < 10) return fallo('Explica qué pasó (mínimo 10 letras).');
+  if (!pinA) return fallo('Falta el PIN del administrador.');
+  bo.disabled = true; bo.textContent = 'Anulando…';
+  const { data, error } = await sb.rpc('anular_venta', { p_venta: id, p_motivo: mot, p_justificacion: just, p_usuario: st.usuario?.id || null, p_pin_autoriza: pinA });
+  if (error) { bo.disabled = false; bo.textContent = 'Anular comprobante'; return fallo(errTxt(error)); }
+  let aviso = `✓ Anulado${data?.autorizado_por ? ' (autorizó ' + data.autorizado_por + ')' : ''}.`;
+  if (v.tipo_doc !== 'nota_venta') {
+    const r = await sb.functions.invoke('nubefact', { body: { venta_id: id, accion: 'anular', motivo: mot } }).catch(er => ({ error: er }));
+    const f = r.error || (r.data && r.data.error);
+    aviso += f ? ' ⚠ SUNAT aún no lo recibe: ' + (typeof f === 'string' ? f : (f.message || 'reintenta más tarde')) : ' Informado a SUNAT.';
+  }
+  const v2 = await sb.from('ventas').select('id,tipo_doc,serie,numero,total,estado,estado_sunat,pdf_url,emitida_en,tipo_cobro,venta_items(descripcion,importe)').eq('pedido_externo', st.cobro.ped.codigo).order('emitida_en');
+  st.cobro.ventas = v2.data || st.cobro.ventas; st.cobro.anulando = null; delete st.cobro.listos[id];
+  pintarCobro(); if (!st.cobro.soloVer) elegirTipo(st.cobro.tipo);
+  alert(aviso + '\n\nEl saldo del pedido ya se recalculó. Si corresponde, emite el comprobante correcto.');
+}, true);
 $('p-comps').addEventListener('click', async e => {
   const b = e.target.closest('[data-vre]'); if (!b) return;
   e.stopImmediatePropagation(); b.disabled = true; b.textContent = '⏳';
@@ -3005,7 +3054,7 @@ async function cargarHist() {
   st.hist = data || [];
   // pagado de cada pedido (comprobantes emitidos + pagos sin comprobante)
   st.hpag = {};
-  const peds = st.hist.filter(p => !['cotizado', 'anulado'].includes(p.estado));
+  const peds = st.hist;   // también anulados: si tienen boleta válida, se muestra el botón para anularla
   if (peds.length) {
     const [vp, mp] = await Promise.all([
       sb.from('v_pagos_pedido').select('pedido_externo,total').in('pedido_externo', peds.map(p => p.codigo)),
@@ -3049,8 +3098,8 @@ function pintarHist() {
         ${esPed ? `<div class="meta" style="font-weight:700">Pagado <span style="color:var(--ok)">${S(pag)}</span> · Saldo <span style="color:${sal > 0 ? 'var(--mal)' : 'var(--ok)'}">${sal > 0 ? S(sal) : 'S/ 0.00 ✓'}</span></div>` : ''}
         <ul>${its.map(i => `<li>${Number(i.cantidad)} × ${esc(i.descripcion)} — ${S(i.precio_unit)} c/u${i.personalizacion ? ` <small style="color:#7a5300">✏️ ${esc(i.personalizacion)}</small>` : ''}</li>`).join('')}</ul></div>
       <div class="bot">
-        ${esPed ? `<button class="btn" data-hpago="${p.id}">${sal > 0 ? '💵 Cobrar saldo' : '💵 Comprobantes'}</button>` : ''}
-        <button class="${esPed ? 'btn-sec' : 'btn'}" data-base="${p.id}">⧉ Usar como base</button>
+        ${esPed ? `<button class="btn" data-hpago="${p.id}">${sal > 0 ? '💵 Cobrar saldo' : '💵 Comprobantes'}</button>` : pag > 0 ? `<button class="btn" data-hpago="${p.id}" title="Tiene comprobantes válidos: ánulalos aquí">🧾 Anular comprobantes</button>` : ''}
+        <button class="${esPed || pag > 0 ? 'btn-sec' : 'btn'}" data-base="${p.id}">⧉ Usar como base</button>
         ${p.estado !== 'anulado' ? `<button class="btn-wa" data-hwa="${p.id}">💬 Enviar por WhatsApp</button><button class="btn-sec" data-hprofd="${p.id}">📥 Descargar proforma</button>` : ''}
         ${!['entregado', 'anulado'].includes(p.estado) ? `<button class="btn-sec" data-heditar="${p.id}">${p.estado === 'cotizado' ? '✓ Confirmar / editar' : '✏️ Editar'}</button>` : ''}
         ${p.estado === 'cotizado' ? `<button class="btn-sec" data-hanular="${p.id}">✕ Descartar</button>` : ''}
