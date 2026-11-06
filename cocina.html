@@ -33,6 +33,7 @@ input,select{font:inherit;padding:10px 12px;border:1px solid var(--borde);border
 .barra .logo{font-weight:800;font-size:20px;color:#fff}
 .barra .info{flex:1;color:var(--gris);font-size:14px}
 .chip{font-size:13px;font-weight:700;padding:6px 12px;border-radius:20px;background:#2b2b2b}
+.sonido{display:flex;gap:4px;align-items:center}.sonido select{width:auto;padding:6px 8px;font-size:14px}.sonido button{background:#2b2b2b;color:#fff;border:0;border-radius:10px;padding:6px 10px;font-size:16px;cursor:pointer}
 .chip.ok{color:#7ee2a0}.chip.off{color:#ff8a80}
 .toggle{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--gris);cursor:pointer;user-select:none}
 .toggle input{width:20px;height:20px}
@@ -119,6 +120,7 @@ input,select{font:inherit;padding:10px 12px;border:1px solid var(--borde);border
     <span class="info" id="b-info"></span>
     <label class="toggle"><input type="checkbox" id="conso"> Consolidado</label>
     <label class="toggle"><input type="checkbox" id="imprimir"> Imprimir comandas</label>
+    <span class="sonido"><select id="sonido" title="Sonido de pedido nuevo"></select><button id="probar" title="Escuchar">🔊</button></span>
     <span class="chip ok" id="b-red">En vivo</span>
   </div>
   <div class="zona" id="zona">
@@ -332,18 +334,36 @@ async function cambiar(ids, estado) {
 }
 
 // ===== SONIDO Y COMANDA =====
-function sonar() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    [0, 0.25].forEach(t => {
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.frequency.value = 880; o.connect(g); g.connect(ctx.destination);
-      g.gain.setValueAtTime(0.3, ctx.currentTime + t); g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.2);
-      o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.2);
-    });
-  } catch (e) {}
+// Sonidos generados aquí mismo (no necesitan archivos). Cada tablet guarda el suyo.
+const SONIDOS = {
+  llamada:  ['📞 Llamada', [[0, 659, .16], [.17, 880, .16], [.34, 1175, .3], [.8, 659, .16], [.97, 880, .16], [1.14, 1175, .3]], 'triangle'],
+  telefono: ['☎️ Teléfono', Array.from({ length: 24 }, (_, i) => [(i < 12 ? 0 : 1.1) + (i % 12) * .05, i % 2 ? 480 : 620, .05]), 'square'],
+  servicio: ['🛎️ Campana de servicio', [[0, 1568, .9], [0, 3136, .5], [.45, 1568, .9], [.45, 3136, .5]], 'sine'],
+  alarma:   ['🚨 Alarma', Array.from({ length: 6 }, (_, i) => [i * .22, i % 2 ? 1046 : 1318, .16]), 'square'],
+  cocina:   ['🔔 Timbre de cocina', [[0, 1046, .5], [.55, 784, .7]], 'sine'],
+  suave:    ['🎵 Suave (el de antes)', [[0, 880, .2], [.25, 880, .2]], 'sine'],
+  ninguno:  ['🔇 Sin sonido', [], 'sine'],
+};
+let actx = null;
+const audio = () => { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch (e) {} return actx; };
+function sonar(nombre) {
+  const s = SONIDOS[nombre || $('sonido').value] || SONIDOS.llamada, ctx = audio(); if (!ctx) return;
+  const t0 = ctx.currentTime + .05;
+  s[1].forEach(([t, f, d]) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = s[2]; o.frequency.value = f; o.connect(g); g.connect(ctx.destination);
+    const vol = s[2] === 'square' ? .18 : .5;   // la onda cuadrada suena más fuerte
+    g.gain.setValueAtTime(.0001, t0 + t); g.gain.exponentialRampToValueAtTime(vol, t0 + t + .01);
+    g.gain.exponentialRampToValueAtTime(.0001, t0 + t + d);
+    o.start(t0 + t); o.stop(t0 + t + d + .02);
+  });
 }
-document.addEventListener('click', () => { try { new (window.AudioContext || window.webkitAudioContext)().resume(); } catch (e) {} }, { once: true });
+$('sonido').innerHTML = Object.entries(SONIDOS).map(([k, v]) => `<option value="${k}">${v[0]}</option>`).join('');
+$('sonido').value = leer('sonido') || 'llamada';
+$('sonido').onchange = () => { guardar('sonido', $('sonido').value); sonar(); };
+$('probar').onclick = () => sonar();
+// el navegador solo deja sonar después del primer toque en la pantalla
+document.addEventListener('click', audio, { once: true });
 
 function imprimirComanda(items) {
   const g = new Map();
