@@ -50,7 +50,7 @@ table.t{width:100%;border-collapse:collapse}
 .t td{padding:6px;border-bottom:1px solid #f3f0ed;vertical-align:middle}
 .t td.n,.t th.n{text-align:right;white-space:nowrap}
 .t input,.t select{padding:7px 8px}
-.t .w-c{width:100px}.t .w-u{width:80px}.t .w-a{width:80px}
+.t .w-c{width:100px}.t .w-u{width:auto;min-width:80px;max-width:190px}.t .w-a{width:80px}
 .x{background:none;color:var(--mal);font-size:18px}
 .tipo{font-size:11px;font-weight:700;padding:2px 7px;border-radius:8px;background:#eee;color:#555;white-space:nowrap}
 .tipo.insumo{background:#e8f0fb;color:#1f4f99}.tipo.intermedio{background:#f3e8fb;color:#6b2b99}.tipo.producto_terminado{background:#fff1e0;color:#9a5300}
@@ -177,6 +177,11 @@ const TIPO = { insumo: 'Insumo', intermedio: 'Base', producto_terminado: 'Termin
 const UNI = { Kilo: 'kg', Litro: 'L', Unidad: 'und' };
 const UNIDADES_RECETA = { Kilo: ['g', 'kg'], Litro: ['ml', 'l'], Unidad: ['und'] };
 const A_BASE = { g: 0.001, kg: 1, ml: 0.001, l: 1, und: 1 };
+const BASE_RECETA = { Kilo: 'kg', Litro: 'l', Unidad: 'und' };
+// presentaciones del insumo (ej. Huevo = 0.06 kg, Lata = 0.395 kg): en la receta van como unidad "p:<id>"
+const presDe = id => (st.pres || {})[id] || [];
+const presPorId = pid => Object.values(st.pres || {}).flat().find(x => x.id === pid);
+const factorLinea = l => String(l.unidad).startsWith('p:') ? Number(presPorId(Number(l.unidad.slice(2)))?.factor || 0) : A_BASE[l.unidad];
 const DESCUENTO = { unidad: 'Por unidad (stock)', receta: 'Por receta (insumos)', porcion: 'Porción de un entero', ninguno: 'No controla stock' };
 const tipoTag = t => `<span class="tipo ${t}">${TIPO[t] || t}</span>`;
 const fcClase = p => p == null ? '' : p <= 30 ? 'bien' : p <= 38 ? 'medio' : 'mal';
@@ -214,12 +219,14 @@ async function validarPin() {
 $('b-salir').onclick = pedirPin;
 
 async function cargarMaestros() {
-  const [p, c, k, r] = await Promise.all([
+  const [p, c, k, r, pr] = await Promise.all([
     sb.from('productos').select('*').order('nombre'),
     sb.from('categorias').select('id,nombre,categoria_principal').order('nombre'),
     sb.from('v_costos').select('*'),
-    sb.from('v_recetas').select('*').order('producto')
+    sb.from('v_recetas').select('*').order('producto'),
+    sb.from('producto_presentaciones').select('id,producto_id,nombre,factor').eq('activo', true).order('orden').order('id')
   ]);
+  st.pres = {}; (pr.data || []).forEach(x => (st.pres[x.producto_id] = st.pres[x.producto_id] || []).push({ ...x, factor: Number(x.factor) }));
   st.productos = p.data || []; st.categorias = c.data || []; st.recetas = r.data || [];
   st.costos = {}; (k.data || []).forEach(x => st.costos[x.producto_id] = x.costo == null ? null : Number(x.costo));
   await cargarFichas();
@@ -255,6 +262,11 @@ async function abrirReceta(prodId) {
   if (r) {
     const { data } = await sb.from('v_receta_detalle').select('*').eq('receta_id', r.id).order('id');
     lineas = (data || []).map(d => ({ insumo_id: d.insumo_id, cantidad: Number(d.cantidad_receta), unidad: d.unidad_receta, aprovechamiento: Number(d.aprovechamiento_pct) }));
+    // si se escribió en una presentación (ej. 3 huevos), se muestra así
+    const { data: lp } = await sb.from('receta_lineas_pres').select('insumo_id,presentacion_id,cantidad_pres').eq('producto_id', prodId);
+    (lp || []).forEach(x => { const l = lineas.find(y => y.insumo_id === x.insumo_id), pr = presPorId(x.presentacion_id); if (!l || !pr) return;
+      const base = l.cantidad * A_BASE[l.unidad], esperado = Number(x.cantidad_pres) * pr.factor;
+      if (Math.abs(base - esperado) <= Math.max(1e-6, esperado * 0.001)) { l.unidad = 'p:' + pr.id; l.cantidad = Number(x.cantidad_pres); } });
   }
   st.ed = { producto_id: prodId, rendimiento: r ? Number(r.rendimiento) : 1, notas: r ? r.notas || '' : '', lineas };
   pintarEditor();
@@ -326,15 +338,27 @@ function buscadorInsumo() {
   }
 }
 function lineaCalc(l) {
-  const p = prodDe(l.insumo_id), base = Number(l.cantidad || 0) * A_BASE[l.unidad], bruto = base * 100 / (Number(l.aprovechamiento) || 100);
+  const p = prodDe(l.insumo_id), base = Number(l.cantidad || 0) * factorLinea(l), bruto = base * 100 / (Number(l.aprovechamiento) || 100);
   const cu = st.costos[l.insumo_id];
   return { p, base, bruto, cu, costo: cu == null ? null : bruto * cu };
+}
+async function nuevaPresentacion(l) {
+  const p = prodDe(l.insumo_id), u = UNI[p.unidad_medida];
+  const nom = prompt(`Nombre de la presentación de ${p.nombre}\nEj. Unidad, Lata, Bolsa, Balde`, p.unidad_medida === 'Unidad' ? '' : 'Unidad');
+  if (!nom || !nom.trim()) return pintarLineas();
+  const f = prompt(`¿Cuántos ${u} trae 1 "${nom.trim()}" de ${p.nombre}?\nEj. 1 huevo = 0.06 ${u} · usa punto para decimales`, '');
+  const factor = Number(String(f || '').replace(',', '.'));
+  if (!(factor > 0)) { alert('Equivalencia no válida. No se creó la presentación.'); return pintarLineas(); }
+  const { data, error } = await sb.from('producto_presentaciones').insert({ producto_id: p.id, nombre: nom.trim(), factor, orden: presDe(p.id).length + 1 }).select('id,producto_id,nombre,factor').single();
+  if (error) { alert(errTxt(error)); return pintarLineas(); }
+  (st.pres[p.id] = st.pres[p.id] || []).push({ ...data, factor: Number(data.factor) });
+  l.unidad = 'p:' + data.id; pintarLineas();
 }
 function pintarLineas() {
   $('e-filas').innerHTML = st.ed.lineas.map((l, i) => { const k = lineaCalc(l), p = k.p;
     return `<tr><td>${esc(p.nombre)} ${p.tipo_item === 'intermedio' ? '<span class="tipo intermedio">Base</span>' : ''}<br><small style="color:#999">${p.codigo}</small></td>
       <td class="n"><input class="l-c w-c" data-i="${i}" type="number" step="0.001" min="0" value="${l.cantidad}"></td>
-      <td><select class="l-u w-u" data-i="${i}">${UNIDADES_RECETA[p.unidad_medida].map(u => `<option ${u === l.unidad ? 'selected' : ''}>${u}</option>`).join('')}</select></td>
+      <td><select class="l-u w-u" data-i="${i}">${UNIDADES_RECETA[p.unidad_medida].map(u => `<option ${u === l.unidad ? 'selected' : ''}>${u}</option>`).join('')}${presDe(p.id).map(x => `<option value="p:${x.id}" ${'p:' + x.id === l.unidad ? 'selected' : ''}>${esc(x.nombre)} (${N(x.factor)} ${UNI[p.unidad_medida]})</option>`).join('')}<option value="nueva">➕ Nueva presentación…</option></select></td>
       <td class="n"><input class="l-a w-a" data-i="${i}" type="number" step="1" min="1" max="100" value="${l.aprovechamiento}"></td>
       <td class="n l-bruto">${N(k.bruto, 4)} ${UNI[p.unidad_medida]}</td>
       <td class="n">${k.cu == null ? '<span class="sin-costo">sin costo</span>' : S(k.cu, 2) + '/' + UNI[p.unidad_medida]}</td>
@@ -343,7 +367,7 @@ function pintarLineas() {
   $('e-filas').oninput = $('e-filas').onchange = e => {
     const i = e.target.dataset.i; if (i === undefined) return; const l = st.ed.lineas[i];
     if (e.target.classList.contains('l-c')) l.cantidad = e.target.value;
-    if (e.target.classList.contains('l-u')) l.unidad = e.target.value;
+    if (e.target.classList.contains('l-u')) { if (e.target.value === 'nueva') { e.target.value = l.unidad; return nuevaPresentacion(l); } l.unidad = e.target.value; }
     if (e.target.classList.contains('l-a')) l.aprovechamiento = e.target.value;
     const k = lineaCalc(l), tr = e.target.closest('tr');
     tr.querySelector('.l-bruto').textContent = `${N(k.bruto, 4)} ${UNI[k.p.unidad_medida]}`;
@@ -373,10 +397,17 @@ async function guardarReceta() {
   if (!ed.producto_id) return $('e-error').textContent = 'Elige o crea el producto de la receta.';
   if (ed.lineas.some(l => !(Number(l.cantidad) > 0))) return $('e-error').textContent = 'Cada insumo necesita una cantidad.';
   $('e-guardar').disabled = true;
+  // lo escrito en presentación se guarda convertido a kg / L / und; aparte se recuerda la presentación
+  const esPres = l => String(l.unidad).startsWith('p:');
   const { error } = await sb.rpc('guardar_receta', { p: { producto_id: ed.producto_id, rendimiento: ed.rendimiento, notas: ed.notas,
-    items: ed.lineas.map(l => ({ insumo_id: l.insumo_id, cantidad: Number(l.cantidad), unidad: l.unidad, aprovechamiento: Number(l.aprovechamiento) || 100 })) } });
+    items: ed.lineas.map(l => ({ insumo_id: l.insumo_id, cantidad: esPres(l) ? Math.round(Number(l.cantidad) * factorLinea(l) * 1e6) / 1e6 : Number(l.cantidad),
+      unidad: esPres(l) ? BASE_RECETA[prodDe(l.insumo_id).unidad_medida] : l.unidad, aprovechamiento: Number(l.aprovechamiento) || 100 })) } });
   $('e-guardar').disabled = false;
   if (error) return $('e-error').textContent = errTxt(error);
+  const del = await sb.from('receta_lineas_pres').delete().eq('producto_id', ed.producto_id);
+  const filas = ed.lineas.filter(esPres).map(l => ({ producto_id: ed.producto_id, insumo_id: l.insumo_id, presentacion_id: Number(l.unidad.slice(2)), cantidad_pres: Number(l.cantidad) }));
+  if (del.error && filas.length) return $('e-error').textContent = 'Receta guardada, pero falta correr 73_recetas_presentacion.sql para recordar las presentaciones.';
+  if (filas.length) { const r = await sb.from('receta_lineas_pres').insert(filas); if (r.error) return $('e-error').textContent = 'Receta guardada, pero no se recordó la presentación: ' + errTxt(r.error); }
   await cargarMaestros(); st.sel = ed.producto_id; pintarLista(); await abrirReceta(ed.producto_id);
   $('e-ok').textContent = '✓ Receta guardada. El costo de las recetas que usan esta base se actualiza solo.';
 }
