@@ -220,6 +220,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
 .listo-box .n{font-size:20px;font-weight:800;color:var(--ok);margin:4px 0 10px}
 .listo-box .acc3{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .mapa-form{height:240px;border-radius:12px;border:1px solid var(--borde);margin:6px 0 4px;z-index:1}
+.mapa-form.bloq{outline:2px solid #1e7d3a;outline-offset:-2px}.mapa-form.bloq .leaflet-marker-icon{cursor:default}
 .ubi-info{font-size:12.5px;color:var(--gris);display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
 .ubi-info a{color:var(--azul);font-weight:700;text-decoration:none}
 .ubi-ok{color:var(--ok);font-weight:700}
@@ -260,6 +261,9 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
 .pk .pie{border-top:2px solid #8B0000;padding-top:3mm;display:flex;justify-content:space-between;font-size:7.5pt;color:#777}
 .pk tr{page-break-inside:avoid}
 </style>
+<!-- números sin flechitas: se escriben; la rueda del mouse o las flechas del teclado no los cambian -->
+<style>input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}input[type=number]{-moz-appearance:textfield;appearance:textfield}</style>
+<script>document.addEventListener('wheel',e=>{const t=e.target;if(t&&t.type==='number'&&t===document.activeElement)t.blur()},{passive:true});document.addEventListener('keydown',e=>{if((e.key==='ArrowUp'||e.key==='ArrowDown')&&e.target&&e.target.type==='number')e.preventDefault()},true);</script>
 </head>
 <body>
 
@@ -2094,8 +2098,16 @@ $('f-ubis').onclick = e => {
   fijarUbicacion(Number(u.lat), Number(u.lng), u.link || null);
   [...$('f-ubis').querySelectorAll('[data-ubi]')].forEach(x => x.classList.toggle('activa', x === b));
 };
-const st_map = { form: null, pin: null, grande: null, capa: null, datos: [] };
+const st_map = { form: null, pin: null, grande: null, capa: null, datos: [], bloqF: null, vistoF: null };
+// ubicación guardada = mapa bloqueado (no se mueve el pin por accidente). "✏️ Cambiar" lo desbloquea.
+const ubiBloq = () => st.f && st_map.bloqF === st.f && st.f.ubicacion_lat != null;
+function bloquearUbicacion(si) {
+  st_map.bloqF = si ? st.f : null;
+  ['ubi-link', 'ubi-buscar'].forEach(id => { $(id).disabled = !!si; });
+  pintarUbicacion(false);
+}
 function fijarUbicacion(lat, lng, link) {
+  if (ubiBloq()) return toast('🔒 Ubicación guardada. Toca ✏️ Cambiar ubicación para editarla.');
   st.f.ubicacion_lat = Math.round(lat * 1e7) / 1e7; st.f.ubicacion_lng = Math.round(lng * 1e7) / 1e7;
   st.f.ubicacion_link = link || `https://www.google.com/maps?q=${st.f.ubicacion_lat},${st.f.ubicacion_lng}`;
   $('ubi-link').value = st.f.ubicacion_link;
@@ -2103,6 +2115,8 @@ function fijarUbicacion(lat, lng, link) {
 }
 function pintarUbicacion(centrar) {
   const f = st.f; if (!f || f.tipo_entrega !== 'delivery') return;
+  // al abrir un pedido que ya tiene ubicación, el mapa empieza bloqueado
+  if (st_map.vistoF !== f) { st_map.vistoF = f; st_map.bloqF = f.ubicacion_lat != null ? f : null; ['ubi-link', 'ubi-buscar'].forEach(id => { $(id).disabled = st_map.bloqF === f; }); }
   if (typeof L === 'undefined') { cotizarFormDelivery(); return; }   // sin mapa igual se cotiza
   if (!st_map.form) {
     st_map.form = L.map('f-mapa', { zoomControl: true }).setView(LIMA, 12);
@@ -2110,16 +2124,20 @@ function pintarUbicacion(centrar) {
     st_map.form.on('click', e => fijarUbicacion(e.latlng.lat, e.latlng.lng));
   }
   setTimeout(() => st_map.form.invalidateSize(), 50);
-  const tiene = f.ubicacion_lat != null;
+  const tiene = f.ubicacion_lat != null, bloq = ubiBloq();
   if (tiene) {
     const ll = [f.ubicacion_lat, f.ubicacion_lng];
     if (!st_map.pin) { st_map.pin = L.marker(ll, { draggable: true }).addTo(st_map.form); st_map.pin.on('dragend', ev => { const p = ev.target.getLatLng(); fijarUbicacion(p.lat, p.lng); }); }
     else st_map.pin.setLatLng(ll);
+    if (st_map.pin.dragging) bloq ? st_map.pin.dragging.disable() : st_map.pin.dragging.enable();
     if (centrar !== false) st_map.form.setView(ll, Math.max(st_map.form.getZoom(), 16));
   } else if (st_map.pin) { st_map.form.removeLayer(st_map.pin); st_map.pin = null; st_map.form.setView(LIMA, 12); }
-  $('ubi-info').innerHTML = tiene
-    ? `<span class="ubi-ok">✓ ${f.ubicacion_lat}, ${f.ubicacion_lng}</span><a href="https://www.google.com/maps?q=${f.ubicacion_lat},${f.ubicacion_lng}" target="_blank" rel="noopener">Abrir en Google Maps</a><a href="#" id="ubi-quitar" style="color:var(--mal)">quitar</a><span>Puedes arrastrar el pin para corregir.</span>`
-    : '<span>Toca el mapa para marcar el punto de entrega.</span>';
+  $('f-mapa').classList.toggle('bloq', bloq);
+  $('ubi-info').innerHTML = !tiene ? '<span>Toca el mapa para marcar el punto de entrega.</span>'
+    : bloq ? `<span class="ubi-ok">🔒 Ubicación guardada</span><a href="https://www.google.com/maps?q=${f.ubicacion_lat},${f.ubicacion_lng}" target="_blank" rel="noopener">Abrir en Google Maps</a><button type="button" class="btn-sec" id="ubi-editar" style="padding:5px 12px">✏️ Cambiar ubicación</button>`
+    : `<span class="ubi-ok">✓ ${f.ubicacion_lat}, ${f.ubicacion_lng}</span><a href="https://www.google.com/maps?q=${f.ubicacion_lat},${f.ubicacion_lng}" target="_blank" rel="noopener">Abrir en Google Maps</a><a href="#" id="ubi-quitar" style="color:var(--mal)">quitar</a><span>Arrastra el pin si hace falta y luego</span><button type="button" class="btn" id="ubi-guardar" style="padding:6px 14px">🔒 Guardar ubicación</button>`;
+  if ($('ubi-guardar')) $('ubi-guardar').onclick = () => bloquearUbicacion(true);
+  if ($('ubi-editar')) $('ubi-editar').onclick = () => bloquearUbicacion(false);
   if ($('ubi-quitar')) $('ubi-quitar').onclick = ev => { ev.preventDefault(); f.ubicacion_lat = f.ubicacion_lng = null; f.ubicacion_link = ''; $('ubi-link').value = ''; pintarUbicacion(); };
   cotizarFormDelivery();
 }
