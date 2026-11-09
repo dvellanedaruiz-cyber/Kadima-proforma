@@ -209,6 +209,9 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
 .estrellas{color:#e3a23b;letter-spacing:1px}
 @media (max-width:900px){.kanban{grid-template-columns:repeat(6,80vw)}.op-g{grid-template-columns:1fr}}
 </style>
+<!-- números sin flechitas: se escriben; la rueda del mouse o las flechas del teclado no los cambian -->
+<style>input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}input[type=number]{-moz-appearance:textfield;appearance:textfield}</style>
+<script>document.addEventListener('wheel',e=>{const t=e.target;if(t&&t.type==='number'&&t===document.activeElement)t.blur()},{passive:true});document.addEventListener('keydown',e=>{if((e.key==='ArrowUp'||e.key==='ArrowDown')&&e.target&&e.target.type==='number')e.preventDefault()},true);</script>
 </head>
 <body>
 
@@ -242,18 +245,18 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
       <button data-s="enc">⭐ Encuestas</button>
     </div>
     <span class="usr" id="usr" title="Cambiar de usuario"></span>
-    <span style="font-size:11px;opacity:.7">v1.4</span>
+    <span style="font-size:11px;opacity:.7">v1.5</span>
   </div>
 
   <!-- ===== VENTAS (tablero de conversaciones) ===== -->
   <div id="s-ventas" class="pag oculto" style="max-width:none">
-    <div class="kpis" id="v-kpis"></div>
-    <div class="fila" style="align-items:center">
-      <div style="flex:2"><input id="v-q" placeholder="Buscar por nombre, celular u ocasión…"></div>
-      <div style="flex:0 0 auto"><button class="btn" id="v-nuevo">+ Nuevo contacto</button></div>
-      <div style="flex:0 0 auto"><button class="btn-sec" id="v-plant">✎ Plantillas de WhatsApp</button></div>
+    <div class="fila" style="align-items:center;margin-bottom:10px">
+      <div style="flex:0 0 auto"><div class="chips" id="v-modo"><button data-m="ped" class="activa" style="font-size:15px;padding:9px 16px">📥 Pedidos (nos escriben)</button><button data-m="rc" style="font-size:15px;padding:9px 16px">📤 Recontacto (les escribimos)</button></div></div>
+      <div style="flex:2"><input id="v-q" placeholder="Buscar por nombre, celular o código…"></div>
+      <div style="flex:0 0 auto"><button class="btn-sec" id="v-plant">✎ Plantillas</button></div>
     </div>
-    <p class="ayuda" style="margin:0 0 8px">Cada cliente que escribe es una tarjeta. Arrástrala a la siguiente columna conforme avanza, o tócala para ver su detalle, escribirle por WhatsApp y anotar.</p>
+    <div class="kpis" id="v-kpis"></div>
+    <p class="ayuda" style="margin:0 0 8px" id="v-ayuda"></p>
     <div class="kanban" id="v-kanban"></div>
   </div>
 
@@ -1025,237 +1028,214 @@ $('mp-csv').onclick = () => {
 };
 
 
-// ===================== VENTAS · tablero de conversaciones (journey) =====================
-const ETAPAS = [['nuevo', '💬 Nuevo contacto'], ['descubrimiento', '🔎 Entendiendo qué quiere'], ['propuesta', '📄 Proforma enviada'], ['seguimiento', '⏳ Seguimiento'], ['confirmado', '✅ Confirmado'], ['perdido', '❌ Perdido']];
-const ETQ = Object.fromEntries(ETAPAS);
-const CANALES = { whatsapp: 'WhatsApp', instagram: 'Instagram', facebook: 'Facebook', tiktok: 'TikTok', web: 'Página web', llamada: 'Llamada', tienda: 'En tienda', referido: 'Recomendación', otro: 'Otro' };
-const CONOCIO = ['Instagram', 'TikTok', 'Facebook', 'Google / Maps', 'Recomendación', 'Ya es cliente', 'Pasó por la tienda', 'Otro'];
-const OCASIONES = ['Cumpleaños', 'Aniversario', 'Boda', 'Baby shower', 'Bautizo / Comunión', 'Graduación', 'Evento de empresa', 'Reunión / compartir', 'Otro'];
-const MOTIVOS_PERDIDA = ['Precio', 'No respondió', 'Fecha no disponible', 'Eligió otra pastelería', 'Ya no lo necesita', 'Delivery / distancia', 'No hacemos ese producto', 'Otro'];
-// al pasar a una etapa, la siguiente acción se agenda sola
-const AUTO = { nuevo: ['Responder', 0], descubrimiento: ['Esperar respuesta del cliente', 24], propuesta: ['Seguimiento de la proforma', 24], seguimiento: ['Último aviso', 48] };
+// ===================== VENTAS · los dos journeys (se arman solos, nada se llena a mano) =====================
+// 📥 Pedidos: cotizaciones y pedidos de Encargos + web → avanzan con su estado hasta la encuesta.
+// 📤 Recontacto: fechas especiales próximas + clientes que no compran hace tiempo.
 const URL_OPINA = 'https://kadima.pe/opina';
 const telNorm = t => String(t || '').replace(/\D/g, '').slice(-9);
 const haceTxt = iso => { const m = Math.round((Date.now() - new Date(iso)) / 6e4); return m < 60 ? `hace ${m} min` : m < 1440 ? `hace ${Math.round(m / 60)} h` : `hace ${Math.round(m / 1440)} d`; };
-const estadoPA = o => { if (!o.proxima_fecha || ['confirmado', 'perdido'].includes(o.etapa)) return ''; const f = new Date(o.proxima_fecha); if (f <= new Date()) return 'vencida'; return limaDia(f.toISOString()) === limaDia(new Date().toISOString()) ? 'hoy' : ''; };
-const cuandoTxt = iso => { const f = new Date(iso), hoy = limaDia(new Date().toISOString()), d = limaDia(iso); const h = f.toLocaleTimeString('es-PE', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Lima' });
-  return d === hoy ? `hoy ${h}` : d === limaDia(new Date(Date.now() + 864e5).toISOString()) ? `mañana ${h}` : `${fechaCorta(iso)} ${h}`; };
+const horasDesde = iso => iso ? (Date.now() - new Date(iso)) / 36e5 : Infinity;
+const ETAPAS_PED = [['cotizado', '📄 Cotizado'], ['seguimiento', '⏳ En seguimiento'], ['confirmado', '✅ Confirmado'], ['entregado', '📦 Entregado · enviar encuesta'], ['encuesta', '⭐ Encuesta enviada'], ['valorado', '💬 Valorado'], ['perdido', '❌ Perdido']];
+const ETAPAS_RC = [['rc_fecha', '🎂 Fechas próximas'], ['rc_inactivo', '💤 Sin comprar hace tiempo'], ['rc_enviado', '📨 Mensaje enviado'], ['rc_compro', '✅ Volvió a comprar'], ['rc_no', '🚫 No interesado']];
+const ETAPAS_PLANT = [...ETAPAS_PED, ['rc_fecha', '📤 Recontacto · fecha especial'], ['rc_inactivo', '📤 Recontacto · sin comprar']];
+const MOTIVO_DE = { cotizado: 'cotizacion', seguimiento: 'seguimiento', confirmado: 'confirmacion', entregado: 'encuesta', encuesta: 'encuesta', valorado: 'postventa', perdido: 'postventa', rc_fecha: 'fecha_especial', rc_inactivo: 'recontacto', rc_enviado: 'recontacto', rc_compro: 'postventa' };
+st.vmodo = 'ped';
 
 async function cargarVentas() {
-  const desde = new Date(Date.now() - 30 * 864e5).toISOString();
-  const [o, p] = await Promise.all([
-    sb.from('crm_oportunidades').select('*, pedidos_encargo(codigo,estado,fecha_entrega,total_productos)').or(`etapa.in.(nuevo,descubrimiento,propuesta,seguimiento),actualizado_en.gte.${desde}`).order('creado_en', { ascending: false }).limit(500),
-    sb.from('crm_plantillas').select('*').eq('activo', true).order('etapa').order('orden'),
+  const d60 = new Date(Date.now() - 60 * 864e5).toISOString(), d90 = new Date(Date.now() - 90 * 864e5).toISOString();
+  const abiertos = 'estado.in.(cotizado,por_validar,confirmado,en_produccion,listo)';
+  const [pe, pw, en, co, pl, aj] = await Promise.all([
+    sb.from('pedidos_encargo').select('id,codigo,estado,cliente_id,cliente_nombre,cliente_telefono,fecha_entrega,creado_en,total_productos,perdida_motivo,perdida_en,pedidos_encargo_items(descripcion,cantidad)').or(`${abiertos},creado_en.gte.${d60}`).order('creado_en', { ascending: false }).limit(800),
+    sb.from('pedidos_web').select('id,codigo,estado,cliente_id,cliente_nombre,cliente_telefono,fecha_entrega,creado_en,total_productos,pedidos_web_items(nombre,cantidad)').or(`${abiertos},creado_en.gte.${d60}`).order('creado_en', { ascending: false }).limit(800),
+    sb.from('encuestas').select('id,pedido_id,pedido_web_id,enviada_en,respondida_en,nps,comentario,atendida').gte('creado_en', d90),
+    sb.from('crm_contactos').select('cliente_id,motivo,referencia,nota,fecha,usuario').gte('fecha', d90).order('fecha', { ascending: false }).limit(5000),
+    sb.from('crm_plantillas').select('*').eq('activo', true).order('orden'),
+    sb.from('crm_ajustes').select('*').eq('id', 1).maybeSingle(),
   ]);
-  if (o.error) { $('v-kanban').innerHTML = `<div class="vacio">${/crm_oportunidades|does not exist/.test(o.error.message) ? 'Falta correr 72_journey_ventas.sql en Supabase.' : esc(errTxt(o.error))}</div>`; return; }
-  st.ops = o.data || []; st.plantillas = p.data || [];
+  if (pe.error) { $('v-kanban').innerHTML = `<div class="vacio">${esc(errTxt(pe.error))}</div>`; return; }
+  st.plantillas = pl.data || []; st.contactos = co.data || []; st.diasRc = aj.data?.dias_recontacto || 60;
+  st.faltaSql = !!(aj.error || co.error);
+  const encDe = {}; (en.data || []).forEach(e => { encDe[e.pedido_id ? 'encargo:' + e.pedido_id : 'web:' + e.pedido_web_id] = e; });
+  const conDe = {}; st.contactos.forEach(c => { if (c.referencia) (conDe[c.referencia] = conDe[c.referencia] || []).push(c); });
+  const hoyS = fstr(new Date());
+  const tarjeta = (p, o) => {
+    const k = o + ':' + p.id, e = encDe[k], cs = conDe[p.codigo] || [];
+    const items = o === 'web' ? (p.pedidos_web_items || []).map(i => `${Number(i.cantidad)} ${i.nombre}`) : (p.pedidos_encargo_items || []).map(i => `${Number(i.cantidad)} ${i.descripcion}`);
+    const x = { k, o, id: p.id, codigo: p.codigo, estado: p.estado, cliente_id: p.cliente_id, nombre: p.cliente_nombre || '—', tel: telNorm(p.cliente_telefono), fecha: p.fecha_entrega,
+      creado_en: p.creado_en, total: Number(p.total_productos || 0), items: items.join(', '), enc: e, contactos: cs, perdida: p.perdida_motivo, perdida_en: p.perdida_en };
+    const seg = cs.filter(c => ['seguimiento', 'cotizacion'].includes(c.motivo));
+    if (p.estado === 'anulado') { if (horasDesde(p.perdida_en || p.creado_en) > 30 * 24) return null; x.etapa = 'perdido'; }
+    else if (p.estado === 'cotizado') {
+      x.etapa = seg.some(c => c.motivo === 'seguimiento') ? 'seguimiento' : 'cotizado';
+      const ult = seg[0]?.fecha || p.creado_en;   // lo último que se le escribió (o cuándo se cotizó)
+      x.alerta = horasDesde(ult) >= (x.etapa === 'cotizado' ? 24 : 48) ? (x.etapa === 'cotizado' ? 'Hacer seguimiento' : 'Volver a escribir') : '';
+      x.ult = ult;
+    }
+    else if (['por_validar', 'confirmado', 'en_produccion', 'listo'].includes(p.estado)) { x.etapa = 'confirmado'; x.alerta = p.estado === 'listo' ? 'Avisar que está listo' : ''; }
+    else if (p.estado === 'entregado') {
+      if (e?.respondida_en) { if (horasDesde(e.respondida_en) > 30 * 24) return null; x.etapa = 'valorado'; x.alerta = e.nps != null && e.nps <= 6 && !e.atendida ? 'Contactar: no quedó contento' : ''; }
+      else if (e?.enviada_en) { if (horasDesde(e.enviada_en) > 10 * 24) return null; x.etapa = 'encuesta'; x.alerta = horasDesde(e.enviada_en) > 48 && !cs.some(c => c.motivo === 'encuesta' && c.fecha > e.enviada_en) ? 'Recordar encuesta' : ''; }
+      else { if (!p.fecha_entrega || p.fecha_entrega < fstr(new Date(Date.now() - 15 * 864e5))) return null; x.etapa = 'entregado'; x.alerta = p.fecha_entrega < hoyS ? 'Enviar encuesta' : ''; }
+    } else return null;
+    return x;
+  };
+  st.ped = [...(pe.data || []).map(p => tarjeta(p, 'encargo')), ...(pw.data || []).map(p => tarjeta(p, 'web'))].filter(Boolean);
+  await cargarRecontacto();
   pintarVentas();
 }
+
+async function cargarRecontacto() {
+  const [cl, fe] = await Promise.all([
+    sb.from('v_crm_clientes').select('id,nombre,telefono,ultima_compra,compras,total,acepta_promos').not('telefono', 'is', null).limit(5000),
+    sb.from('crm_fechas').select('*, crm_clientes(id,nombre,telefono,acepta_promos)').eq('activo', true),
+  ]);
+  const cli = {}; (cl.data || []).forEach(c => cli[c.id] = c);
+  const porCli = {}; st.contactos.filter(c => c.cliente_id).forEach(c => (porCli[c.cliente_id] = porCli[c.cliente_id] || []).push(c));
+  const hechosF = new Set(st.contactos.filter(c => c.motivo === 'fecha_especial').map(c => c.referencia));
+  const rc = [];
+  // 🎂 fechas en los próximos 15 días, sin contactar aún este año
+  (fe.data || []).forEach(f => {
+    const c = cli[f.cliente_id] || f.crm_clientes; if (!c || !c.telefono) return;
+    const d = proxima(f), en = Math.round((d - hoyD()) / 864e5), ref = `F${f.id}-${d.getFullYear()}`;
+    if (en > 15 || hechosF.has(ref)) return;
+    rc.push({ k: 'f' + f.id, etapa: 'rc_fecha', cliente_id: c.id, nombre: c.nombre, tel: telNorm(c.telefono), ref, acepta: c.acepta_promos,
+      det: `${OCASION[f.tipo]}${f.para_quien ? ' de ' + f.para_quien : ''} · ${en === 0 ? 'hoy' : en === 1 ? 'mañana' : 'en ' + en + ' días'}`, alerta: en <= 7 ? 'Escribir esta semana' : '',
+      vars: { ocasion: OCASION[f.tipo], para: f.para_quien || 'su ser querido', fecha: `${d.getDate()} de ${MESES[d.getMonth()]}` } });
+  });
+  // clientes contactados para volver: enviado / compró / no interesado
+  const yaEn = new Set();
+  Object.entries(porCli).forEach(([id, cs]) => {
+    const c = cli[id]; if (!c) return;
+    const r = cs.find(x => ['recontacto', 'fecha_especial'].includes(x.motivo)); if (!r) return;
+    yaEn.add(Number(id));
+    const base = { k: 'c' + id, cliente_id: Number(id), nombre: c.nombre, tel: telNorm(c.telefono), ref: r.referencia, acepta: c.acepta_promos, contactado: r.fecha, vars: {} };
+    if (/no interesado/i.test(r.nota || '')) { if (horasDesde(r.fecha) <= 90 * 24) rc.push({ ...base, etapa: 'rc_no', det: 'No interesado · ' + fechaCorta(r.fecha) }); return; }
+    if (c.ultima_compra && c.ultima_compra >= fstr(new Date(r.fecha))) { if (horasDesde(r.fecha) <= 60 * 24) rc.push({ ...base, etapa: 'rc_compro', det: `Compró el ${fechaCorta(c.ultima_compra)}` }); return; }
+    if (horasDesde(r.fecha) <= 30 * 24) rc.push({ ...base, etapa: 'rc_enviado', det: `Se le escribió ${haceTxt(r.fecha)} · ${r.nota || ''}`, alerta: horasDesde(r.fecha) > 7 * 24 ? 'Sin respuesta: ¿insistir?' : '' });
+  });
+  // 💤 dormidos: compraron antes, pero no desde hace N días (los mejores clientes primero)
+  (cl.data || []).filter(c => Number(c.compras) > 0 && c.ultima_compra && diasDesde(c.ultima_compra) >= st.diasRc && !yaEn.has(c.id) && !rc.some(x => x.cliente_id === c.id))
+    .sort((a, b) => Number(b.total) - Number(a.total)).slice(0, 40)
+    .forEach(c => rc.push({ k: 'i' + c.id, etapa: 'rc_inactivo', cliente_id: c.id, nombre: c.nombre, tel: telNorm(c.telefono), ref: 'R' + c.id + '-' + fstr(new Date()).slice(0, 7), acepta: c.acepta_promos,
+      det: `Última compra ${fechaCorta(c.ultima_compra)} · ${c.compras} compra(s) · ${S(c.total)}`, vars: {} }));
+  st.rc = rc;
+}
+
 function pintarVentas() {
-  const q = $('v-q').value.trim().toLowerCase();
-  const l = st.ops.filter(o => !q || [o.nombre, o.telefono, o.ocasion, o.producto, o.pedidos_encargo?.codigo].some(x => String(x || '').toLowerCase().includes(q)));
-  const abiertas = st.ops.filter(o => !['confirmado', 'perdido'].includes(o.etapa));
-  const urg = abiertas.filter(o => ['vencida', 'hoy'].includes(estadoPA(o))).length;
-  const cerr = st.ops.filter(o => o.cerrado_en && Date.now() - new Date(o.cerrado_en) < 30 * 864e5);
-  const conf = cerr.filter(o => o.etapa === 'confirmado'), conv = cerr.length ? Math.round(conf.length / cerr.length * 100) : null;
-  const resp = st.ops.filter(o => o.primera_resp_en).map(o => (new Date(o.primera_resp_en) - new Date(o.creado_en)) / 6e4);
-  const tResp = resp.length ? Math.round(resp.reduce((a, b) => a + b, 0) / resp.length) : null;
-  const ticket = conf.filter(o => o.monto).length ? conf.reduce((a, o) => a + Number(o.monto || 0), 0) / conf.filter(o => o.monto).length : null;
-  $('v-kpis').innerHTML = `<div class="kpi"><span>Conversaciones abiertas</span><b>${abiertas.length}</b></div>
-    <div class="kpi"><span>🔔 Para atender hoy</span><b style="color:${urg ? 'var(--mal)' : 'inherit'}">${urg}</b></div>
-    <div class="kpi"><span>Cierre (30 días)</span><b>${conv == null ? '—' : conv + '%'}</b><span>${conf.length} de ${cerr.length}</span></div>
-    <div class="kpi"><span>1.ª respuesta promedio</span><b>${tResp == null ? '—' : tResp < 60 ? tResp + ' min' : (tResp / 60).toFixed(1) + ' h'}</b></div>
-    <div class="kpi"><span>Ticket confirmado</span><b>${ticket == null ? '—' : S(ticket)}</b></div>`;
-  $('v-kanban').innerHTML = ETAPAS.map(([k, n]) => {
-    let c = l.filter(o => o.etapa === k);
-    // abiertas: primero lo urgente; cerradas: lo más reciente
-    c.sort((a, b) => ['confirmado', 'perdido'].includes(k) ? new Date(b.actualizado_en) - new Date(a.actualizado_en) : (new Date(a.proxima_fecha || '2999-01-01') - new Date(b.proxima_fecha || '2999-01-01')));
-    const max = ['confirmado', 'perdido'].includes(k) ? 15 : 200, mas = c.length - max;
-    return `<div class="kb-col" data-col="${k}"><h4>${n}<span>${c.length}</span></h4>${c.slice(0, max).map(tarjetaOp).join('') || ''}${mas > 0 ? `<div class="kb-mas">+ ${mas} más (busca arriba)</div>` : ''}</div>`;
+  const q = $('v-q').value.trim().toLowerCase(), ped = st.vmodo === 'ped';
+  const l = (ped ? st.ped : st.rc).filter(x => !q || [x.nombre, x.tel, x.codigo, x.items, x.det].some(v => String(v || '').toLowerCase().includes(q)));
+  [...$('v-modo').children].forEach(b => b.classList.toggle('activa', b.dataset.m === st.vmodo));
+  const urg = l.filter(x => x.alerta).length;
+  if (ped) {
+    const ult30 = st.ped.filter(x => horasDesde(x.creado_en) <= 30 * 24), conf = ult30.filter(x => !['cotizado', 'seguimiento', 'perdido'].includes(x.etapa)).length, perd = ult30.filter(x => x.etapa === 'perdido').length;
+    const val = st.ped.filter(x => x.enc?.nps != null), nps = val.length ? Math.round((val.filter(x => x.enc.nps >= 9).length - val.filter(x => x.enc.nps <= 6).length) / val.length * 100) : null;
+    $('v-kpis').innerHTML = `<div class="kpi"><span>🔔 Para atender</span><b style="color:${urg ? 'var(--mal)' : 'inherit'}">${urg}</b></div>
+      <div class="kpi"><span>Cotizaciones abiertas</span><b>${st.ped.filter(x => ['cotizado', 'seguimiento'].includes(x.etapa)).length}</b></div>
+      <div class="kpi"><span>Cierre (30 días)</span><b>${conf + perd ? Math.round(conf / (conf + perd) * 100) + '%' : '—'}</b><span>${conf} confirmados · ${perd} perdidos</span></div>
+      <div class="kpi"><span>Encuestas por enviar</span><b>${st.ped.filter(x => x.etapa === 'entregado').length}</b></div>
+      <div class="kpi"><span>NPS (30 días)</span><b>${nps ?? '—'}</b></div>`;
+    $('v-ayuda').textContent = 'Se arma solo con los pedidos de Encargos y de la web: no hay que llenar nada. Toca una tarjeta para copiar el mensaje o abrir WhatsApp. Las rojas son las que toca atender.';
+  } else {
+    $('v-kpis').innerHTML = `<div class="kpi"><span>🔔 Para atender</span><b>${urg}</b></div><div class="kpi"><span>🎂 Fechas próximas</span><b>${st.rc.filter(x => x.etapa === 'rc_fecha').length}</b></div>
+      <div class="kpi"><span>💤 Sin comprar +${st.diasRc} días</span><b>${st.rc.filter(x => x.etapa === 'rc_inactivo').length}</b><span><a href="#" id="v-dias">cambiar días</a></span></div>
+      <div class="kpi"><span>Volvieron a comprar (60 d)</span><b>${st.rc.filter(x => x.etapa === 'rc_compro').length}</b></div>`;
+    $('v-ayuda').textContent = 'Clientes a los que nosotros les escribimos: fechas especiales de los próximos 15 días y clientes que no compran hace tiempo. Cuando vuelven a comprar, pasan solos a "Volvió a comprar".';
+    if ($('v-dias')) $('v-dias').onclick = async ev => { ev.preventDefault(); const n = Number(prompt('¿Desde cuántos días sin comprar se considera para recontactar?', st.diasRc)); if (!(n > 0)) return;
+      const { error } = await sb.from('crm_ajustes').upsert({ id: 1, dias_recontacto: Math.round(n) }); if (error) return toast(errTxt(error)); cargarVentas(); };
+  }
+  const cols = ped ? ETAPAS_PED : ETAPAS_RC;
+  $('v-kanban').style.gridTemplateColumns = `repeat(${cols.length},minmax(210px,1fr))`;
+  $('v-kanban').innerHTML = (st.faltaSql ? '<div class="vacio" style="grid-column:1/-1">Falta correr 79_crm_journeys.sql en Supabase.</div>' : '') + cols.map(([k, n]) => {
+    const c = l.filter(x => x.etapa === k).sort((a, b) => (b.alerta ? 1 : 0) - (a.alerta ? 1 : 0) || String(a.fecha || '').localeCompare(String(b.fecha || '')));
+    return `<div class="kb-col"><h4>${n}<span>${c.length}</span></h4>${c.slice(0, 60).map(tarjetaHtml).join('')}${c.length > 60 ? `<div class="kb-mas">+ ${c.length - 60} más (usa el buscador)</div>` : ''}</div>`;
   }).join('');
 }
-function tarjetaOp(o) {
-  const e = estadoPA(o), ped = o.pedidos_encargo;
-  return `<div class="kb-card ${e}" draggable="true" data-op="${o.id}">
-    ${o.monto ? `<span class="monto">${S(o.monto)}</span>` : ''}<div class="n">${esc(o.nombre)}</div>
-    <div class="m">${esc([o.ocasion, o.producto].filter(Boolean).join(' · ') || CANALES[o.canal] || '')}</div>
-    <div class="m">${o.fecha_evento ? '📅 ' + fechaCorta(o.fecha_evento) + ' · ' : ''}${ped ? esc(ped.codigo) + ' · ' : ''}${haceTxt(o.creado_en)}</div>
-    ${o.etapa === 'perdido' ? `<div class="pa">${esc(o.perdida_motivo || 'sin motivo')}</div>` : o.proxima_accion && o.etapa !== 'confirmado' ? `<div class="pa ${e}">${e === 'vencida' ? '🔔 ' : ''}${esc(o.proxima_accion)}${o.proxima_fecha ? ' · ' + cuandoTxt(o.proxima_fecha) : ''}</div>` : ''}
+function tarjetaHtml(x) {
+  const nps = x.enc?.nps;
+  return `<div class="kb-card ${x.alerta ? 'vencida' : ''}" data-k="${x.k}">
+    ${x.total ? `<span class="monto">${S(x.total)}</span>` : ''}<div class="n">${esc(x.nombre)}</div>
+    ${x.codigo ? `<div class="m">${esc(x.codigo)}${x.o === 'web' ? ' · web' : ''}${x.fecha ? ' · 📅 ' + fechaCorta(x.fecha) : ''}</div><div class="m" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(x.items || '')}</div>` : `<div class="m">${esc(x.det || '')}</div>`}
+    ${nps != null ? `<div class="pa" style="background:${nps >= 9 ? '#e6f4ea' : nps >= 7 ? '#fff3c4' : '#fde8ea'}">NPS ${nps}${x.enc.comentario ? ' · “' + esc(x.enc.comentario.slice(0, 40)) + '”' : ''}</div>` : ''}
+    ${x.etapa === 'perdido' && x.perdida ? `<div class="pa">${esc(x.perdida)}</div>` : ''}
+    ${x.alerta ? `<div class="pa vencida">🔔 ${esc(x.alerta)}${x.ult ? ' · último ' + haceTxt(x.ult) : ''}</div>` : ''}
   </div>`;
 }
 $('v-q').oninput = pintarVentas;
-$('v-kanban').onclick = e => { const c = e.target.closest('[data-op]'); if (c) abrirOp(Number(c.dataset.op)); };
-// arrastrar tarjetas entre columnas
-$('v-kanban').addEventListener('dragstart', e => { const c = e.target.closest('[data-op]'); if (c) e.dataTransfer.setData('text/plain', c.dataset.op); });
-$('v-kanban').addEventListener('dragover', e => { const col = e.target.closest('.kb-col'); if (!col) return; e.preventDefault(); document.querySelectorAll('.kb-col.sobre').forEach(x => x !== col && x.classList.remove('sobre')); col.classList.add('sobre'); });
-$('v-kanban').addEventListener('dragleave', e => { const col = e.target.closest('.kb-col'); if (col && !col.contains(e.relatedTarget)) col.classList.remove('sobre'); });
-$('v-kanban').addEventListener('drop', e => { const col = e.target.closest('.kb-col'); if (!col) return; e.preventDefault(); col.classList.remove('sobre');
-  const id = Number(e.dataTransfer.getData('text/plain')); if (id) moverEtapa(id, col.dataset.col); });
+$('v-modo').onclick = e => { const b = e.target.closest('[data-m]'); if (b) { st.vmodo = b.dataset.m; pintarVentas(); } };
+$('v-kanban').onclick = e => { const c = e.target.closest('[data-k]'); if (c) abrirTarjeta(c.dataset.k); };
 
-async function logOp(id, tipo, detalle) { await sb.from('crm_op_eventos').insert({ oportunidad_id: id, tipo, detalle, usuario: st.usuario?.nombre || null }); }
-async function moverEtapa(id, etapa, extra = {}) {
-  const o = st.ops.find(x => x.id === id); if (!o || o.etapa === etapa) return;
-  if (etapa === 'perdido' && !extra.perdida_motivo) return pedirMotivoPerdida(o);
-  if (etapa === 'confirmado' && !o.pedido_id && !confirm(`${o.nombre} aún no tiene pedido en Encargos.\n\n¿Marcarla como confirmada igual? (lo ideal es crear el pedido y cobrar el adelanto)`)) return;
-  const ahora = new Date(), upd = { etapa, actualizado_en: ahora.toISOString(), ...extra };
-  if (AUTO[etapa]) { upd.proxima_accion = AUTO[etapa][0]; upd.proxima_fecha = new Date(ahora.getTime() + AUTO[etapa][1] * 36e5).toISOString(); }
-  if (['confirmado', 'perdido'].includes(etapa)) { upd.cerrado_en = ahora.toISOString(); upd.proxima_accion = null; upd.proxima_fecha = null; }
-  else upd.cerrado_en = null;
-  if (etapa === 'propuesta' && !o.propuesta_en) upd.propuesta_en = ahora.toISOString();
-  if (etapa !== 'nuevo' && !o.primera_resp_en) upd.primera_resp_en = ahora.toISOString();
-  const { error } = await sb.from('crm_oportunidades').update(upd).eq('id', id);
-  if (error) return toast(errTxt(error));
-  Object.assign(o, upd); await logOp(id, 'etapa', `${ETQ[etapa]}${extra.perdida_motivo ? ' · ' + extra.perdida_motivo : ''}`);
-  pintarVentas(); if (!$('m-op').classList.contains('oculto') && st.opId === id) abrirOp(id);
+// ----- detalle: mensaje listo para copiar o abrir WhatsApp -----
+async function copiarTexto(t) {
+  try { await navigator.clipboard.writeText(t); return true; }
+  catch { const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); const ok = document.execCommand('copy'); a.remove(); return ok; }
 }
-function pedirMotivoPerdida(o) {
-  $('op-caja').innerHTML = `<h2>❌ ¿Por qué no se concretó? <button class="x" id="op-x">✕</button></h2>
-    <p class="ayuda" style="margin:0 0 10px">Este dato ayuda a ver qué ajustar (precio, tiempos, productos). Es obligatorio.</p>
-    <div class="chips" id="mp-mot">${MOTIVOS_PERDIDA.map(m => `<button data-m="${esc(m)}">${esc(m)}</button>`).join('')}</div>
-    <label style="margin-top:10px">Detalle (opcional)</label><input id="mp-nota" placeholder="Ej. encontró una torta a S/ 120 en otro lado">
-    <div class="fila" style="justify-content:flex-end;margin-top:12px"><button class="btn-sec" id="mp-cancel">Cancelar</button><button class="btn" id="mp-ok">Marcar como perdido</button></div><div class="error" id="mp-err"></div>`;
-  $('m-op').classList.remove('oculto');
-  let mot = '';
-  $('mp-mot').onclick = e => { const b = e.target.closest('[data-m]'); if (!b) return; mot = b.dataset.m; [...$('mp-mot').children].forEach(x => x.classList.toggle('activa', x === b)); };
-  $('op-x').onclick = $('mp-cancel').onclick = () => { $('m-op').classList.add('oculto'); pintarVentas(); };
-  $('mp-ok').onclick = async () => { if (!mot) return $('mp-err').textContent = 'Elige un motivo.'; $('m-op').classList.add('oculto'); await moverEtapa(o.id, 'perdido', { perdida_motivo: mot, perdida_nota: $('mp-nota').value.trim() || null }); };
-}
-
-// ----- nuevo contacto -----
-$('v-nuevo').onclick = () => {
-  $('op-caja').innerHTML = `<h2>💬 Nuevo contacto <button class="x" id="op-x">✕</button></h2>
-    <div class="fila"><div><label>Celular</label><input id="no-tel" inputmode="numeric" maxlength="12" placeholder="9xxxxxxxx"></div><div style="flex:2"><label>Nombre</label><input id="no-nom" placeholder="Nombre del cliente"></div></div>
-    <div id="no-aviso" class="ayuda" style="margin:-4px 0 8px"></div>
-    <div class="fila"><div><label>¿Por dónde escribió?</label><select id="no-canal">${Object.entries(CANALES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></div>
-      <div><label>¿Cómo nos conoció?</label><select id="no-con"><option value="">—</option>${CONOCIO.map(c => `<option>${c}</option>`).join('')}</select></div></div>
-    <div class="fila"><div><label>Ocasión</label><select id="no-oca"><option value="">—</option>${OCASIONES.map(c => `<option>${c}</option>`).join('')}</select></div>
-      <div><label>Fecha del evento</label><input id="no-fec" type="date"></div><div style="max-width:110px"><label>Personas</label><input id="no-per" type="number" min="1"></div></div>
-    <div class="fila"><div style="flex:2"><label>¿Qué busca?</label><input id="no-prod" placeholder="Ej. torta 2 pisos, 120 empanadas"></div><div><label>Presupuesto S/ (si lo dijo)</label><input id="no-pre" type="number" min="0"></div></div>
-    <label>Nota</label><textarea id="no-nota" rows="2" placeholder="Lo que dijo el cliente"></textarea>
-    <div class="fila" style="justify-content:flex-end;margin-top:12px"><button class="btn-sec" id="no-cancel">Cancelar</button><button class="btn" id="no-ok">Crear tarjeta</button></div><div class="error" id="no-err"></div>`;
-  $('m-op').classList.remove('oculto'); $('no-tel').focus();
-  let cli = null;
-  $('no-tel').onchange = async () => {
-    const t = telNorm($('no-tel').value); cli = null; $('no-aviso').innerHTML = ''; if (t.length !== 9) return;
-    const abierta = st.ops.find(o => telNorm(o.telefono) === t && !['confirmado', 'perdido'].includes(o.etapa));
-    if (abierta) $('no-aviso').innerHTML = `⚠️ Ya tiene una conversación abierta: <a href="#" id="no-abrir">abrir la de ${esc(abierta.nombre)}</a>`;
-    const { data } = await sb.from('crm_clientes').select('id,nombre').eq('telefono', t).maybeSingle();
-    if (data) { cli = data; if (!$('no-nom').value.trim()) $('no-nom').value = data.nombre; $('no-aviso').insertAdjacentHTML('beforeend', `${abierta ? '<br>' : ''}✓ Cliente registrado en el CRM.`); }
-    if ($('no-abrir')) $('no-abrir').onclick = ev => { ev.preventDefault(); abrirOp(abierta.id); };
-  };
-  $('op-x').onclick = $('no-cancel').onclick = () => $('m-op').classList.add('oculto');
-  $('no-ok').onclick = async () => {
-    const t = telNorm($('no-tel').value), nom = $('no-nom').value.trim();
-    if (!nom) return $('no-err').textContent = 'Escribe el nombre.';
-    if (t && t.length !== 9) return $('no-err').textContent = 'El celular debe tener 9 dígitos.';
-    $('no-ok').disabled = true;
-    // si no está en el CRM, se registra como cliente (prospecto)
-    if (!cli && t) { const r = await sb.from('crm_clientes').insert({ nombre: nom, telefono: t, origen: 'whatsapp' }).select('id').maybeSingle(); if (!r.error) cli = r.data; }
-    const reg = { nombre: nom, telefono: t || null, cliente_id: cli?.id || null, canal: $('no-canal').value, como_conocio: $('no-con').value || null, ocasion: $('no-oca').value || null,
-      fecha_evento: $('no-fec').value || null, personas: $('no-per').value ? Number($('no-per').value) : null, producto: $('no-prod').value.trim() || null,
-      presupuesto: $('no-pre').value ? Number($('no-pre').value) : null, etapa: 'nuevo', proxima_accion: 'Responder', proxima_fecha: new Date().toISOString(), responsable: st.usuario?.nombre || null };
-    const { data, error } = await sb.from('crm_oportunidades').insert(reg).select('*').single();
-    $('no-ok').disabled = false;
-    if (error) return $('no-err').textContent = errTxt(error);
-    if ($('no-nota').value.trim()) await logOp(data.id, 'nota', $('no-nota').value.trim());
-    await logOp(data.id, 'etapa', 'Nuevo contacto por ' + (CANALES[reg.canal] || reg.canal));
-    st.ops.unshift(data); pintarVentas(); abrirOp(data.id);
-  };
-};
-
-// ----- detalle de la oportunidad -----
-async function abrirOp(id) {
-  st.opId = id;
-  const o = st.ops.find(x => x.id === id); if (!o) return;
-  const ev = await sb.from('crm_op_eventos').select('*').eq('oportunidad_id', id).order('creado_en', { ascending: false });
-  const d = o.detalle || {}, ped = o.pedidos_encargo;
-  const pls = st.plantillas.filter(p => p.etapa === o.etapa).concat(st.plantillas.filter(p => p.etapa !== o.etapa));
-  $('op-caja').innerHTML = `<h2>${esc(o.nombre)} <small style="font-weight:500;color:var(--gris);margin-left:8px">${o.telefono ? '📞 ' + esc(o.telefono) + ' · ' : ''}${esc(CANALES[o.canal] || o.canal)} · ${haceTxt(o.creado_en)}</small><button class="x" id="op-x">✕</button></h2>
-    <div class="etapas" id="op-et">${ETAPAS.map(([k, n]) => `<button data-e="${k}" class="${o.etapa === k ? 'activa' : ''}">${n}</button>`).join('')}</div>
-    <div class="op-g">
-      <div>
-        <div class="bloque"><h3>🔎 Lo que necesita</h3>
-          <div class="fila"><div><label>Ocasión</label><input id="op-oca" list="dl-oca" value="${esc(o.ocasion || '')}"></div><div><label>¿Para quién?</label><input id="op-para" value="${esc(o.para_quien || '')}"></div></div>
-          <div class="fila"><div><label>Fecha del evento</label><input id="op-fec" type="date" value="${o.fecha_evento || ''}"></div><div style="max-width:100px"><label>Personas</label><input id="op-per" type="number" value="${o.personas ?? ''}"></div><div style="max-width:130px"><label>Presupuesto S/</label><input id="op-pre" type="number" value="${o.presupuesto ?? ''}"></div></div>
-          <label>¿Qué busca?</label><input id="op-prod" value="${esc(o.producto || '')}" style="margin-bottom:8px">
-          <div class="fila"><div><label>Sabor / relleno</label><input id="op-sab" value="${esc(d.sabor || '')}"></div><div><label>Diseño / referencia</label><input id="op-dis" value="${esc(d.diseno || '')}"></div></div>
-          <div class="fila"><div><label>Entrega</label><select id="op-ent"><option value="">—</option><option ${d.entrega === 'Recojo en tienda' ? 'selected' : ''}>Recojo en tienda</option><option ${d.entrega === 'Delivery' ? 'selected' : ''}>Delivery</option></select></div><div><label>Distrito</label><input id="op-dist" value="${esc(d.distrito || '')}"></div></div>
-          <div class="fila"><div><label>Alergias / restricciones</label><input id="op-res" value="${esc(d.restricciones || '')}"></div><div><label>¿Cómo nos conoció?</label><input id="op-con" list="dl-con" value="${esc(o.como_conocio || '')}"></div></div>
-          <datalist id="dl-oca">${OCASIONES.map(c => `<option>${c}</option>`).join('')}</datalist><datalist id="dl-con">${CONOCIO.map(c => `<option>${c}</option>`).join('')}</datalist>
-          <div class="fila" style="justify-content:flex-end;margin:0"><button class="btn-sec" id="op-guardar">💾 Guardar datos</button></div>
-        </div>
-        <div class="bloque"><h3>📝 Pedido</h3>
-          ${ped ? `<div><b>${esc(ped.codigo)}</b> · ${esc(ESTADOS[ped.estado] || ped.estado)} · ${S(ped.total_productos)}${ped.fecha_entrega ? ' · entrega ' + fechaCorta(ped.fecha_entrega) : ''}</div><a href="${URL_PEDIDOS}" target="_blank" class="btn-sec" style="display:inline-block;margin-top:8px;text-decoration:none">Abrir Encargos ↗</a>`
-            : `<p class="ayuda" style="margin:0 0 8px">Cuando ya sepas qué quiere, arma la proforma en Encargos. Se vincula sola con esta tarjeta (por el celular) y pasa a "Proforma enviada".</p>
-               <a class="btn" target="_blank" style="display:inline-block;text-decoration:none" href="${URL_PEDIDOS}?nuevo=1&tel=${encodeURIComponent(telNorm(o.telefono))}&nombre=${encodeURIComponent(o.nombre)}">📝 Crear cotización en Encargos ↗</a>`}
-        </div>
+function abrirTarjeta(k) {
+  const x = [...st.ped, ...st.rc].find(y => y.k === k); if (!x) return;
+  const pls = st.plantillas.filter(p => p.etapa === x.etapa || (x.etapa === 'rc_enviado' && ['rc_fecha', 'rc_inactivo'].includes(p.etapa)));
+  const hist = x.codigo ? x.contactos : st.contactos.filter(c => c.cliente_id === x.cliente_id);
+  $('op-caja').innerHTML = `<h2>${esc(x.nombre)} <small style="font-weight:500;color:var(--gris);margin-left:8px">${x.tel ? '📞 ' + x.tel : 'sin celular'}${x.codigo ? ' · ' + esc(x.codigo) + ' · ' + esc(ESTADOS[x.estado] || x.estado) : ''}</small><button class="x" id="op-x">✕</button></h2>
+    ${x.codigo ? `<div class="bloque" style="margin-bottom:10px">${x.fecha ? '📅 Entrega ' + fechaCorta(x.fecha) + ' · ' : ''}<b>${S(x.total)}</b><div class="ayuda" style="margin:4px 0 0">${esc(x.items || '')}</div>
+      ${x.enc?.respondida_en ? `<div style="margin-top:8px"><b>Encuesta: NPS ${x.enc.nps}</b>${x.enc.comentario ? ' · “' + esc(x.enc.comentario) + '”' : ''}</div>` : ''}</div>` : `<div class="bloque" style="margin-bottom:10px">${esc(x.det || '')}${x.acepta === false ? '<div style="color:var(--aviso);margin-top:4px">⚠ No marcó consentimiento de promociones</div>' : ''}</div>`}
+    <div class="bloque"><h3>📲 Mensaje</h3>
+      ${pls.length ? `<div class="chips" id="tj-pl" style="margin-bottom:8px">${pls.map((p, i) => `<button data-i="${i}" class="${i === 0 ? 'activa' : ''}">${esc(p.titulo)}</button>`).join('')}</div>` : '<p class="ayuda">No hay plantillas para esta etapa (✎ Plantillas).</p>'}
+      <textarea id="tj-msg" rows="6"></textarea>
+      <div class="fila" style="justify-content:flex-end;margin:8px 0 0;flex-wrap:wrap;gap:8px">
+        ${['cotizado', 'seguimiento'].includes(x.etapa) && x.o === 'encargo' ? '<button class="btn-sec" id="tj-perdida" style="margin-right:auto">❌ No se concretó</button>' : ''}
+        ${x.etapa === 'valorado' && x.enc && x.enc.nps <= 6 && !x.enc.atendida ? '<button class="btn-sec" id="tj-atendido" style="margin-right:auto">✓ Ya se atendió</button>' : ''}
+        ${['rc_inactivo', 'rc_fecha', 'rc_enviado'].includes(x.etapa) ? '<button class="btn-sec" id="tj-no" style="margin-right:auto">🚫 No interesado</button>' : ''}
+        <button class="btn-sec" id="tj-copiar">📋 Copiar mensaje</button>
+        ${x.tel ? '<button class="btn-wa" id="tj-wa">💬 Abrir WhatsApp</button>' : ''}
       </div>
-      <div>
-        <div class="bloque"><h3>⏭️ Siguiente paso</h3>
-          ${['confirmado', 'perdido'].includes(o.etapa) ? `<div class="ayuda" style="margin:0">${o.etapa === 'perdido' ? 'Perdida: ' + esc(o.perdida_motivo || '') + (o.perdida_nota ? ' · ' + esc(o.perdida_nota) : '') : 'Confirmada ✓. Después de la entrega, envía la encuesta desde ⭐ Encuestas.'}</div>`
-          : `<div class="fila" style="margin-bottom:4px"><div style="flex:2"><input id="op-pa" value="${esc(o.proxima_accion || '')}" placeholder="Ej. Enviar fotos de diseños"></div><div><input id="op-pf" type="datetime-local" value="${o.proxima_fecha ? new Date(new Date(o.proxima_fecha).getTime() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 16) : ''}"></div></div>
-          <div class="rapidos" id="op-rap"><button data-h="1">En 1 h</button><button data-h="4">En 4 h</button><button data-m="1">Mañana 10 am</button><button data-m="3">En 3 días</button><button id="op-pa-ok" style="margin-left:auto;background:var(--rojo);color:#fff">Guardar</button></div>`}
-        </div>
-        <div class="bloque"><h3>📲 Escribir por WhatsApp</h3>
-          ${o.telefono ? `${pls.map(p => `<div class="plant" data-pl="${p.id}"><b>${esc(ETQ[p.etapa] ? ETQ[p.etapa].replace(/^\S+\s/, '') : p.etapa)} · ${esc(p.titulo)}</b>${esc(p.texto.slice(0, 90))}${p.texto.length > 90 ? '…' : ''}</div>`).join('')}
-          <div id="op-msg-w" class="oculto"><textarea id="op-msg" rows="5"></textarea><div class="fila" style="justify-content:flex-end;margin:6px 0 0"><button class="btn-wa" id="op-wa">Abrir WhatsApp</button></div></div>` : '<div class="ayuda">Agrega el celular para escribirle.</div>'}
-        </div>
-        <div class="bloque"><h3>🕑 Historial</h3>
-          <div class="fila" style="margin-bottom:6px"><div style="flex:3"><input id="op-nota" placeholder="Anotar algo (lo que dijo, acuerdos…)"></div><div style="flex:0"><button class="btn-sec" id="op-nota-ok">Anotar</button></div></div>
-          <div class="hist-op">${(ev.data || []).map(x => `<div><small>${cuandoTxt(x.creado_en)}${x.usuario ? ' · ' + esc(x.usuario) : ''}</small><br>${x.tipo === 'mensaje' ? '📲 ' : x.tipo === 'etapa' ? '➡️ ' : x.tipo === 'sistema' ? '⚙️ ' : '📝 '}${esc(x.detalle)}</div>`).join('') || '<div class="ayuda">Sin movimientos.</div>'}</div>
-        </div>
-      </div>
-    </div>`;
+      <p class="ayuda" style="margin:6px 0 0">Al copiar o abrir WhatsApp queda anotado que se le escribió${x.etapa === 'cotizado' ? ' y la tarjeta pasa a "En seguimiento"' : ''}.</p>
+    </div>
+    <div class="bloque"><h3>🕑 Historial</h3><div class="hist-op">${hist.map(c => `<div><small>${fechaCorta(c.fecha)} ${new Date(c.fecha).toLocaleTimeString('es-PE', { hour: 'numeric', minute: '2-digit' })}${c.usuario ? ' · ' + esc(c.usuario) : ''}</small><br>${esc(c.nota || c.motivo)}</div>`).join('') || '<div class="ayuda">Aún no se le escribió.</div>'}</div></div>`;
   $('m-op').classList.remove('oculto');
-  $('op-x').onclick = () => { $('m-op').classList.add('oculto'); pintarVentas(); };
-  $('op-et').onclick = e => { const b = e.target.closest('[data-e]'); if (b) moverEtapa(id, b.dataset.e); };
-  $('op-guardar').onclick = async () => {
-    const upd = { ocasion: $('op-oca').value.trim() || null, para_quien: $('op-para').value.trim() || null, fecha_evento: $('op-fec').value || null,
-      personas: $('op-per').value ? Number($('op-per').value) : null, presupuesto: $('op-pre').value ? Number($('op-pre').value) : null, producto: $('op-prod').value.trim() || null,
-      como_conocio: $('op-con').value.trim() || null, actualizado_en: new Date().toISOString(),
-      detalle: { sabor: $('op-sab').value.trim(), diseno: $('op-dis').value.trim(), entrega: $('op-ent').value, distrito: $('op-dist').value.trim(), restricciones: $('op-res').value.trim() } };
-    const { error } = await sb.from('crm_oportunidades').update(upd).eq('id', id); if (error) return toast(errTxt(error));
-    Object.assign(o, upd); toast('✓ Datos guardados'); pintarVentas();
+  $('op-x').onclick = () => $('m-op').classList.add('oculto');
+  let pl = pls[0];
+  const vars = async () => {
+    let link = '';
+    if (pl && /\{link\}/.test(pl.texto) && x.codigo) {
+      const { data, error } = await sb.rpc('encuesta_de_pedido', { p_origen: x.o, p_id: x.id });
+      if (error) { toast(errTxt(error)); return null; } link = `${URL_OPINA}?t=${data}`;
+    }
+    return { nombre: primerNombre(x.nombre), codigo: x.codigo || '', total: x.total ? S(x.total) : '', fecha: x.fecha ? fechaCorta(x.fecha) : '', link, ...x.vars };
   };
-  if ($('op-rap')) {
-    const fijar = f => { $('op-pf').value = new Date(f.getTime() - f.getTimezoneOffset() * 6e4).toISOString().slice(0, 16); };
-    $('op-rap').onclick = async e => {
-      const b = e.target.closest('button'); if (!b) return;
-      if (b.dataset.h) return fijar(new Date(Date.now() + Number(b.dataset.h) * 36e5));
-      if (b.dataset.m) { const f = new Date(); f.setDate(f.getDate() + Number(b.dataset.m)); f.setHours(10, 0, 0, 0); return fijar(f); }
-      if (b.id === 'op-pa-ok') {
-        const upd = { proxima_accion: $('op-pa').value.trim() || null, proxima_fecha: $('op-pf').value ? new Date($('op-pf').value).toISOString() : null, actualizado_en: new Date().toISOString() };
-        const { error } = await sb.from('crm_oportunidades').update(upd).eq('id', id); if (error) return toast(errTxt(error));
-        Object.assign(o, upd); await logOp(id, 'nota', `Siguiente paso: ${upd.proxima_accion || '—'}${upd.proxima_fecha ? ' (' + cuandoTxt(upd.proxima_fecha) + ')' : ''}`); toast('✓ Siguiente paso guardado'); pintarVentas(); abrirOp(id);
-      }
-    };
-  }
-  let plSel = null;
-  $('op-caja').querySelectorAll('[data-pl]').forEach(x => x.onclick = () => {
-    plSel = st.plantillas.find(p => p.id === Number(x.dataset.pl));
-    $('op-msg').value = plantilla(plSel.texto, { nombre: primerNombre(o.nombre), ocasion: (o.ocasion || '').toLowerCase(), fecha: o.fecha_evento ? fechaCorta(o.fecha_evento) : (ped?.fecha_entrega ? fechaCorta(ped.fecha_entrega) : ''), codigo: ped?.codigo || '', total: ped ? S(ped.total_productos) : '', link: '' });
-    $('op-msg-w').classList.remove('oculto'); $('op-msg').focus();
-  });
-  if ($('op-wa')) $('op-wa').onclick = async () => {
-    window.open(waURL(telNorm(o.telefono), $('op-msg').value), '_blank');
-    await logOp(id, 'mensaje', (plSel ? plSel.titulo + ': ' : '') + $('op-msg').value.slice(0, 160));
-    // el primer mensaje cuenta como primera respuesta y pasa la tarjeta a "Entendiendo qué quiere"
-    if (o.etapa === 'nuevo') await moverEtapa(id, 'descubrimiento');
-    else abrirOp(id);
+  const llenar = async () => { if (!pl) return; const v = await vars(); if (v) $('tj-msg').value = plantilla(pl.texto, v); };
+  llenar();
+  if ($('tj-pl')) $('tj-pl').onclick = e => { const b = e.target.closest('[data-i]'); if (!b) return; pl = pls[Number(b.dataset.i)]; [...$('tj-pl').children].forEach(z => z.classList.toggle('activa', z === b)); llenar(); };
+  const anotar = async nota => {
+    const motivo = x.etapa === 'cotizado' ? 'seguimiento' : MOTIVO_DE[x.etapa] || 'otro';
+    const { error } = await sb.from('crm_contactos').insert({ cliente_id: x.cliente_id || null, motivo, referencia: x.codigo || x.ref || null, nota, usuario: st.usuario?.nombre || null });
+    if (error) return toast(/check constraint|null value/.test(error.message) ? 'Falta correr 79_crm_journeys.sql en Supabase.' : errTxt(error));
+    $('m-op').classList.add('oculto'); cargarVentas();
   };
-  $('op-nota-ok').onclick = async () => { const t = $('op-nota').value.trim(); if (!t) return; await logOp(id, 'nota', t); abrirOp(id); };
+  $('tj-copiar').onclick = async () => { if (await copiarTexto($('tj-msg').value)) toast('📋 Mensaje copiado: pégalo en el chat'); await anotar((pl ? pl.titulo : 'Mensaje') + ' (copiado)'); };
+  if ($('tj-wa')) $('tj-wa').onclick = async () => { window.open(waURL(x.tel, $('tj-msg').value), '_blank'); await anotar((pl ? pl.titulo : 'Mensaje') + ' (WhatsApp)'); };
+  if ($('tj-no')) $('tj-no').onclick = () => anotar('No interesado');
+  if ($('tj-atendido')) $('tj-atendido').onclick = async () => {
+    const nota = prompt('¿Qué se hizo? (ej. se le repuso la torta, se le dio un descuento)'); if (nota === null) return;
+    const { error } = await sb.from('encuestas').update({ atendida: true, atendida_nota: nota || null }).eq('id', x.enc.id); if (error) return toast(errTxt(error));
+    $('m-op').classList.add('oculto'); cargarVentas();
+  };
+  if ($('tj-perdida')) $('tj-perdida').onclick = async () => {
+    const mot = prompt('¿Por qué no se concretó?\n(Precio alto, No respondió, Fecha no disponible, Compró en otro lugar, Cambió de planes, Otro)', 'No respondió'); if (!mot) return;
+    const { error } = await sb.from('pedidos_encargo').update({ estado: 'anulado', perdida_motivo: mot, perdida_en: new Date().toISOString(), actualizado_por: st.usuario?.nombre || null }).eq('id', x.id);
+    if (error) return toast(errTxt(error)); $('m-op').classList.add('oculto'); toast('Marcada como no concretada'); cargarVentas();
+  };
 }
 
 // ----- plantillas de WhatsApp (editables) -----
 $('v-plant').onclick = () => pintarPlantillas();
 function pintarPlantillas() {
+  const orden = Object.fromEntries(ETAPAS_PLANT.map(([k], i) => [k, i]));
+  const l = st.plantillas.slice().sort((a, b) => (orden[a.etapa] ?? 99) - (orden[b.etapa] ?? 99) || a.orden - b.orden);
   $('op-caja').innerHTML = `<h2>✎ Plantillas de WhatsApp <button class="x" id="op-x">✕</button></h2>
-    <p class="ayuda" style="margin:0 0 10px">Variables: {nombre} {ocasion} {fecha} {codigo} {total} {link}. Evita emojis: WhatsApp de escritorio los daña al enviarlos por enlace.</p>
-    <div id="pl-lista">${st.plantillas.map(p => `<div class="bloque" style="padding:10px" data-pid="${p.id}"><div class="fila" style="margin-bottom:6px"><div><select data-k="etapa">${ETAPAS.map(([k, n]) => `<option value="${k}" ${p.etapa === k ? 'selected' : ''}>${n}</option>`).join('')}</select></div><div style="flex:2"><input data-k="titulo" value="${esc(p.titulo)}"></div><div style="flex:0"><button class="btn-sec" data-del="${p.id}">🗑</button></div></div><textarea data-k="texto" rows="3">${esc(p.texto)}</textarea></div>`).join('')}</div>
+    <p class="ayuda" style="margin:0 0 10px">Variables: {nombre} {codigo} {total} {fecha} {link} (encuesta) · en recontacto: {ocasion} {para}. Evita emojis: WhatsApp de escritorio los daña al enviarlos por enlace.</p>
+    <div id="pl-lista">${l.map(p => `<div class="bloque" style="padding:10px" data-pid="${p.id}"><div class="fila" style="margin-bottom:6px"><div><select data-k="etapa">${ETAPAS_PLANT.map(([k, n]) => `<option value="${k}" ${p.etapa === k ? 'selected' : ''}>${n}</option>`).join('')}${orden[p.etapa] == null ? `<option value="${esc(p.etapa)}" selected>${esc(p.etapa)}</option>` : ''}</select></div><div style="flex:2"><input data-k="titulo" value="${esc(p.titulo)}"></div><div style="flex:0"><button class="btn-sec" data-del="${p.id}">🗑</button></div></div><textarea data-k="texto" rows="3">${esc(p.texto)}</textarea></div>`).join('')}</div>
     <div class="fila" style="justify-content:space-between;margin-top:8px"><button class="btn-sec" id="pl-mas">+ Nueva plantilla</button><button class="btn" id="pl-ok">Guardar cambios</button></div>`;
   $('m-op').classList.remove('oculto');
   $('op-x').onclick = () => $('m-op').classList.add('oculto');
-  $('pl-mas').onclick = async () => { const { data, error } = await sb.from('crm_plantillas').insert({ etapa: 'nuevo', titulo: 'Nueva plantilla', texto: 'Hola {nombre}, ' }).select('*').single(); if (error) return toast(errTxt(error)); st.plantillas.push(data); pintarPlantillas(); };
+  $('pl-mas').onclick = async () => { const { data, error } = await sb.from('crm_plantillas').insert({ etapa: 'cotizado', titulo: 'Nueva plantilla', texto: 'Hola {nombre}, ' }).select('*').single(); if (error) return toast(errTxt(error)); st.plantillas.push(data); pintarPlantillas(); };
   $('pl-lista').onclick = async e => { const b = e.target.closest('[data-del]'); if (!b || !confirm('¿Quitar esta plantilla?')) return; await sb.from('crm_plantillas').update({ activo: false }).eq('id', Number(b.dataset.del)); st.plantillas = st.plantillas.filter(p => p.id !== Number(b.dataset.del)); pintarPlantillas(); };
   $('pl-ok').onclick = async () => {
     const r = await Promise.all([...$('pl-lista').querySelectorAll('[data-pid]')].map(div => {
