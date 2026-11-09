@@ -119,6 +119,11 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 .linea{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:10px 16px;border-bottom:1px solid #f1eeeb}
 .linea .n{font-size:14px;font-weight:600}
 .chips-peso button.activa{background:var(--rojo);color:#fff}
+.desc-fila{display:flex;justify-content:space-between;align-items:center;margin:6px 0 2px;font-size:14px}
+.desc-fila .d{color:#1e7d3a;font-weight:700}
+.chips-g{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}.chips-g button{background:var(--fondo);border:1px solid var(--borde);border-radius:999px;padding:7px 12px;font-weight:600;cursor:pointer}.chips-g button.activa{background:var(--rojo);color:#fff;border-color:var(--rojo)}
+.gc-codigo{font:800 30px/1.2 ui-monospace,Menlo,monospace;letter-spacing:2px;text-align:center;background:var(--fondo);border:2px dashed var(--rojo);border-radius:12px;padding:14px;margin:10px 0;user-select:all}
+.gc-movs{font-size:13px;max-height:180px;overflow:auto}.gc-movs div{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed var(--borde)}
 .seg-peso{display:flex;background:var(--fondo);border-radius:10px;padding:3px;gap:3px;margin:4px 0 10px}.seg-peso button{flex:1;background:transparent;border:none;padding:9px;font-weight:700;color:var(--gris);border-radius:8px;cursor:pointer}.seg-peso button.activa{background:#fff;color:var(--rojo);box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .chips-peso{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.chips-peso button{background:var(--fondo);border:none;border-radius:16px;padding:6px 12px;font-weight:600;cursor:pointer}
 .linea .u button{background:none;border:none;padding:0;color:var(--rojo);font:inherit;text-decoration:underline;cursor:pointer}
@@ -220,6 +225,9 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
   .cli-res{left:0}
 }
 </style>
+<!-- números sin flechitas: se escriben; la rueda del mouse o las flechas del teclado no los cambian -->
+<style>input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}input[type=number]{-moz-appearance:textfield;appearance:textfield}</style>
+<script>document.addEventListener('wheel',e=>{const t=e.target;if(t&&t.type==='number'&&t===document.activeElement)t.blur()},{passive:true});document.addEventListener('keydown',e=>{if((e.key==='ArrowUp'||e.key==='ArrowDown')&&e.target&&e.target.type==='number')e.preventDefault()},true);</script>
 </head>
 <body>
 
@@ -279,6 +287,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
       <span class="red ok" id="b-red">En línea</span>
       <button id="b-mesas">Mesas <b id="b-nmesas"></b></button>
       <button id="b-pedido" class="oculto" title="Los pedidos se cobran en la app de Pedidos">Cobro de pedido</button>
+      <button id="b-gift" class="oculto">🎁 Gift card</button>
       <button id="b-ventas">Ventas</button>
       <button id="b-cerrar">Cerrar caja</button>
       <button id="b-salir">Cambiar usuario</button>
@@ -305,6 +314,7 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
         <div style="position:relative;display:flex;gap:6px"><input id="c-nombre" placeholder="Nombre del cliente" autocomplete="off" style="flex:1;min-width:0"><button class="btn-sec" id="c-lupa" title="Buscar cliente en la lista" style="padding:0 12px;font-size:17px">🔍</button><div class="cli-res oculto" id="c-res"></div></div>
       </div>
       <label class="ret-check oculto" id="c-ret-box"><input type="checkbox" id="c-ret"> El cliente es agente de retención (retiene 3% en facturas de más de S/ 700)</label>
+      <div class="desc-fila"><button class="btn-link" id="b-desc">🏷️ Descuento</button><span class="d" id="t-desc"></span></div>
       <div class="totales">
         <div><div class="g" id="t-igv">Op. gravada S/ 0.00 · IGV S/ 0.00</div></div>
         <div class="t" id="t-total">S/ 0.00</div>
@@ -481,6 +491,57 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 </div>
 
 <!-- MODAL PAGO -->
+<div class="modal oculto" id="m-desc">
+  <div class="caja" style="max-width:440px">
+    <h3>🏷️ Descuento</h3>
+    <div class="seg-peso" id="ds-alc"><button data-a="total" class="activa">Toda la venta</button><button data-a="producto">Un producto</button></div>
+    <select id="ds-prod" class="oculto" style="margin-bottom:10px"></select>
+    <div class="seg-peso" id="ds-tipo"><button data-t="pct" class="activa">%</button><button data-t="monto">S/</button></div>
+    <div class="fila"><div class="campo"><label id="ds-val-l">Porcentaje</label><input id="ds-val" type="number" min="0" step="0.5" inputmode="decimal"></div></div>
+    <div class="chips-g" id="ds-rap"></div>
+    <label style="font-size:13px;color:var(--gris)">Motivo</label>
+    <div class="chips-g" id="ds-mot"></div>
+    <input id="ds-otro" class="oculto" placeholder="Escribe el motivo" style="margin-bottom:10px">
+    <div class="campo"><label>PIN del administrador</label><input id="ds-pin" type="password" inputmode="numeric" maxlength="6" autocomplete="off"></div>
+    <div id="ds-prev" style="font-size:15px;margin:8px 0 12px"></div>
+    <div class="fila">
+      <button class="btn-sec" id="ds-quitar">Quitar descuento</button>
+      <button class="btn-sec" id="ds-cancelar">Cancelar</button>
+      <button class="btn" id="ds-ok">Aplicar</button>
+    </div>
+    <div class="error" id="ds-error"></div>
+  </div>
+</div>
+<div class="modal oculto" id="m-gift">
+  <div class="caja" style="max-width:460px">
+    <h3>🎁 Gift card</h3>
+    <div class="seg-peso" id="gc-tab"><button data-t="vender" class="activa">Vender</button><button data-t="consultar">Consultar saldo</button></div>
+    <div id="gc-vender">
+      <label style="font-size:13px;color:var(--gris)">Monto de la gift card</label>
+      <div class="chips-g" id="gc-montos"><button data-v="30">S/ 30</button><button data-v="50">S/ 50</button><button data-v="100">S/ 100</button><button data-v="150">S/ 150</button><button data-v="200">S/ 200</button></div>
+      <div class="fila"><div class="campo"><label>Otro monto (S/)</label><input id="gc-monto" type="number" min="1" step="1" inputmode="decimal"></div></div>
+      <div class="fila"><div class="campo"><label>Para (opcional)</label><input id="gc-para" placeholder="Quién la recibe"></div><div class="campo"><label>De (opcional)</label><input id="gc-de" placeholder="Quién la regala"></div></div>
+      <div class="campo"><label>Celular para enviarle el código (opcional)</label><input id="gc-tel" inputmode="numeric" maxlength="12"></div>
+      <label style="font-size:13px;color:var(--gris)">¿Cómo la paga?</label>
+      <div class="chips-g" id="gc-met"><button data-m="efectivo" class="activa">Efectivo</button><button data-m="yape">Yape</button><button data-m="tarjeta">Tarjeta</button></div>
+      <div class="campo"><label>N° operación (opcional)</label><input id="gc-ref"></div>
+      <p style="font-size:12px;color:var(--gris);margin:6px 0 10px">No se emite boleta al venderla: la boleta sale cuando la canjean (vale con valor en dinero). El dinero sí entra al cuadre de esta caja. Vence en 12 meses.</p>
+      <div class="fila"><button class="btn-sec" id="gc-cerrar">Cerrar</button><button class="btn" id="gc-ok">Cobrar y crear</button></div>
+    </div>
+    <div id="gc-listo" class="oculto" style="text-align:center">
+      <div style="color:var(--gris)">Gift card creada</div>
+      <div class="gc-codigo" id="gc-cod"></div>
+      <div id="gc-det" style="margin-bottom:12px"></div>
+      <div class="fila"><button class="btn-sec" id="gc-imp">🖨️ Imprimir</button><a class="btn-sec oculto" id="gc-wa" target="_blank" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center">💬 WhatsApp</a><button class="btn" id="gc-fin">Listo</button></div>
+    </div>
+    <div id="gc-consultar" class="oculto">
+      <div class="fila"><div class="campo"><label>Código</label><input id="gc-q" placeholder="KD-XXXX-XXXX" autocomplete="off" style="text-transform:uppercase"></div><button class="btn" id="gc-buscar" style="align-self:flex-end">Buscar</button></div>
+      <div id="gc-res"></div>
+      <div class="fila" style="margin-top:10px"><button class="btn-sec" id="gc-cerrar2">Cerrar</button></div>
+    </div>
+    <div class="error" id="gc-error"></div>
+  </div>
+</div>
 <div class="modal oculto" id="m-pago">
   <div class="caja">
     <h3>Cobrar</h3>
@@ -503,10 +564,11 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
       <button data-m="efectivo" class="activa">Efectivo</button>
       <button data-m="yape">Yape</button>
       <button data-m="tarjeta">Tarjeta</button>
+      <button data-m="gift_card" class="oculto">🎁 Gift card</button>
     </div>
     <div class="fila">
       <div class="campo"><label id="p-label">Monto recibido (S/)</label><input id="p-monto" type="number" step="0.10" min="0" inputmode="decimal"></div>
-      <div class="campo"><label>N° operación (opcional)</label><input id="p-ref"></div>
+      <div class="campo"><label id="p-ref-l">N° operación (opcional)</label><input id="p-ref" autocomplete="off"></div>
     </div>
     <button class="btn-sec" id="p-agregar" style="width:100%">+ Agregar este pago</button>
     <div class="pagos-lista" id="p-lista"></div>
@@ -614,7 +676,7 @@ const r2 = n => Math.round(n * 100) / 100;
 const guardar = (k, v) => { try { localStorage.setItem('kadima_' + k, JSON.stringify(v)); } catch (e) {} };
 const leer = k => { try { return JSON.parse(localStorage.getItem('kadima_' + k)); } catch (e) { return null; } };
 // la caja cobra solo con Efectivo, Yape y Tarjeta; los demás nombres quedan para mostrar ventas antiguas
-const NOMBRES_METODO = { efectivo:'Efectivo', yape:'Yape', tarjeta:'Tarjeta', plin:'Plin', visa:'Tarjeta (Visa)', mastercard:'Tarjeta (Mastercard)', transferencia:'Transferencia' };
+const NOMBRES_METODO = { efectivo:'Efectivo', yape:'Yape', tarjeta:'Tarjeta', plin:'Plin', visa:'Tarjeta (Visa)', mastercard:'Tarjeta (Mastercard)', transferencia:'Transferencia', gift_card:'Gift card' };
 const NOMBRE_DOC = { boleta:'Boleta', factura:'Factura', nota_venta:'Nota de venta' };
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() :
   'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
@@ -1046,9 +1108,25 @@ $('pl-ok').onclick = () => {
   else { const p = precioDe.p; st.carrito.push({ producto_id: p.id, nombre: p.nombre, precio_unit: v, cantidad: 1, afecto_igv: p.afecto_igv, area: p.area_preparacion, nota: null, libre: true }); }
   $('m-precio').classList.add('oculto'); dibujarCarrito();
 };
+// ===== DESCUENTO (con PIN de administrador) =====
+// No toca el carrito: al cobrar, el descuento se reparte en el precio de las líneas (así la boleta sale ya con el precio rebajado).
+function lineasCobro(desc = st.desc) {
+  const ls = st.carrito.map(l => ({ ...l, desc: 0 }));
+  if (!desc) return ls;
+  const obj = ls.filter(l => desc.alcance === 'total' || l.producto_id === desc.producto_id);
+  const suma = r2(obj.reduce((a, l) => a + r2(l.cantidad * l.precio_unit), 0)); if (suma <= 0) return ls;
+  const D = Math.min(desc.tipo === 'pct' ? r2(suma * desc.valor / 100) : r2(desc.valor), suma);
+  let resto = D;
+  obj.forEach((l, k) => {
+    const imp = r2(l.cantidad * l.precio_unit), d = k === obj.length - 1 ? r2(resto) : r2(D * imp / suma); resto = r2(resto - d);
+    l.desc = d; l.precio_unit = Math.round((imp - d) / l.cantidad * 1e6) / 1e6;
+  });
+  return ls;
+}
+const montoDesc = () => r2(lineasCobro().reduce((a, l) => a + l.desc, 0));
 function totales() {
   let total = 0, gravada = 0;
-  st.carrito.forEach(l => { const imp = r2(l.cantidad * l.precio_unit); total += imp; gravada += l.afecto_igv ? r2(imp / 1.18) : imp; });
+  lineasCobro().forEach(l => { const imp = r2(l.cantidad * l.precio_unit); total += imp; gravada += l.afecto_igv ? r2(imp / 1.18) : imp; });
   return { total: r2(total), gravada: r2(gravada), igv: r2(total - gravada) };
 }
 function canalVenta(id) {
@@ -1096,7 +1174,12 @@ function dibujarCarrito() {
       ${l.fijo ? '<div class="cant"></div>' : GRANEL[l.unidad] ? `<div class="cant"><button data-i="${i}" data-a="x" title="Quitar">✕</button><button data-peso="${i}" style="width:auto;padding:0 8px">${fmtCant(l)} ✎</button></div>` : `<div class="cant"><button data-i="${i}" data-a="-">−</button><span>${l.cantidad}</span><button data-i="${i}" data-a="+">+</button></div>`}
       <div class="imp">${S(l.cantidad * l.precio_unit)}</div>
     </div>`).join('') : '<div class="vacio">Toca un producto para agregarlo.</div>';
-  const t = totales();
+  if (!st.carrito.length) st.desc = null;
+  if (st.desc && !st.carrito.some(l => st.desc.alcance === 'total' || l.producto_id === st.desc.producto_id)) st.desc = null;
+  const t = totales(), md = st.desc ? montoDesc() : 0;
+  $('t-desc').textContent = md > 0 ? `− ${S(md)}${st.desc.tipo === 'pct' ? ` (${st.desc.valor}%)` : ''} · ${st.desc.motivo}` : '';
+  $('b-desc').textContent = st.desc ? '🏷️ Cambiar descuento' : '🏷️ Descuento';
+  $('b-desc').classList.toggle('oculto', !st.carrito.length || !!(st.ctx && ['pedido', 'agregar'].includes(st.ctx.tipo)));
   $('t-total').textContent = S(t.total);
   $('t-igv').textContent = `Op. gravada ${S(t.gravada)} · IGV ${S(t.igv)}`;
   $('cobrar').disabled = !st.carrito.length;
@@ -1323,12 +1406,35 @@ function elegirMetodo(m) {
   st.metodo = m;
   [...$('metodos').children].forEach(b => b.classList.toggle('activa', b.dataset.m === m));
   $('p-label').textContent = m === 'efectivo' ? 'Monto recibido (S/)' : `Monto por ${NOMBRES_METODO[m]} (S/)`;
+  $('p-ref-l').textContent = m === 'gift_card' ? 'Código de la gift card' : 'N° operación (opcional)';
+  $('p-ref').placeholder = m === 'gift_card' ? 'KD-XXXX-XXXX' : '';
+  if (m === 'gift_card') setTimeout(() => $('p-ref').focus(), 30);
   $('p-monto').value = Math.max(falta(), 0).toFixed(2);
 }
 $('metodos').onclick = e => { const m = e.target.dataset.m; if (m) elegirMetodo(m); };
-$('p-agregar').onclick = () => {
+$('p-agregar').onclick = async () => {
   msg('p-error');
   const recibido = r2(Number($('p-monto').value || 0)), f = falta();
+  if (st.metodo === 'gift_card') {
+    const cod = $('p-ref').value.trim().toUpperCase().replace(/\s/g, '');
+    if (!cod) return msg('p-error', 'Escribe el código de la gift card.');
+    if (!navigator.onLine) return msg('p-error', 'Para pagar con gift card se necesita internet.');
+    if (f <= 0) return msg('p-error', 'El total ya está cubierto.');
+    $('p-agregar').disabled = true;
+    const { data: g, error } = await sb.rpc('giftcard_consultar', { p_codigo: cod });
+    $('p-agregar').disabled = false;
+    if (error) return msg('p-error', errorTexto(error));
+    if (!g) return msg('p-error', `No existe la gift card ${cod}.`);
+    if (g.estado !== 'activa') return msg('p-error', 'Esa gift card está anulada.');
+    if (g.vencida) return msg('p-error', `Esa gift card venció el ${g.vence_en.split('-').reverse().join('/')}.`);
+    const usado = r2(st.pagos.filter(p => p.metodo === 'gift_card' && p.referencia === g.codigo).reduce((a, p) => a + p.monto, 0));
+    const disp = r2(Number(g.saldo) - usado);
+    if (disp <= 0) return msg('p-error', 'Esa gift card ya no tiene saldo.');
+    const monto = r2(Math.min(recibido > 0 ? recibido : f, f, disp));
+    st.pagos.push({ metodo: 'gift_card', monto, recibido: monto, referencia: g.codigo });
+    $('p-ref').value = ''; actualizarPago(); elegirMetodo(falta() > 0 ? 'efectivo' : 'gift_card');
+    return toast(`🎁 ${g.codigo}: se usan ${S(monto)} · le quedarán ${S(r2(disp - monto))}`);
+  }
   if (recibido <= 0) return msg('p-error', 'Ingresa un monto mayor a cero.');
   if (f <= 0) return msg('p-error', 'El total ya está cubierto.');
   if (st.metodo !== 'efectivo' && recibido > f) return msg('p-error', `Por ${NOMBRES_METODO[st.metodo]} no puede pasar de ${S(f)}.`);
@@ -1371,7 +1477,7 @@ $('p-confirmar').onclick = async () => {
     pedido_id: st.ctx && st.ctx.tipo === 'cobrar' ? st.ctx.pedido.id : null,
     cliente: { num_doc: $('c-doc').value.trim(), nombre: $('c-nombre').value.trim(),
                ...(st.doc === 'factura' ? { agente_retencion: $('c-ret').checked } : {}) },
-    items: st.carrito.map(l => ({ producto_id: l.producto_id, cantidad: l.cantidad, precio_unit: l.precio_unit, ...(l.fijo ? { descripcion: l.nombre } : {}) })),
+    items: lineasCobro().map(l => ({ producto_id: l.producto_id, cantidad: l.cantidad, precio_unit: l.precio_unit, ...(l.fijo ? { descripcion: l.nombre } : {}) })),
     contado_credito: credito ? 'credito' : 'contado',
     pagos: credito ? [] : st.pagos.map(p => ({ metodo: p.metodo, monto: p.monto, referencia: p.referencia })),
     ...(credito ? { cuotas: leerCuotas() } : {})
@@ -1397,7 +1503,11 @@ $('p-confirmar').onclick = async () => {
     $('p-confirmar').textContent = 'Enviando a SUNAT…';
     sunat = await enviarSunat(res.venta_id, 8000);
   }
-  st.ultimaVenta = { ...res, doc: st.doc, carrito: st.carrito.slice(), pagos: credito ? [] : st.pagos.slice(),
+  // descuento: queda registrado (quién autorizó, motivo, cuánto)
+  if (st.desc) { const pend = leer('descPend') || []; pend.push({ id_local: payload.id_local, alcance: st.desc.alcance, producto_id: st.desc.producto_id || null, tipo: st.desc.tipo,
+    valor: st.desc.valor, monto: montoDesc(), motivo: st.desc.motivo, autorizado_por: st.desc.autoriza, usuario_id: st.usuario.id, turno_id: st.turno.id }); guardar('descPend', pend); }
+  enviarDescuentos();
+  st.ultimaVenta = { ...res, doc: st.doc, carrito: lineasCobro(), descuento: st.desc ? { monto: montoDesc(), motivo: st.desc.motivo } : null, pagos: credito ? [] : st.pagos.slice(),
     cuotas: credito ? payload.cuotas : null, retencion: Number(res.retencion || 0),
     hash: sunat && sunat.codigo_hash, qr: sunat && sunat.cadena_qr,
     cliente: payload.cliente, fecha: new Date(payload.emitida_en), cajero: st.usuario.nombre };
@@ -1413,7 +1523,7 @@ $('p-confirmar').onclick = async () => {
   pintarRed();
 };
 $('ok-nueva').onclick = () => {
-  st.carrito = []; st.pagos = []; st.ctx = null; canalVenta(st.canal.id); contarMesas(); $('c-doc').value = ''; $('c-nombre').value = ''; $('c-ret').checked = false;
+  st.carrito = []; st.pagos = []; st.desc = null; st.ctx = null; canalVenta(st.canal.id); contarMesas(); $('c-doc').value = ''; $('c-nombre').value = ''; $('c-ret').checked = false;
   $('m-ok').classList.add('oculto'); dibujarCarrito(); cargarStock(); $('buscar').focus();
 };
 $('ok-imprimir').onclick = () => { armarTicket(st.ultimaVenta); window.print(); };
@@ -1498,6 +1608,7 @@ function armarTicket(v) {
     <div class="c"><b>${nombreDoc}</b><br>${v.serie}-${String(v.numero).padStart(8,'0')}</div>
     <div>Fecha: ${v.fecha.toLocaleString('es-PE')}<br>Cajero: ${v.cajero}${v.cliente.num_doc ? `<br>Cliente: ${v.cliente.nombre}<br>${v.cliente.num_doc.length === 11 ? 'RUC' : 'DNI'}: ${v.cliente.num_doc}` : ''}</div><hr>
     <table>${filas}</table><hr>
+    ${v.descuento && v.descuento.monto > 0 ? `<div>Incluye descuento: -${v.descuento.monto.toFixed(2)} (${esc(v.descuento.motivo)})</div><hr>` : ''}
     <table>
       ${v.doc !== 'nota_venta' ? `<tr><td>Op. gravada</td><td class="r">${Number(v.op_gravada).toFixed(2)}</td></tr><tr><td>IGV 18%</td><td class="r">${Number(v.igv).toFixed(2)}</td></tr>` : ''}
       <tr><td><b>TOTAL S/</b></td><td class="r"><b>${Number(v.total).toFixed(2)}</b></td></tr>
@@ -1508,6 +1619,139 @@ function armarTicket(v) {
     ${v.qr ? `<div class="c">${qrSvg(v.qr)}<br>Hash: ${esc(v.hash || '')}</div><hr>` : ''}
     <div class="c">${v.doc === 'nota_venta' ? 'Documento interno. No válido como comprobante de pago.' : 'Representación impresa del comprobante electrónico.'}<br>¡Gracias por tu compra!</div>`;
 }
+
+// ===== DESCUENTO: modal =====
+// Gift cards: listas pero apagadas por ahora (cambiar a true y correr el SQL de gift cards)
+const GIFT_CARDS = false;
+if (GIFT_CARDS) { $('b-gift').classList.remove('oculto'); document.querySelector('#metodos [data-m="gift_card"]').classList.remove('oculto'); }
+const MOTIVOS_DESC = ['Cliente frecuente', 'Cortesía', 'Producto con detalle', 'Promoción', 'Colaborador', 'Otro'];
+const ds = { alcance: 'total', tipo: 'pct', motivo: '' };
+function abrirDesc() {
+  msg('ds-error'); const d = st.desc;
+  Object.assign(ds, d ? { alcance: d.alcance, tipo: d.tipo, motivo: MOTIVOS_DESC.includes(d.motivo) ? d.motivo : 'Otro' } : { alcance: 'total', tipo: 'pct', motivo: '' });
+  const prods = [...new Map(st.carrito.filter(l => l.producto_id).map(l => [l.producto_id, l.nombre])).entries()];
+  $('ds-prod').innerHTML = prods.map(([id, n]) => `<option value="${id}" ${d && d.producto_id === id ? 'selected' : ''}>${esc(n)}</option>`).join('');
+  $('ds-val').value = d ? d.valor : ''; $('ds-otro').value = d && !MOTIVOS_DESC.includes(d.motivo) ? d.motivo : ''; $('ds-pin').value = '';
+  $('ds-mot').innerHTML = MOTIVOS_DESC.map(m => `<button data-m="${m}">${m}</button>`).join('');
+  $('ds-quitar').classList.toggle('oculto', !d);
+  pintarDesc(); $('m-desc').classList.remove('oculto'); setTimeout(() => $('ds-val').focus(), 50);
+}
+function descTmp() {
+  const v = Number($('ds-val').value || 0);
+  return { alcance: ds.alcance, producto_id: ds.alcance === 'producto' ? Number($('ds-prod').value) : null, tipo: ds.tipo, valor: v,
+    motivo: ds.motivo === 'Otro' ? $('ds-otro').value.trim() : ds.motivo };
+}
+function pintarDesc() {
+  [...$('ds-alc').children].forEach(b => b.classList.toggle('activa', b.dataset.a === ds.alcance));
+  [...$('ds-tipo').children].forEach(b => b.classList.toggle('activa', b.dataset.t === ds.tipo));
+  [...$('ds-mot').children].forEach(b => b.classList.toggle('activa', b.dataset.m === ds.motivo));
+  $('ds-prod').classList.toggle('oculto', ds.alcance !== 'producto'); $('ds-otro').classList.toggle('oculto', ds.motivo !== 'Otro');
+  $('ds-val-l').textContent = ds.tipo === 'pct' ? 'Porcentaje (%)' : 'Monto a descontar (S/)';
+  $('ds-rap').innerHTML = (ds.tipo === 'pct' ? [5, 10, 15, 20, 50] : [1, 2, 5, 10]).map(v => `<button data-v="${v}">${ds.tipo === 'pct' ? v + '%' : 'S/ ' + v}</button>`).join('');
+  const t = descTmp(), antes = totales().total;
+  const ls = lineasCobro(t.valor > 0 ? t : null), md = r2(ls.reduce((a, l) => a + l.desc, 0)), desp = r2(ls.reduce((a, l) => a + r2(l.cantidad * l.precio_unit), 0));
+  const sinD = r2(st.carrito.reduce((a, l) => a + r2(l.cantidad * l.precio_unit), 0));
+  $('ds-prev').innerHTML = t.valor > 0 ? `Antes ${S(sinD)} → descuento <b style="color:#1e7d3a">− ${S(md)}</b> → <b style="font-size:19px">${S(desp)}</b>` : `Total actual ${S(antes)}`;
+}
+$('b-desc').onclick = abrirDesc;
+$('ds-alc').onclick = e => { const b = e.target.closest('[data-a]'); if (b) { ds.alcance = b.dataset.a; pintarDesc(); } };
+$('ds-tipo').onclick = e => { const b = e.target.closest('[data-t]'); if (b) { ds.tipo = b.dataset.t; $('ds-val').value = ''; pintarDesc(); } };
+$('ds-mot').onclick = e => { const b = e.target.closest('[data-m]'); if (b) { ds.motivo = b.dataset.m; pintarDesc(); if (ds.motivo === 'Otro') $('ds-otro').focus(); else $('ds-pin').focus(); } };
+$('ds-rap').onclick = e => { const b = e.target.closest('[data-v]'); if (b) { $('ds-val').value = b.dataset.v; pintarDesc(); } };
+$('ds-val').oninput = pintarDesc; $('ds-prod').onchange = pintarDesc; $('ds-otro').oninput = pintarDesc;
+$('ds-pin').onkeydown = e => { if (e.key === 'Enter') $('ds-ok').click(); };
+$('ds-cancelar').onclick = () => $('m-desc').classList.add('oculto');
+$('ds-quitar').onclick = () => { st.desc = null; $('m-desc').classList.add('oculto'); dibujarCarrito(); toast('Descuento quitado'); };
+$('ds-ok').onclick = async () => {
+  msg('ds-error'); const t = descTmp();
+  if (!(t.valor > 0)) return msg('ds-error', ds.tipo === 'pct' ? 'Escribe el porcentaje.' : 'Escribe el monto.');
+  if (t.tipo === 'pct' && t.valor >= 100) return msg('ds-error', 'El descuento debe ser menor a 100%.');
+  const objetivo = r2(st.carrito.filter(l => t.alcance === 'total' || l.producto_id === t.producto_id).reduce((a, l) => a + r2(l.cantidad * l.precio_unit), 0));
+  if (t.tipo === 'monto' && t.valor >= objetivo) return msg('ds-error', `El descuento debe ser menor a ${S(objetivo)}.`);
+  if (!t.motivo) return msg('ds-error', 'Elige o escribe el motivo.');
+  if (!$('ds-pin').value.trim()) return msg('ds-error', 'Falta el PIN del administrador.');
+  if (!navigator.onLine) return msg('ds-error', 'Para autorizar un descuento se necesita internet.');
+  $('ds-ok').disabled = true;
+  const { data, error } = await sb.rpc('autorizar_descuento', { p_pin: $('ds-pin').value.trim() });
+  $('ds-ok').disabled = false;
+  if (error) return msg('ds-error', /autorizar_descuento/.test(error.message) ? 'Falta correr 76_descuentos_giftcards.sql en Supabase.' : errorTexto(error));
+  st.desc = { ...t, autoriza: data }; $('m-desc').classList.add('oculto'); dibujarCarrito(); toast(`✓ Descuento autorizado por ${data}`);
+};
+async function enviarDescuentos() {
+  const pend = leer('descPend') || []; if (!pend.length || !navigator.onLine) return;
+  const enCola = new Set(cola().map(v => v.id_local)), listos = pend.filter(d => !enCola.has(d.id_local));
+  if (!listos.length) return;
+  const { error } = await sb.from('venta_descuentos').insert(listos);
+  if (!error) guardar('descPend', pend.filter(d => enCola.has(d.id_local)));
+}
+
+// ===== GIFT CARDS =====
+const gc = { monto: 0, metodo: 'efectivo' };
+function tabGift(t) {
+  [...$('gc-tab').children].forEach(b => b.classList.toggle('activa', b.dataset.t === t));
+  $('gc-vender').classList.toggle('oculto', t !== 'vender'); $('gc-listo').classList.add('oculto');
+  $('gc-consultar').classList.toggle('oculto', t !== 'consultar'); msg('gc-error');
+  if (t === 'consultar') setTimeout(() => $('gc-q').focus(), 50);
+}
+$('b-gift').onclick = () => {
+  gc.monto = 0; gc.metodo = 'efectivo'; ['gc-monto', 'gc-para', 'gc-de', 'gc-tel', 'gc-ref', 'gc-q'].forEach(id => $(id).value = ''); $('gc-res').innerHTML = '';
+  [...$('gc-montos').children].forEach(b => b.classList.remove('activa')); [...$('gc-met').children].forEach(b => b.classList.toggle('activa', b.dataset.m === 'efectivo'));
+  tabGift('vender'); $('m-gift').classList.remove('oculto');
+};
+$('gc-tab').onclick = e => { const b = e.target.closest('[data-t]'); if (b) tabGift(b.dataset.t); };
+$('gc-montos').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; gc.monto = Number(b.dataset.v); $('gc-monto').value = ''; [...$('gc-montos').children].forEach(x => x.classList.toggle('activa', x === b)); };
+$('gc-monto').oninput = () => { gc.monto = Number($('gc-monto').value || 0); [...$('gc-montos').children].forEach(x => x.classList.remove('activa')); };
+$('gc-met').onclick = e => { const b = e.target.closest('[data-m]'); if (!b) return; gc.metodo = b.dataset.m; [...$('gc-met').children].forEach(x => x.classList.toggle('activa', x === b)); };
+$('gc-cerrar').onclick = $('gc-cerrar2').onclick = $('gc-fin').onclick = () => $('m-gift').classList.add('oculto');
+const fechaGC = f => String(f).split('-').reverse().join('/');
+let ultimaGift = null;
+$('gc-ok').onclick = async () => {
+  msg('gc-error');
+  if (!(gc.monto > 0)) return msg('gc-error', 'Elige o escribe el monto.');
+  if (!navigator.onLine) return msg('gc-error', 'Para crear una gift card se necesita internet.');
+  if (!confirm(`¿Recibiste ${S(gc.monto)} por ${NOMBRES_METODO[gc.metodo]}?`)) return;
+  $('gc-ok').disabled = true;
+  const { data, error } = await sb.rpc('giftcard_vender', { p: { monto: gc.monto, metodo_pago: gc.metodo, referencia: $('gc-ref').value, para: $('gc-para').value, de: $('gc-de').value,
+    telefono: $('gc-tel').value, turno_id: st.turno.id, caja_id: st.caja.id, usuario_id: st.usuario.id, vendida_por: st.usuario.nombre } });
+  $('gc-ok').disabled = false;
+  if (error) return msg('gc-error', /giftcard_vender/.test(error.message) ? 'Falta correr 76_descuentos_giftcards.sql en Supabase.' : errorTexto(error));
+  ultimaGift = { ...data, para: $('gc-para').value.trim(), de: $('gc-de').value.trim() };
+  $('gc-vender').classList.add('oculto'); $('gc-listo').classList.remove('oculto');
+  $('gc-cod').textContent = data.codigo;
+  $('gc-det').innerHTML = `<b>${S(data.monto)}</b> · vence el ${fechaGC(data.vence_en)}${ultimaGift.para ? '<br>Para: ' + esc(ultimaGift.para) : ''}`;
+  const tel = $('gc-tel').value.replace(/\D/g, '').slice(-9);
+  $('gc-wa').classList.toggle('oculto', tel.length !== 9);
+  if (tel.length === 9) $('gc-wa').href = `https://wa.me/51${tel}?text=${encodeURIComponent(`Hola${ultimaGift.para ? ' ' + ultimaGift.para : ''}, tienes una gift card de Kadima por ${S(data.monto)}${ultimaGift.de ? ' de parte de ' + ultimaGift.de : ''}.\nCódigo: ${data.codigo}\nVálida hasta el ${fechaGC(data.vence_en)}. Úsala en tienda en una o varias compras.`)}`;
+};
+$('gc-imp').onclick = () => {
+  const g = ultimaGift; if (!g) return;
+  $('ticket').innerHTML = `<div class="c"><b>${EMPRESA.nombre}</b><br>${EMPRESA.razon}<br>RUC ${EMPRESA.ruc}</div><hr>
+    <div class="c"><b>GIFT CARD</b><br><span style="font-size:20px"><b>${S(g.monto)}</b></span></div><hr>
+    ${g.para ? `<div>Para: ${esc(g.para)}</div>` : ''}${g.de ? `<div>De: ${esc(g.de)}</div>` : ''}
+    <div class="c" style="font-size:18px;margin:8px 0"><b>${g.codigo}</b></div>
+    <div>Válida hasta: ${fechaGC(g.vence_en)}</div><div>Se puede usar en una o varias compras.</div><hr>
+    <div class="c">Documento interno. El comprobante de pago se emite al canjearla.</div>`;
+  window.print();
+};
+$('gc-q').onkeydown = e => { if (e.key === 'Enter') $('gc-buscar').click(); };
+$('gc-buscar').onclick = async () => {
+  msg('gc-error'); const cod = $('gc-q').value.trim(); if (!cod) return;
+  const { data: g, error } = await sb.rpc('giftcard_consultar', { p_codigo: cod });
+  if (error) return msg('gc-error', errorTexto(error));
+  if (!g) return $('gc-res').innerHTML = '<div class="vacio">No existe esa gift card.</div>';
+  const est = g.estado === 'anulada' ? '<b style="color:var(--mal)">ANULADA</b>' : g.vencida ? `<b style="color:var(--mal)">VENCIDA</b>` : '<b style="color:#1e7d3a">Activa</b>';
+  const TXT = { venta: 'Vendida', canje: 'Usada', devolucion: 'Devuelta (venta anulada)', anulacion: 'Anulada' };
+  $('gc-res').innerHTML = `<div class="gc-codigo" style="font-size:22px">${g.codigo}</div>
+    <div style="display:flex;justify-content:space-between;font-size:15px"><span>Saldo <b style="font-size:22px">${S(g.saldo)}</b> de ${S(g.monto)}</span><span>${est}<br><small>vence ${fechaGC(g.vence_en)}</small></span></div>
+    <div class="gc-movs" style="margin-top:8px">${g.movs.map(m => `<div><span>${TXT[m.tipo] || m.tipo} · ${new Date(m.en).toLocaleDateString('es-PE')}</span><span>${Number(m.monto) > 0 ? '+' : ''}${S(m.monto)}</span></div>`).join('')}</div>
+    ${g.estado === 'activa' && Number(g.saldo) === Number(g.monto) ? '<button class="btn-link" id="gc-anular" style="color:var(--mal);margin-top:8px">Anular (vendida por error)</button>' : ''}`;
+  if ($('gc-anular')) $('gc-anular').onclick = async () => {
+    const pin = prompt(`Anular ${g.codigo} (${S(g.monto)}). Se debe devolver el dinero al cliente.\n\nPIN del administrador:`); if (!pin) return;
+    const r = await sb.rpc('giftcard_anular', { p_codigo: g.codigo, p_pin: pin });
+    if (r.error) return msg('gc-error', errorTexto(r.error));
+    toast('Gift card anulada'); $('gc-buscar').click();
+  };
+};
 
 // ===== MESAS =====
 $('ctx-cancelar').onclick = () => { st.ctx = null; st.carrito = []; canalVenta(st.canal.id); dibujarCarrito(); };
@@ -1852,14 +2096,19 @@ $('b-cerrar').onclick = async () => {
   const credito = validas.filter(v => v.contado_credito === 'credito');
   const retenido = r2(validas.reduce((a, v) => a + Number(v.retencion_monto || 0), 0));
   const totalVentas = r2(validas.reduce((a, v) => a + Number(v.total), 0));
-  resumenCierre.efectivoEsperado = r2(Number(st.turno.monto_inicial) + (porMetodo.efectivo || 0));
+  // gift cards vendidas en este turno: el dinero entra a la caja, pero no es venta (la venta se declara al canjearla)
+  const gq = !GIFT_CARDS ? { data: [] } : await sb.from('gift_cards').select('monto_inicial,metodo_pago').eq('turno_id', st.turno.id).eq('estado', 'activa');
+  const gcPor = {}; (gq.data || []).forEach(g => gcPor[g.metodo_pago] = r2((gcPor[g.metodo_pago] || 0) + Number(g.monto_inicial)));
+  const gcTotal = r2(Object.values(gcPor).reduce((a, b) => a + b, 0));
+  resumenCierre.efectivoEsperado = r2(Number(st.turno.monto_inicial) + (porMetodo.efectivo || 0) + (gcPor.efectivo || 0));
   $('ci-sub').textContent = `${st.caja.nombre} · ${st.turno.nombre || 'Turno'} · ${validas.length} ventas · ${S(totalVentas)}`;
   // tarjeta junta lo nuevo (tarjeta) y lo antiguo (visa / mastercard)
   const pTarjeta = r2((porMetodo.tarjeta || 0) + (porMetodo.visa || 0) + (porMetodo.mastercard || 0));
-  const otros = ['plin', 'transferencia'].filter(m => porMetodo[m]);
+  const otros = ['plin', 'transferencia', 'gift_card'].filter(m => porMetodo[m]);
   $('ci-tabla').innerHTML =
     `<tr><td>Efectivo inicial</td><td>${S(st.turno.monto_inicial)}</td></tr>` +
     `<tr><td>Ventas en efectivo</td><td>${S(porMetodo.efectivo || 0)}</td></tr>` +
+    (gcPor.efectivo ? `<tr><td>Gift cards vendidas en efectivo</td><td>${S(gcPor.efectivo)}</td></tr>` : '') +
     `<tr><td><b>Efectivo que debería haber</b></td><td><b>${S(resumenCierre.efectivoEsperado)}</b></td></tr>` +
     `<tr><td colspan="2" style="padding-top:12px;color:var(--gris);font-size:12px">OTROS MEDIOS (no van en el cajón)</td></tr>` +
     `<tr><td>Yape</td><td>${S(porMetodo.yape || 0)}</td></tr>` +
@@ -1868,6 +2117,8 @@ $('b-cerrar').onclick = async () => {
     `<tr><td><b>Total vendido</b></td><td><b>${S(totalVentas)}</b></td></tr>` +
     (credito.length ? `<tr><td>Facturas al crédito (por cobrar)</td><td>${credito.length} · ${S(credito.reduce((a, v) => a + Number(v.total) - Number(v.retencion_monto), 0))}</td></tr>` : '') +
     (retenido > 0 ? `<tr><td>Retenciones 3% (las paga el cliente a SUNAT)</td><td>${S(retenido)}</td></tr>` : '') +
+    (gcTotal ? `<tr><td colspan="2" style="padding-top:12px;color:var(--gris);font-size:12px">GIFT CARDS VENDIDAS (no son venta: se declaran al canjearlas)</td></tr>` +
+      Object.entries(gcPor).map(([m, v]) => `<tr><td>Gift cards · ${NOMBRES_METODO[m] || m}</td><td>${S(v)}</td></tr>`).join('') : '') +
     (anuladas.length ? `<tr><td>Ventas anuladas (no suman)</td><td>${anuladas.length} · ${S(anuladas.reduce((a, v) => a + Number(v.total), 0))}</td></tr>` : '');
   $('m-cierre').classList.remove('oculto');
 };
