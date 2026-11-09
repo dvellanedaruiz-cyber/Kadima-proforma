@@ -124,6 +124,10 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 .chips-g{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}.chips-g button{background:var(--fondo);border:1px solid var(--borde);border-radius:999px;padding:7px 12px;font-weight:600;cursor:pointer}.chips-g button.activa{background:var(--rojo);color:#fff;border-color:var(--rojo)}
 .gc-codigo{font:800 30px/1.2 ui-monospace,Menlo,monospace;letter-spacing:2px;text-align:center;background:var(--fondo);border:2px dashed var(--rojo);border-radius:12px;padding:14px;margin:10px 0;user-select:all}
 .gc-movs{font-size:13px;max-height:180px;overflow:auto}.gc-movs div{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed var(--borde)}
+.sep-l{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--borde)}
+.sep-l .n{font-weight:600}.sep-l .n small{display:block;color:var(--gris);font-weight:500}
+.sep-st{display:flex;align-items:center;gap:6px}.sep-st button{width:36px;height:36px;border-radius:10px;border:1px solid var(--borde);background:var(--fondo);font-size:18px;font-weight:700;cursor:pointer}.sep-st b{min-width:34px;text-align:center;font-size:17px}
+.sep-l.on{background:#fff6e5}
 .seg-peso{display:flex;background:var(--fondo);border-radius:10px;padding:3px;gap:3px;margin:4px 0 10px}.seg-peso button{flex:1;background:transparent;border:none;padding:9px;font-weight:700;color:var(--gris);border-radius:8px;cursor:pointer}.seg-peso button.activa{background:#fff;color:var(--rojo);box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .chips-peso{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.chips-peso button{background:var(--fondo);border:none;border-radius:16px;padding:6px 12px;font-weight:600;cursor:pointer}
 .linea .u button{background:none;border:none;padding:0;color:var(--rojo);font:inherit;text-decoration:underline;cursor:pointer}
@@ -491,6 +495,18 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
 </div>
 
 <!-- MODAL PAGO -->
+<div class="modal oculto" id="m-sep">
+  <div class="caja" style="max-width:520px">
+    <h3 id="sep-t">Cuenta separada</h3>
+    <p class="sub">Marca lo que paga esta persona. Lo demás sigue abierto en la mesa.</p>
+    <div id="sep-lista" style="max-height:50vh;overflow:auto"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0">
+      <span id="sep-resto" style="color:var(--gris);font-size:14px"></span><b id="sep-total" style="font-size:22px">S/ 0.00</b>
+    </div>
+    <div class="fila"><button class="btn-sec" id="sep-cancelar">Cancelar</button><button class="btn" id="sep-ok">Cobrar esta parte</button></div>
+    <div class="error" id="sep-error"></div>
+  </div>
+</div>
 <div class="modal oculto" id="m-desc">
   <div class="caja" style="max-width:440px">
     <h3>🏷️ Descuento</h3>
@@ -1152,7 +1168,7 @@ function aplicarEscalas() {
   if (!st.escalas) return;
   const tot = {}, primero = {};
   st.carrito.forEach((l, i) => {
-    if (!st.escalas[l.producto_id] || l.libre || l.fijo || l.nota) return;
+    if (!st.escalas[l.producto_id] || l.libre || l.fijo || l.bloq || l.nota) return;
     const p = st.productos.find(x => x.id === l.producto_id); if (!p || p.precio_libre) return;
     tot[l.producto_id] = (tot[l.producto_id] || 0) + Number(l.cantidad);
     if (!(l.producto_id in primero)) primero[l.producto_id] = l;
@@ -1160,7 +1176,7 @@ function aplicarEscalas() {
   if (!Object.keys(tot).length) return;
   const nuevo = [];
   st.carrito.forEach(l => {
-    if (!(l.producto_id in tot) || l.libre || l.fijo || l.nota) return nuevo.push(l);
+    if (!(l.producto_id in tot) || l.libre || l.fijo || l.bloq || l.nota) return nuevo.push(l);
     if (primero[l.producto_id] !== l) return;   // las demás líneas del mismo producto se juntan aquí
     paquetes(l.producto_id, tot[l.producto_id]).forEach(x => nuevo.push({ ...l, cantidad: x.cantidad, precio_unit: x.precio_unit, paq: x.paq, k: x.k }));
   });
@@ -1170,8 +1186,8 @@ function dibujarCarrito() {
   aplicarEscalas();
   $('carrito').innerHTML = st.carrito.length ? st.carrito.map((l, i) => `
     <div class="linea">
-      <div><div class="n">${esc(l.nombre)} ${l.fijo ? '' : `<button data-nota="${i}" title="Agregar nota para cocina">nota</button>`}</div>${l.nota ? `<div class="nota">→ ${esc(l.nota)}</div>` : ''}<div class="u">${GRANEL[l.unidad] ? `${S((l.base || l.precio_unit) / 10)} /100 ${GRANEL[l.unidad].sub}${l.porMonto ? ' · por monto' : ''}` : l.libre ? `<button data-precio="${i}" title="Cambiar precio">${S(l.precio_unit)} c/u ✎</button>` : `${S(l.precio_unit)} c/u${l.paq ? ` <b style="color:#1e7d3a">· ${l.k > 1 ? l.k + ' paquetes' : 'paquete'} de ${l.paq}</b>` : (st.escalas && st.escalas[l.producto_id] && !l.libre && !l.fijo ? ' <span style="color:var(--gris)">· sueltas</span>' : '')}`}</div></div>
-      ${l.fijo ? '<div class="cant"></div>' : GRANEL[l.unidad] ? `<div class="cant"><button data-i="${i}" data-a="x" title="Quitar">✕</button><button data-peso="${i}" style="width:auto;padding:0 8px">${fmtCant(l)} ✎</button></div>` : `<div class="cant"><button data-i="${i}" data-a="-">−</button><span>${l.cantidad}</span><button data-i="${i}" data-a="+">+</button></div>`}
+      <div><div class="n">${esc(l.nombre)} ${l.fijo || l.bloq ? '' : `<button data-nota="${i}" title="Agregar nota para cocina">nota</button>`}</div>${l.nota ? `<div class="nota">→ ${esc(l.nota)}</div>` : ''}<div class="u">${GRANEL[l.unidad] ? `${S((l.base || l.precio_unit) / 10)} /100 ${GRANEL[l.unidad].sub}${l.porMonto ? ' · por monto' : ''}` : l.libre ? `<button data-precio="${i}" title="Cambiar precio">${S(l.precio_unit)} c/u ✎</button>` : `${S(l.precio_unit)} c/u${l.paq ? ` <b style="color:#1e7d3a">· ${l.k > 1 ? l.k + ' paquetes' : 'paquete'} de ${l.paq}</b>` : (st.escalas && st.escalas[l.producto_id] && !l.libre && !l.fijo ? ' <span style="color:var(--gris)">· sueltas</span>' : '')}`}</div></div>
+      ${l.fijo || l.bloq ? '<div class="cant"><span>' + l.cantidad + '</span></div>' : GRANEL[l.unidad] ? `<div class="cant"><button data-i="${i}" data-a="x" title="Quitar">✕</button><button data-peso="${i}" style="width:auto;padding:0 8px">${fmtCant(l)} ✎</button></div>` : `<div class="cant"><button data-i="${i}" data-a="-">−</button><span>${l.cantidad}</span><button data-i="${i}" data-a="+">+</button></div>`}
       <div class="imp">${S(l.cantidad * l.precio_unit)}</div>
     </div>`).join('') : '<div class="vacio">Toca un producto para agregarlo.</div>';
   if (!st.carrito.length) st.desc = null;
@@ -1187,7 +1203,7 @@ function dibujarCarrito() {
   $('enviar-mesa').textContent = st.ctx && st.ctx.tipo === 'agregar' ? `Enviar a ${st.ctx.pedido.mesa}` : 'Enviar a mesa';
   $('ctx').classList.toggle('oculto', !st.ctx); pintarStock();
   if (st.ctx) $('ctx-txt').textContent = st.ctx.tipo === 'agregar' ? `Agregando productos a ${st.ctx.pedido.mesa}` : `Cobrando ${st.ctx.pedido.mesa}`;
-  $('t-carrito').textContent = st.ctx && st.ctx.tipo === 'cobrar' ? `Cuenta de ${st.ctx.pedido.mesa}` : 'Venta actual';
+  $('t-carrito').textContent = st.ctx && st.ctx.tipo === 'cobrar' ? (st.ctx.separar ? `✂️ Parte de ${st.ctx.pedido.mesa}` : `Cuenta de ${st.ctx.pedido.mesa}`) : 'Venta actual';
 }
 $('carrito').onclick = e => {
   const ps = e.target.closest('[data-peso]');
@@ -1469,12 +1485,19 @@ $('p-confirmar').onclick = async () => {
     msg('p-error', 'Cada cuota necesita una fecha posterior a hoy y un importe mayor a cero.');
     $('p-confirmar').textContent = 'Confirmar venta'; $('p-confirmar').disabled = false; return;
   }
+  // cuenta separada: lo que se cobra pasa a una cuenta propia (el resto sigue abierto en la mesa)
+  if (st.ctx && st.ctx.tipo === 'cobrar' && st.ctx.separar && !st.ctx.cobroId) {
+    const porProd = {}; st.carrito.forEach(l => porProd[l.producto_id] = r2((porProd[l.producto_id] || 0) + Number(l.cantidad)));
+    const { data: nid, error } = await sb.rpc('separar_cuenta', { p_pedido: st.ctx.pedido.id, p_items: Object.entries(porProd).map(([producto_id, cantidad]) => ({ producto_id: Number(producto_id), cantidad })) });
+    if (error) { msg('p-error', /separar_cuenta/.test(error.message) ? 'Falta correr 77_cuentas_separadas.sql en Supabase.' : errorTexto(error)); $('p-confirmar').textContent = 'Confirmar venta'; $('p-confirmar').disabled = false; return; }
+    st.ctx.cobroId = nid;
+  }
   const payload = {
     id_local: uuid(), numero, emitida_en: new Date().toISOString(),
     tipo_doc: st.doc, dispositivo_id: st.disp.id, caja_id: st.caja.id, canal_id: st.canalVenta || st.canal.id,
     ...(st.ctx && st.ctx.tipo === 'pedido' ? { pedido_externo: st.ctx.codigo, tipo_cobro: st.ctx.cobro, es_anticipo: st.ctx.cobro === 'adelanto' } : {}),
     turno_id: st.turno.id, usuario_id: st.usuario.id,
-    pedido_id: st.ctx && st.ctx.tipo === 'cobrar' ? st.ctx.pedido.id : null,
+    pedido_id: st.ctx && st.ctx.tipo === 'cobrar' ? (st.ctx.cobroId || st.ctx.pedido.id) : null,
     cliente: { num_doc: $('c-doc').value.trim(), nombre: $('c-nombre').value.trim(),
                ...(st.doc === 'factura' ? { agente_retencion: $('c-ret').checked } : {}) },
     items: lineasCobro().map(l => ({ producto_id: l.producto_id, cantidad: l.cantidad, precio_unit: l.precio_unit, ...(l.fijo ? { descripcion: l.nombre } : {}) })),
@@ -1518,6 +1541,7 @@ $('p-confirmar').onclick = async () => {
     (Number(res.retencion) > 0 ? ` · Retención ${S(res.retencion)} · Neto ${S(res.total - res.retencion)}` : '') + (vuelto > 0 ? ` · Vuelto ${S(vuelto)}` : '') +
     (enCola ? ' · Guardada sin internet: se enviará sola al volver la conexión.' : '') +
     (sunat && sunat.error ? ` · ⚠ SUNAT/Nubefact: ${sunat.error}. Quedó pendiente y se reintentará.` : '');
+  if (st.ctx && st.ctx.separar && st.ctx.resto > 0) $('ok-det').textContent += ` · En ${st.ctx.pedido.mesa} quedan ${S(st.ctx.resto)} por cobrar.`;
   $('m-ok').classList.remove('oculto');
   $('p-confirmar').textContent = 'Confirmar venta';
   pintarRed();
@@ -1619,6 +1643,41 @@ function armarTicket(v) {
     ${v.qr ? `<div class="c">${qrSvg(v.qr)}<br>Hash: ${esc(v.hash || '')}</div><hr>` : ''}
     <div class="c">${v.doc === 'nota_venta' ? 'Documento interno. No válido como comprobante de pago.' : 'Representación impresa del comprobante electrónico.'}<br>¡Gracias por tu compra!</div>`;
 }
+
+// ===== CUENTAS SEPARADAS =====
+let sep = null;
+function abrirSeparar(m, items) {
+  const g = new Map();
+  items.forEach(i => { const k = i.producto_id + '|' + Number(i.precio_unit); const x = g.get(k) || { producto_id: i.producto_id, nombre: i.productos.nombre, precio_unit: Number(i.precio_unit),
+    afecto_igv: i.productos.afecto_igv, area: i.productos.area_preparacion, unidad: i.productos.unidad_medida, hay: 0, elegir: 0 }; x.hay = r2(x.hay + Number(i.cantidad)); g.set(k, x); });
+  sep = { m, grupos: [...g.values()] };
+  $('sep-t').textContent = `✂️ Cuenta separada · ${m.mesa}`; msg('sep-error'); pintarSep();
+  $('m-mesas').classList.add('oculto'); $('m-sep').classList.remove('oculto');
+}
+function pintarSep() {
+  $('sep-lista').innerHTML = sep.grupos.map((x, i) => `<div class="sep-l ${x.elegir ? 'on' : ''}">
+    <div class="n">${esc(x.nombre)}<small>${S(x.precio_unit)} c/u · en la mesa: ${x.hay}</small></div>
+    <div class="sep-st"><button data-s="${i}" data-d="-1">−</button><b>${x.elegir}</b><button data-s="${i}" data-d="1">+</button></div>
+    <button class="btn-link" data-todo="${i}">${x.elegir === x.hay ? 'ninguno' : 'todos'}</button></div>`).join('');
+  const tot = r2(sep.grupos.reduce((a, x) => a + x.elegir * x.precio_unit, 0)), all = r2(sep.grupos.reduce((a, x) => a + x.hay * x.precio_unit, 0));
+  $('sep-total').textContent = S(tot); $('sep-resto').textContent = `Queda en la mesa: ${S(r2(all - tot))}`;
+  $('sep-ok').disabled = tot <= 0;
+}
+$('sep-lista').onclick = e => {
+  const b = e.target.closest('[data-s]'), t = e.target.closest('[data-todo]');
+  if (b) { const x = sep.grupos[b.dataset.s]; x.elegir = Math.min(x.hay, Math.max(0, x.elegir + Number(b.dataset.d))); }
+  if (t) { const x = sep.grupos[t.dataset.todo]; x.elegir = x.elegir === x.hay ? 0 : x.hay; }
+  pintarSep();
+};
+$('sep-cancelar').onclick = () => { $('m-sep').classList.add('oculto'); $('m-mesas').classList.remove('oculto'); };
+$('sep-ok').onclick = () => {
+  const el = sep.grupos.filter(x => x.elegir > 0); if (!el.length) return;
+  if (!navigator.onLine) return msg('sep-error', 'Para separar cuentas se necesita internet.');
+  const all = r2(sep.grupos.reduce((a, x) => a + x.hay * x.precio_unit, 0)), tot = r2(el.reduce((a, x) => a + x.elegir * x.precio_unit, 0));
+  st.carrito = el.map(x => ({ producto_id: x.producto_id, nombre: x.nombre, precio_unit: x.precio_unit, cantidad: x.elegir, afecto_igv: x.afecto_igv, area: x.area, nota: null, unidad: x.unidad, bloq: true }));
+  st.ctx = { tipo: 'cobrar', pedido: { id: sep.m.id, mesa: sep.m.mesa }, separar: true, resto: r2(all - tot) };
+  $('m-sep').classList.add('oculto'); dibujarCarrito();
+};
 
 // ===== DESCUENTO: modal =====
 // Gift cards: listas pero apagadas por ahora (cambiar a true y correr el SQL de gift cards)
@@ -1910,7 +1969,8 @@ async function abrirMesas() {
         <button class="btn-sec" data-acc="precuenta" data-id="${m.id}">Precuenta</button>
         <button class="btn-sec" data-acc="mover" data-id="${m.id}">Cambiar mesa</button>
         <button class="btn-sec" data-acc="anular" data-id="${m.id}">Anular</button>
-        <button class="btn" data-acc="cobrar" data-id="${m.id}">Cobrar</button>
+        <button class="btn-sec" data-acc="separar" data-id="${m.id}">✂️ Cuenta separada</button>
+        <button class="btn" data-acc="cobrar" data-id="${m.id}">Cobrar todo</button>
       </div></div>`;
     st.htmlMesa[m.id] = html;
   });
@@ -1982,6 +2042,10 @@ $('ms-lista').onclick = async e => {
       });
       st.ctx = { tipo: 'cobrar', pedido };
       $('m-mesas').classList.add('oculto'); dibujarCarrito();
+    }
+    if (acc === 'separar') {
+      if (st.carrito.length && !st.ctx) return msg('ms-error', 'Primero termina o vacía la venta actual.');
+      return abrirSeparar(m, await itemsDe(m.id));
     }
     if (acc === 'precuenta') {
       const items = await itemsDe(m.id);
