@@ -102,6 +102,9 @@ input,select,textarea{font:inherit;padding:10px 12px;border:1px solid var(--bord
 .prod .star{position:absolute;top:6px;right:8px;font-size:18px;line-height:1}
 .prods.editfav .prod{outline:2px dashed #f2a900;outline-offset:-2px}
 .cats .editar{background:#fff3c4;color:#6b4c15}
+.cats.ordenando button[data-c^="p:"]{background:#fff;border:2px dashed var(--borde);display:flex;align-items:center;gap:6px}
+.cats .mv{background:var(--fondo);border-radius:6px;padding:0 6px;font-size:15px;cursor:pointer}
+.cats .dir{font-size:12px;font-weight:700;border-radius:6px;padding:2px 6px;background:#eee;color:var(--gris);cursor:pointer}.cats .dir.on{background:#e6f4ea;color:#1e7d3a}
 /* por enviar (columna izquierda) */
 .pend{background:#fffbea;border:1.5px dashed #e0a800;border-radius:12px;padding:8px 10px;margin-bottom:10px}
 .pend h4{margin:0 0 4px;font-size:13px;color:#7a5300;display:flex;justify-content:space-between}
@@ -366,7 +369,7 @@ $('usr').onclick = () => { if (confirm('¿Cambiar de usuario?')) pedirPin(); };
 let canalRT = null;
 async function abrirApp() {
   vista('v-app'); $('usr').textContent = st.usuario.nombre;
-  cargarObs();
+  cargarObs(); cargarAjustesMesas();
   st.extrasOk = !(await sb.from('pedido_items').select('extra_de').limit(1)).error;
   try {
     // la caja de tienda: sus series, su caja física y el canal Tienda (la venta de mesa entra al turno abierto de esa caja)
@@ -613,11 +616,32 @@ function tabMovil(t) {
 const esFav = p => !!(st.favCol ? p.favorito_mesa : p.favorito);
 const principalDe = c => (c && (c.categoria_principal || c.nombre)) || 'Otros';
 const catDe = id => st.categorias.find(c => c.id === id);
-function pintarCats() {
+// orden de las categorías y categorías "directas" (se agregan sin pantalla de observaciones): tabla mesas_ajustes (script 78)
+st.aj = { orden_cats: ['Platos'], cats_directas: ['Abarrotes', 'Embolsados', 'Otros'], hayTabla: false };
+async function cargarAjustesMesas() {
+  const { data, error } = await sb.from('mesas_ajustes').select('*').eq('id', 1).maybeSingle();
+  if (!error && data) st.aj = { orden_cats: data.orden_cats || [], cats_directas: data.cats_directas || [], hayTabla: true };
+  if (st.productos && st.productos.length) { pintarCats(); }
+}
+async function guardarAjustesMesas() {
+  const { error } = await sb.from('mesas_ajustes').upsert({ id: 1, orden_cats: st.aj.orden_cats, cats_directas: st.aj.cats_directas });
+  if (error) toast(/mesas_ajustes/.test(error.message) ? 'Falta correr 78_mesas_categorias.sql en Supabase' : errTxt(error));
+}
+const esDirecta = p => st.aj.cats_directas.some(c => c.toLowerCase() === principalDe(catDe(p.categoria_id)).toLowerCase());
+function catsOrdenadas() {
   const pr = [...new Set(st.productos.map(p => principalDe(catDe(p.categoria_id))))].sort((a, b) => a.localeCompare(b, 'es'));
+  const pos = c => { const i = st.aj.orden_cats.findIndex(x => x.toLowerCase() === c.toLowerCase()); return i < 0 ? 999 : i; };
+  return pr.sort((a, b) => pos(a) - pos(b));
+}
+function pintarCats() {
+  const pr = catsOrdenadas(), ord = !!st.ordCats;
   const b = (k, t) => `<button data-c="${esc(k)}" class="${st.cat === k ? 'activa' : ''}">${esc(t)}</button>`;
-  $('dm-cats').innerHTML = b('fav', '⭐ Favoritos') + b('todas', 'Todas') + pr.map(p => b('p:' + p, p)).join('')
-    + `<button class="editar" id="b-editfav">${st.editFav ? '✓ Listo' : '✎ Editar favoritos'}</button>`;
+  $('dm-cats').classList.toggle('ordenando', ord);
+  $('dm-cats').innerHTML = ord
+    ? pr.map((p, i) => `<button data-c="p:${esc(p)}"><span class="mv" data-mv="${i}" data-d="-1">◀</span>${esc(p)}<span class="dir ${st.aj.cats_directas.some(c => c.toLowerCase() === p.toLowerCase()) ? 'on' : ''}" data-dir="${esc(p)}" title="Directa: se agrega al toque, sin observaciones">⚡ directa</span><span class="mv" data-mv="${i}" data-d="1">▶</span></button>`).join('')
+      + `<button class="editar" id="b-ordcats">✓ Listo</button>`
+    : b('fav', '⭐ Favoritos') + b('todas', 'Todas') + pr.map(p => b('p:' + p, p)).join('')
+      + `<button class="editar" id="b-editfav">${st.editFav ? '✓ Listo' : '✎ Editar favoritos'}</button><button class="editar" id="b-ordcats">⇄ Ordenar categorías</button>`;
 }
 function pintarProds() {
   const q = $('dm-buscar').value.trim().toLowerCase();
@@ -627,7 +651,15 @@ function pintarProds() {
   $('dm-prods').innerHTML = l.slice(0, 300).map(p => `<button class="prod ${p.area_preparacion === 'cocina' ? 'coc' : ''}" data-p="${p.id}">${st.editFav || esFav(p) ? `<span class="star">${esFav(p) ? '⭐' : '☆'}</span>` : ''}<b>${esc(p.nombre)}</b><span>${p.precio_libre ? 'precio libre' : S(p.precio_venta)}</span></button>`).join('')
     || `<p style="color:var(--gris)">${st.cat === 'fav' ? 'Aún no hay favoritos. Toca "✎ Editar favoritos" y marca con ⭐ los productos que más piden en mesa.' : 'Sin productos.'}</p>`;
 }
-$('dm-cats').onclick = e => {
+$('dm-cats').onclick = async e => {
+  if (e.target.closest('#b-ordcats')) { st.ordCats = !st.ordCats; if (!st.ordCats) await guardarAjustesMesas(); return pintarCats(); }
+  if (st.ordCats) {
+    const mv = e.target.closest('[data-mv]'), dr = e.target.closest('[data-dir]');
+    if (mv) { const l = catsOrdenadas(), i = Number(mv.dataset.mv), j = i + Number(mv.dataset.d); if (j < 0 || j >= l.length) return; [l[i], l[j]] = [l[j], l[i]]; st.aj.orden_cats = l; pintarCats(); }
+    if (dr) { const c = dr.dataset.dir, on = st.aj.cats_directas.some(x => x.toLowerCase() === c.toLowerCase());
+      st.aj.cats_directas = on ? st.aj.cats_directas.filter(x => x.toLowerCase() !== c.toLowerCase()) : [...st.aj.cats_directas, c]; pintarCats(); }
+    return;
+  }
   if (e.target.closest('#b-editfav')) { st.editFav = !st.editFav; if (st.editFav && !$('dm-buscar').value) st.cat = 'todas'; pintarCats(); return pintarProds(); }
   const b = e.target.closest('[data-c]'); if (!b) return; st.cat = b.dataset.c; pintarCats(); pintarProds();
 };
@@ -638,7 +670,14 @@ $('dm-prods').onclick = e => {
   if (st.editFav) return alternarFav(p);
   let precio = Number(p.precio_venta || 0);
   if (p.precio_libre || !(precio > 0)) { const v = prompt(`Precio de ${p.nombre} (S/):`); if (v === null) return; precio = Number(String(v).replace(',', '.')); if (!(precio > 0)) return; }
-  abrirProducto({ producto_id: p.id, nombre: p.nombre, precio_unit: precio, cantidad: 1, chips: [], texto: '', area: p.area_preparacion }, null);
+  const l = { producto_id: p.id, nombre: p.nombre, precio_unit: precio, cantidad: 1, chips: [], texto: '', area: p.area_preparacion };
+  // categorías directas (Abarrotes, Embolsados…): se agregan al toque, sin observaciones ni extras
+  if (esDirecta(p) && !esExtra(p)) {
+    const igual = st.envio.find(x => x.producto_id === l.producto_id && x.precio_unit === l.precio_unit && firma(x) === '|');
+    if (igual) igual.cantidad += 1; else st.envio.push({ ...l, nota: '', extras: [] });
+    pintarEnvio(); return toast(`＋ ${p.nombre}${igual ? ' (' + igual.cantidad + ')' : ''}`);
+  }
+  abrirProducto(l, null);
 };
 // ===== producto a pantalla completa =====
 // opciones de observación: salen de la tabla obs_rapidas (las editan los mozos); si no existe, estas por defecto
