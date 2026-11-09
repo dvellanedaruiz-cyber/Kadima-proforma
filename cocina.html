@@ -56,6 +56,10 @@ input,select{font:inherit;padding:10px 12px;border:1px solid var(--borde);border
 .item.preparando .est{background:var(--azul);color:#fff}
 .item.listo{opacity:.55}.item.listo .n{text-decoration:line-through}
 .item.listo .est{background:var(--verde);color:#fff}
+.item .est{background:var(--verde);color:#fff;font-size:14px;padding:8px 10px}
+.deshacer{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#fff;color:#000;border-radius:12px;padding:10px 12px 10px 16px;z-index:50;font-weight:700;font-size:16px;display:flex;gap:12px;align-items:center;box-shadow:0 4px 18px rgba(0,0,0,.5)}
+.deshacer button{background:#000;color:#fff;padding:10px 14px;font-weight:800}
+.deshacer.oculto{display:none}
 .acciones{display:flex;gap:8px;padding:12px 14px;border-top:1px solid var(--borde)}
 .acciones button{flex:1;padding:14px;font-weight:700;font-size:16px}
 .b-listo{background:var(--verde);color:#fff}
@@ -144,8 +148,8 @@ const $ = id => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem('kadima_cocina_' + k, JSON.stringify(v)); } catch (e) {} };
 const leer = k => { try { return JSON.parse(localStorage.getItem('kadima_cocina_' + k)); } catch (e) { return null; } };
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
-const ESTADO = { pendiente:'NUEVO', preparando:'PREPARANDO', listo:'LISTO' };
-const SIGUIENTE = { pendiente:'preparando', preparando:'listo', listo:'preparando' };
+// un toque en el plato = listo: sale de esta pantalla y en Mesas deja de figurar como 👨‍🍳 en cocina
+const ESTADO = { pendiente:'✓ Listo', preparando:'✓ Listo', listo:'✓ Listo' };
 
 const st = { disp: null, items: [], vistos: new Set(leer('vistos') || []), primeraCarga: true };
 
@@ -277,14 +281,14 @@ function dibujarTandas() {
       <span><span class="n">${esc(t.producto)}</span>${Object.entries(t.ex).map(([n, c]) => `<br><span class="extra">➕ ${c}× ${esc(n)}</span>`).join('')}${t.nota ? `<br><span class="nota">${esc(t.nota)}</span>` : ''}${t.obs ? `<br><span class="nota">📝 ${esc(t.obs)}</span>` : ''}
         <div class="de">${de} · hace ${Math.max(0, Math.floor((Date.now() - t.inicio) / 60000))} min</div>
         ${!t.prep && resta > 0 ? `<div class="ventana">abierta ${resta} min más para sumar pedidos iguales</div>` : ''}</span>
-      <span class="bt">${t.prep ? '' : `<button class="b-prep" data-tprep="${k}">Preparando</button>`}<button class="b-listo" data-tlisto="${k}">Listo</button></span></div>`;
+      <span class="bt"><button class="b-listo" data-tlisto="${k}">Listo</button></span></div>`;
   }).join('') : '<div class="vacio" style="padding:40px 10px">Nada pendiente</div>';
   st.tandasActuales = ts;
 }
 $('tandas').onclick = e => {
   const p = e.target.dataset.tprep, l = e.target.dataset.tlisto;
   const t = st.tandasActuales && st.tandasActuales[Number(p ?? l)]; if (!t) return;
-  cambiar(t.items.map(i => i.id), p != null ? 'preparando' : 'listo');
+  terminar(t.items.map(i => i.id));
 };
 function dibujar() {
   dibujarTandas();
@@ -302,23 +306,49 @@ function dibujar() {
           <span class="q">${Number(i.cantidad)}×</span>
           <span><span class="n">${esc(i.producto)}</span>${extrasHtml(i)}${i.nota ? `<br><span class="nota">${esc(i.nota)}</span>` : ''}${i.obs_envio ? `<br><span class="nota">📝 ${esc(i.obs_envio)}</span>` : ''}</span>
           <span class="est">${ESTADO[i.estado_cocina]}</span></button>`).join('')}
-      <div class="acciones">${todosListos
-        ? `<button class="b-entregar" data-entregar="${p.id}">Entregado ✓</button>`
-        : `<button class="b-listo" data-listo="${p.id}">Todo listo</button>`}</div>
+      <div class="acciones"><button class="b-listo" data-listo="${p.id}">✓ Todo el pedido listo</button></div>
     </div>`;
   }).join('');
 }
 
 $('tablero').onclick = async e => {
   const it = e.target.closest('.item');
-  if (it) {
-    const nuevo = SIGUIENTE[it.dataset.e];
-    return cambiar([Number(it.dataset.id)], nuevo);
-  }
-  const listo = e.target.dataset.listo, entregar = e.target.dataset.entregar;
-  if (listo) return cambiar(st.items.filter(i => i.pedido_id == listo && i.estado_cocina !== 'listo').map(i => i.id), 'listo');
-  if (entregar) return cambiar(st.items.filter(i => i.pedido_id == entregar).map(i => i.id), 'entregado');
+  if (it) return terminar([Number(it.dataset.id)]);
+  const listo = e.target.dataset.listo;
+  if (listo) return terminar(st.items.filter(i => i.pedido_id == listo).map(i => i.id));
 };
+// plato(s) terminado(s): se marcan listos y entregados a la vez → salen de cocina. Se puede deshacer unos segundos.
+async function terminar(ids) {
+  if (!ids.length) return;
+  ids = conSusExtras(ids);
+  const antes = st.items.filter(i => ids.includes(i.id)).map(i => ({ id: i.id, estado: i.estado_cocina }));
+  const nombres = st.items.filter(i => ids.includes(i.id) && !i.extra_de).map(i => Number(i.cantidad) + '× ' + i.producto);
+  const ahora = new Date().toISOString();
+  const cambios = { estado_cocina: 'entregado', listo_en: ahora, entregado_en: ahora };
+  st.items = st.items.filter(i => !ids.includes(i.id));
+  dibujar();
+  const { error } = await sb.from('pedido_items').update(cambios).in('id', ids);
+  if (error) { estadoRed(false); return cargar(); }
+  avisoDeshacer(nombres.length === 1 ? nombres[0] + ' listo' : nombres.length + ' platos listos', antes);
+}
+let tDeshacer = null;
+function avisoDeshacer(txt, antes) {
+  let d = $('deshacer');
+  if (!d) { d = document.createElement('div'); d.id = 'deshacer'; d.className = 'deshacer oculto'; document.body.appendChild(d); }
+  d.innerHTML = `<span>✓ ${esc(txt)}</span><button>↩ Deshacer</button>`;
+  d.classList.remove('oculto');
+  clearTimeout(tDeshacer); tDeshacer = setTimeout(() => d.classList.add('oculto'), 8000);
+  d.querySelector('button').onclick = async () => {
+    d.classList.add('oculto'); clearTimeout(tDeshacer);
+    const porEstado = {};
+    antes.forEach(x => (porEstado[x.estado] = porEstado[x.estado] || []).push(x.id));
+    for (const [estado, idsE] of Object.entries(porEstado)) {
+      const { error } = await sb.from('pedido_items').update({ estado_cocina: estado, listo_en: null, entregado_en: null }).in('id', idsE);
+      if (error) estadoRed(false);
+    }
+    cargar();
+  };
+}
 async function cambiar(ids, estado) {
   if (!ids.length) return;
   ids = conSusExtras(ids);   // el extra cambia junto con su plato

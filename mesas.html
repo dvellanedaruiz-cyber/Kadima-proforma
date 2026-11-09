@@ -54,6 +54,17 @@ input,select,textarea{font:inherit;padding:10px 12px;border:1px solid var(--bord
 .mesa.listos{background:var(--ok);border-color:var(--ok)}
 .mesa .bell{position:absolute;top:6px;right:8px;background:#fff;color:var(--ok);font-weight:800;font-size:12px;border-radius:10px;padding:2px 7px;animation:latido 1.2s infinite}
 @keyframes latido{50%{transform:scale(1.15)}}
+/* íconos de estado de la mesa (saltan para que se vean desde lejos) */
+.mesa .ics{position:absolute;top:-15px;left:0;right:0;display:flex;justify-content:center;gap:3px;z-index:2;pointer-events:none}
+.mesa .ic{display:flex;align-items:center;gap:1px;background:#fff;border-radius:16px;padding:1px 6px 1px 3px;font-size:21px;line-height:1.1;box-shadow:0 2px 6px rgba(0,0,0,.25);border:2px solid}
+.mesa .ic b{font-size:13px;font-weight:800}
+.mesa .ic.desp{border-color:#e0a800;color:#7a5300;animation:sacude .9s ease-in-out infinite}
+.mesa .ic.coc{border-color:#2b5bd7;color:#2b5bd7;animation:salta 1.1s ease-in-out infinite}
+.mesa .ic.lis{border-color:var(--ok);color:var(--ok);animation:timbre 1s ease-in-out infinite}
+@keyframes sacude{0%,100%{transform:rotate(0)}15%{transform:rotate(-14deg) scale(1.12)}30%{transform:rotate(12deg) scale(1.12)}45%{transform:rotate(-8deg)}60%{transform:rotate(5deg)}75%{transform:rotate(0)}}
+@keyframes salta{0%,100%{transform:translateY(0)}35%{transform:translateY(-9px)}55%{transform:translateY(0)}70%{transform:translateY(-3px)}}
+@keyframes timbre{0%,100%{transform:rotate(0) scale(1)}10%,30%,50%{transform:rotate(-16deg) scale(1.15)}20%,40%{transform:rotate(16deg) scale(1.15)}60%{transform:rotate(0) scale(1)}}
+.grid{padding-top:20px;row-gap:24px}
 .mesa.sel{outline:4px solid #f2a900;outline-offset:2px}
 .mesa.nueva{border-style:dashed;color:var(--gris);background:transparent;font-weight:700}
 .mesa .ed{position:absolute;bottom:6px;display:flex;gap:4px}
@@ -175,7 +186,7 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
     <span class="usr" id="usr" title="Cambiar de usuario"></span>
     <span style="font-size:11px;opacity:.7">v1.2</span>
   </div>
-  <div class="leyenda"><span><i style="background:#fff;border:1px solid var(--borde)"></i>Libre</span><span><i style="background:var(--rojo)"></i>Ocupada</span><span><i style="background:var(--ok)"></i>Hay platos listos para servir</span><span>🔗 Mesas unidas</span></div>
+  <div class="leyenda"><span><i style="background:#fff;border:1px solid var(--borde)"></i>Libre</span><span><i style="background:var(--rojo)"></i>Ocupada</span><span><i style="background:var(--ok)"></i>Hay algo por servir</span><span>⚠️ Producto de despacho por llevar a la mesa</span><span>👨‍🍳 Cocina aún preparando</span><span>🔗 Mesas unidas</span></div>
   <div class="aviso-modo oculto" id="aviso-modo"></div>
   <div class="error" id="g-error" style="padding:0 16px"></div>
   <div class="grid" id="grid"></div>
@@ -416,6 +427,18 @@ function cuadrosDe(label) {
 }
 const unida = label => cuadrosDe(label).length > 1;
 function cuentaDe(nombre) { return st.abiertas.find(a => cuadrosDe(a.mesa).includes(nombre.toLowerCase())); }
+// estado de la mesa por sus productos (sin contar extras):
+//  ⚠️ despacho (vitrina) por llevar · 👨‍🍳 cocina aún preparando (cocina avisa con su campana cuando sale)
+function iconosMesa(a) {
+  const its = (st.items[a.id] || []).filter(i => !i.extra_de);
+  const n = f => its.filter(f).reduce((x, i) => x + Number(i.cantidad || 0), 0);
+  const coc = i => i.productos?.area_preparacion === 'cocina';
+  const desp = n(i => !coc(i) && i.estado_cocina === 'listo');
+  const cocinando = n(i => coc(i) && (i.estado_cocina === 'pendiente' || i.estado_cocina === 'preparando'));
+  const ic = (c, e, q, t) => q ? `<span class="ic ${c}" title="${t}">${e}<b>${q}</b></span>` : '';
+  const h = ic('desp', '⚠️', desp, 'Despacho por llevar a la mesa') + ic('coc', '👨‍🍳', cocinando, 'Cocina preparando');
+  return h ? `<span class="ics">${h}</span>` : '';
+}
 function pintarGrid() {
   const usados = new Set();
   const tile = (nombre, a, fuera) => {
@@ -425,7 +448,7 @@ function pintarGrid() {
     if (st.sel.has(nombre)) cls.push('sel');
     const m = st.mesas.find(x => x.nombre === nombre);
     return `<div class="${cls.join(' ')}" data-mesa="${esc(nombre)}">
-      ${a && Number(a.listos) ? `<span class="bell">🔔 ${a.listos}</span>` : ''}
+      ${a ? iconosMesa(a) : ''}
       <span class="nom">${esc(nombre)}</span>
       ${a ? `<span class="tot">${S(a.total)}</span><span class="det">${minDesde(a.creado_en)} min${a.mozo ? ' · ' + esc(a.mozo) : ''}${Number(a.en_cocina) ? ' · ' + a.en_cocina + ' en cocina' : ''}</span>${unida(a.mesa) ? `<span class="det">${esc(a.mesa)}</span>` : ''}`
           : `<span class="det">${fuera ? 'fuera del plano' : 'Libre'}</span>`}
