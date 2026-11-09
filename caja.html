@@ -333,6 +333,27 @@ input:focus,select:focus{outline:2px solid var(--rojo);outline-offset:-1px}
     <div class="error" id="ct-error"></div>
   </div>
 </div>
+<div class="modal oculto" id="m-pan">
+  <div class="caja" style="max-width:380px">
+    <h3 id="pn-titulo">Pan</h3>
+    <p class="sub" id="pn-sub"></p>
+    <div class="seg-peso" id="pn-modo"><button data-m="cant" class="activa">🔢 Por cantidad</button><button data-m="monto">💵 Por monto</button></div>
+    <div id="pn-w-cant">
+      <div class="chips-peso" id="pn-chips-c"></div>
+      <div class="campo" style="margin-top:8px"><label>Otra cantidad</label><input id="pn-n" type="number" step="1" min="1" inputmode="numeric" placeholder="Ej. 12"></div>
+    </div>
+    <div id="pn-w-monto" class="oculto">
+      <div class="campo"><label>¿Cuánto quiere llevar? (S/)</label><input id="pn-monto" type="number" step="0.10" min="0.10" inputmode="decimal" placeholder="Ej. 2.00"></div>
+      <div class="chips-peso" id="pn-chips-m"><button data-s="1">S/ 1</button><button data-s="2">S/ 2</button><button data-s="3">S/ 3</button><button data-s="5">S/ 5</button><button data-s="10">S/ 10</button></div>
+    </div>
+    <div style="font-size:22px;font-weight:800;margin:10px 0" id="pn-total">S/ 0.00</div>
+    <div class="fila">
+      <button class="btn-sec" id="pn-cancelar">Cancelar</button>
+      <button class="btn" id="pn-ok">Agregar</button>
+    </div>
+    <div class="error" id="pn-error"></div>
+  </div>
+</div>
 <div class="modal oculto" id="m-peso">
   <div class="caja" style="max-width:360px">
     <h3 id="ps-titulo">Peso</h3>
@@ -867,6 +888,7 @@ function agregar(id) {
   const p = st.productos.find(x => x.id === id);
   if (p.precio_libre) return pedirPrecio(p);
   if (GRANEL[p.unidad_medida]) return pedirPeso(p);
+  if (esPan(p)) return pedirPan(p);
   if (st.escalas && st.escalas[id] && st.escalas[id].length) return pedirCantidad(p);
   const l = st.carrito.find(x => x.producto_id === id && !x.libre);
   if (l && !l.nota) l.cantidad++; else st.carrito.push({ producto_id: id, nombre: p.nombre, precio_unit: Number(p.precio_venta), cantidad: 1, afecto_igv: p.afecto_igv, area: p.area_preparacion, nota: null });
@@ -903,6 +925,56 @@ $('ct-ok').onclick = () => {
   const l = st.carrito.find(x => x.producto_id === p.id && !x.libre && !x.nota);
   if (l) l.cantidad += n; else st.carrito.push({ producto_id: p.id, nombre: p.nombre, precio_unit: Number(p.precio_venta), cantidad: n, afecto_igv: p.afecto_igv, area: p.area_preparacion, nota: null });
   $('m-cant').classList.add('oculto'); dibujarCarrito();
+};
+// PANES: se registran por cantidad o por monto ("S/ 2 de pan" → cuántos panes van)
+const esPan = p => /^pan(es)?\b/i.test(principalDe(catDe(p.categoria_id))) && Number(p.precio_venta) > 0;
+let panDe = null, modoPan = 'cant';
+function pedirPan(p) {
+  panDe = p; const pu = Number(p.precio_venta);
+  const paqs = (st.escalas && st.escalas[p.id] || []).slice().sort((a, b) => a.desde - b.desde);
+  $('pn-titulo').textContent = p.nombre;
+  $('pn-sub').textContent = `${S(pu)} c/u` + paqs.map(e => ` · ${e.desde} por ${S(r2(e.desde * e.precio))}`).join('');
+  $('pn-chips-c').innerHTML = [1, 2, 3, 4, 5, 6, 8, 10].map(n => `<button data-n="${n}" style="font-size:15px;padding:8px 12px;line-height:1.15">${n}<br><small style="font-weight:500">${S(precioPanes(p, n))}</small></button>`).join('');
+  $('pn-n').value = ''; $('pn-monto').value = ''; msg('pn-error'); ponerModoPan(modoPan);
+  $('m-pan').classList.remove('oculto');
+}
+function ponerModoPan(m) {
+  modoPan = m;
+  [...$('pn-modo').children].forEach(b => b.classList.toggle('activa', b.dataset.m === m));
+  $('pn-w-cant').classList.toggle('oculto', m !== 'cant'); $('pn-w-monto').classList.toggle('oculto', m !== 'monto');
+  totalPan(); setTimeout(() => $(m === 'cant' ? 'pn-n' : 'pn-monto').focus(), 50);
+}
+// precio de n panes: con paquetes (3 x S/ 1) o simple (n × precio)
+const precioPanes = (p, n) => st.escalas && st.escalas[p.id] && st.escalas[p.id].length ? totalPaquetes(p.id, n) : r2(n * Number(p.precio_venta));
+// cuántos panes y cuánto se cobra
+function calcPan() {
+  if (modoPan === 'monto') {
+    const m = r2(Number($('pn-monto').value || 0)); let n = 0;
+    while (n < 500 && precioPanes(panDe, n + 1) <= m + 1e-9) n++;   // el máximo de panes que alcanzan con ese monto
+    return { n, monto: precioPanes(panDe, n), pedido: m };
+  }
+  const n = Math.round(Number($('pn-n').value || 0)); return { n, monto: n > 0 ? precioPanes(panDe, n) : 0 };
+}
+function totalPan() {
+  const c = calcPan(), pu = Number(panDe.precio_venta);
+  [...$('pn-chips-c').children].forEach(b => b.classList.toggle('activa', Number(b.dataset.n) === c.n && modoPan === 'cant'));
+  if (!(c.n > 0)) { $('pn-total').innerHTML = modoPan === 'monto' && c.pedido > 0 ? `<span style="font-size:15px;color:var(--mal)">No alcanza para 1 pan (${S(precioPanes(panDe, 1))})</span>` : S(0); return; }
+  const sobra = modoPan === 'monto' ? r2(c.pedido - c.monto) : 0;
+  $('pn-total').innerHTML = `${S(c.monto)}<div style="font-size:15px;color:var(--rojo);margin-top:2px">Servir <b>${c.n} ${c.n === 1 ? 'pan' : 'panes'}</b></div>`
+    + (sobra > 0 ? `<div style="font-size:12px;font-weight:600;color:var(--gris)">Con S/ ${c.pedido.toFixed(2)} alcanza para ${c.n}; sobran ${S(sobra)}. ${c.n + 1} panes serían ${S(precioPanes(panDe, c.n + 1))}.</div>` : '');
+}
+$('pn-modo').onclick = e => { const b = e.target.closest('[data-m]'); if (b) ponerModoPan(b.dataset.m); };
+$('pn-n').oninput = totalPan; $('pn-monto').oninput = totalPan;
+$('pn-n').onkeydown = $('pn-monto').onkeydown = e => { if (e.key === 'Enter') $('pn-ok').click(); };
+$('pn-chips-c').onclick = e => { const b = e.target.closest('[data-n]'); if (b) { $('pn-n').value = b.dataset.n; totalPan(); $('pn-ok').click(); } };
+$('pn-chips-m').onclick = e => { const v = e.target.dataset.s; if (v) { $('pn-monto').value = v; totalPan(); } };
+$('pn-cancelar').onclick = () => $('m-pan').classList.add('oculto');
+$('pn-ok').onclick = () => {
+  const c = calcPan(), p = panDe;
+  if (!(c.n > 0)) return msg('pn-error', modoPan === 'monto' ? 'Escribe el monto' : 'Elige o escribe la cantidad');
+  const l = st.carrito.find(x => x.producto_id === p.id && !x.libre && !x.nota);
+  if (l) l.cantidad += c.n; else st.carrito.push({ producto_id: p.id, nombre: p.nombre, precio_unit: Number(p.precio_venta), cantidad: c.n, afecto_igv: p.afecto_igv, area: p.area_preparacion, nota: null });
+  $('m-pan').classList.add('oculto'); dibujarCarrito();
 };
 // granel: el monto siempre se redondea hacia arriba a 10 céntimos (3.45 → 3.50).
 // "Por monto": el cliente dice cuánto quiere gastar (ej. S/ 2) y se calculan los gramos a servir.
