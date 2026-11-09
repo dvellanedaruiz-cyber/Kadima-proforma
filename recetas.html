@@ -268,7 +268,15 @@ async function abrirReceta(prodId) {
       const base = l.cantidad * A_BASE[l.unidad], esperado = Number(x.cantidad_pres) * pr.factor;
       if (Math.abs(base - esperado) <= Math.max(1e-6, esperado * 0.001)) { l.unidad = 'p:' + pr.id; l.cantidad = Number(x.cantidad_pres); } });
   }
-  st.ed = { producto_id: prodId, rendimiento: r ? Number(r.rendimiento) : 1, notas: r ? r.notas || '' : '', lineas };
+  // tamaños más chicos (opcional)
+  let porciones = [], pesoU = '';
+  if (prodId) {
+    const [po, pw] = await Promise.all([sb.from('receta_porciones').select('nombre,peso_g,extra,precio').eq('producto_id', prodId).order('orden'),
+      sb.from('receta_peso').select('peso_unidad_g').eq('producto_id', prodId).maybeSingle()]);
+    porciones = (po.data || []).map(x => ({ nombre: x.nombre, peso_g: Number(x.peso_g), extra: Number(x.extra || 0) || '', precio: x.precio == null ? '' : Number(x.precio) }));
+    pesoU = pw.data?.peso_unidad_g ? Number(pw.data.peso_unidad_g) : '';
+  }
+  st.ed = { producto_id: prodId, rendimiento: r ? Number(r.rendimiento) : 1, notas: r ? r.notas || '' : '', lineas, porciones, pesoU };
   pintarEditor();
 }
 function prodDe(id) { return st.productos.find(p => p.id === id); }
@@ -291,6 +299,12 @@ function pintarEditor() {
       <p class="ayuda" style="margin:10px 0 0">Cantidad = lo que lleva la receta ya limpio (neto). % aprovechamiento = cuánto se aprovecha al comprar (ej. fresa sin hojas 90%). El costo usa la cantidad bruta y el costo promedio sin IGV.</p>
     </div>
     <div class="bloque"><div class="kpis" id="e-kpis"></div></div>
+    <div class="bloque"><h3>📏 Tamaños más chicos <small style="font-weight:500;color:var(--gris)">(opcional)</small></h3>
+      <p class="ayuda" style="margin:0 0 10px">Si de esta misma receta también salen tamaños más chicos (ej. panetón de 100 g u 80 g), agrégalos aquí para ver su costo y food cost. El costo sale proporcional al peso, más el empaque.</p>
+      <div id="po-base-w"></div>
+      <table class="t"><thead><tr><th>Tamaño</th><th class="n">Peso (g)</th><th class="n">Empaque y extras S/</th><th class="n">Precio venta S/ (con IGV)</th><th class="n">Costo</th><th class="n">Food cost</th><th></th></tr></thead><tbody id="po-filas"></tbody></table>
+      <button class="btn-sec" id="po-mas" style="margin-top:8px">+ Agregar tamaño</button>
+    </div>
     <div class="bloque"><h3>Preparación / notas</h3><textarea id="e-notas" rows="4" placeholder="Pasos, temperatura, tiempo de horno…">${esc(ed.notas)}</textarea></div>
     ${bloqueFicha()}
     <div class="fila" style="justify-content:flex-end"><button class="btn" id="e-guardar">Guardar receta</button></div>
@@ -301,6 +315,8 @@ function pintarEditor() {
   pintarLineas();
   $('e-rend').oninput = () => { ed.rendimiento = Number($('e-rend').value); calcular(); };
   $('e-notas').oninput = () => ed.notas = $('e-notas').value;
+  pintarPorciones();
+  $('po-mas').onclick = () => { ed.porciones.push({ nombre: '', peso_g: '', extra: '', precio: '' }); pintarPorciones(); const n = $('po-filas').querySelectorAll('.po-n'); n[n.length - 1].focus(); };
   if ($('e-crear')) $('e-crear').onclick = () => formProducto(null, nuevo => { st.ed.producto_id = nuevo.id; pintarEditor(); });
   $('e-guardar').onclick = guardarReceta;
 }
@@ -377,7 +393,40 @@ function pintarLineas() {
   $('e-filas').onclick = e => { const q = e.target.dataset.q; if (q !== undefined) { st.ed.lineas.splice(Number(q), 1); pintarLineas(); } };
   calcular();
 }
+// costo de 1 gramo (o ml) de lo que rinde la receta
+function costoGramo() {
+  const ed = st.ed, p = ed.producto_id ? prodDe(ed.producto_id) : null; if (!p || !(ed.rendimiento > 0)) return null;
+  const unit = ed.lineas.reduce((a, l) => a + (lineaCalc(l).costo || 0), 0) / ed.rendimiento;
+  if (p.unidad_medida === 'Kilo' || p.unidad_medida === 'Litro') return unit / 1000;
+  return Number(ed.pesoU) > 0 ? unit / Number(ed.pesoU) : null;
+}
+function pintarPorciones() {
+  const ed = st.ed, p = ed.producto_id ? prodDe(ed.producto_id) : null, porUnidad = !p || p.unidad_medida === 'Unidad';
+  $('po-base-w').innerHTML = porUnidad ? `<div class="campo" style="max-width:260px;margin-bottom:8px"><label>Peso de 1 unidad completa (g)</label><input id="po-base" type="number" min="0" step="1" value="${ed.pesoU}" placeholder="Ej. 900"></div>` : '';
+  if ($('po-base')) $('po-base').oninput = () => { ed.pesoU = $('po-base').value; calcPorciones(); };
+  $('po-filas').innerHTML = ed.porciones.map((x, i) => `<tr data-i="${i}">
+    <td><input class="po-n" data-k="nombre" value="${esc(x.nombre)}" placeholder="Ej. Panetón mini 100 g"></td>
+    <td class="n"><input class="w-c" data-k="peso_g" type="number" min="0" step="1" value="${x.peso_g}"></td>
+    <td class="n"><input class="w-c" data-k="extra" type="number" min="0" step="0.01" value="${x.extra}" placeholder="0.00"></td>
+    <td class="n"><input class="w-c" data-k="precio" type="number" min="0" step="0.1" value="${x.precio}"></td>
+    <td class="n po-c"></td><td class="n po-fc"></td><td><button class="x" data-poq="${i}">✕</button></td></tr>`).join('')
+    || '<tr><td colspan="7" class="vacio">Sin tamaños adicionales.</td></tr>';
+  $('po-filas').oninput = e => { const tr = e.target.closest('tr'), k = e.target.dataset.k; if (!tr || !k) return; ed.porciones[tr.dataset.i][k] = e.target.value; calcPorciones(); };
+  $('po-filas').onclick = e => { const q = e.target.dataset.poq; if (q !== undefined) { ed.porciones.splice(Number(q), 1); pintarPorciones(); } };
+  calcPorciones();
+}
+function calcPorciones() {
+  if (!$('po-filas')) return;
+  const ed = st.ed, p = ed.producto_id ? prodDe(ed.producto_id) : null, cg = costoGramo(), igv = !p || p.afecto_igv ? 1.18 : 1;
+  $('po-filas').querySelectorAll('tr[data-i]').forEach(tr => {
+    const x = ed.porciones[tr.dataset.i], c = cg == null || !(Number(x.peso_g) > 0) ? null : cg * Number(x.peso_g) + Number(x.extra || 0);
+    const fc = c != null && Number(x.precio) > 0 ? c / (Number(x.precio) / igv) * 100 : null;
+    tr.querySelector('.po-c').innerHTML = `<b>${c == null ? '—' : S(c, 2)}</b>`;
+    tr.querySelector('.po-fc').innerHTML = fc == null ? '—' : `<span class="fc ${fcClase(fc)}">${N(fc, 1)}%</span>`;
+  });
+}
 function calcular() {
+  calcPorciones();
   const ed = st.ed, p = ed.producto_id ? prodDe(ed.producto_id) : null;
   const total = ed.lineas.reduce((a, l) => a + (lineaCalc(l).costo || 0), 0);
   const sin = ed.lineas.filter(l => lineaCalc(l).cu == null).length;
@@ -408,6 +457,15 @@ async function guardarReceta() {
   const filas = ed.lineas.filter(esPres).map(l => ({ producto_id: ed.producto_id, insumo_id: l.insumo_id, presentacion_id: Number(l.unidad.slice(2)), cantidad_pres: Number(l.cantidad) }));
   if (del.error && filas.length) return $('e-error').textContent = 'Receta guardada, pero falta correr 73_recetas_presentacion.sql para recordar las presentaciones.';
   if (filas.length) { const r = await sb.from('receta_lineas_pres').insert(filas); if (r.error) return $('e-error').textContent = 'Receta guardada, pero no se recordó la presentación: ' + errTxt(r.error); }
+  // tamaños más chicos
+  const pv = await sb.from('receta_porciones').delete().eq('producto_id', ed.producto_id);
+  const pos = ed.porciones.filter(x => String(x.nombre).trim() && Number(x.peso_g) > 0).map((x, k) => ({ producto_id: ed.producto_id, nombre: String(x.nombre).trim(), peso_g: Number(x.peso_g),
+    extra: Number(x.extra || 0), precio: Number(x.precio) > 0 ? Number(x.precio) : null, orden: k + 1 }));
+  if (pv.error && (pos.length || ed.pesoU)) return $('e-error').textContent = 'Receta guardada, pero falta correr 74_recetas_porciones.sql para los tamaños más chicos.';
+  if (!pv.error) {
+    if (pos.length) { const r = await sb.from('receta_porciones').insert(pos); if (r.error) return $('e-error').textContent = 'Receta guardada, pero no los tamaños: ' + errTxt(r.error); }
+    await sb.from('receta_peso').upsert({ producto_id: ed.producto_id, peso_unidad_g: Number(ed.pesoU) > 0 ? Number(ed.pesoU) : null });
+  }
   await cargarMaestros(); st.sel = ed.producto_id; pintarLista(); await abrirReceta(ed.producto_id);
   $('e-ok').textContent = '✓ Receta guardada. El costo de las recetas que usan esta base se actualiza solo.';
 }
