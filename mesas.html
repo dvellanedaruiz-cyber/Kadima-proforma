@@ -271,6 +271,15 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
   </div>
 </div>
 
+<!-- ===== CONFIRMAR ENVÍO ===== -->
+<div class="modal oculto" id="m-confenv" style="z-index:80">
+  <div class="caja" style="max-width:520px">
+    <h3 id="ce-tit">¿Enviar a cocina?</h3>
+    <div id="ce-lista" style="font-size:17px;line-height:1.5;margin:6px 0 12px;max-height:50vh;overflow:auto"></div>
+    <div class="fila"><button class="btn-sec" id="ce-no" style="padding:16px;font-size:17px">← Volver</button><button class="btn" id="ce-si" style="padding:16px;font-size:17px">✓ Sí, enviar</button></div>
+  </div>
+</div>
+
 <!-- ===== CAMBIAR OBSERVACIÓN DE UN PRODUCTO YA ENVIADO ===== -->
 <div class="modal oculto" id="m-obsit">
   <div class="caja">
@@ -861,11 +870,20 @@ function guardarProducto() {
   $('m-prod').classList.add('oculto'); pintarEnvio();
 }
 $('pp-agregar').onclick = guardarProducto;
-$('pp-enviar').onclick = () => {
-  const coc = st.pp.l.area === 'cocina' || st.envio.some(x => x.area === 'cocina');
-  if (!dobleToque($('pp-enviar'), 'ppenviar', coc ? '¿Seguro? Toca otra vez para enviar a cocina' : '¿Seguro? Toca otra vez para agregar')) return;
-  guardarProducto(); st.envioConfirmado = true; $('dm-enviar').click();
-};
+$('pp-enviar').onclick = () => { guardarProducto(); confirmarEnvio(); };
+// ventana de confirmación con lo que se va a enviar
+function confirmarEnvio() {
+  if (!st.envio.length) return;
+  const coc = st.envio.some(l => l.area === 'cocina'), mesa = cuentaActual()?.mesa || st.actual?.nombre || '';
+  $('ce-tit').textContent = `${coc ? '¿Enviar a cocina?' : '¿Agregar a la cuenta?'}${mesa ? ' · ' + mesa : ''}`;
+  $('ce-lista').innerHTML = st.envio.map(l => `<div style="padding:4px 0;border-bottom:1px solid var(--borde)"><b>${l.cantidad}×</b> ${esc(l.nombre)}${l.area === 'cocina' ? ' <span style="font-size:13px;color:var(--gris)">· cocina</span>' : ''}${l.extras && l.extras.length ? `<div style="font-size:14px;color:var(--azul);margin-left:28px">${esc(extrasTxt(l))}</div>` : ''}${l.nota ? `<div style="font-size:14px;color:var(--gris);margin-left:28px">» ${esc(l.nota)}</div>` : ''}</div>`).join('')
+    + (st.notaOrden ? `<div style="margin-top:8px;font-size:15px">📝 ${esc(st.notaOrden)}</div>` : '');
+  $('ce-si').textContent = coc ? '✓ Sí, enviar a cocina' : '✓ Sí, agregar';
+  $('ce-si').disabled = true; setTimeout(() => $('ce-si').disabled = false, 400);   // evita que un toque doble lo confirme sin leer
+  $('m-confenv').classList.remove('oculto');
+}
+$('ce-no').onclick = () => $('m-confenv').classList.add('oculto');
+$('ce-si').onclick = () => { $('m-confenv').classList.add('oculto'); st.envioConfirmado = true; $('dm-enviar').click(); };
 $('pp-quitar').onclick = () => { if (!dobleToque($('pp-quitar'), 'quitar' + st.pp.idx, '¿Quitar? Toca otra vez')) return; st.envio.splice(st.pp.idx, 1); $('m-prod').classList.add('oculto'); pintarEnvio(); };
 // nota para toda la orden (botón en la cuenta)
 st.notaSel = []; st.notaTxt = '';
@@ -949,8 +967,7 @@ $('dm-pend').onclick = e => {
 };
 $('dm-enviar').onclick = async () => {
   if (!st.envio.length) return;
-  // el mozo confirma tocando dos veces (salvo que ya confirmó en la pantalla del producto)
-  if (!st.envioConfirmado && !dobleToque($('dm-enviar'), 'enviar', st.envio.some(l => l.area === 'cocina') ? '¿Seguro? Toca otra vez para enviar a cocina' : '¿Seguro? Toca otra vez para agregar')) return;
+  if (!st.envioConfirmado) return confirmarEnvio();
   st.envioConfirmado = false;
   const b = $('dm-enviar'); b.disabled = true; $('dm-error').textContent = '';
   try {
