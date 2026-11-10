@@ -123,7 +123,6 @@ input,select{font:inherit;padding:10px 12px;border:1px solid var(--borde);border
     <span class="logo">COCINA</span>
     <span class="info" id="b-info"></span>
     <label class="toggle"><input type="checkbox" id="conso"> Consolidado</label>
-    <label class="toggle"><input type="checkbox" id="imprimir"> Imprimir comandas</label>
     <span class="sonido"><select id="sonido" title="Sonido de pedido nuevo"></select><button id="probar" title="Escuchar">🔊</button></span>
     <span class="chip ok" id="b-red">En vivo</span>
   </div>
@@ -186,7 +185,7 @@ $('e-ok').onclick = () => { guardar('dispositivo', Number($('e-disp').value)); i
 function arrancar() {
   vista('v-tablero');
   $('b-info').textContent = st.disp.nombre;
-  $('imprimir').checked = leer('imprimir') ?? !!st.disp.imprime_comanda;
+  // la comanda se imprime desde Mesas; esta pantalla ya no imprime
   $('conso').checked = leer('consolidado') ?? true;
   $('zona').classList.toggle('dividida', $('conso').checked);
   cargar();
@@ -197,10 +196,6 @@ function arrancar() {
   setInterval(dibujar, 30000);      // actualiza los minutos
 }
 $('conso').onchange = () => { guardar('consolidado', $('conso').checked); $('zona').classList.toggle('dividida', $('conso').checked); dibujar(); };
-$('imprimir').onchange = () => {
-  guardar('imprimir', $('imprimir').checked);
-  sb.from('dispositivos').update({ imprime_comanda: $('imprimir').checked }).eq('id', st.disp.id).then(() => {});
-};
 function estadoRed(ok) { $('b-red').className = 'chip ' + (ok ? 'ok' : 'off'); $('b-red').textContent = ok ? 'En vivo' : 'Sin conexión'; }
 window.addEventListener('offline', () => estadoRed(false));
 window.addEventListener('online', () => { estadoRed(true); cargar(); });
@@ -217,7 +212,7 @@ async function cargar() {
   const nuevos = data.filter(i => !st.vistos.has(i.id));
   if (nuevos.length && !st.primeraCarga) {
     sonar();
-    if ($('imprimir').checked) imprimirComanda(nuevos);
+
   }
   nuevos.forEach(i => st.vistos.add(i.id));
   guardar('vistos', [...st.vistos].slice(-500));
