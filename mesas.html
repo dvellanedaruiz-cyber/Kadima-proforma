@@ -221,6 +221,7 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
       <div class="acciones">
         <button class="btn-ok oculto" id="dm-servido">🍽️ Marcar servido</button>
         <button class="btn-sec" id="dm-precuenta">Precuenta</button>
+        <button class="btn-sec" id="dm-reimp">🖨️ Reimprimir comanda</button>
         <button class="btn-sec" id="dm-mover">Cambiar mesa</button>
         <button class="btn-sec oculto" id="dm-separar">Separar</button>
         <button class="btn-sec" id="dm-anular">Anular mesa</button>
@@ -243,8 +244,12 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
   <div class="cont">
     <div class="qty"><button id="pp-menos">−</button><b id="pp-cant">1</b><button id="pp-mas">+</button></div>
     <div class="chipsg oculto" id="pp-paq" style="margin-bottom:6px"></div>
-    <div id="pp-ext-w" class="oculto"><h4>➕ Extras <span style="font-weight:500">(se cobran aparte · toca para sumar, toca ✕ para quitar)</span></h4>
-    <div class="chipsg extras-g" id="pp-ext"></div></div>
+    <div id="pp-ext-w" class="oculto"><h4 style="display:flex;align-items:center;gap:10px">➕ Extras <span style="font-weight:500">(se cobran aparte · toca para sumar, ✕ para quitar)</span><button id="pp-editext" style="margin-left:auto;background:#fff3c4;color:#6b4c15;padding:6px 12px;font-size:13px;font-weight:700;border-radius:8px">✎ Extras de este plato</button></h4>
+    <div class="chipsg extras-g" id="pp-ext"></div>
+    <div id="pp-exted" class="oculto" style="background:#fff;border:1.5px dashed #e0a800;border-radius:12px;padding:10px;margin-top:8px">
+      <p style="margin:0 0 8px;color:var(--gris);font-size:13px">Marca los extras que ofrece este plato. Solo esos le aparecerán al mozo.</p>
+      <div class="chipsg extras-g" id="pp-extlista"></div>
+    </div></div>
     <h4 style="display:flex;align-items:center;gap:10px">Observaciones de este producto <button id="pp-editobs" style="margin-left:auto;background:#fff3c4;color:#6b4c15;padding:6px 12px;font-size:13px;font-weight:700;border-radius:8px">✎ Editar opciones</button></h4>
     <div class="chipsg" id="pp-chips"></div>
     <div id="pp-obsed" class="oculto" style="background:#fff;border:1.5px dashed #e0a800;border-radius:12px;padding:10px;margin-top:8px">
@@ -265,8 +270,14 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
 <div class="modal oculto" id="m-notaord">
   <div class="caja">
     <h3>📝 Nota para toda la orden<button class="x" id="no-x">✕</button></h3>
-    <p style="color:var(--gris);font-size:13px;margin:0 0 8px">Se envía a cocina junto con todos los productos de este envío.</p>
-    <textarea id="no-texto" maxlength="120" style="width:100%;font:inherit;font-size:16px;padding:10px;border:1px solid var(--borde);border-radius:10px;min-height:80px" placeholder="Ej. sacar todo junto, cliente apurado"></textarea>
+    <p style="color:var(--gris);font-size:13px;margin:0 0 8px;display:flex;align-items:center;gap:8px">Toca las que apliquen. Se envía a cocina con todo este envío.<button id="no-editobs" style="margin-left:auto;background:#fff3c4;color:#6b4c15;padding:6px 12px;font-size:13px;font-weight:700;border-radius:8px;white-space:nowrap">✎ Editar opciones</button></p>
+    <div class="chipsg" id="no-chips" style="margin-bottom:10px"></div>
+    <div id="no-obsed" class="oculto" style="background:#fff;border:1.5px dashed #e0a800;border-radius:12px;padding:10px;margin-bottom:10px">
+      <div id="no-obslista"></div>
+      <div style="display:flex;gap:8px;margin-top:8px"><input id="no-obsnueva" placeholder="Nueva opción, ej. Sacar postre al final" maxlength="40" style="flex:1"><button class="btn" id="no-obsmas" style="padding:10px 16px">＋ Agregar</button></div>
+    </div>
+    <details id="no-otra"><summary style="cursor:pointer;color:var(--gris);font-weight:700;padding:4px 0">✎ Escribir otra indicación (opcional)</summary>
+    <textarea id="no-texto" maxlength="120" style="width:100%;font:inherit;font-size:16px;padding:10px;border:1px solid var(--borde);border-radius:10px;min-height:60px;margin-top:6px" placeholder="Ej. el pastel con velita"></textarea></details>
     <div class="fila" style="margin-top:10px"><button class="btn-sec" id="no-borrar">Quitar nota</button><button class="btn" id="no-ok">Guardar</button></div>
   </div>
 </div>
@@ -376,7 +387,7 @@ $('usr').onclick = () => { if (confirm('¿Cambiar de usuario?')) pedirPin(); };
 let canalRT = null;
 async function abrirApp() {
   vista('v-app'); $('usr').textContent = st.usuario.nombre;
-  cargarObs(); cargarAjustesMesas();
+  cargarObs(); cargarExtrasPlato(); cargarAjustesMesas();
   st.extrasOk = !(await sb.from('pedido_items').select('extra_de').limit(1)).error;
   try {
     // la caja de tienda: sus series, su caja física y el canal Tienda (la venta de mesa entra al turno abierto de esa caja)
@@ -609,7 +620,7 @@ function pintarDetalle() {
   $('dm-total').textContent = S(a ? a.total : 0);
   const listos = its.filter(i => i.estado_cocina === 'listo').length;
   $('dm-servido').classList.toggle('oculto', !listos); $('dm-servido').textContent = `🍽️ Marcar servido (${listos})`;
-  ['dm-precuenta', 'dm-mover', 'dm-anular', 'dm-cobrar'].forEach(b => $(b).disabled = !a);
+  ['dm-precuenta', 'dm-reimp', 'dm-mover', 'dm-anular', 'dm-cobrar'].forEach(b => $(b).disabled = !a);
   $('dm-cobrar').disabled = !a || !(Number(a.total) > 0);
   $('dm-separar').classList.toggle('oculto', !(a && unida(a.mesa)));
 }
@@ -690,10 +701,24 @@ $('dm-prods').onclick = e => {
 // opciones de observación: salen de la tabla obs_rapidas (las editan los mozos); si no existe, estas por defecto
 let OBS_PROD = ['Para llevar', 'Sin hielo', 'Poco azúcar', 'Sin azúcar', 'Al tiempo', 'Bien caliente'];
 st.obs = null;   // [{id, texto, orden}]
+let OBS_ORDEN = ['Sacar todo junto', 'Primero las bebidas', 'Cliente apurado', 'Todo para llevar'];
+st.obsOrden = null; st.obsAmbito = false;
 async function cargarObs() {
-  const { data, error } = await sb.from('obs_rapidas').select('id,texto,orden').eq('activo', true).order('orden').order('id');
-  if (error) { st.obs = null; return; }
-  st.obs = data || []; OBS_PROD = st.obs.map(o => o.texto);
+  let r = await sb.from('obs_rapidas').select('id,texto,orden,ambito').eq('activo', true).order('orden').order('id');
+  st.obsAmbito = !r.error;
+  if (r.error) r = await sb.from('obs_rapidas').select('id,texto,orden').eq('activo', true).order('orden').order('id');
+  if (r.error) { st.obs = null; st.obsOrden = null; return; }
+  const todas = r.data || [];
+  st.obs = todas.filter(o => (o.ambito || 'producto') === 'producto'); OBS_PROD = st.obs.map(o => o.texto);
+  st.obsOrden = st.obsAmbito ? todas.filter(o => o.ambito === 'orden') : null;
+  if (st.obsOrden) OBS_ORDEN = st.obsOrden.map(o => o.texto);
+}
+// extras que ofrece cada plato (script mesas_extras_por_plato_y_notas.sql); null = falta el script
+st.pextras = null;
+async function cargarExtrasPlato() {
+  const { data, error } = await sb.from('producto_extras').select('plato_id,extra_id,orden').order('orden');
+  if (error) { st.pextras = null; return; }
+  st.pextras = {}; (data || []).forEach(x => (st.pextras[x.plato_id] = st.pextras[x.plato_id] || []).push(x.extra_id));
 }
 function pintarObsEd() {
   if (!st.obs) { $('pp-obslista').innerHTML = '<p style="color:var(--mal);margin:0">Falta correr 65_vitrina_mesa_y_observaciones.sql en Supabase.</p>'; return; }
@@ -710,7 +735,7 @@ $('pp-editobs').onclick = async () => {
 $('pp-obsmas').onclick = async () => {
   const t = $('pp-obsnueva').value.trim(); if (!t || !st.obs) return;
   if (st.obs.some(o => o.texto.toLowerCase() === t.toLowerCase())) return toast('Esa opción ya existe');
-  const { error } = await sb.from('obs_rapidas').insert({ texto: t, orden: (st.obs.length ? Math.max(...st.obs.map(o => o.orden)) : 0) + 1 });
+  const { error } = await sb.from('obs_rapidas').insert({ texto: t, orden: (st.obs.length ? Math.max(...st.obs.map(o => o.orden)) : 0) + 1, ...(st.obsAmbito ? { ambito: 'producto' } : {}) });
   if (error) return toast(errTxt(error));
   $('pp-obsnueva').value = ''; await cargarObs(); pintarObsEd(); pintarProducto();
 };
@@ -739,12 +764,15 @@ $('pp-obslista').onclick = async e => {
 const notaDe = l => [...l.chips, l.texto.trim()].filter(Boolean).join(', ');
 // productos de la categoría "Extras" (manjar, fudge, miel…): se cuelgan de un plato y se cobran aparte
 const esExtra = p => { const c = catDe(p.categoria_id); return !!c && (/^extras?$/i.test(c.nombre) || /^extras?$/i.test(c.categoria_principal || '')); };
-const extrasLista = () => st.productos.filter(esExtra);
+const esPlato = p => !!p && p.tipo_item === 'plato';
+// extras del plato: los marcados para ese plato (si aún no se corrió el script, todos los de la categoría Extras)
+const extrasLista = p => { if (!esPlato(p)) return []; const todos = st.productos.filter(esExtra); if (!st.pextras) return todos; const ids = st.pextras[p.id] || []; return ids.map(id => todos.find(x => x.id === id)).filter(Boolean); };
 const extrasTxt = l => (l.extras || []).map(e => `+ ${e.cant > 1 ? e.cant + '× ' : ''}${e.nombre}`).join(', ');
 const firma = l => (l.nota || '') + '|' + (l.extras || []).map(e => e.producto_id + 'x' + e.cant).sort().join(',');
 function abrirProducto(l, idx) {
   st.pp = { l: { ...l, chips: [...l.chips], extras: (l.extras || []).map(e => ({ ...e })) }, idx };
   $('pp-obsed').classList.add('oculto'); $('pp-editobs').textContent = '✎ Editar opciones';
+  $('pp-exted').classList.add('oculto'); $('pp-editext').textContent = '✎ Extras de este plato';
   $('pp-nom').textContent = l.nombre; $('pp-texto').value = l.texto;
   $('pp-quitar').classList.toggle('oculto', idx == null);
   $('pp-agregar').textContent = idx == null ? '＋ Agregar y seguir eligiendo' : '✓ Guardar cambios';
@@ -758,16 +786,37 @@ function pintarProducto() {
   if (conPaquetes(p)) $('pp-paq').innerHTML = p.precios_escala.slice().sort((a, b) => a.desde - b.desde).map(e => `<button data-paq="${e.desde}" class="${l.cantidad === Number(e.desde) ? 'on' : ''}">Paquete ${e.desde} · ${S(e.desde * e.precio)}</button>`).join('');
   if (conPaquetes(p)) { const ps = paquetes(p, l.cantidad); $('pp-precio').textContent = `${S(ps.reduce((a, x) => a + x.cantidad * x.precio_unit, 0))} · ${txtPaq(ps)}`; }
   else $('pp-precio').textContent = `${S(l.precio_unit)} c/u · ${S(l.precio_unit * l.cantidad)}`;
-  const exs = esExtra(p || {}) ? [] : extrasLista();
-  $('pp-ext-w').classList.toggle('oculto', !exs.length || !st.extrasOk);
+  const exs = extrasLista(p);
+  $('pp-ext-w').classList.toggle('oculto', !esPlato(p) || !st.extrasOk || (!exs.length && !st.pextras));
+  $('pp-editext').classList.toggle('oculto', !st.pextras);
   $('pp-ext').innerHTML = exs.map(x => { const e = l.extras.find(y => y.producto_id === x.id);
-    return `<button data-ex="${x.id}" class="${e ? 'on' : ''}">${e ? `<span class="xq" data-exq="${x.id}">${e.cant}× ✕</span>` : ''}${esc(x.nombre)}<small>+ ${S(x.precio_venta)}</small></button>`; }).join('');
+    return `<button data-ex="${x.id}" class="${e ? 'on' : ''}">${e ? `<span class="xq" data-exq="${x.id}">${e.cant}× ✕</span>` : ''}${esc(x.nombre)}<small>+ ${S(x.precio_venta)}</small></button>`; }).join('')
+    || '<p style="color:var(--gris);margin:0;grid-column:1/-1">Este plato no tiene extras. Toca “✎ Extras de este plato” para elegirlos.</p>';
+  if (!$('pp-exted').classList.contains('oculto')) {
+    const mios = new Set((st.pextras || {})[p.id] || []);
+    $('pp-extlista').innerHTML = st.productos.filter(esExtra).map(x => `<button data-exsel="${x.id}" class="${mios.has(x.id) ? 'on' : ''}">${mios.has(x.id) ? '✓ ' : ''}${esc(x.nombre)}<small>+ ${S(x.precio_venta)}</small></button>`).join('')
+      || '<p style="color:var(--gris);margin:0">No hay productos en la categoría Extras. Créalos en Recetas → Productos.</p>';
+  }
   if (l.extras.length) $('pp-precio').textContent += ` · extras + ${S(l.extras.reduce((a, e) => a + e.cant * e.precio_unit, 0) * l.cantidad)}`;
   $('pp-chips').innerHTML = OBS_PROD.map(c => `<button data-ch="${esc(c)}" class="${l.chips.includes(c) ? 'on' : ''}">${esc(c)}</button>`).join('');
   const n = st.envio.reduce((a, x, i) => a + (i === st.pp.idx ? 0 : x.cantidad), 0) + l.cantidad;
   const coc = l.area === 'cocina' || st.envio.some(x => x.area === 'cocina');
   $('pp-enviar').textContent = `${coc ? 'Enviar a cocina' : 'Agregar a la cuenta'} (${n})`;
 }
+$('pp-editext').onclick = () => {
+  const ab = $('pp-exted').classList.toggle('oculto') === false;
+  $('pp-editext').textContent = ab ? '✓ Listo' : '✎ Extras de este plato'; pintarProducto();
+};
+$('pp-extlista').onclick = async e => {
+  const b = e.target.closest('[data-exsel]'); if (!b || !st.pextras) return;
+  const plato = st.pp.l.producto_id, ex = Number(b.dataset.exsel), l = st.pextras[plato] = st.pextras[plato] || [];
+  const tiene = l.includes(ex);
+  const r = tiene ? await sb.from('producto_extras').delete().eq('plato_id', plato).eq('extra_id', ex)
+    : await sb.from('producto_extras').insert({ plato_id: plato, extra_id: ex, orden: l.length + 1 });
+  if (r.error) return toast(errTxt(r.error));
+  if (tiene) { l.splice(l.indexOf(ex), 1); const i = st.pp.l.extras.findIndex(y => y.producto_id === ex); if (i >= 0) st.pp.l.extras.splice(i, 1); } else l.push(ex);
+  pintarProducto();
+};
 $('pp-ext').onclick = e => {
   const ex = st.pp.l.extras, q = e.target.closest('[data-exq]');
   if (q) { const i = ex.findIndex(y => y.producto_id === Number(q.dataset.exq)); if (i >= 0) ex.splice(i, 1); return pintarProducto(); }
@@ -794,10 +843,39 @@ $('pp-agregar').onclick = guardarProducto;
 $('pp-enviar').onclick = () => { guardarProducto(); $('dm-enviar').click(); };
 $('pp-quitar').onclick = () => { if (!dobleToque($('pp-quitar'), 'quitar' + st.pp.idx, '¿Quitar? Toca otra vez')) return; st.envio.splice(st.pp.idx, 1); $('m-prod').classList.add('oculto'); pintarEnvio(); };
 // nota para toda la orden (botón en la cuenta)
-$('dm-notaord').onclick = () => { $('no-texto').value = st.notaOrden || ''; $('m-notaord').classList.remove('oculto'); $('no-texto').focus(); };
+st.notaSel = []; st.notaTxt = '';
+function pintarNotaOrden() {
+  $('no-chips').innerHTML = OBS_ORDEN.map(c => `<button data-nch="${esc(c)}" class="${st.notaSel.includes(c) ? 'on' : ''}">${esc(c)}</button>`).join('');
+  if ($('no-obsed').classList.contains('oculto')) return;
+  if (!st.obsOrden) { $('no-obslista').innerHTML = '<p style="color:var(--mal);margin:0">Falta correr mesas_extras_por_plato_y_notas.sql en Supabase.</p>'; return; }
+  $('no-obslista').innerHTML = st.obsOrden.map(o => `<div style="display:flex;gap:6px;align-items:center;padding:4px 0"><span style="flex:1;font-weight:600">${esc(o.texto)}</span>
+    <button data-nodel="${o.id}" title="Quitar" style="background:var(--rojo-s);color:var(--rojo);width:38px;height:38px">✕</button></div>`).join('') || '<p style="color:var(--gris);margin:0">Sin opciones.</p>';
+}
+$('dm-notaord').onclick = async () => {
+  if (!st.notaOrden) { st.notaSel = []; st.notaTxt = ''; }
+  $('no-texto').value = st.notaTxt; $('no-otra').open = !!st.notaTxt;
+  $('no-obsed').classList.add('oculto'); $('no-editobs').textContent = '✎ Editar opciones';
+  pintarNotaOrden(); $('m-notaord').classList.remove('oculto');
+};
+$('no-chips').onclick = e => { const b = e.target.closest('[data-nch]'); if (!b) return; const c = b.dataset.nch, k = st.notaSel.indexOf(c); k >= 0 ? st.notaSel.splice(k, 1) : st.notaSel.push(c); pintarNotaOrden(); };
+$('no-editobs').onclick = async () => { const ab = $('no-obsed').classList.toggle('oculto') === false; $('no-editobs').textContent = ab ? '✓ Listo' : '✎ Editar opciones'; if (ab) await cargarObs(); pintarNotaOrden(); };
+$('no-obsmas').onclick = async () => {
+  const t = $('no-obsnueva').value.trim(); if (!t || !st.obsOrden) return;
+  if (st.obsOrden.some(o => o.texto.toLowerCase() === t.toLowerCase())) return toast('Esa opción ya existe');
+  const { error } = await sb.from('obs_rapidas').insert({ texto: t, ambito: 'orden', orden: (st.obsOrden.length ? Math.max(...st.obsOrden.map(o => o.orden)) : 0) + 1 });
+  if (error) return toast(errTxt(error));
+  $('no-obsnueva').value = ''; await cargarObs(); pintarNotaOrden();
+};
+$('no-obsnueva').onkeydown = e => { if (e.key === 'Enter') $('no-obsmas').click(); };
+$('no-obslista').onclick = async e => {
+  const d = e.target.closest('[data-nodel]'); if (!d) return;
+  if (!dobleToque(d, 'nodel' + d.dataset.nodel, '✕?')) return;
+  const { error } = await sb.from('obs_rapidas').update({ activo: false }).eq('id', Number(d.dataset.nodel)); if (error) return toast(errTxt(error));
+  await cargarObs(); st.notaSel = st.notaSel.filter(c => OBS_ORDEN.includes(c)); pintarNotaOrden();
+};
 $('no-x').onclick = () => $('m-notaord').classList.add('oculto');
-$('no-ok').onclick = () => { st.notaOrden = $('no-texto').value.trim(); $('m-notaord').classList.add('oculto'); pintarEnvio(); };
-$('no-borrar').onclick = () => { st.notaOrden = ''; $('m-notaord').classList.add('oculto'); pintarEnvio(); };
+$('no-ok').onclick = () => { st.notaTxt = $('no-texto').value.trim(); st.notaOrden = [...st.notaSel, st.notaTxt].filter(Boolean).join(', '); $('m-notaord').classList.add('oculto'); pintarEnvio(); };
+$('no-borrar').onclick = () => { st.notaSel = []; st.notaTxt = ''; st.notaOrden = ''; $('m-notaord').classList.add('oculto'); pintarEnvio(); };
 // marcar / desmarcar favorito (lo ven todos los equipos de Mesas)
 async function alternarFav(p) {
   const col = st.favCol ? 'favorito_mesa' : 'favorito', nuevo = !esFav(p);
@@ -949,6 +1027,20 @@ $('dm-precuenta').onclick = () => {
 };
 $('pr-x').onclick = () => $('m-pre').classList.add('oculto');
 $('pr-imprimir').onclick = () => window.print();
+
+// ===== REIMPRIMIR COMANDA: lo de cocina que aún no sale (si ya salió todo, toda la cocina de la mesa) =====
+$('dm-reimp').onclick = () => {
+  const a = cuentaActual(); if (!a) return;
+  const its = (st.items[a.id] || []).filter(i => i.estado_cocina !== 'anulado');
+  const coc = its.filter(i => !i.extra_de && i.productos?.area_preparacion === 'cocina');
+  let lista = coc.filter(i => i.estado_cocina === 'pendiente' || i.estado_cocina === 'preparando');
+  if (!lista.length) { lista = coc; if (lista.length) toast('Cocina ya sacó todo: se reimprime toda la comanda de la mesa'); }
+  if (!lista.length) return toast('Esta mesa no tiene productos de cocina');
+  const lineas = lista.map(i => ({ cantidad: Number(i.cantidad), nombre: i.productos?.nombre || '', area: 'cocina', nota: i.nota || '',
+    extras: its.filter(x => x.extra_de === i.id).map(x => ({ cant: Math.max(1, Math.round(Number(x.cantidad) / Number(i.cantidad || 1))), nombre: x.productos?.nombre || '' })) }));
+  const obs = [...new Set(lista.map(i => i.obs_envio).filter(Boolean))].join(' · ') || null;
+  imprimirComanda(a.mesa, lineas, obs);
+};
 
 // ===== DOBLE TOQUE para acciones que no se deshacen =====
 // 1er toque: el botón se pone rojo "¿Seguro? toca otra vez"; 2do toque dentro de 4 s: se hace.
