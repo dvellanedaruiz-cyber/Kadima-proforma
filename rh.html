@@ -1,0 +1,752 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kadima · RH</title>
+<meta name="theme-color" content="#8B0000">
+<style>
+:root{--vino:#8B0000;--vino-s:#f7e9e9;--fondo:#f6f4f2;--card:#fff;--txt:#1f1f1f;--muted:#6f6a66;--borde:#ebe6e2;--mal:#c62828;--ok:#2e7d32;--suave:#faf7f5;--amb:#b26a00}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--fondo);color:var(--txt);font-size:14px}
+.oculto{display:none!important}
+header{background:var(--vino);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:20}
+header h1{font-size:16px;margin:0;white-space:nowrap}
+.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{background:transparent;border:0;color:rgba(255,255,255,.8);padding:7px 12px;border-radius:8px;cursor:pointer;font:inherit;font-size:13.5px;font-weight:600;white-space:nowrap}
+.tabs button.activa{background:rgba(255,255,255,.2);color:#fff}
+.embebido header{background:#fff;color:var(--txt);border-bottom:1px solid var(--borde);padding:8px 16px}
+.embebido header h1{display:none}
+.embebido .tabs button{color:var(--muted)}
+.embebido .tabs button:hover{background:var(--suave)}
+.embebido .tabs button.activa{background:var(--vino-s);color:var(--vino)}
+main{max-width:1280px;margin:0 auto;padding:16px 16px 48px}
+.bloque{background:var(--card);border:1px solid var(--borde);border-radius:14px;padding:16px;margin-bottom:14px}
+.bloque h3{margin:0 0 4px;font-size:15px}
+.ayuda{color:var(--muted);font-size:12.5px;margin:0 0 12px;line-height:1.5}
+.barra-acc{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.barra-acc .esp{flex:1}
+input,select,textarea{font:inherit;padding:8px 10px;border:1px solid var(--borde);border-radius:9px;background:#fff;color:var(--txt);min-width:0;width:100%}
+input[type=checkbox]{width:auto}
+input:focus,select:focus,textarea:focus{outline:2px solid #e9c9c9;border-color:#d9a9a9}
+.chips{display:inline-flex;background:var(--suave);border:1px solid var(--borde);border-radius:10px;padding:2px;gap:2px;flex-wrap:wrap}
+.chips button{border:0;background:transparent;border-radius:8px;padding:5px 10px;font:inherit;font-size:12.5px;cursor:pointer;color:var(--muted);font-weight:600}
+.chips button.activa{background:#fff;color:var(--vino);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.btn{background:var(--vino);color:#fff;border:0;border-radius:9px;padding:8px 14px;font:inherit;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn.sec{background:#fff;color:var(--vino);border:1px solid #e3c6c6}
+.btn.gris{background:var(--suave);color:var(--txt);border:1px solid var(--borde)}
+.btn.peq{padding:5px 10px;font-size:12.5px}
+.btn:disabled{opacity:.5;cursor:default}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--borde);border-radius:14px;padding:12px 14px;min-width:0}
+.kpi .t{font-size:12px;color:var(--muted)}
+.kpi .v{font-size:22px;font-weight:700;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .s{font-size:12px;color:var(--muted);margin-top:2px}
+.tablawrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.t{width:100%;border-collapse:collapse;font-size:13px}
+table.t th{text-align:left;font-size:11.5px;color:var(--muted);font-weight:600;padding:8px;border-bottom:1px solid var(--borde);white-space:nowrap;text-transform:uppercase;letter-spacing:.02em;background:#fff}
+table.t td{padding:8px;border-bottom:1px solid #f2eeea;vertical-align:middle}
+table.t tr.clic{cursor:pointer}
+table.t tr.clic:hover td{background:var(--suave)}
+table.t tr.baja td{color:#9a948f}
+.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.cod{color:var(--muted);font-size:12px}
+.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;background:#eee;color:#555;white-space:nowrap;font-weight:600}
+.tag.ok{background:#e7f4ea;color:#1e6b34}.tag.mal{background:#fbe9e9;color:#a52222}.tag.med{background:#fff3df;color:#8a5a00}.tag.az{background:#e8f1fb;color:#1f5d99}
+.vacio{color:var(--muted);text-align:center;padding:28px 16px;line-height:1.6}
+.error{color:var(--mal);font-size:13px;min-height:16px}
+.cargando{color:var(--muted);padding:30px;text-align:center}
+.nota{background:var(--suave);border:1px solid var(--borde);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.55}
+#login{max-width:340px;margin:60px auto}
+#login form{display:flex;flex-direction:column;gap:10px}
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto}
+.modal .caja{background:#fff;border-radius:16px;width:100%;max-width:820px;padding:18px 18px 14px}
+.modal .cab{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.modal .cab h3{margin:0;font-size:17px;flex:1}
+.cerrar{background:none;border:0;font-size:24px;color:var(--muted);cursor:pointer;line-height:1}
+.secc{font-size:12px;font-weight:700;color:var(--vino);text-transform:uppercase;letter-spacing:.04em;margin:16px 0 8px;padding-top:12px;border-top:1px solid var(--borde)}
+.secc:first-of-type{border-top:0;padding-top:0;margin-top:8px}
+.form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.form label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px;min-width:0}
+.form .d2{grid-column:span 2}.form .d4{grid-column:1/-1}
+.chk{flex-direction:row!important;align-items:center;gap:8px!important;color:var(--txt)!important;font-size:13px!important;padding-top:18px}
+.pie{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:16px;padding-top:12px;border-top:1px solid var(--borde)}
+.pie .esp{flex:1}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1f1f1f;color:#fff;padding:10px 16px;border-radius:10px;z-index:90;font-weight:600;max-width:92vw}
+/* accesos */
+.pin{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;letter-spacing:3px}
+.roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px}
+.roles div{background:var(--suave);border:1px solid var(--borde);border-radius:10px;padding:8px 10px;font-size:12.5px;line-height:1.45}
+.roles b{display:block;color:var(--vino)}
+/* horarios */
+.pinceles{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.pinceles button{border:2px solid transparent;border-radius:10px;padding:6px 10px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;color:#fff;display:inline-flex;gap:6px;align-items:center}
+.pinceles button small{font-weight:500;opacity:.85}
+.pinceles button.on{outline:3px solid #f2a900;outline-offset:2px}
+.pinceles .borrar{background:#fff;color:var(--txt);border-color:var(--borde)}
+.semana{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.semana b{font-size:15px;min-width:220px;text-align:center}
+table.hor{border-collapse:separate;border-spacing:4px;width:100%;min-width:760px}
+table.hor th{font-size:12px;color:var(--muted);font-weight:600;padding:4px;text-align:center}
+table.hor th.hoy{color:var(--vino)}
+table.hor th:first-child,table.hor td:first-child{text-align:left;position:sticky;left:0;background:var(--card);z-index:1;min-width:130px}
+table.hor td.p{font-weight:600;font-size:13px;padding:4px}
+table.hor td.p small{display:block;color:var(--muted);font-weight:400;font-size:11.5px}
+table.hor td.c{height:44px;border-radius:9px;text-align:center;cursor:pointer;font-weight:800;font-size:13px;border:1.5px dashed var(--borde);color:#bbb;user-select:none}
+table.hor td.c:hover{border-color:#d9a9a9}
+table.hor td.c.lleno{border:0;color:#fff}
+table.hor td.c small{display:block;font-weight:500;font-size:10.5px;opacity:.9}
+table.hor td.c.hoy{box-shadow:inset 0 0 0 2px #f2a900}
+table.hor tr.tot td{font-size:11.5px;color:var(--muted);text-align:center;padding-top:8px}
+table.hor tr.area td{font-size:11.5px;font-weight:700;color:var(--vino);text-transform:uppercase;letter-spacing:.04em;padding:10px 4px 2px}
+.turnos-ed td input{padding:5px 7px}
+.turnos-ed input[type=color]{width:42px;height:32px;padding:2px}
+@media (max-width:760px){
+  .form{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .form .d2{grid-column:1/-1}
+  main{padding:12px 12px 40px}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .m-ocultar{display:none}
+}
+</style>
+</head>
+<body>
+
+<section id="login" class="oculto">
+  <div class="bloque">
+    <h3>Kadima · RH</h3>
+    <form id="f-login" style="margin-top:10px">
+      <input id="l-email" type="email" placeholder="Correo" value="admin@kadima.pe" required>
+      <input id="l-pass" type="password" placeholder="Contraseña" required>
+      <button class="btn" style="justify-content:center">Entrar</button>
+      <div id="l-error" class="error"></div>
+    </form>
+  </div>
+</section>
+
+<section id="app" class="oculto">
+  <header>
+    <h1>👥 RH</h1>
+    <nav class="tabs" id="tabs">
+      <button data-tab="trab">Trabajadores</button>
+      <button data-tab="acc">Accesos y PIN</button>
+      <button data-tab="hor">Horarios</button>
+    </nav>
+  </header>
+  <main id="main"></main>
+</section>
+
+<div id="modal" class="modal oculto"><div class="caja" id="modal-caja"></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// =====================================================================
+// Kadima RH · trabajadores, accesos (PIN) y horarios
+// Necesita rh_1_trabajadores_accesos_horarios.sql en Supabase.
+// =====================================================================
+const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
+const EMBEBIDO = window.self !== window.top;
+if (EMBEBIDO) document.documentElement.classList.add('embebido');
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storageKey: EMBEBIDO ? (() => { try { return window.parent.KADIMA_AUTH_KEY || 'kadima-gestion-auth'; } catch (e) { return 'kadima-gestion-auth'; } })() : 'kadima-gestion-auth' } });
+const URL_HORARIO = 'https://kadima.pe/horario';
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = n => String(n).padStart(2, '0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const deIso = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const fechaTxt = f => f ? f.split('-').reverse().join('/') : '—';
+const S = v => v == null || v === '' ? '—' : 'S/ ' + Number(v).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const errTxt = e => { const m = e?.message || String(e); return /fetch|network/i.test(m) ? 'Sin conexión a internet.' : /trabajadores|turnos|horario_dias/.test(m) && /exist|schema cache/.test(m) ? 'Falta correr rh_1_trabajadores_accesos_horarios.sql en Supabase.' : /usuarios_pin_unico/.test(m) ? 'Ese PIN ya lo usa otro usuario.' : /trabajadores_corto/.test(m) ? 'Ya hay otro trabajador activo con ese nombre corto.' : /trabajadores_doc/.test(m) ? 'Ya existe un trabajador con ese documento.' : /usuarios_rol_check/.test(m) ? 'Rol no permitido.' : /row-level security/.test(m) ? 'Solo el usuario administrador (admin@kadima.pe) puede hacer esto.' : m; };
+const leer = k => { try { return localStorage.getItem('krh_' + k); } catch (e) { return null; } };
+const guardar = (k, v) => { try { localStorage.setItem('krh_' + k, v); } catch (e) {} };
+const usuarioActual = () => { try { return (window.parent && window.parent.KADIMA_USUARIO) || null; } catch (e) { return null; } };
+const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
+function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2600); }
+
+const AREAS = [['tienda', 'Tienda'], ['cocina', 'Cocina'], ['produccion', 'Producción'], ['almacen', 'Almacén'], ['administracion', 'Administración']];
+const AREA_TXT = Object.fromEntries(AREAS);
+const CONTRATOS = [['indeterminado', 'Indeterminado'], ['plazo_fijo', 'Plazo fijo'], ['part_time', 'Part time'], ['practicas', 'Prácticas'], ['locacion', 'Locación de servicios']];
+const PENSION = ['ONP', 'AFP Integra', 'AFP Prima', 'AFP Profuturo', 'AFP Habitat', 'Ninguno'];
+const ROLES = [
+  ['admin', 'Administrador', 'Gestión completa: Panel, RH, anular ventas, autorizar descuentos.'],
+  ['caja', 'Caja', 'Caja de tienda, Pedidos y CRM.'],
+  ['mozo', 'Mozo / mesera', 'App de Mesas: toma pedidos y cobra en mesa.'],
+  ['cocina', 'Cocina', 'Pantalla de cocina.'],
+  ['digital', 'Digital', 'Caja digital (WhatsApp / pedidos en línea).'],
+  ['almacen', 'Almacén', 'Logística: almacén, recetas y carga de costos.'],
+  ['produccion', 'Producción', 'Logística: registro de producción.'],
+];
+const ROL_TXT = Object.fromEntries(ROLES.map(r => [r[0], r[1]]));
+const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+const st = {
+  tab: leer('tab') || 'trab', trab: [], usuarios: [], turnos: [],
+  ft: { estado: 'activos', area: '', q: '' },
+  verPin: new Set(),
+  hor: { lunes: lunesDe(new Date()), area: leer('h_area') || '', pincel: leer('h_pincel') || 'TM', dias: {} },
+};
+function lunesDe(f) { const d = new Date(f); const w = d.getDay(); d.setDate(d.getDate() - (w === 0 ? 6 : w - 1)); d.setHours(0, 0, 0, 0); return d; }
+const masDias = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+
+// ===================== SESIÓN =====================
+$('f-login').addEventListener('submit', async ev => {
+  ev.preventDefault(); $('l-error').textContent = '';
+  const { error } = await sb.auth.signInWithPassword({ email: $('l-email').value.trim(), password: $('l-pass').value });
+  if (error) return $('l-error').textContent = /Invalid login/i.test(error.message) ? 'Correo o contraseña incorrectos.' : errTxt(error);
+  iniciar();
+});
+async function iniciar() {
+  const { data } = await sb.auth.getSession();
+  if (!data.session) { $('login').classList.remove('oculto'); $('app').classList.add('oculto'); return; }
+  $('login').classList.add('oculto'); $('app').classList.remove('oculto');
+  const u = usuarioActual();
+  if (EMBEBIDO && u && u.rol !== 'admin') { $('tabs').innerHTML = ''; $('main').innerHTML = '<div class="bloque vacio">🔒 RH solo lo puede abrir un usuario <b>Administrador</b>.<br>Cambia de usuario (PIN) en el menú de Gestión.</div>'; return; }
+  $('main').innerHTML = '<div class="cargando">Cargando…</div>';
+  try { await cargarTodo(); } catch (e) { $('main').innerHTML = `<div class="bloque error">${esc(errTxt(e))}</div>`; return; }
+  irTab(st.tab);
+}
+async function cargarTodo() {
+  const [t, u, tu] = await Promise.all([
+    sb.from('trabajadores').select('*').order('nombre_corto'),
+    sb.from('usuarios').select('id,nombre,rol,pin,activo,trabajador_id').order('nombre'),
+    sb.from('turnos').select('*').order('orden').order('codigo'),
+  ]);
+  if (t.error) throw t.error; if (u.error) throw u.error; if (tu.error) throw tu.error;
+  st.trab = t.data || []; st.usuarios = u.data || []; st.turnos = tu.data || [];
+  if (!st.turnos.some(x => x.codigo === st.hor.pincel)) st.hor.pincel = st.turnos[0]?.codigo || '';
+}
+$('tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (b) irTab(b.dataset.tab); };
+function irTab(t) {
+  if (!['trab', 'acc', 'hor'].includes(t)) t = 'trab';
+  st.tab = t; guardar('tab', t); $('main').onclick = null;
+  [...$('tabs').children].forEach(b => b.classList.toggle('activa', b.dataset.tab === t));
+  ({ trab: tabTrab, acc: tabAcc, hor: tabHor })[t]();
+}
+function abrirModal(html) { $('modal-caja').innerHTML = html; $('modal').classList.remove('oculto'); }
+function cerrarModal() { $('modal').classList.add('oculto'); $('modal-caja').innerHTML = ''; }
+$('modal').addEventListener('mousedown', e => { if (e.target.id === 'modal') cerrarModal(); });
+
+// ===================== TRABAJADORES =====================
+const nombreCompleto = t => [t.nombres, t.apellidos].filter(Boolean).join(' ');
+const diasPara = f => f ? Math.round((deIso(f) - deIso(iso(new Date()))) / 86400000) : null;
+function antiguedad(f) {
+  if (!f) return '';
+  const a = deIso(f), h = new Date(); let m = (h.getFullYear() - a.getFullYear()) * 12 + h.getMonth() - a.getMonth(); if (h.getDate() < a.getDate()) m--;
+  if (m < 1) return 'menos de 1 mes'; const y = Math.floor(m / 12), r = m % 12;
+  return [y ? y + (y === 1 ? ' año' : ' años') : '', r ? r + (r === 1 ? ' mes' : ' meses') : ''].filter(Boolean).join(' y ');
+}
+function tagContrato(t) {
+  if (!t.activo) return `<span class="tag">Cesado ${fechaTxt(t.fecha_cese)}</span>`;
+  const txt = (CONTRATOS.find(c => c[0] === t.tipo_contrato) || [, '—'])[1];
+  const d = diasPara(t.fin_contrato);
+  if (d == null) return `<span class="cod">${txt}</span>`;
+  if (d < 0) return `<span class="tag mal">Venció hace ${-d} d</span>`;
+  if (d <= 30) return `<span class="tag med">Vence en ${d} d</span>`;
+  return `<span class="cod">${txt} · hasta ${fechaTxt(t.fin_contrato)}</span>`;
+}
+const accesoDe = t => st.usuarios.filter(u => u.trabajador_id === t.id && u.activo);
+
+function tabTrab() {
+  const f = st.ft;
+  const act = st.trab.filter(t => t.activo);
+  const plan = act.filter(t => t.en_planilla);
+  const vence = act.filter(t => { const d = diasPara(t.fin_contrato); return d != null && d <= 30; });
+  const sinAcc = act.filter(t => !accesoDe(t).length);
+  const lista = st.trab.filter(t => (f.estado === 'todos' || (f.estado === 'activos') === t.activo) && (!f.area || t.area === f.area)
+    && (!f.q || norm([t.codigo, t.nombre_corto, t.nombres, t.apellidos, t.num_doc, t.cargo].join(' ')).includes(norm(f.q))));
+  $('main').innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="t">Trabajadores activos</div><div class="v">${act.length}</div><div class="s">${plan.length} en planilla · ${act.length - plan.length} fuera</div></div>
+      <div class="kpi"><div class="t">Sueldos básicos (planilla)</div><div class="v">${S(plan.reduce((a, t) => a + Number(t.sueldo_basico || 0), 0))}</div><div class="s">al mes, sin beneficios</div></div>
+      <div class="kpi"><div class="t">Contratos por vencer</div><div class="v ${vence.length ? 'amb' : ''}" style="${vence.length ? 'color:var(--amb)' : ''}">${vence.length}</div><div class="s">en los próximos 30 días</div></div>
+      <div class="kpi"><div class="t">Sin acceso (PIN)</div><div class="v">${sinAcc.length}</div><div class="s">${sinAcc.length ? esc(sinAcc.slice(0, 3).map(t => t.nombre_corto).join(', ')) + (sinAcc.length > 3 ? '…' : '') : 'todos tienen PIN'}</div></div>
+    </div>
+    <div class="bloque">
+      <div class="barra-acc">
+        <span class="chips" id="f-estado">${[['activos', 'Activos'], ['cesados', 'Cesados'], ['todos', 'Todos']].map(([k, n]) => `<button data-v="${k}" class="${f.estado === k ? 'activa' : ''}">${n}</button>`).join('')}</span>
+        <span class="chips" id="f-area"><button data-v="" class="${!f.area ? 'activa' : ''}">Todas las áreas</button>${AREAS.map(([k, n]) => `<button data-v="${k}" class="${f.area === k ? 'activa' : ''}">${n}</button>`).join('')}</span>
+        <input id="f-q" placeholder="Buscar nombre, DNI, cargo…" value="${esc(f.q)}" style="max-width:230px">
+        <span class="esp"></span>
+        <button class="btn sec peq" id="b-plant">⬇ Plantilla Excel</button>
+        <label class="btn sec peq" style="cursor:pointer">⬆ Subir Excel<input type="file" id="b-subir" accept=".xlsx,.xls,.csv" class="oculto"></label>
+        <button class="btn" id="b-nuevo">+ Nuevo trabajador</button>
+      </div>
+      <div class="tablawrap"><table class="t">
+        <tr><th>Código</th><th>Nombre</th><th class="m-ocultar">Área · cargo</th><th class="m-ocultar">Ingreso</th><th>Contrato</th><th class="m-ocultar">Planilla</th><th class="n">Sueldo</th><th>Acceso</th></tr>
+        ${lista.map(t => { const a = accesoDe(t); return `<tr class="clic ${t.activo ? '' : 'baja'}" data-id="${t.id}">
+          <td class="cod">${esc(t.codigo)}</td>
+          <td><b>${esc(t.nombre_corto)}</b><div class="cod">${esc(nombreCompleto(t))}${t.num_doc ? ' · ' + esc(t.tipo_doc) + ' ' + esc(t.num_doc) : ''}</div></td>
+          <td class="m-ocultar">${esc(AREA_TXT[t.area] || '—')}<div class="cod">${esc(t.cargo || '')}</div></td>
+          <td class="m-ocultar">${fechaTxt(t.fecha_ingreso)}<div class="cod">${t.activo ? antiguedad(t.fecha_ingreso) : ''}</div></td>
+          <td>${tagContrato(t)}</td>
+          <td class="m-ocultar">${t.en_planilla ? '<span class="tag ok">En planilla</span>' : `<span class="tag">Fuera${t.recibe_gratificacion ? ' · con grati' : ''}</span>`}</td>
+          <td class="n">${S(t.sueldo_basico)}</td>
+          <td>${a.length ? a.map(u => `<span class="tag az">${esc(ROL_TXT[u.rol] || u.rol)}</span>`).join(' ') : t.activo ? '<span class="tag med">Sin PIN</span>' : ''}</td></tr>`; }).join('')
+        || `<tr><td colspan="8" class="vacio">${st.trab.length ? 'Nadie con estos filtros.' : 'Aún no hay trabajadores. Agrégalos uno por uno o sube la plantilla Excel con todos.'}</td></tr>`}
+      </table></div>
+    </div>`;
+  $('f-estado').onclick = e => { const b = e.target.closest('[data-v]'); if (b) { f.estado = b.dataset.v; tabTrab(); } };
+  $('f-area').onclick = e => { const b = e.target.closest('[data-v]'); if (b) { f.area = b.dataset.v; tabTrab(); } };
+  $('f-q').oninput = e => { f.q = e.target.value; clearTimeout(st.tq); st.tq = setTimeout(() => { tabTrab(); const q = $('f-q'); q.focus(); q.setSelectionRange(q.value.length, q.value.length); }, 250); };
+  $('b-nuevo').onclick = () => ficha(null);
+  $('b-plant').onclick = plantillaTrab;
+  $('b-subir').onchange = e => { const fl = e.target.files[0]; e.target.value = ''; if (fl) subirTrab(fl); };
+  $('main').querySelector('table').onclick = e => { const r = e.target.closest('[data-id]'); if (r) ficha(st.trab.find(t => t.id === Number(r.dataset.id))); };
+}
+
+const opts = (lista, v, vacio = '—') => `<option value="">${vacio}</option>` + lista.map(x => { const [k, n] = Array.isArray(x) ? x : [x, x]; return `<option value="${esc(k)}" ${v === k ? 'selected' : ''}>${esc(n)}</option>`; }).join('');
+function ficha(t) {
+  const n = !t; t = t || { tipo_doc: 'DNI', en_planilla: true, recibe_gratificacion: true, regimen_laboral: 'pequena_empresa', seguro_salud: 'EsSalud', vida_ley: true, horas_semanales: 48, activo: true, fecha_ingreso: iso(new Date()) };
+  const v = k => esc(t[k] ?? '');
+  const ch = k => t[k] ? 'checked' : '';
+  const cambios = !n ? `<div id="fx-hist" class="cod" style="margin-top:6px"></div>` : '';
+  abrirModal(`
+    <div class="cab"><h3>${n ? 'Nuevo trabajador' : esc(t.nombre_corto) + ' <span class="cod">' + esc(t.codigo) + '</span>'}</h3>${!n && !t.activo ? '<span class="tag">Cesado</span>' : ''}<button class="cerrar" id="fx-x">×</button></div>
+    <div class="secc">Datos personales</div>
+    <div class="form">
+      <label>Nombre corto * <input id="fx-nombre_corto" value="${v('nombre_corto')}" placeholder="Como sale en horarios"></label>
+      <label>Nombres * <input id="fx-nombres" value="${v('nombres')}"></label>
+      <label class="d2">Apellidos <input id="fx-apellidos" value="${v('apellidos')}"></label>
+      <label>Documento <select id="fx-tipo_doc">${['DNI', 'CE', 'PASAPORTE'].map(x => `<option ${t.tipo_doc === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+      <label>N° documento <input id="fx-num_doc" value="${v('num_doc')}" inputmode="numeric"></label>
+      <label>Fecha de nacimiento <input id="fx-fecha_nacimiento" type="date" value="${v('fecha_nacimiento')}"></label>
+      <label>Celular <input id="fx-telefono" value="${v('telefono')}" inputmode="tel"></label>
+      <label class="d2">Correo <input id="fx-correo" type="email" value="${v('correo')}"></label>
+      <label class="d2">Dirección <input id="fx-direccion" value="${v('direccion')}"></label>
+      <label class="d2">Contacto de emergencia <input id="fx-contacto_emergencia" value="${v('contacto_emergencia')}" placeholder="Nombre y parentesco"></label>
+      <label class="d2">Celular de emergencia <input id="fx-telefono_emergencia" value="${v('telefono_emergencia')}" inputmode="tel"></label>
+    </div>
+    <div class="secc">Puesto y contrato</div>
+    <div class="form">
+      <label>Área <select id="fx-area">${opts(AREAS, t.area)}</select></label>
+      <label>Cargo <input id="fx-cargo" value="${v('cargo')}" placeholder="Ej. Responsable de turno"></label>
+      <label>Fecha de ingreso <input id="fx-fecha_ingreso" type="date" value="${v('fecha_ingreso')}"></label>
+      <label>Horas por semana <input id="fx-horas_semanales" type="number" min="0" step="0.5" value="${v('horas_semanales')}"></label>
+      <label>Tipo de contrato <select id="fx-tipo_contrato">${opts(CONTRATOS, t.tipo_contrato)}</select></label>
+      <label>Fin de contrato <input id="fx-fin_contrato" type="date" value="${v('fin_contrato')}"></label>
+      <label class="d2">Régimen laboral <select id="fx-regimen_laboral">${[['pequena_empresa', 'REMYPE · Pequeña empresa'], ['micro_empresa', 'REMYPE · Microempresa'], ['general', 'Régimen general']].map(([k, x]) => `<option value="${k}" ${t.regimen_laboral === k ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+    </div>
+    <div class="secc">Remuneración y pensión</div>
+    <div class="form">
+      <label class="chk"><input type="checkbox" id="fx-en_planilla" ${ch('en_planilla')}> En planilla</label>
+      <label class="chk"><input type="checkbox" id="fx-recibe_gratificacion" ${ch('recibe_gratificacion')}> Recibe gratificación</label>
+      <label class="chk"><input type="checkbox" id="fx-asignacion_familiar" ${ch('asignacion_familiar')}> Asignación familiar</label>
+      <label class="chk"><input type="checkbox" id="fx-vida_ley" ${ch('vida_ley')}> Seguro Vida Ley</label>
+      <label>Sueldo básico S/ <input id="fx-sueldo_basico" type="number" min="0" step="0.01" value="${v('sueldo_basico')}"></label>
+      <label>Sistema de pensión <select id="fx-sistema_pension">${opts(PENSION, t.sistema_pension)}</select></label>
+      <label>Comisión AFP <select id="fx-afp_comision">${opts([['flujo', 'Sobre el flujo'], ['mixta', 'Mixta']], t.afp_comision)}</select></label>
+      <label>CUSPP <input id="fx-cuspp" value="${v('cuspp')}"></label>
+      <label>Seguro de salud <select id="fx-seguro_salud">${['EsSalud', 'SIS', 'Ninguno'].map(x => `<option ${t.seguro_salud === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+    </div>
+    <div class="secc">Pago del sueldo</div>
+    <div class="form">
+      <label>Banco <input id="fx-banco" value="${v('banco')}" list="bancos" placeholder="BCP, Interbank…"></label>
+      <label>N° de cuenta <input id="fx-cuenta_sueldo" value="${v('cuenta_sueldo')}"></label>
+      <label class="d2">CCI <input id="fx-cci" value="${v('cci')}"></label>
+      <label class="d4">Notas <textarea id="fx-notas" rows="2">${v('notas')}</textarea></label>
+    </div>
+    <datalist id="bancos"><option>BCP</option><option>Interbank</option><option>BBVA</option><option>Scotiabank</option><option>Banco de la Nación</option><option>Caja Huancayo</option></datalist>
+    ${cambios}
+    <div class="error" id="fx-err" style="margin-top:8px"></div>
+    <div class="pie">
+      ${n ? '' : t.activo ? '<button class="btn gris" id="fx-baja">Dar de baja</button>' : '<button class="btn gris" id="fx-alta">Reactivar</button>'}
+      ${n ? '' : '<button class="btn gris" id="fx-pin">🔑 Acceso / PIN</button>'}
+      <span class="esp"></span>
+      <button class="btn sec" id="fx-cancel">Cancelar</button>
+      <button class="btn" id="fx-ok">${n ? 'Crear trabajador' : 'Guardar cambios'}</button>
+    </div>`);
+  $('fx-x').onclick = $('fx-cancel').onclick = cerrarModal;
+  if (!n) historial(t.id);
+  $('fx-ok').onclick = async () => {
+    const g = id => $('fx-' + id);
+    const txt = id => (g(id).value || '').trim() || null;
+    const datos = {
+      nombre_corto: txt('nombre_corto'), nombres: txt('nombres'), apellidos: txt('apellidos'), tipo_doc: g('tipo_doc').value, num_doc: txt('num_doc'),
+      fecha_nacimiento: txt('fecha_nacimiento'), telefono: txt('telefono'), correo: txt('correo'), direccion: txt('direccion'),
+      contacto_emergencia: txt('contacto_emergencia'), telefono_emergencia: txt('telefono_emergencia'),
+      area: txt('area'), cargo: txt('cargo'), fecha_ingreso: txt('fecha_ingreso'), horas_semanales: txt('horas_semanales') == null ? null : Number(g('horas_semanales').value),
+      tipo_contrato: txt('tipo_contrato'), fin_contrato: txt('fin_contrato'), regimen_laboral: g('regimen_laboral').value,
+      en_planilla: g('en_planilla').checked, recibe_gratificacion: g('recibe_gratificacion').checked, asignacion_familiar: g('asignacion_familiar').checked, vida_ley: g('vida_ley').checked,
+      sueldo_basico: txt('sueldo_basico') == null ? null : Number(g('sueldo_basico').value), sistema_pension: txt('sistema_pension'), afp_comision: txt('afp_comision'), cuspp: txt('cuspp'),
+      seguro_salud: g('seguro_salud').value, banco: txt('banco'), cuenta_sueldo: txt('cuenta_sueldo'), cci: txt('cci'), notas: txt('notas'),
+    };
+    if (!datos.nombre_corto || !datos.nombres) return $('fx-err').textContent = 'Falta el nombre corto y los nombres.';
+    if (datos.tipo_doc === 'DNI' && datos.num_doc && !/^\d{8}$/.test(datos.num_doc)) return $('fx-err').textContent = 'El DNI debe tener 8 dígitos.';
+    if (datos.sistema_pension && datos.sistema_pension.startsWith('AFP') && !datos.afp_comision) return $('fx-err').textContent = 'Elige el tipo de comisión AFP (flujo o mixta).';
+    if (!datos.sistema_pension?.startsWith('AFP')) datos.afp_comision = null;
+    $('fx-ok').disabled = true;
+    const r = n ? await sb.from('trabajadores').insert(datos).select().single() : await sb.from('trabajadores').update(datos).eq('id', t.id).select().single();
+    $('fx-ok').disabled = false;
+    if (r.error) return $('fx-err').textContent = errTxt(r.error);
+    await cargarTodo(); cerrarModal(); toast(n ? `✓ ${r.data.nombre_corto} creado (${r.data.codigo})` : '✓ Cambios guardados'); irTab(st.tab);
+    if (n && confirm(`¿Le creas su acceso (PIN) a ${r.data.nombre_corto} ahora?`)) nuevoAcceso(r.data.id);
+  };
+  if ($('fx-baja')) $('fx-baja').onclick = () => darDeBaja(t);
+  if ($('fx-alta')) $('fx-alta').onclick = async () => {
+    const r = await sb.from('trabajadores').update({ activo: true, fecha_cese: null, motivo_cese: null }).eq('id', t.id);
+    if (r.error) return $('fx-err').textContent = errTxt(r.error);
+    await cargarTodo(); cerrarModal(); toast('✓ Reactivado'); irTab(st.tab);
+  };
+  if ($('fx-pin')) $('fx-pin').onclick = () => { cerrarModal(); const a = st.usuarios.find(u => u.trabajador_id === t.id); a ? editarAcceso(a) : nuevoAcceso(t.id); };
+}
+async function historial(id) {
+  const { data } = await sb.from('trabajador_cambios').select('*').eq('trabajador_id', id).order('cambiado_en', { ascending: false }).limit(8);
+  if (!data || !data.length || !$('fx-hist')) return;
+  const NOM = { sueldo_basico: 'Sueldo', cargo: 'Cargo', area: 'Área', en_planilla: 'En planilla', asignacion_familiar: 'Asig. familiar', sistema_pension: 'Pensión', activo: 'Activo' };
+  const val = (c, x) => x == null ? '—' : x === 'true' ? 'Sí' : x === 'false' ? 'No' : c === 'sueldo_basico' ? S(x) : c === 'area' ? (AREA_TXT[x] || x) : x;
+  $('fx-hist').innerHTML = '<b>Cambios registrados:</b> ' + data.map(c => `${new Date(c.cambiado_en).toLocaleDateString('es-PE')} · ${NOM[c.campo] || c.campo}: ${esc(val(c.campo, c.antes))} → ${esc(val(c.campo, c.despues))}`).join(' &nbsp;|&nbsp; ');
+}
+function darDeBaja(t) {
+  const acc = st.usuarios.filter(u => u.trabajador_id === t.id && u.activo);
+  abrirModal(`
+    <div class="cab"><h3>Dar de baja a ${esc(t.nombre_corto)}</h3><button class="cerrar" id="bj-x">×</button></div>
+    <p class="ayuda">Deja de salir en horarios y listas. Su ficha y su historial se conservan.${acc.length ? ` También se <b>desactiva su PIN</b> (${acc.map(u => esc(ROL_TXT[u.rol] || u.rol)).join(', ')}).` : ''}</p>
+    <div class="form">
+      <label>Fecha de cese <input id="bj-f" type="date" value="${iso(new Date())}"></label>
+      <label class="d2">Motivo <select id="bj-m"><option>Renuncia</option><option>Fin de contrato</option><option>Despido</option><option>Abandono de trabajo</option><option>Mutuo acuerdo</option><option>Otro</option></select></label>
+    </div>
+    <div class="error" id="bj-err"></div>
+    <div class="pie"><span class="esp"></span><button class="btn sec" id="bj-no">Cancelar</button><button class="btn" id="bj-ok">Dar de baja</button></div>`);
+  $('bj-x').onclick = $('bj-no').onclick = cerrarModal;
+  $('bj-ok').onclick = async () => {
+    const r = await sb.from('trabajadores').update({ activo: false, fecha_cese: $('bj-f').value || iso(new Date()), motivo_cese: $('bj-m').value }).eq('id', t.id);
+    if (r.error) return $('bj-err').textContent = errTxt(r.error);
+    if (acc.length) { const r2 = await sb.from('usuarios').update({ activo: false }).in('id', acc.map(u => u.id)); if (r2.error) alert('Baja registrada, pero no se pudo desactivar el PIN: ' + errTxt(r2.error)); }
+    // se quitan sus turnos futuros del horario
+    await sb.from('horario_dias').delete().eq('trabajador_id', t.id).gt('fecha', $('bj-f').value || iso(new Date()));
+    await cargarTodo(); cerrarModal(); toast(`${t.nombre_corto} dado de baja`); irTab(st.tab);
+  };
+}
+
+// --- Excel de fichas
+const COLS_T = [
+  ['Código', 'codigo'], ['Nombre corto', 'nombre_corto'], ['Nombres', 'nombres'], ['Apellidos', 'apellidos'], ['Tipo doc', 'tipo_doc'], ['N° documento', 'num_doc'],
+  ['Fecha nacimiento', 'fecha_nacimiento', 'f'], ['Celular', 'telefono'], ['Correo', 'correo'], ['Dirección', 'direccion'],
+  ['Área', 'area', 'area'], ['Cargo', 'cargo'], ['Fecha ingreso', 'fecha_ingreso', 'f'], ['Tipo contrato', 'tipo_contrato', 'contrato'], ['Fin contrato', 'fin_contrato', 'f'],
+  ['En planilla', 'en_planilla', 'b'], ['Recibe gratificación', 'recibe_gratificacion', 'b'], ['Sueldo básico', 'sueldo_basico', 'n'], ['Asignación familiar', 'asignacion_familiar', 'b'],
+  ['Sistema pensión', 'sistema_pension', 'pension'], ['Comisión AFP', 'afp_comision', 'comision'], ['CUSPP', 'cuspp'], ['Seguro salud', 'seguro_salud'], ['Vida Ley', 'vida_ley', 'b'],
+  ['Banco', 'banco'], ['N° cuenta', 'cuenta_sueldo'], ['CCI', 'cci'],
+];
+function plantillaTrab() {
+  const filas = [COLS_T.map(c => c[0])];
+  const lista = st.trab.filter(t => t.activo);
+  const sb2 = b => b ? 'Sí' : 'No';
+  if (lista.length) lista.forEach(t => filas.push(COLS_T.map(([, k, tp]) => tp === 'b' ? sb2(t[k]) : tp === 'f' ? fechaTxt(t[k]).replace('—', '') : tp === 'area' ? (AREA_TXT[t[k]] || '') : tp === 'contrato' ? ((CONTRATOS.find(c => c[0] === t[k]) || [, ''])[1]) : t[k] ?? '')));
+  else filas.push(['', 'Gleidy', 'Gleidy María', 'Pérez Ramos', 'DNI', '12345678', '15/03/1998', '987654321', '', '', 'Tienda', 'Atención', '01/06/2025', 'Plazo fijo', '31/12/2026', 'Sí', 'Sí', 1130, 'No', 'ONP', '', '', 'EsSalud', 'Sí', 'BCP', '', '']);
+  const ws = XLSX.utils.aoa_to_sheet(filas);
+  ws['!cols'] = COLS_T.map(c => ({ wch: Math.max(10, c[0].length + 2) }));
+  const ins = XLSX.utils.aoa_to_sheet([
+    ['Cómo llenar'], ['1. Una fila por trabajador. Obligatorios: Nombre corto y Nombres.'],
+    ['2. Código: déjalo vacío para que el sistema lo genere (T001…). Si pones el código o el N° de documento de alguien que ya existe, se ACTUALIZA su ficha.'],
+    ['3. Fechas como 15/03/2026. Sí / No en las columnas de marcar.'],
+    ['4. Área: Tienda, Cocina, Producción, Almacén o Administración.'],
+    ['5. Tipo contrato: Indeterminado, Plazo fijo, Part time, Prácticas o Locación de servicios.'],
+    ['6. Sistema pensión: ONP, AFP Integra, AFP Prima, AFP Profuturo, AFP Habitat o Ninguno. Comisión AFP: Flujo o Mixta.'],
+  ]);
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Trabajadores'); XLSX.utils.book_append_sheet(wb, ins, 'Instrucciones');
+  XLSX.writeFile(wb, 'kadima_trabajadores.xlsx');
+}
+function fechaExcel(v) {
+  if (v == null || v === '') return null;
+  if (typeof v === 'number') { const d = new Date(Math.round((v - 25569) * 86400000)); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`; }
+  if (v instanceof Date) return iso(v);
+  const s = String(v).trim(); let m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+  if (m) { let y = +m[3]; if (y < 100) y += 2000; return `${y}-${pad(+m[2])}-${pad(+m[1])}`; }
+  m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if (m) return `${m[1]}-${pad(+m[2])}-${pad(+m[3])}`;
+  return undefined;
+}
+const siNo = v => { const t = norm(v); return t === 'si' || t === 'sí' || t === 'x' || t === '1' || t === 'true'; };
+async function subirTrab(file) {
+  let filas;
+  try { const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' }); filas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '', raw: true }); }
+  catch (e) { return alert('No se pudo leer el archivo: ' + e.message); }
+  const col = (r, nom) => { const k = Object.keys(r).find(x => norm(x) === norm(nom)); return k ? r[k] : ''; };
+  const nuevos = [], cambios = [], errores = [];
+  filas.forEach((r, i) => {
+    const o = {}; let err = '';
+    COLS_T.forEach(([nom, k, tp]) => {
+      const v = col(r, nom); if (v === '' || v == null) return;   // vacío: no se toca (al crear, toma el valor por defecto)
+      if (tp === 'f') { const f = fechaExcel(v); if (f === undefined) err = `${nom} no válida`; else o[k] = f; }
+      else if (tp === 'b') o[k] = siNo(v);
+      else if (tp === 'n') { const x = Number(String(v).replace(',', '.')); if (isNaN(x)) err = `${nom} no es número`; else o[k] = x; }
+      else if (tp === 'area') { const a = AREAS.find(([kk, n]) => norm(n) === norm(v) || kk === norm(v)); if (!a) err = `Área "${v}" no existe`; else o[k] = a[0]; }
+      else if (tp === 'contrato') { const a = CONTRATOS.find(([kk, n]) => norm(n) === norm(v) || kk === norm(v) || norm(n).startsWith(norm(v))); if (!a) err = `Tipo de contrato "${v}" no existe`; else o[k] = a[0]; }
+      else if (tp === 'pension') { const a = PENSION.find(p => norm(p) === norm(v) || norm(p) === 'afp ' + norm(v)); if (!a) err = `Pensión "${v}" no existe`; else o[k] = a; }
+      else if (tp === 'comision') o[k] = norm(v).startsWith('m') ? 'mixta' : 'flujo';
+      else o[k] = String(v).trim();
+    });
+    if (!o.nombre_corto && !o.nombres) return;   // fila vacía
+    if (!o.nombre_corto || !o.nombres) err = err || 'Falta nombre corto o nombres';
+    if (o.tipo_doc) o.tipo_doc = o.tipo_doc.toUpperCase();
+    if (err) return errores.push(`Fila ${i + 2}: ${err}`);
+    const ex = st.trab.find(t => (o.codigo && t.codigo === o.codigo.toUpperCase()) || (o.num_doc && t.num_doc === o.num_doc));
+    if (ex) cambios.push({ id: ex.id, nombre: ex.nombre_corto, o }); else { if (!o.codigo) delete o.codigo; nuevos.push(o); }
+  });
+  if (!nuevos.length && !cambios.length) return alert(errores.length ? 'Nada para cargar:\n' + errores.join('\n') : 'El archivo no tiene trabajadores.');
+  if (!confirm(`Se van a crear ${nuevos.length} y actualizar ${cambios.length} trabajador(es).${errores.length ? `\n\n${errores.length} fila(s) con error se saltan:\n` + errores.slice(0, 8).join('\n') : ''}\n\n¿Continuar?`)) return;
+  const fallas = [];
+  if (nuevos.length) { const r = await sb.from('trabajadores').insert(nuevos); if (r.error) fallas.push(errTxt(r.error)); }
+  for (const c of cambios) { delete c.o.codigo; const r = await sb.from('trabajadores').update(c.o).eq('id', c.id); if (r.error) fallas.push(`${c.nombre}: ${errTxt(r.error)}`); }
+  await cargarTodo(); irTab('trab');
+  alert(fallas.length ? 'Se cargó con problemas:\n' + fallas.join('\n') : `✓ Listo: ${nuevos.length} creado(s), ${cambios.length} actualizado(s).`);
+}
+
+// ===================== ACCESOS Y PIN =====================
+function pinLibre(pin, exceptoId) { return !st.usuarios.some(u => u.activo && u.pin === pin && u.id !== exceptoId); }
+function pinAlAzar(exceptoId) {
+  const malos = new Set(['0000', '1111', '2222', '3333', '4444', '5555', '6666', '7777', '8888', '9999', '1234', '4321', '0123']);
+  for (let i = 0; i < 500; i++) { const p = String(Math.floor(Math.random() * 10000)).padStart(4, '0'); if (!malos.has(p) && pinLibre(p, exceptoId)) return p; }
+  return '';
+}
+function tabAcc() {
+  const yo = usuarioActual();
+  const act = st.usuarios.filter(u => u.activo), ina = st.usuarios.filter(u => !u.activo);
+  const dup = {}; act.forEach(u => { if (u.pin) dup[u.pin] = (dup[u.pin] || 0) + 1; });
+  const sinAcc = st.trab.filter(t => t.activo && !accesoDe(t).length);
+  const fila = u => {
+    const t = st.trab.find(x => x.id === u.trabajador_id);
+    const visto = st.verPin.has(u.id);
+    return `<tr class="${u.activo ? '' : 'baja'}">
+      <td><b>${esc(u.nombre)}</b>${yo && yo.id === u.id ? ' <span class="tag az">tú</span>' : ''}</td>
+      <td>${t ? esc(t.nombre_corto) + ' <span class="cod">' + esc(t.codigo) + '</span>' : '<span class="cod">— sin vincular —</span>'}</td>
+      <td><span class="tag ${u.rol === 'admin' ? 'mal' : 'az'}">${esc(ROL_TXT[u.rol] || u.rol)}</span></td>
+      <td><span class="pin">${u.pin ? (visto ? esc(u.pin) : '••••') : '—'}</span> ${u.pin ? `<button class="btn gris peq" data-ver="${u.id}">${visto ? 'Ocultar' : 'Ver'}</button>` : ''} ${u.activo && dup[u.pin] > 1 ? '<span class="tag mal">Repetido</span>' : ''}</td>
+      <td>${u.activo ? '<span class="tag ok">Activo</span>' : '<span class="tag">Inactivo</span>'}</td>
+      <td class="n"><button class="btn sec peq" data-ed="${u.id}">Editar</button></td></tr>`;
+  };
+  $('main').innerHTML = `
+    <div class="bloque">
+      <div class="barra-acc"><div><h3>Accesos y PIN</h3><p class="ayuda" style="margin:0">Cada persona entra a las apps con su propio PIN de 4 dígitos. El PIN no se puede repetir: así cada venta, pedido o movimiento queda a nombre de quien lo hizo.</p></div>
+        <span class="esp"></span><button class="btn" id="b-acc">+ Nuevo acceso</button></div>
+      ${sinAcc.length ? `<div class="nota" style="margin-bottom:12px">⚠️ <b>${sinAcc.length} trabajador(es) activo(s) sin PIN:</b> ${sinAcc.map(t => `<button class="btn gris peq" data-crear="${t.id}" style="margin:2px">+ ${esc(t.nombre_corto)}</button>`).join('')}</div>` : ''}
+      <div class="tablawrap"><table class="t">
+        <tr><th>Usuario</th><th>Trabajador</th><th>Rol</th><th>PIN</th><th>Estado</th><th></th></tr>
+        ${act.map(fila).join('') || '<tr><td colspan="6" class="vacio">Sin usuarios.</td></tr>'}
+        ${ina.length ? `<tr><td colspan="6" class="cod" style="padding-top:16px">INACTIVOS</td></tr>` + ina.map(fila).join('') : ''}
+      </table></div>
+    </div>
+    <div class="bloque"><h3>Qué abre cada rol</h3><p class="ayuda">El rol decide a qué apps puede entrar con su PIN.</p>
+      <div class="roles">${ROLES.map(([k, n, d]) => `<div><b>${n}</b>${d}</div>`).join('')}</div></div>`;
+  $('b-acc').onclick = () => nuevoAcceso(null);
+  $('main').onclick = e => {
+    const v = e.target.dataset.ver, ed = e.target.dataset.ed, cr = e.target.dataset.crear;
+    if (v) { const id = Number(v); st.verPin.has(id) ? st.verPin.delete(id) : st.verPin.add(id); tabAcc(); }
+    if (ed) editarAcceso(st.usuarios.find(u => u.id === Number(ed)));
+    if (cr) nuevoAcceso(Number(cr));
+  };
+}
+function nuevoAcceso(trabId) { editarAcceso({ id: null, nombre: '', rol: 'caja', pin: pinAlAzar(null), activo: true, trabajador_id: trabId }); }
+function editarAcceso(u) {
+  const n = !u.id, yo = usuarioActual(), soyYo = yo && yo.id === u.id;
+  const t0 = st.trab.find(t => t.id === u.trabajador_id);
+  const nombre = u.nombre || (t0 ? t0.nombre_corto : '');
+  const trabs = st.trab.filter(t => t.activo || t.id === u.trabajador_id);
+  abrirModal(`
+    <div class="cab"><h3>${n ? 'Nuevo acceso' : 'Acceso de ' + esc(u.nombre)}</h3><button class="cerrar" id="ac-x">×</button></div>
+    <div class="form" style="margin-top:10px">
+      <label class="d2">Trabajador <select id="ac-t"><option value="">— sin vincular (usuario genérico) —</option>${trabs.map(t => `<option value="${t.id}" ${t.id === u.trabajador_id ? 'selected' : ''}>${esc(t.nombre_corto)} · ${esc(t.codigo)}</option>`).join('')}</select></label>
+      <label class="d2">Nombre que se muestra <input id="ac-n" value="${esc(nombre)}" placeholder="Ej. Gleidy"></label>
+      <label class="d2">Rol <select id="ac-r" ${soyYo ? 'disabled' : ''}>${ROLES.map(([k, nn]) => `<option value="${k}" ${u.rol === k ? 'selected' : ''}>${nn}</option>`).join('')}${ROL_TXT[u.rol] ? '' : `<option value="${esc(u.rol)}" selected>${esc(u.rol)}</option>`}</select></label>
+      <label>PIN (4 dígitos) <input id="ac-p" class="pin" value="${esc(u.pin || '')}" inputmode="numeric" maxlength="4" autocomplete="off"></label>
+      <label style="justify-content:flex-end"><button class="btn gris" id="ac-azar" type="button">🎲 Generar otro</button></label>
+      ${n ? '' : `<label class="chk d2"><input type="checkbox" id="ac-a" ${u.activo ? 'checked' : ''} ${soyYo ? 'disabled' : ''}> Activo (puede entrar)</label>`}
+    </div>
+    <p class="ayuda" id="ac-rold" style="margin-top:8px"></p>
+    ${soyYo ? '<p class="ayuda">Es tu propio usuario: no puedes cambiarte el rol ni desactivarte.</p>' : ''}
+    <div class="error" id="ac-err"></div>
+    <div class="pie"><span class="esp"></span><button class="btn sec" id="ac-no">Cancelar</button><button class="btn" id="ac-ok">${n ? 'Crear acceso' : 'Guardar'}</button></div>`);
+  const rold = () => $('ac-rold').textContent = '→ ' + ((ROLES.find(r => r[0] === $('ac-r').value) || [, , ''])[2]);
+  rold(); $('ac-r').onchange = rold;
+  $('ac-t').onchange = () => { const t = st.trab.find(x => x.id === Number($('ac-t').value)); if (t && (!$('ac-n').value || n)) $('ac-n').value = t.nombre_corto; };
+  $('ac-azar').onclick = () => { $('ac-p').value = pinAlAzar(u.id); };
+  $('ac-x').onclick = $('ac-no').onclick = () => { cerrarModal(); irTab(st.tab); };
+  $('ac-ok').onclick = async () => {
+    const pin = $('ac-p').value.trim(), nom = $('ac-n').value.trim(), activo = n ? true : $('ac-a').checked;
+    if (!nom) return $('ac-err').textContent = 'Escribe el nombre.';
+    if (!/^\d{4}$/.test(pin)) return $('ac-err').textContent = 'El PIN debe tener exactamente 4 dígitos.';
+    if (activo && !pinLibre(pin, u.id)) return $('ac-err').textContent = 'Ese PIN ya lo usa otro usuario activo. Toca 🎲 para generar otro.';
+    const datos = { nombre: nom, rol: $('ac-r').value, pin, activo, trabajador_id: Number($('ac-t').value) || null };
+    if (soyYo) { delete datos.rol; delete datos.activo; }
+    if (!soyYo && u.rol === 'admin' && (datos.rol !== 'admin' || !activo) && st.usuarios.filter(x => x.activo && x.rol === 'admin' && x.id !== u.id).length === 0) return $('ac-err').textContent = 'Debe quedar al menos un Administrador activo.';
+    $('ac-ok').disabled = true;
+    const r = n ? await sb.from('usuarios').insert(datos) : await sb.from('usuarios').update(datos).eq('id', u.id);
+    $('ac-ok').disabled = false;
+    if (r.error) return $('ac-err').textContent = errTxt(r.error);
+    await cargarTodo(); cerrarModal(); toast(n ? `✓ Acceso creado · PIN ${pin}` : '✓ Acceso guardado'); irTab(st.tab);
+  };
+}
+
+// ===================== HORARIOS =====================
+const turnoDe = c => st.turnos.find(t => t.codigo === c);
+const hora = h => h ? h.slice(0, 5) : '';
+async function cargarSemana() {
+  const h = st.hor, desde = iso(h.lunes), hasta = iso(masDias(h.lunes, 6));
+  const { data, error } = await sb.from('horario_dias').select('trabajador_id,fecha,turno').gte('fecha', desde).lte('fecha', hasta);
+  if (error) throw error;
+  h.dias = {}; (data || []).forEach(x => h.dias[x.trabajador_id + '|' + x.fecha] = x.turno);
+}
+async function tabHor() {
+  $('main').innerHTML = '<div class="cargando">Cargando horario…</div>';
+  try { await cargarSemana(); } catch (e) { $('main').innerHTML = `<div class="bloque error">${esc(errTxt(e))}</div>`; return; }
+  pintarHor();
+}
+function tituloSemana(l) {
+  const f = masDias(l, 6);
+  return l.getMonth() === f.getMonth() ? `Semana del ${l.getDate()} al ${f.getDate()} de ${MESES[l.getMonth()]}` : `Del ${l.getDate()} de ${MESES[l.getMonth()]} al ${f.getDate()} de ${MESES[f.getMonth()]}`;
+}
+function pintarHor() {
+  const h = st.hor, hoy = iso(new Date());
+  const fechas = [0, 1, 2, 3, 4, 5, 6].map(i => iso(masDias(h.lunes, i)));
+  const trabs = st.trab.filter(t => t.activo && (!h.area || t.area === h.area) && (!t.fecha_ingreso || t.fecha_ingreso <= fechas[6]));
+  const grupos = [...AREAS, ['', 'Sin área']].map(([k, n]) => [n, trabs.filter(t => (t.area || '') === k)]).filter(g => g[1].length);
+  const trabajo = st.turnos.filter(t => t.tipo === 'trabajo' && t.activo);
+  const celda = (t, f) => {
+    const c = h.dias[t.id + '|' + f], tu = c && turnoDe(c);
+    return c ? `<td class="c lleno ${f === hoy ? 'hoy' : ''}" data-t="${t.id}" data-f="${f}" style="background:${esc(tu?.color || '#888')}">${esc(c)}<small>${tu ? (tu.hora_inicio ? hora(tu.hora_inicio) + '–' + hora(tu.hora_fin) : esc(tu.nombre)) : ''}</small></td>`
+      : `<td class="c ${f === hoy ? 'hoy' : ''}" data-t="${t.id}" data-f="${f}">+</td>`;
+  };
+  $('main').innerHTML = `
+    <div class="bloque">
+      <div class="barra-acc">
+        <div class="semana"><button class="btn gris peq" id="h-ant">‹</button><b>${tituloSemana(h.lunes)}</b><button class="btn gris peq" id="h-sig">›</button><button class="btn gris peq" id="h-hoy">Hoy</button></div>
+        <span class="chips" id="h-area"><button data-v="" class="${!h.area ? 'activa' : ''}">Todos</button>${AREAS.map(([k, n]) => `<button data-v="${k}" class="${h.area === k ? 'activa' : ''}">${n}</button>`).join('')}</span>
+      </div>
+      <div class="barra-acc">
+        <span class="cod">Pincel:</span>
+        <div class="pinceles" id="h-pinc">${st.turnos.filter(t => t.activo).map(t => `<button data-p="${esc(t.codigo)}" class="${h.pincel === t.codigo ? 'on' : ''}" style="background:${esc(t.color)}">${esc(t.codigo)} <small>${esc(t.nombre)}${t.hora_inicio ? ' ' + hora(t.hora_inicio) + '–' + hora(t.hora_fin) : ''}</small></button>`).join('')}<button data-p="" class="borrar ${h.pincel === '' ? 'on' : ''}">⌫ Borrar</button></div>
+      </div>
+      <p class="ayuda">Elige un turno arriba y toca las casillas para pintarlo. Se guarda al instante.</p>
+      ${trabs.length ? `<div class="tablawrap"><table class="hor">
+        <tr><th></th>${fechas.map((f, i) => `<th class="${f === hoy ? 'hoy' : ''}">${DIAS[i]}<br><span style="font-size:15px;color:var(--txt)">${deIso(f).getDate()}</span></th>`).join('')}</tr>
+        ${grupos.map(([n, ts]) => (grupos.length > 1 ? `<tr class="area"><td colspan="8">${esc(n)}</td></tr>` : '') + ts.map(t => `<tr><td class="p">${esc(t.nombre_corto)}<small>${esc(t.cargo || t.codigo)}</small></td>${fechas.map(f => celda(t, f)).join('')}</tr>`).join('')).join('')}
+        <tr class="tot"><td style="text-align:left">Cobertura</td>${fechas.map(f => `<td>${trabajo.map(tu => { const k = trabs.filter(t => h.dias[t.id + '|' + f] === tu.codigo).length; return k ? `<div><b style="color:${esc(tu.color)}">${k}</b> ${esc(tu.nombre.toLowerCase())}</div>` : ''; }).join('') || '—'}</td>`).join('')}</tr>
+      </table></div>` : '<div class="vacio">No hay trabajadores activos en esta área. Agrégalos en la pestaña Trabajadores.</div>'}
+      <div class="pie">
+        <button class="btn sec peq" id="h-copiar">⧉ Copiar semana anterior</button>
+        <button class="btn gris peq" id="h-limpiar">Limpiar semana</button>
+        <span class="esp"></span>
+        <button class="btn gris peq" id="h-excel">⬇ Descargar Excel</button>
+        <label class="btn gris peq" style="cursor:pointer">⬆ Importar horario<input type="file" id="h-imp" accept=".xlsx,.xls,.csv" class="oculto"></label>
+        <button class="btn peq" id="h-link">🔗 Link para el equipo</button>
+      </div>
+    </div>
+    <details class="bloque"><summary style="cursor:pointer;font-weight:700">Turnos (códigos, horas y colores)</summary>
+      <p class="ayuda" style="margin-top:8px">Los turnos de tipo <b>Trabajo</b> cuentan en la cobertura. Vacaciones, permisos y descansos médicos se usarán luego para la planilla.</p>
+      <div class="tablawrap"><table class="t turnos-ed"><tr><th>Código</th><th>Nombre</th><th>Tipo</th><th>Entrada</th><th>Salida</th><th>Color</th><th>Activo</th><th></th></tr>
+        ${st.turnos.map(t => `<tr data-c="${esc(t.codigo)}"><td><b>${esc(t.codigo)}</b></td><td><input data-k="nombre" value="${esc(t.nombre)}"></td>
+          <td><select data-k="tipo">${[['trabajo', 'Trabajo'], ['descanso', 'Descanso'], ['vacaciones', 'Vacaciones'], ['permiso', 'Permiso'], ['descanso_medico', 'Descanso médico'], ['ausencia', 'Ausencia']].map(([k, n]) => `<option value="${k}" ${t.tipo === k ? 'selected' : ''}>${n}</option>`).join('')}</select></td>
+          <td><input data-k="hora_inicio" type="time" value="${hora(t.hora_inicio)}"></td><td><input data-k="hora_fin" type="time" value="${hora(t.hora_fin)}"></td>
+          <td><input data-k="color" type="color" value="${esc(t.color)}"></td><td><input data-k="activo" type="checkbox" ${t.activo ? 'checked' : ''}></td>
+          <td><button class="btn sec peq" data-gt="${esc(t.codigo)}">Guardar</button></td></tr>`).join('')}
+        <tr><td><input id="nt-c" placeholder="Ej. TP" maxlength="4" style="width:70px"></td><td><input id="nt-n" placeholder="Ej. Producción"></td><td colspan="5" class="cod">Luego ajustas tipo, horas y color.</td><td><button class="btn peq" id="nt-ok">+ Agregar</button></td></tr>
+      </table></div></details>`;
+  $('h-ant').onclick = () => { h.lunes = masDias(h.lunes, -7); tabHor(); };
+  $('h-sig').onclick = () => { h.lunes = masDias(h.lunes, 7); tabHor(); };
+  $('h-hoy').onclick = () => { h.lunes = lunesDe(new Date()); tabHor(); };
+  $('h-area').onclick = e => { const b = e.target.closest('[data-v]'); if (b) { h.area = b.dataset.v; guardar('h_area', h.area); pintarHor(); } };
+  $('h-pinc').onclick = e => { const b = e.target.closest('[data-p]'); if (b) { h.pincel = b.dataset.p; guardar('h_pincel', h.pincel); pintarHor(); } };
+  const tabla = $('main').querySelector('table.hor');
+  if (tabla) tabla.onclick = e => { const c = e.target.closest('td.c'); if (c) pintarCelda(Number(c.dataset.t), c.dataset.f); };
+  $('h-copiar').onclick = () => copiarSemana(trabs);
+  $('h-limpiar').onclick = () => limpiarSemana(trabs, fechas);
+  $('h-excel').onclick = () => excelSemana(trabs, fechas);
+  $('h-imp').onchange = e => { const fl = e.target.files[0]; e.target.value = ''; if (fl) importarHorario(fl); };
+  $('h-link').onclick = async () => { try { await navigator.clipboard.writeText(URL_HORARIO); toast('✓ Link copiado: ' + URL_HORARIO); } catch (e) { prompt('Copia este link y compártelo en el grupo:', URL_HORARIO); } };
+  $('main').querySelectorAll('[data-gt]').forEach(b => b.onclick = () => guardarTurno(b.dataset.gt));
+  $('nt-ok').onclick = nuevoTurno;
+}
+async function pintarCelda(tid, f) {
+  const h = st.hor, k = tid + '|' + f, antes = h.dias[k];
+  if ((h.pincel || undefined) === antes) return;
+  if (h.pincel) h.dias[k] = h.pincel; else delete h.dias[k];
+  pintarHor();
+  const r = h.pincel ? await sb.from('horario_dias').upsert({ trabajador_id: tid, fecha: f, turno: h.pincel, actualizado_en: new Date().toISOString() }, { onConflict: 'trabajador_id,fecha' })
+    : await sb.from('horario_dias').delete().eq('trabajador_id', tid).eq('fecha', f);
+  if (r.error) { if (antes) h.dias[k] = antes; else delete h.dias[k]; pintarHor(); alert('No se guardó: ' + errTxt(r.error)); }
+}
+async function copiarSemana(trabs) {
+  const h = st.hor, ant = masDias(h.lunes, -7);
+  const { data, error } = await sb.from('horario_dias').select('trabajador_id,fecha,turno').gte('fecha', iso(ant)).lte('fecha', iso(masDias(ant, 6))).in('trabajador_id', trabs.map(t => t.id));
+  if (error) return alert(errTxt(error));
+  if (!data.length) return alert('La semana anterior está vacía para estas personas.');
+  const ocupadas = trabs.some(t => [0, 1, 2, 3, 4, 5, 6].some(i => h.dias[t.id + '|' + iso(masDias(h.lunes, i))]));
+  if (ocupadas && !confirm('Esta semana ya tiene turnos. Se reemplazan por los de la semana anterior. ¿Continuar?')) return;
+  const filas = data.map(x => ({ trabajador_id: x.trabajador_id, fecha: iso(masDias(deIso(x.fecha), 7)), turno: x.turno, actualizado_en: new Date().toISOString() }));
+  const r = await sb.from('horario_dias').upsert(filas, { onConflict: 'trabajador_id,fecha' });
+  if (r.error) return alert(errTxt(r.error));
+  toast(`✓ ${filas.length} turnos copiados`); tabHor();
+}
+async function limpiarSemana(trabs, fechas) {
+  if (!confirm(`¿Borrar todos los turnos de esta semana${st.hor.area ? ' (' + AREA_TXT[st.hor.area] + ')' : ''}?`)) return;
+  const r = await sb.from('horario_dias').delete().gte('fecha', fechas[0]).lte('fecha', fechas[6]).in('trabajador_id', trabs.map(t => t.id));
+  if (r.error) return alert(errTxt(r.error));
+  tabHor();
+}
+function excelSemana(trabs, fechas) {
+  const h = st.hor;
+  const filas = [[tituloSemana(h.lunes)], [], ['Trabajador', 'Área', ...fechas.map((f, i) => `${DIAS[i]} ${fechaTxt(f).slice(0, 5)}`)]];
+  trabs.forEach(t => filas.push([t.nombre_corto, AREA_TXT[t.area] || '', ...fechas.map(f => { const c = h.dias[t.id + '|' + f], tu = c && turnoDe(c); return tu ? tu.nombre + (tu.hora_inicio ? ` ${hora(tu.hora_inicio)}-${hora(tu.hora_fin)}` : '') : ''; })]));
+  const ws = XLSX.utils.aoa_to_sheet(filas); ws['!cols'] = [{ wch: 16 }, { wch: 12 }, ...fechas.map(() => ({ wch: 18 }))];
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Horario'); XLSX.writeFile(wb, `horario_${fechas[0]}.xlsx`);
+}
+// importa el formato de BD_Horario_Kadima: Fecha | Trabajador | Estado (T/M, T/T, D, A, V, P…)
+function codigoTurno(v) {
+  const t = norm(v).replace(/\s/g, '');
+  if (!t) return null;
+  const directo = st.turnos.find(x => norm(x.codigo) === t || norm(x.nombre).replace(/\s/g, '') === t);
+  if (directo) return directo.codigo;
+  const MAP = { 't/m': 'TM', 'm': 'TM', 'manana': 'TM', 't/t': 'TT', 't': 'TT', 'tarde': 'TT', 'd': 'D', 'descanso': 'D', 'libre': 'D', 'v': 'V', 'vacaciones': 'V', 'p': 'P', 'permiso': 'P', 'a': 'A', 'f': 'A', 'falta': 'A', 'ausencia': 'A', 'dm': 'DM', 'descansomedico': 'DM' };
+  const c = MAP[t]; return c && turnoDe(c) ? c : undefined;
+}
+async function importarHorario(file) {
+  let filas;
+  try { const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' }); filas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '', raw: true }); }
+  catch (e) { return alert('No se pudo leer el archivo: ' + e.message); }
+  const col = (r, ...ns) => { const k = Object.keys(r).find(x => ns.includes(norm(x))); return k ? r[k] : ''; };
+  const porNombre = {}; st.trab.forEach(t => { porNombre[norm(t.nombre_corto)] = t; porNombre[norm(t.nombres)] = porNombre[norm(t.nombres)] || t; porNombre[norm(t.codigo)] = t; });
+  const ok = new Map(), sinPersona = new Set(), sinTurno = new Set(); let malas = 0;
+  filas.forEach(r => {
+    const f = fechaExcel(col(r, 'fecha')), nom = String(col(r, 'trabajador', 'nombre', 'colaboradora', 'codigo', 'código')).trim(), est = col(r, 'estado', 'turno');
+    if (!nom && !f) return;
+    if (!f) { malas++; return; }
+    const t = porNombre[norm(nom)]; if (!t) { sinPersona.add(nom); return; }
+    const c = codigoTurno(est); if (c === null) return; if (c === undefined) { sinTurno.add(String(est)); return; }
+    ok.set(t.id + '|' + f, { trabajador_id: t.id, fecha: f, turno: c, actualizado_en: new Date().toISOString() });
+  });
+  const lista = [...ok.values()];
+  const avisos = [sinPersona.size ? `Nombres que no están en Trabajadores (se saltan): ${[...sinPersona].slice(0, 12).join(', ')}` : '', sinTurno.size ? `Turnos que no reconozco (se saltan): ${[...sinTurno].slice(0, 12).join(', ')}` : '', malas ? `${malas} fila(s) sin fecha válida` : ''].filter(Boolean).join('\n');
+  if (!lista.length) return alert('No hay nada para importar.\n\nEl archivo debe tener las columnas Fecha, Trabajador y Estado.' + (avisos ? '\n\n' + avisos : ''));
+  const fs = lista.map(x => x.fecha).sort();
+  if (!confirm(`Se van a cargar ${lista.length} turnos, del ${fechaTxt(fs[0])} al ${fechaTxt(fs[fs.length - 1])}. Si un día ya tenía turno, se reemplaza.${avisos ? '\n\n' + avisos : ''}\n\n¿Continuar?`)) return;
+  for (let i = 0; i < lista.length; i += 500) {
+    const r = await sb.from('horario_dias').upsert(lista.slice(i, i + 500), { onConflict: 'trabajador_id,fecha' });
+    if (r.error) return alert(`Se cargaron ${i} y falló el resto: ${errTxt(r.error)}`);
+  }
+  toast(`✓ ${lista.length} turnos importados`); tabHor();
+}
+async function guardarTurno(cod) {
+  const tr = $('main').querySelector(`tr[data-c="${CSS.escape(cod)}"]`); const g = k => tr.querySelector(`[data-k="${k}"]`);
+  const datos = { nombre: g('nombre').value.trim() || cod, tipo: g('tipo').value, hora_inicio: g('hora_inicio').value || null, hora_fin: g('hora_fin').value || null, color: g('color').value, activo: g('activo').checked };
+  const r = await sb.from('turnos').update(datos).eq('codigo', cod);
+  if (r.error) return alert(errTxt(r.error));
+  await cargarTodo(); toast('✓ Turno guardado'); pintarHor();
+}
+async function nuevoTurno() {
+  const c = $('nt-c').value.trim().toUpperCase(), n = $('nt-n').value.trim();
+  if (!/^[A-Z0-9]{1,4}$/.test(c) || !n) return alert('Pon un código corto (hasta 4 letras o números) y un nombre.');
+  if (turnoDe(c)) return alert('Ese código ya existe.');
+  const r = await sb.from('turnos').insert({ codigo: c, nombre: n, tipo: 'trabajo', orden: 50 });
+  if (r.error) return alert(errTxt(r.error));
+  await cargarTodo(); toast('✓ Turno agregado'); pintarHor();
+}
+
+iniciar();
+</script>
+</body>
+</html>

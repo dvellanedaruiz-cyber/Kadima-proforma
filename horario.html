@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Horario · Kadima</title>
+<meta name="theme-color" content="#7B1A1A">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Libre+Franklin:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--guinda:#7B1A1A;--guinda-90:#6A1616;--crema:#F5ECD7;--fondo:#F7F5F0;--sup:#fff;--linea:#E7E2D8;--tinta:#28211C;--tinta2:#6E645B;--tinta3:#9C9188;--sombra:0 1px 2px rgba(40,33,28,.05),0 4px 16px rgba(40,33,28,.06)}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Libre Franklin',system-ui,sans-serif;background:var(--fondo);color:var(--tinta);font-size:15px;line-height:1.45}
+.oculto{display:none!important}
+.top{background:linear-gradient(180deg,var(--guinda),var(--guinda-90));color:#fff}
+.top-in{max-width:640px;margin:0 auto;padding:18px 16px}
+.marca{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid rgba(245,236,215,.25);padding-bottom:12px}
+.marca b{font-family:'Fraunces',serif;font-size:1.3rem;color:var(--crema)}
+.marca span{font-size:.68rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(245,236,215,.75)}
+.nav{display:flex;align-items:center;gap:8px;margin-top:12px}
+.nav button{flex:none;width:40px;height:40px;border-radius:10px;border:1px solid rgba(245,236,215,.35);background:rgba(255,255,255,.1);color:var(--crema);font-size:1.1rem;font-weight:800;cursor:pointer;font-family:inherit}
+.nav .t{flex:1;text-align:center;min-width:0}
+.nav .t b{display:block;font-family:'Fraunces',serif;font-weight:600;font-size:1.08rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav .t small{font-size:.66rem;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:rgba(245,236,215,.7)}
+main{max-width:640px;margin:0 auto;padding:18px 16px 40px}
+.seg{display:flex;background:#EDE9E0;border-radius:10px;padding:3px;margin-bottom:16px}
+.seg button{flex:1;border:0;background:transparent;font-family:inherit;font-weight:700;font-size:.85rem;color:var(--tinta2);padding:9px 4px;border-radius:8px;cursor:pointer}
+.seg button.on{background:var(--sup);color:var(--guinda);box-shadow:var(--sombra)}
+.lbl{font-size:.7rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tinta3);margin:0 2px 8px}
+.personas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:18px}
+.persona{border:1px solid var(--linea);background:var(--sup);border-radius:10px;padding:10px 6px;font-family:inherit;font-weight:600;font-size:.86rem;color:var(--tinta);cursor:pointer;box-shadow:var(--sombra);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.persona.on{border-color:var(--guinda);color:var(--guinda);font-weight:800}
+.card{background:var(--sup);border:1px solid var(--linea);border-radius:12px;box-shadow:var(--sombra);overflow:hidden;margin-bottom:14px}
+.card h2{font-family:'Fraunces',serif;font-weight:600;font-size:1.15rem;color:#4E0F0F;padding:14px 16px;border-bottom:1px solid var(--linea);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card h2 small{font-family:'Libre Franklin',sans-serif;font-size:.74rem;color:var(--tinta2);font-weight:600;text-align:right}
+.fila{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #F1EDE4}
+.fila:last-child{border-bottom:0}
+.fila.hoy{background:#FDFAF3}
+.dia{width:92px;flex:none}
+.dia b{display:block;font-size:.92rem}
+.dia span{font-size:.68rem;font-weight:700;color:var(--tinta3);letter-spacing:.5px;text-transform:uppercase}
+.dia .h{color:var(--guinda)}
+.chip{display:inline-flex;align-items:center;gap:8px;font-size:.86rem;font-weight:700;padding:6px 12px;border-radius:8px;border:1px solid}
+.chip i{width:8px;height:8px;border-radius:50%}
+.chip small{font-weight:600;opacity:.8}
+.vacio{color:var(--tinta3);text-align:center;padding:30px 16px}
+.equipo{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:.8rem}
+th{font-size:.66rem;letter-spacing:.8px;text-transform:uppercase;color:var(--tinta3);padding:8px 4px;text-align:center}
+th.hoy{color:var(--guinda)}
+td{padding:4px 3px;text-align:center;border-top:1px solid #F1EDE4}
+td.n{text-align:left;font-weight:700;padding-left:12px;white-space:nowrap;position:sticky;left:0;background:#fff}
+td .c{display:block;border-radius:7px;padding:6px 2px;font-weight:800;font-size:.74rem;color:#fff}
+tr.area td{text-align:left;font-size:.66rem;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--guinda);padding:12px 12px 4px;border-top:0}
+.ley{display:flex;flex-wrap:wrap;gap:6px 12px;padding:12px 16px;font-size:.74rem;color:var(--tinta2);border-top:1px solid var(--linea)}
+.ley i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+</style>
+</head>
+<body>
+<div class="top"><div class="top-in">
+  <div class="marca"><b>Kadima</b><span>Horario del equipo</span></div>
+  <div class="nav"><button id="ant" aria-label="Semana anterior">‹</button><div class="t"><b id="tit">…</b><small id="sub"></small></div><button id="sig" aria-label="Semana siguiente">›</button></div>
+</div></div>
+<main>
+  <div class="seg"><button data-v="mio" class="on">Mi horario</button><button data-v="todos">Todo el equipo</button></div>
+  <div id="cont"><div class="vacio">Cargando…</div></div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
+<script>
+const sb = supabase.createClient('https://odhcnrjbmydjghafichc.supabase.co', 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK', { auth: { persistSession: false } });
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = n => String(n).padStart(2, '0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const AREA = { tienda: 'Tienda', cocina: 'Cocina', produccion: 'Producción', almacen: 'Almacén', administracion: 'Administración' };
+const leer = k => { try { return localStorage.getItem('khor_' + k); } catch (e) { return null; } };
+const guardar = (k, v) => { try { localStorage.setItem('khor_' + k, v); } catch (e) {} };
+function lunesDe(f) { const d = new Date(f); const w = d.getDay(); d.setDate(d.getDate() - (w === 0 ? 6 : w - 1)); d.setHours(0, 0, 0, 0); return d; }
+const masDias = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const hora = h => h ? h.slice(0, 5) : '';
+const st = { lunes: lunesDe(new Date()), vista: 'mio', yo: leer('yo') || '', datos: [] };
+
+async function cargar() {
+  const fechas = [0, 1, 2, 3, 4, 5, 6].map(i => iso(masDias(st.lunes, i)));
+  const f = masDias(st.lunes, 6), l = st.lunes;
+  $('tit').textContent = l.getMonth() === f.getMonth() ? `Del ${l.getDate()} al ${f.getDate()} de ${MESES[l.getMonth()]}` : `${l.getDate()} ${MESES[l.getMonth()].slice(0, 3)} – ${f.getDate()} ${MESES[f.getMonth()].slice(0, 3)}`;
+  const actual = iso(lunesDe(new Date())) === fechas[0];
+  $('sub').textContent = actual ? 'Esta semana' : st.lunes < new Date() ? 'Semana pasada' : 'Próxima semana';
+  $('cont').innerHTML = '<div class="vacio">Cargando…</div>';
+  const { data, error } = await sb.rpc('horario_publico', { p_desde: fechas[0], p_hasta: fechas[6] });
+  if (error) { $('cont').innerHTML = `<div class="vacio">No se pudo cargar el horario.<br><small>${/fetch/i.test(error.message) ? 'Revisa tu conexión a internet.' : esc(error.message)}</small></div>`; return; }
+  st.datos = data || []; st.fechas = fechas; pintar();
+}
+function pintar() {
+  const hoy = iso(new Date()), d = st.datos;
+  const personas = [...new Set(d.map(x => x.trabajador))].sort((a, b) => a.localeCompare(b));
+  if (!personas.length) { $('cont').innerHTML = '<div class="card"><div class="vacio">Todavía no hay horario para esta semana.</div></div>'; return; }
+  const turnos = {}; d.forEach(x => turnos[x.turno] = x);
+  const chip = x => x ? `<span class="chip" style="color:${esc(x.color)};border-color:${esc(x.color)}55;background:${esc(x.color)}12"><i style="background:${esc(x.color)}"></i>${esc(x.turno_nombre)}${x.hora_inicio ? ` <small>${hora(x.hora_inicio)} – ${hora(x.hora_fin)}</small>` : ''}</span>` : '<span class="chip" style="color:#9C9188;border-color:#E7E2D8">Sin asignar</span>';
+  if (st.vista === 'mio') {
+    if (!personas.includes(st.yo)) st.yo = '';
+    const mios = st.yo ? st.fechas.map(f => d.find(x => x.trabajador === st.yo && x.fecha === f)) : [];
+    const trabaja = mios.filter(x => x && x.tipo === 'trabajo').length;
+    $('cont').innerHTML = `<div class="lbl">¿Quién eres?</div>
+      <div class="personas">${personas.map(p => `<button class="persona ${p === st.yo ? 'on' : ''}" data-p="${esc(p)}">${esc(p)}</button>`).join('')}</div>
+      ${st.yo ? `<div class="card"><h2>${esc(st.yo)}<small>${trabaja} día(s) de trabajo</small></h2>
+        ${st.fechas.map((f, i) => `<div class="fila ${f === hoy ? 'hoy' : ''}"><div class="dia"><b>${DIAS[i]}</b><span class="${f === hoy ? 'h' : ''}">${f === hoy ? 'Hoy' : Number(f.slice(8)) + ' ' + MESES[Number(f.slice(5, 7)) - 1].slice(0, 3)}</span></div>${chip(mios[i])}</div>`).join('')}</div>`
+      : '<div class="card"><div class="vacio">Toca tu nombre para ver tu semana.</div></div>'}`;
+    $('cont').querySelector('.personas').onclick = e => { const b = e.target.closest('[data-p]'); if (b) { st.yo = b.dataset.p; guardar('yo', st.yo); pintar(); } };
+  } else {
+    const areas = {}; d.forEach(x => { const a = x.area || ''; (areas[a] = areas[a] || new Set()).add(x.trabajador); });
+    const orden = ['tienda', 'cocina', 'produccion', 'almacen', 'administracion', ''].filter(a => areas[a]);
+    $('cont').innerHTML = `<div class="card"><div class="equipo"><table>
+      <tr><th></th>${st.fechas.map((f, i) => `<th class="${f === hoy ? 'hoy' : ''}">${DIAS[i].slice(0, 3)}<br>${Number(f.slice(8))}</th>`).join('')}</tr>
+      ${orden.map(a => (orden.length > 1 ? `<tr class="area"><td colspan="8">${esc(AREA[a] || 'Otros')}</td></tr>` : '') + [...areas[a]].sort().map(p => `<tr><td class="n">${esc(p)}</td>${st.fechas.map(f => { const x = d.find(y => y.trabajador === p && y.fecha === f); return `<td>${x ? `<span class="c" style="background:${esc(x.color)}">${esc(x.turno)}</span>` : ''}</td>`; }).join('')}</tr>`).join('')).join('')}
+    </table></div>
+    <div class="ley">${Object.values(turnos).map(x => `<span><i style="background:${esc(x.color)}"></i><b>${esc(x.turno)}</b> ${esc(x.turno_nombre)}${x.hora_inicio ? ' ' + hora(x.hora_inicio) + '–' + hora(x.hora_fin) : ''}</span>`).join('')}</div></div>`;
+  }
+}
+document.querySelector('.seg').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; st.vista = b.dataset.v; document.querySelectorAll('.seg button').forEach(x => x.classList.toggle('on', x === b)); pintar(); };
+$('ant').onclick = () => { st.lunes = masDias(st.lunes, -7); cargar(); };
+$('sig').onclick = () => { st.lunes = masDias(st.lunes, 7); cargar(); };
+document.addEventListener('visibilitychange', () => { if (!document.hidden) cargar(); });
+cargar();
+</script>
+</body>
+</html>

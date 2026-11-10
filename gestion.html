@@ -162,6 +162,9 @@ const GRUPOS = [
     { id: 'historico', nombre: 'Histórico', ico: '🗂️', url: 'historico.html' },
     { id: 'tiendaweb', nombre: 'Tienda web', ico: '🛒', url: 'tienda-web.html' },
   ] },
+  { nombre: 'Personas', mods: [
+    { id: 'rh', nombre: 'RH', ico: '👥', url: 'rh.html' },
+  ] },
 ];
 const MODULOS = GRUPOS.flatMap(g => g.mods);
 const leer = k => { try { return localStorage.getItem('kgestion_' + k); } catch (e) { return null; } };
