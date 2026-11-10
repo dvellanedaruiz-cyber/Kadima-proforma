@@ -126,6 +126,11 @@ input,select,textarea{font:inherit;padding:10px 12px;border:1px solid var(--bord
 .chipsg{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
 .chipsg button{background:#fff;border:2px solid var(--borde);padding:16px 10px;font-size:17px;font-weight:700;border-radius:14px}
 .extras-g button{position:relative}.extras-g button small{display:block;font-size:13px;font-weight:600;opacity:.8}
+.extras-g .exon{background:var(--rojo);color:#fff;border-radius:14px;padding:8px 8px 6px;text-align:center;font-size:17px;font-weight:700}
+.extras-g .exon small{display:block;font-size:13px;font-weight:600;opacity:.85}
+.extras-g .exon .ctl{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:6px}
+.extras-g .exon .ctl button{background:#fff;color:var(--rojo);width:46px;height:40px;border-radius:10px;font-size:24px;font-weight:800;padding:0;border:0}
+.extras-g .exon .ctl b{font-size:22px;min-width:28px}
 .extras-g button .xq{position:absolute;top:-8px;right:-8px;background:#1f1f1f;color:#fff;border-radius:12px;font-size:12px;padding:2px 7px}
 .it.extra{padding-top:2px}.it.extra .n{font-weight:500}.it.extra .q{color:var(--gris)}
 .chipsg button.on{background:var(--rojo);border-color:var(--rojo);color:#fff}
@@ -244,7 +249,7 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
   <div class="cont">
     <div class="qty"><button id="pp-menos">−</button><b id="pp-cant">1</b><button id="pp-mas">+</button></div>
     <div class="chipsg oculto" id="pp-paq" style="margin-bottom:6px"></div>
-    <div id="pp-ext-w" class="oculto"><h4 style="display:flex;align-items:center;gap:10px">➕ Extras <span style="font-weight:500">(se cobran aparte · toca para sumar, ✕ para quitar)</span><button id="pp-editext" style="margin-left:auto;background:#fff3c4;color:#6b4c15;padding:6px 12px;font-size:13px;font-weight:700;border-radius:8px">✎ Extras de este plato</button></h4>
+    <div id="pp-ext-w" class="oculto"><h4 style="display:flex;align-items:center;gap:10px">➕ Extras <span style="font-weight:500">(se cobran aparte · usa − y + para la cantidad)</span><button id="pp-editext" style="margin-left:auto;background:#fff3c4;color:#6b4c15;padding:6px 12px;font-size:13px;font-weight:700;border-radius:8px">✎ Extras de este plato</button></h4>
     <div class="chipsg extras-g" id="pp-ext"></div>
     <div id="pp-exted" class="oculto" style="background:#fff;border:1.5px dashed #e0a800;border-radius:12px;padding:10px;margin-top:8px">
       <p style="margin:0 0 8px;color:var(--gris);font-size:13px">Marca los extras que ofrece este plato. Solo esos le aparecerán al mozo.</p>
@@ -263,6 +268,19 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
     <button class="btn-sec oculto" id="pp-quitar">🗑 Quitar</button>
     <button class="btn-sec" id="pp-agregar">＋ Agregar y seguir eligiendo</button>
     <button class="btn" id="pp-enviar">Enviar a cocina</button>
+  </div>
+</div>
+
+<!-- ===== CAMBIAR OBSERVACIÓN DE UN PRODUCTO YA ENVIADO ===== -->
+<div class="modal oculto" id="m-obsit">
+  <div class="caja">
+    <h3>✎ Observación · <span id="oi-nom"></span><button class="x" id="oi-x">✕</button></h3>
+    <p style="color:var(--gris);font-size:13px;margin:0 0 8px">Toca las que apliquen. Cocina ve el cambio al instante.</p>
+    <div class="chipsg" id="oi-chips" style="margin-bottom:10px"></div>
+    <details id="oi-otra"><summary style="cursor:pointer;color:var(--gris);font-weight:700;padding:4px 0">✎ Escribir otra indicación (opcional)</summary>
+    <textarea id="oi-texto" maxlength="120" style="width:100%;font:inherit;font-size:16px;padding:10px;border:1px solid var(--borde);border-radius:10px;min-height:60px;margin-top:6px"></textarea></details>
+    <div class="fila" style="margin-top:10px"><button class="btn-sec" id="oi-borrar">Quitar observación</button><button class="btn" id="oi-ok">Guardar</button></div>
+    <div class="error" id="oi-err"></div>
   </div>
 </div>
 
@@ -790,7 +808,8 @@ function pintarProducto() {
   $('pp-ext-w').classList.toggle('oculto', !esPlato(p) || !st.extrasOk || (!exs.length && !st.pextras));
   $('pp-editext').classList.toggle('oculto', !st.pextras);
   $('pp-ext').innerHTML = exs.map(x => { const e = l.extras.find(y => y.producto_id === x.id);
-    return `<button data-ex="${x.id}" class="${e ? 'on' : ''}">${e ? `<span class="xq" data-exq="${x.id}">${e.cant}× ✕</span>` : ''}${esc(x.nombre)}<small>+ ${S(x.precio_venta)}</small></button>`; }).join('')
+    return e ? `<div class="exon">${esc(x.nombre)}<small>+ ${S(x.precio_venta)} c/u</small><div class="ctl"><button data-exm="${x.id}" aria-label="Uno menos">${e.cant > 1 ? '−' : '✕'}</button><b>${e.cant}</b><button data-exp="${x.id}" aria-label="Uno más">+</button></div></div>`
+      : `<button data-ex="${x.id}">${esc(x.nombre)}<small>+ ${S(x.precio_venta)}</small></button>`; }).join('')
     || '<p style="color:var(--gris);margin:0;grid-column:1/-1">Este plato no tiene extras. Toca “✎ Extras de este plato” para elegirlos.</p>';
   if (!$('pp-exted').classList.contains('oculto')) {
     const mios = new Set((st.pextras || {})[p.id] || []);
@@ -818,8 +837,10 @@ $('pp-extlista').onclick = async e => {
   pintarProducto();
 };
 $('pp-ext').onclick = e => {
-  const ex = st.pp.l.extras, q = e.target.closest('[data-exq]');
-  if (q) { const i = ex.findIndex(y => y.producto_id === Number(q.dataset.exq)); if (i >= 0) ex.splice(i, 1); return pintarProducto(); }
+  const ex = st.pp.l.extras, m = e.target.closest('[data-exm]'), mas = e.target.closest('[data-exp]');
+  // − resta uno (en 1 lo quita) · + suma uno
+  if (m) { const i = ex.findIndex(y => y.producto_id === Number(m.dataset.exm)); if (i >= 0) { if (ex[i].cant > 1) ex[i].cant--; else ex.splice(i, 1); } return pintarProducto(); }
+  if (mas) { const e0 = ex.find(y => y.producto_id === Number(mas.dataset.exp)); if (e0) e0.cant++; return pintarProducto(); }
   const b = e.target.closest('[data-ex]'); if (!b) return;
   const x = st.productos.find(y => y.id === Number(b.dataset.ex)), e0 = ex.find(y => y.producto_id === x.id);
   if (e0) e0.cant++; else ex.push({ producto_id: x.id, nombre: x.nombre, precio_unit: Number(x.precio_venta || 0), cant: 1 });
@@ -840,7 +861,11 @@ function guardarProducto() {
   $('m-prod').classList.add('oculto'); pintarEnvio();
 }
 $('pp-agregar').onclick = guardarProducto;
-$('pp-enviar').onclick = () => { guardarProducto(); $('dm-enviar').click(); };
+$('pp-enviar').onclick = () => {
+  const coc = st.pp.l.area === 'cocina' || st.envio.some(x => x.area === 'cocina');
+  if (!dobleToque($('pp-enviar'), 'ppenviar', coc ? '¿Seguro? Toca otra vez para enviar a cocina' : '¿Seguro? Toca otra vez para agregar')) return;
+  guardarProducto(); st.envioConfirmado = true; $('dm-enviar').click();
+};
 $('pp-quitar').onclick = () => { if (!dobleToque($('pp-quitar'), 'quitar' + st.pp.idx, '¿Quitar? Toca otra vez')) return; st.envio.splice(st.pp.idx, 1); $('m-prod').classList.add('oculto'); pintarEnvio(); };
 // nota para toda la orden (botón en la cuenta)
 st.notaSel = []; st.notaTxt = '';
@@ -924,6 +949,9 @@ $('dm-pend').onclick = e => {
 };
 $('dm-enviar').onclick = async () => {
   if (!st.envio.length) return;
+  // el mozo confirma tocando dos veces (salvo que ya confirmó en la pantalla del producto)
+  if (!st.envioConfirmado && !dobleToque($('dm-enviar'), 'enviar', st.envio.some(l => l.area === 'cocina') ? '¿Seguro? Toca otra vez para enviar a cocina' : '¿Seguro? Toca otra vez para agregar')) return;
+  st.envioConfirmado = false;
   const b = $('dm-enviar'); b.disabled = true; $('dm-error').textContent = '';
   try {
     let a = cuentaActual();
@@ -956,11 +984,7 @@ $('dm-enviar').onclick = async () => {
 $('dm-items').onclick = async e => {
   const o = e.target.dataset.obs, x = e.target.dataset.anu;
   try {
-    if (o) {
-      const it = Object.values(st.items).flat().find(i => i.id === Number(o));
-      const v = prompt('Observación para cocina (vacío para quitarla):', it?.nota || ''); if (v === null) return;
-      const { error } = await sb.from('pedido_items').update({ nota: v.trim() || null }).eq('id', Number(o)); if (error) throw error;
-    }
+    if (o) return abrirObsItem(Object.values(st.items).flat().find(i => i.id === Number(o)));
     if (x) {
       const it = Object.values(st.items).flat().find(i => i.id === Number(x));
       if (!dobleToque(e.target, 'anu' + x, it.estado_cocina !== 'pendiente' ? '¿Anular? Ya salió de cocina' : '¿Anular? Toca otra vez')) return;
@@ -1041,6 +1065,27 @@ $('dm-reimp').onclick = () => {
   const obs = [...new Set(lista.map(i => i.obs_envio).filter(Boolean))].join(' · ') || null;
   imprimirComanda(a.mesa, lineas, obs);
 };
+
+// ===== CAMBIAR OBSERVACIÓN (con botones, escribir es opcional) =====
+function abrirObsItem(it) {
+  if (!it) return;
+  const partes = String(it.nota || '').split(',').map(x => x.trim()).filter(Boolean);
+  st.oi = { id: it.id, sel: partes.filter(x => OBS_PROD.includes(x)) };
+  const otra = partes.filter(x => !OBS_PROD.includes(x)).join(', ');
+  $('oi-nom').textContent = `${Number(it.cantidad)}× ${it.productos?.nombre || ''}`;
+  $('oi-texto').value = otra; $('oi-otra').open = !!otra; $('oi-err').textContent = '';
+  pintarObsItem(); $('m-obsit').classList.remove('oculto');
+}
+function pintarObsItem() { $('oi-chips').innerHTML = OBS_PROD.map(c => `<button data-oich="${esc(c)}" class="${st.oi.sel.includes(c) ? 'on' : ''}">${esc(c)}</button>`).join(''); }
+$('oi-chips').onclick = e => { const b = e.target.closest('[data-oich]'); if (!b) return; const c = b.dataset.oich, k = st.oi.sel.indexOf(c); k >= 0 ? st.oi.sel.splice(k, 1) : st.oi.sel.push(c); pintarObsItem(); };
+async function guardarObsItem(nota) {
+  const { error } = await sb.from('pedido_items').update({ nota: nota || null }).eq('id', st.oi.id);
+  if (error) return $('oi-err').textContent = errTxt(error);
+  $('m-obsit').classList.add('oculto'); toast('✓ Observación actualizada'); await cargar(); pintarDetalle();
+}
+$('oi-ok').onclick = () => guardarObsItem([...st.oi.sel, $('oi-texto').value.trim()].filter(Boolean).join(', '));
+$('oi-borrar').onclick = () => guardarObsItem('');
+$('oi-x').onclick = () => $('m-obsit').classList.add('oculto');
 
 // ===== DOBLE TOQUE para acciones que no se deshacen =====
 // 1er toque: el botón se pone rojo "¿Seguro? toca otra vez"; 2do toque dentro de 4 s: se hace.
