@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Opiniones de clientes — Kadima</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/Kadima_Logo.jpg">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root { --fondo:#FBF4EE; --papel:#FFFDFB; --vino:#A8323E; --vino-osc:#7E2430; --tinta:#2B1A16; --gris:#7B6A64; --linea:#E8D3CF; --oro:#E3A23B; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fondo); color: var(--tinta); font-family: 'Lora', Georgia, serif; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 18px 16px 40px; }
+  .top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .top h1 { margin: 0; font-size: 22px; color: var(--vino-osc); flex: 1; }
+  .btn { border: 1px solid var(--linea); background: var(--papel); border-radius: 999px; padding: 7px 14px; font-family: inherit; font-size: 13.5px; cursor: pointer; color: var(--tinta); }
+  .btn.on, .btn.pri { background: var(--vino); color: #fff; border-color: var(--vino); }
+  .filtros { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+  .filtros input, .filtros select { font-family: inherit; font-size: 14px; padding: 7px 10px; border: 1px solid var(--linea); border-radius: 8px; background: #fff; }
+  .filtros input[type=search] { flex: 1; min-width: 180px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .kpi { background: var(--papel); border: 1px solid var(--linea); border-radius: 12px; padding: 12px 14px; }
+  .kpi b { display: block; font-size: 26px; color: var(--vino); }
+  .kpi span { font-size: 13px; color: var(--gris); }
+  .kpi small { color: var(--oro); font-size: 16px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+  @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+  .card { background: var(--papel); border: 1px solid var(--linea); border-radius: 12px; padding: 14px; }
+  .card h3 { margin: 0 0 10px; font-size: 15px; color: var(--vino-osc); }
+  .bar { display: grid; grid-template-columns: 150px 1fr 70px; gap: 8px; align-items: center; margin: 5px 0; font-size: 13.5px; }
+  .bar span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar i { display: block; height: 10px; border-radius: 5px; background: var(--vino); }
+  .bar i.oro { background: var(--oro); }
+  .bar span:last-child { text-align: right; color: var(--gris); }
+  table { width: 100%; border-collapse: collapse; background: var(--papel); border: 1px solid var(--linea); border-radius: 12px; overflow: hidden; font-size: 13.5px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--linea); vertical-align: top; }
+  th { background: #F6E6E4; color: var(--vino-osc); font-size: 12.5px; white-space: nowrap; }
+  td.est { white-space: nowrap; color: var(--oro); }
+  td.com { min-width: 220px; }
+  .vacio { text-align: center; color: var(--gris); padding: 24px; }
+  .velo { position: fixed; inset: 0; background: rgba(43,26,22,.45); display: flex; align-items: center; justify-content: center; z-index: 40; }
+  .hoja { background: var(--papel); width: 92%; max-width: 380px; border-radius: 16px; padding: 20px; }
+  .hoja h4 { margin: 0 0 4px; color: var(--vino-osc); font-size: 19px; }
+  .hoja p { color: var(--gris); font-size: 13.5px; margin: 0 0 12px; font-style: italic; }
+  .hoja label { display: block; font-weight: 600; font-size: 14px; margin: 10px 0 5px; }
+  .hoja input { width: 100%; font-family: inherit; font-size: 15px; padding: 9px 11px; border: 1px solid var(--linea); border-radius: 8px; }
+  .hoja button { width: 100%; margin-top: 14px; background: var(--vino); color: #fff; border: none; border-radius: 10px; padding: 12px; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .err { color: #B3261E; font-size: 13.5px; margin-top: 8px; min-height: 16px; }
+  .nota { color: var(--gris); font-size: 12.5px; margin: 6px 0 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>💬 Opiniones de clientes</h1>
+    <button class="btn" id="b-csv" type="button">⬇ Descargar Excel (CSV)</button>
+    <button class="btn" id="b-rec" type="button">↻ Actualizar</button>
+  </div>
+  <div class="filtros">
+    <span id="per"></span>
+    <input type="date" id="f-desde" title="Desde"> <input type="date" id="f-hasta" title="Hasta">
+    <select id="f-est"><option value="">Todas las estrellas</option><option value="5">⭐ 5</option><option value="4">⭐ 4</option><option value="3">⭐ 3</option><option value="2">⭐ 2</option><option value="1">⭐ 1</option><option value="0">Sin estrellas</option></select>
+    <input type="search" id="f-txt" placeholder="Buscar en comentarios, platos o nombre…">
+  </div>
+  <div class="kpis" id="kpis"></div>
+  <div class="grid2">
+    <div class="card"><h3>Estrellas por aspecto (promedio)</h3><div id="aspectos"></div></div>
+    <div class="card"><h3>Experiencia general (cantidad por estrellas)</h3><div id="dist"></div></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>Platos más mencionados</h3><div id="platos"></div><p class="nota">Promedio de la experiencia general de quienes pidieron ese plato.</p></div>
+    <div class="card"><h3>Opiniones por día</h3><div id="dias"></div></div>
+  </div>
+  <table>
+    <thead><tr><th>Fecha</th><th>General</th><th>Sabor</th><th>Atención</th><th>Espera</th><th>Qué pidió</th><th>Comentario</th><th>Nombre</th><th>Contacto</th></tr></thead>
+    <tbody id="filas"><tr><td colspan="9" class="vacio">Cargando…</td></tr></tbody>
+  </table>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
+<script>
+const SB_URL = 'https://odhcnrjbmydjghafichc.supabase.co', SB_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
+// misma sesión que el CRM: si ya entraste al CRM, no pide contraseña
+const cli = supabase.createClient(SB_URL, SB_KEY, { auth: { storageKey: 'kadima-crm-auth' } });
+const $ = id => document.getElementById(id);
+const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const ASP = [['general', 'General'], ['comida', 'Sabor'], ['atencion', 'Atención'], ['tiempo', 'Espera']];
+const fechaDe = r => new Date(r.creado_en || r.created_at || r.fecha || 0);
+const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+const est = n => n ? '★'.repeat(n) + '<span style="color:#DCC7C3">' + '★'.repeat(5 - n) + '</span>' : '<span style="color:#DCC7C3">—</span>';
+let TODO = [], VIS = [], periodo = 30;
+
+async function login() {
+  let { data: { session } } = await cli.auth.getSession();
+  if (session) return;
+  await new Promise(ok => {
+    document.body.insertAdjacentHTML('beforeend', `<div class="velo" id="lg"><form class="hoja" id="lf">
+      <h4>Opiniones de clientes</h4><p>Entra con el correo y contraseña del CRM de Kadima.</p>
+      <label for="lm">Correo</label><input id="lm" type="email" autocomplete="username" required>
+      <label for="lp">Contraseña</label><input id="lp" type="password" autocomplete="current-password" required>
+      <button id="lb">Entrar</button><div class="err" id="le"></div></form></div>`);
+    $('lf').onsubmit = async e => {
+      e.preventDefault(); $('lb').disabled = true; $('le').textContent = '';
+      const r = await cli.auth.signInWithPassword({ email: $('lm').value.trim(), password: $('lp').value });
+      $('lb').disabled = false;
+      if (r.error) return $('le').textContent = /Invalid login/i.test(r.error.message) ? 'Correo o contraseña incorrectos.' : r.error.message;
+      $('lg').remove(); ok();
+    };
+  });
+}
+async function cargar() {
+  $('filas').innerHTML = '<tr><td colspan="9" class="vacio">Cargando…</td></tr>';
+  const out = []; let desde = 0;
+  while (true) {   // trae todo, de 1000 en 1000
+    const { data, error } = await cli.from('carta_recomendaciones').select('*').range(desde, desde + 999);
+    if (error) { $('filas').innerHTML = `<tr><td colspan="9" class="vacio">No se pudieron leer las opiniones: ${esc(error.message)}</td></tr>`; return; }
+    out.push(...data); if (data.length < 1000) break; desde += 1000;
+  }
+  TODO = out.sort((a, b) => fechaDe(b) - fechaDe(a));
+  aplicarPeriodo(periodo);
+}
+function aplicarPeriodo(p) {
+  periodo = p;
+  const hoy = new Date();
+  $('f-hasta').value = iso(hoy);
+  $('f-desde').value = p ? iso(new Date(hoy.getTime() - (p - 1) * 864e5)) : (TODO.length ? iso(fechaDe(TODO[TODO.length - 1])) : iso(hoy));
+  pintarPer(); filtrar();
+}
+function pintarPer() {
+  $('per').innerHTML = [[1, 'Hoy'], [7, '7 días'], [30, '30 días'], [0, 'Todo']].map(([v, t]) => `<button type="button" class="btn ${v === periodo ? 'on' : ''}" data-p="${v}">${t}</button>`).join(' ');
+}
+function filtrar() {
+  const d = $('f-desde').value, h = $('f-hasta').value, e = $('f-est').value, q = $('f-txt').value.trim().toLowerCase();
+  VIS = TODO.filter(r => {
+    const f = iso(fechaDe(r));
+    if (d && f < d) return false; if (h && f > h) return false;
+    if (e !== '' && Number(r.general || 0) !== Number(e)) return false;
+    if (q && ![r.comentario, r.productos, r.nombre, r.contacto].join(' ').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  pintar();
+}
+const prom = (arr, k) => { const v = arr.map(r => Number(r[k])).filter(n => n > 0); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
+function barras(lista, max, cls = '') {
+  return lista.map(([l, v, t]) => `<div class="bar"><span title="${esc(l)}">${esc(l)}</span><i class="${cls}" style="width:${max ? Math.max(2, v / max * 100) : 0}%"></i><span>${t}</span></div>`).join('') || '<p class="nota">Aún sin datos.</p>';
+}
+function pintar() {
+  const n = VIS.length, g = prom(VIS, 'general');
+  const buenas = VIS.filter(r => Number(r.general) >= 4).length, malas = VIS.filter(r => Number(r.general) && Number(r.general) <= 2).length;
+  const conCalif = VIS.filter(r => Number(r.general) > 0).length;
+  const conCom = VIS.filter(r => (r.comentario || '').trim()).length, conCto = VIS.filter(r => (r.contacto || '').trim()).length;
+  $('kpis').innerHTML = `
+    <div class="kpi"><b>${n}</b><span>opiniones</span></div>
+    <div class="kpi"><b>${g ? g.toFixed(1) : '—'} <small>★</small></b><span>promedio general</span></div>
+    <div class="kpi"><b>${conCalif ? Math.round(buenas / conCalif * 100) : 0}%</b><span>satisfechos (4–5 ★)</span></div>
+    <div class="kpi"><b>${malas}</b><span>insatisfechos (1–2 ★)</span></div>
+    <div class="kpi"><b>${conCom}</b><span>con comentario</span></div>
+    <div class="kpi"><b>${conCto}</b><span>dejaron contacto</span></div>`;
+  $('aspectos').innerHTML = barras(ASP.map(([k, l]) => { const p = prom(VIS, k); return [l, p, p ? p.toFixed(1) + ' ★' : '—']; }), 5, 'oro');
+  const dist = [5, 4, 3, 2, 1].map(s => [s + ' ★', VIS.filter(r => Number(r.general) === s).length]);
+  $('dist').innerHTML = barras(dist.map(([l, v]) => [l, v, v]), Math.max(...dist.map(x => x[1])), 'oro');
+  // platos mencionados (separa por comas)
+  const P = {};
+  VIS.forEach(r => String(r.productos || '').split(/[,;\/]| y /).map(x => x.trim()).filter(Boolean).forEach(x => {
+    const k = x.toLowerCase(); P[k] = P[k] || { n: 0, nombre: x, s: 0, c: 0 }; P[k].n++;
+    if (Number(r.general)) { P[k].s += Number(r.general); P[k].c++; }
+  }));
+  const pl = Object.values(P).sort((a, b) => b.n - a.n).slice(0, 12);
+  $('platos').innerHTML = barras(pl.map(x => [x.nombre, x.n, `${x.n} · ${x.c ? (x.s / x.c).toFixed(1) + '★' : '—'}`]), pl[0]?.n || 0);
+  const D = {}; VIS.forEach(r => { const f = iso(fechaDe(r)); D[f] = (D[f] || 0) + 1; });
+  const dd = Object.entries(D).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 14);
+  $('dias').innerHTML = barras(dd.map(([f, v]) => [new Date(f + 'T12:00').toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric', month: 'short' }), v, v]), Math.max(0, ...dd.map(x => x[1])));
+  $('filas').innerHTML = VIS.map(r => `<tr>
+    <td>${fechaDe(r).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
+    <td class="est">${est(Number(r.general))}</td><td class="est">${est(Number(r.comida))}</td><td class="est">${est(Number(r.atencion))}</td><td class="est">${est(Number(r.tiempo))}</td>
+    <td>${esc(r.productos)}</td><td class="com">${esc(r.comentario)}</td><td>${esc(r.nombre)}</td><td>${esc(r.contacto)}</td></tr>`).join('')
+    || '<tr><td colspan="9" class="vacio">No hay opiniones en este periodo.</td></tr>';
+}
+function csv() {
+  const cols = [['Fecha', r => fechaDe(r).toLocaleString('es-PE')], ['General', r => r.general || ''], ['Sabor', r => r.comida || ''], ['Atención', r => r.atencion || ''], ['Espera', r => r.tiempo || ''],
+    ['Qué pidió', r => r.productos || ''], ['Comentario', r => r.comentario || ''], ['Nombre', r => r.nombre || ''], ['Contacto', r => r.contacto || '']];
+  const q = v => '"' + String(v).replace(/"/g, '""').replace(/\r?\n/g, ' ') + '"';
+  const txt = '﻿' + [cols.map(c => q(c[0])).join(';'), ...VIS.map(r => cols.map(c => q(c[1](r))).join(';'))].join('\r\n');
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([txt], { type: 'text/csv;charset=utf-8' })), download: `opiniones_kadima_${$('f-desde').value}_a_${$('f-hasta').value}.csv` });
+  a.click();
+}
+$('per').onclick = e => { const b = e.target.closest('[data-p]'); if (b) aplicarPeriodo(Number(b.dataset.p)); };
+['f-desde', 'f-hasta', 'f-est'].forEach(id => $(id).onchange = () => { periodo = -1; pintarPer(); filtrar(); });
+$('f-txt').oninput = filtrar;
+$('b-rec').onclick = cargar; $('b-csv').onclick = csv;
+pintarPer();
+login().then(cargar).catch(e => $('filas').innerHTML = `<tr><td colspan="9" class="vacio">Error: ${esc(e.message)}</td></tr>`);
+</script>
+</body>
+</html>
