@@ -149,6 +149,11 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
 .mini{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin:8px 0}
 .mini button{background:var(--fondo);padding:12px 6px;font-weight:700}
 .mini button.ocup{background:var(--rojo-s);color:var(--rojo)}
+.od-todos{width:100%;padding:14px;font-size:16px;font-weight:700;background:#fff;border:2px solid var(--borde);border-radius:12px}
+.od-todos.on{background:var(--ok);border-color:var(--ok);color:#fff}
+.od-g button{padding:12px 8px;font-size:15px}
+.odtag{font-size:12px;font-weight:700;border-radius:8px;padding:6px 9px;background:#eef2ff;color:var(--azul);white-space:nowrap;max-width:190px;overflow:hidden;text-overflow:ellipsis}
+.odtag.todos{background:var(--fondo);color:var(--gris)}
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1f1f1f;color:#fff;padding:11px 16px;border-radius:10px;z-index:90;font-weight:600;max-width:92vw}
 #ticket{display:none}
 @media print{
@@ -199,7 +204,7 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
     <button id="b-editar">✎ Editar plano</button>
     <button id="b-comanda" title="Imprimir comanda al enviar (solo en este equipo)">🖨️ Comanda</button>
     <span class="usr" id="usr" title="Cambiar de usuario"></span>
-    <span style="font-size:11px;opacity:.7">v1.2</span>
+    <span style="font-size:11px;opacity:.7">v1.3</span>
   </div>
   <div class="leyenda"><span><i style="background:#fff;border:1px solid var(--borde)"></i>Libre</span><span><i style="background:var(--rojo)"></i>Ocupada</span><span><i style="background:var(--ok)"></i>Hay algo por servir</span><span>⚠️ Producto de despacho por llevar a la mesa</span><span>👨‍🍳 Cocina aún preparando</span><span>🔗 Mesas unidas</span></div>
   <div class="aviso-modo oculto" id="aviso-modo"></div>
@@ -268,6 +273,21 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
     <button class="btn-sec oculto" id="pp-quitar">🗑 Quitar</button>
     <button class="btn-sec" id="pp-agregar">＋ Agregar y seguir eligiendo</button>
     <button class="btn" id="pp-enviar">Enviar a cocina</button>
+  </div>
+</div>
+
+<!-- ===== ¿DÓNDE APARECE ESTA OBSERVACIÓN? ===== -->
+<div class="modal oculto" id="m-obsdonde" style="z-index:60">
+  <div class="caja" style="max-width:640px">
+    <h3>📌 ¿Dónde aparece “<span id="od-nom"></span>”?<button class="x" id="od-x">✕</button></h3>
+    <button id="od-todos" class="od-todos">🌐 En todos los productos</button>
+    <p style="color:var(--gris);font-size:13px;margin:12px 0 6px">O solo en estas <b>categorías</b> (toca para marcar):</p>
+    <div class="chipsg od-g" id="od-cats"></div>
+    <p style="color:var(--gris);font-size:13px;margin:14px 0 6px">…y/o en estos <b>productos</b>:</p>
+    <input id="od-buscar" placeholder="Buscar producto para agregarlo…" autocomplete="off">
+    <div class="chipsg od-g" id="od-prods" style="margin-top:8px"></div>
+    <div id="od-res" style="margin-top:12px;font-size:14px;color:var(--gris)"></div>
+    <div class="fila" style="margin-top:12px"><button class="btn-sec" id="od-no">Cancelar</button><button class="btn" id="od-ok">Guardar</button></div>
   </div>
 </div>
 
@@ -731,7 +751,10 @@ st.obs = null;   // [{id, texto, orden}]
 let OBS_ORDEN = ['Sacar todo junto', 'Primero las bebidas', 'Cliente apurado', 'Todo para llevar'];
 st.obsOrden = null; st.obsAmbito = false;
 async function cargarObs() {
-  let r = await sb.from('obs_rapidas').select('id,texto,orden,ambito').eq('activo', true).order('orden').order('id');
+  // con script 79: cada observación puede ir solo en ciertas categorías / productos
+  let r = await sb.from('obs_rapidas').select('id,texto,orden,ambito,categorias,productos').eq('activo', true).order('orden').order('id');
+  st.obsDonde = !r.error;
+  if (r.error) r = await sb.from('obs_rapidas').select('id,texto,orden,ambito').eq('activo', true).order('orden').order('id');
   st.obsAmbito = !r.error;
   if (r.error) r = await sb.from('obs_rapidas').select('id,texto,orden').eq('activo', true).order('orden').order('id');
   if (r.error) { st.obs = null; st.obsOrden = null; return; }
@@ -747,11 +770,28 @@ async function cargarExtrasPlato() {
   if (error) { st.pextras = null; return; }
   st.pextras = {}; (data || []).forEach(x => (st.pextras[x.plato_id] = st.pextras[x.plato_id] || []).push(x.extra_id));
 }
+// observaciones que le tocan a un producto: sin nada asignado = en todos
+const paraTodos = o => !(o.categorias || []).length && !(o.productos || []).length;
+function aplicaA(o, p) {
+  if (paraTodos(o) || !p) return true;
+  if ((o.productos || []).map(Number).includes(Number(p.id))) return true;
+  const c = catDe(p.categoria_id), nombres = [principalDe(c), c && c.nombre].filter(Boolean).map(x => x.toLowerCase());
+  return (o.categorias || []).some(x => nombres.includes(String(x).toLowerCase()));
+}
+function obsDe(p) { return st.obs ? st.obs.filter(o => aplicaA(o, p)).map(o => o.texto) : OBS_PROD; }
+function dondeTxt(o) {
+  if (paraTodos(o)) return 'Todos';
+  const ps = (o.productos || []).map(id => st.productos.find(x => x.id === Number(id))?.nombre).filter(Boolean);
+  return [...(o.categorias || []), ...ps].join(', ');
+}
 function pintarObsEd() {
   if (!st.obs) { $('pp-obslista').innerHTML = '<p style="color:var(--mal);margin:0">Falta correr 65_vitrina_mesa_y_observaciones.sql en Supabase.</p>'; return; }
-  $('pp-obslista').innerHTML = st.obs.map((o, i) => `<div style="display:flex;gap:6px;align-items:center;padding:4px 0">
+  const p = st.pp && st.productos.find(x => x.id === st.pp.l.producto_id);
+  $('pp-obslista').innerHTML = `<p style="margin:0 0 6px;color:var(--gris);font-size:13px">Todas las opciones. Con <b>📌</b> eliges en qué productos aparece cada una. ${p ? `Las <b style="color:var(--ok)">verdes</b> salen en ${esc(p.nombre)}.` : ''}</p>`
+    + st.obs.map((o, i) => `<div style="display:flex;gap:6px;align-items:center;padding:4px 0">
     <button data-oarr="${i}" title="Subir" style="background:var(--fondo);width:38px;height:38px">↑</button>
-    <input data-oed="${o.id}" value="${esc(o.texto)}" maxlength="40" style="flex:1">
+    <input data-oed="${o.id}" value="${esc(o.texto)}" maxlength="40" style="flex:1;${p && aplicaA(o, p) ? 'border:2px solid var(--ok)' : ''}">
+    <button data-odonde="${o.id}" class="odtag ${paraTodos(o) ? 'todos' : ''}" title="¿Dónde aparece?">📌 ${esc(dondeTxt(o))}</button>
     <button data-odel="${o.id}" title="Quitar" style="background:var(--rojo-s);color:var(--rojo);width:38px;height:38px">✕</button></div>`).join('') || '<p style="color:var(--gris);margin:0">Sin opciones.</p>';
 }
 $('pp-editobs').onclick = async () => {
@@ -774,6 +814,8 @@ $('pp-obslista').onchange = async e => {
   if (error) toast(errTxt(error)); await cargarObs(); pintarObsEd(); pintarProducto();
 };
 $('pp-obslista').onclick = async e => {
+  const dn = e.target.closest('[data-odonde]');
+  if (dn) return abrirDonde(st.obs.find(x => x.id === Number(dn.dataset.odonde)));
   const d = e.target.closest('[data-odel]'), u = e.target.closest('[data-oarr]');
   if (d) {
     const o = st.obs.find(x => x.id === Number(d.dataset.odel));
@@ -826,7 +868,8 @@ function pintarProducto() {
       || '<p style="color:var(--gris);margin:0">No hay productos en la categoría Extras. Créalos en Recetas → Productos.</p>';
   }
   if (l.extras.length) $('pp-precio').textContent += ` · extras + ${S(l.extras.reduce((a, e) => a + e.cant * e.precio_unit, 0) * l.cantidad)}`;
-  $('pp-chips').innerHTML = OBS_PROD.map(c => `<button data-ch="${esc(c)}" class="${l.chips.includes(c) ? 'on' : ''}">${esc(c)}</button>`).join('');
+  const ops = obsDe(p); l.chips.forEach(c => { if (!ops.includes(c)) ops.push(c); });
+  $('pp-chips').innerHTML = (ops.length ? '' : '<p style="color:var(--gris);margin:0;grid-column:1/-1">Este producto no tiene observaciones. Toca “✎ Editar opciones” y usa 📌 para asignarle.</p>') + ops.map(c => `<button data-ch="${esc(c)}" class="${l.chips.includes(c) ? 'on' : ''}">${esc(c)}</button>`).join('');
   const n = st.envio.reduce((a, x, i) => a + (i === st.pp.idx ? 0 : x.cantidad), 0) + l.cantidad;
   const coc = l.area === 'cocina' || st.envio.some(x => x.area === 'cocina');
   $('pp-enviar').textContent = `${coc ? 'Enviar a cocina' : 'Agregar a la cuenta'} (${n})`;
@@ -1083,17 +1126,53 @@ $('dm-reimp').onclick = () => {
   imprimirComanda(a.mesa, lineas, obs);
 };
 
+// ===== ¿DÓNDE APARECE UNA OBSERVACIÓN? (categorías y/o productos) =====
+function abrirDonde(o) {
+  if (!o) return;
+  if (!st.obsDonde) return alert('Falta correr 79_observaciones_por_producto.sql en Supabase.');
+  st.od = { o, cats: [...(o.categorias || [])], prods: (o.productos || []).map(Number) };
+  $('od-nom').textContent = o.texto; $('od-buscar').value = '';
+  pintarDonde(); $('m-obsdonde').classList.remove('oculto');
+}
+function pintarDonde() {
+  const d = st.od, todos = !d.cats.length && !d.prods.length, q = $('od-buscar').value.trim().toLowerCase();
+  $('od-todos').classList.toggle('on', todos);
+  $('od-todos').textContent = todos ? '✓ En todos los productos' : '🌐 Volver a “en todos los productos”';
+  const tiene = c => d.cats.some(x => x.toLowerCase() === c.toLowerCase());
+  $('od-cats').innerHTML = catsOrdenadas().map(c => `<button data-odc="${esc(c)}" class="${tiene(c) ? 'on' : ''}">${tiene(c) ? '✓ ' : ''}${esc(c)}</button>`).join('');
+  // productos: los marcados primero; al buscar, los que coinciden
+  const marc = d.prods.map(id => st.productos.find(x => x.id === id)).filter(Boolean);
+  const bus = q ? st.productos.filter(p => !d.prods.includes(p.id) && p.nombre.toLowerCase().includes(q)).slice(0, 24) : [];
+  $('od-prods').innerHTML = [...marc, ...bus].map(p => `<button data-odp="${p.id}" class="${d.prods.includes(p.id) ? 'on' : ''}">${d.prods.includes(p.id) ? '✓ ' : '＋ '}${esc(p.nombre)}</button>`).join('')
+    || `<p style="color:var(--gris);margin:0;grid-column:1/-1">${q ? 'Sin resultados.' : 'Ningún producto suelto. Busca arriba para agregar uno.'}</p>`;
+  const n = st.productos.filter(p => aplicaA({ categorias: d.cats, productos: d.prods }, p)).length;
+  $('od-res').innerHTML = todos ? 'Aparecerá en <b>todos</b> los productos.' : `Aparecerá en <b>${n}</b> producto(s).`;
+}
+$('od-cats').onclick = e => { const b = e.target.closest('[data-odc]'); if (!b) return; const c = b.dataset.odc, i = st.od.cats.findIndex(x => x.toLowerCase() === c.toLowerCase()); i >= 0 ? st.od.cats.splice(i, 1) : st.od.cats.push(c); pintarDonde(); };
+$('od-prods').onclick = e => { const b = e.target.closest('[data-odp]'); if (!b) return; const id = Number(b.dataset.odp), i = st.od.prods.indexOf(id); i >= 0 ? st.od.prods.splice(i, 1) : st.od.prods.push(id); pintarDonde(); };
+$('od-buscar').oninput = pintarDonde;
+$('od-todos').onclick = () => { st.od.cats = []; st.od.prods = []; pintarDonde(); };
+$('od-x').onclick = $('od-no').onclick = () => $('m-obsdonde').classList.add('oculto');
+$('od-ok').onclick = async () => {
+  const b = $('od-ok'); b.disabled = true;
+  const { error } = await sb.from('obs_rapidas').update({ categorias: st.od.cats, productos: st.od.prods }).eq('id', st.od.o.id);
+  b.disabled = false;
+  if (error) return toast(errTxt(error));
+  $('m-obsdonde').classList.add('oculto'); toast('✓ Guardado');
+  await cargarObs(); pintarObsEd(); if (st.pp) pintarProducto();
+};
+
 // ===== CAMBIAR OBSERVACIÓN (con botones, escribir es opcional) =====
 function abrirObsItem(it) {
   if (!it) return;
   const partes = String(it.nota || '').split(',').map(x => x.trim()).filter(Boolean);
-  st.oi = { id: it.id, sel: partes.filter(x => OBS_PROD.includes(x)) };
+  st.oi = { id: it.id, sel: partes.filter(x => OBS_PROD.includes(x)), p: st.productos.find(x => x.id === Number(it.producto_id)) };
   const otra = partes.filter(x => !OBS_PROD.includes(x)).join(', ');
   $('oi-nom').textContent = `${Number(it.cantidad)}× ${it.productos?.nombre || ''}`;
   $('oi-texto').value = otra; $('oi-otra').open = !!otra; $('oi-err').textContent = '';
   pintarObsItem(); $('m-obsit').classList.remove('oculto');
 }
-function pintarObsItem() { $('oi-chips').innerHTML = OBS_PROD.map(c => `<button data-oich="${esc(c)}" class="${st.oi.sel.includes(c) ? 'on' : ''}">${esc(c)}</button>`).join(''); }
+function pintarObsItem() { const ops = obsDe(st.oi.p); st.oi.sel.forEach(c => { if (!ops.includes(c)) ops.push(c); }); $('oi-chips').innerHTML = ops.map(c => `<button data-oich="${esc(c)}" class="${st.oi.sel.includes(c) ? 'on' : ''}">${esc(c)}</button>`).join(''); }
 $('oi-chips').onclick = e => { const b = e.target.closest('[data-oich]'); if (!b) return; const c = b.dataset.oich, k = st.oi.sel.indexOf(c); k >= 0 ? st.oi.sel.splice(k, 1) : st.oi.sel.push(c); pintarObsItem(); };
 async function guardarObsItem(nota) {
   const { error } = await sb.from('pedido_items').update({ nota: nota || null }).eq('id', st.oi.id);
