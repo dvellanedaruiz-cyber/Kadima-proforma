@@ -209,7 +209,7 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
     <button id="b-editar">✎ Editar plano</button>
     <button id="b-comanda" title="Imprimir comanda al enviar (solo en este equipo)">🖨️ Comanda</button>
     <span class="usr" id="usr" title="Cambiar de usuario"></span>
-    <span style="font-size:11px;opacity:.7">v1.11</span>
+    <span style="font-size:11px;opacity:.7">v1.12</span>
   </div>
   <div class="leyenda"><span><i style="background:#fff;border:1px solid var(--borde)"></i>Libre</span><span><i style="background:var(--rojo)"></i>Ocupada</span><span><i style="background:var(--ok)"></i>Hay algo por servir</span><span>⚠️ Producto de despacho por llevar a la mesa</span><span>👨‍🍳 Cocina aún preparando</span><span>🔗 Mesas unidas</span></div>
   <div class="aviso-modo oculto" id="aviso-modo"></div>
@@ -752,7 +752,7 @@ async function guardarAjustesMesas() {
 // ⚡ directa: se puede marcar una categoría principal entera (ej. Abarrotes) o solo una categoría de adentro (ej. Bebidas › Embotellados)
 const enDirectas = n => !!n && (st.aj.cats_directas || []).some(c => String(c || '').toLowerCase() === String(n).toLowerCase());
 // devuelve POR QUÉ categoría es directa ('' = abre la pantalla de opciones)
-const esDirecta = p => { const c = catDe(p.categoria_id); if (!c) return ''; return enDirectas(c.nombre) ? c.nombre : enDirectas(principalDe(c)) ? principalDe(c) : ''; };
+const esDirecta = p => '';   // sin productos directos: todo abre su pantalla de opciones
 function catsOrdenadas() {
   const pr = [...new Set(st.productos.map(p => principalDe(catDe(p.categoria_id))))].sort((a, b) => a.localeCompare(b, 'es'));
   const pos = c => { const i = st.aj.orden_cats.findIndex(x => x.toLowerCase() === c.toLowerCase()); return i < 0 ? 999 : i; };
@@ -763,8 +763,8 @@ function pintarCats() {
   const b = (k, t) => `<button data-c="${esc(k)}" class="${st.cat === k ? 'activa' : ''}">${esc(t)}</button>`;
   $('dm-cats').classList.toggle('ordenando', ord);
   $('dm-cats').innerHTML = ord
-    ? pr.map((p, i) => `<button data-c="p:${esc(p)}" class="${st.cat === 'p:' + p ? 'activa' : ''}"><span class="mv" data-mv="${i}" data-d="-1">◀</span>${esc(p)}<span class="dir ${st.aj.cats_directas.some(c => c.toLowerCase() === p.toLowerCase()) ? 'on' : ''}" data-dir="${esc(p)}" title="Directa: se agrega al toque, sin observaciones">⚡ directa</span><span class="mv" data-mv="${i}" data-d="1">▶</span></button>`).join('')
-      + `<button class="editar" id="b-sindir">⚡ Quitar todas las directas</button><button class="editar" id="b-ordcats">✓ Listo</button>`
+    ? pr.map((p, i) => `<button data-c="p:${esc(p)}" class="${st.cat === 'p:' + p ? 'activa' : ''}"><span class="mv" data-mv="${i}" data-d="-1">◀</span>${esc(p)}<span class="mv" data-mv="${i}" data-d="1">▶</span></button>`).join('')
+      + `<button class="editar" id="b-ordcats">✓ Listo</button>`
     : b('fav', '⭐ Favoritos') + b('todas', 'Todas') + pr.map(p => b('p:' + p, p)).join('')
       + `<button class="editar" id="b-editfav">${st.editFav ? '✓ Listo' : '✎ Editar favoritos'}</button><button class="editar" id="b-ordcats">⇄ Ordenar categorías</button>`;
 }
@@ -773,7 +773,8 @@ function pintarSubcats() {
   const box = $('dm-subcats'), pr = st.cat.startsWith('p:') ? st.cat.slice(2) : null;
   const subs = pr ? st.categorias.filter(c => principalDe(c) === pr && c.nombre !== pr).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')) : [];
   const n = id => st.productos.filter(p => String(p.categoria_id) === String(id)).length;
-  if (st.ordCats) {   // marcar ⚡ directa por categoría
+  if (st.ordCats) { box.classList.add('oculto'); return; }
+  if (false) {
     box.classList.toggle('oculto', !subs.length);
     box.innerHTML = enDirectas(pr)
       ? `<span style="padding:8px;font-size:14px">⚡ Todo <b>${esc(pr)}</b> es directa. Quítale el ⚡ arriba si quieres elegir solo algunas categorías.</span>`
@@ -795,7 +796,7 @@ function pintarProds() {
   const l = st.productos.filter(p => (!q || p.nombre.toLowerCase().includes(q) || String(p.codigo || '').toLowerCase().includes(q))
     && (q || st.cat === 'todas' || (st.cat === 'fav' ? (st.editFav || esFav(p)) : principalDe(catDe(p.categoria_id)) === st.cat.slice(2) && (!st.sub || String(p.categoria_id) === st.sub))));
   $('dm-prods').classList.toggle('editfav', !!st.editFav);
-  $('dm-prods').innerHTML = l.slice(0, 300).map(p => `<button class="prod ${p.area_preparacion === 'cocina' ? 'coc' : ''}" data-p="${p.id}">${st.editFav || esFav(p) ? `<span class="star">${esFav(p) ? '⭐' : '☆'}</span>` : ''}<b>${esc(p.nombre)}${esDirecta(p) ? ' <small title="Se agrega directo, sin opciones" style="color:#b7791f">⚡</small>' : ''}</b><span>${p.precio_libre ? 'precio libre' : S(p.precio_venta)}</span></button>`).join('')
+  $('dm-prods').innerHTML = l.slice(0, 300).map(p => `<button class="prod ${p.area_preparacion === 'cocina' ? 'coc' : ''}" data-p="${p.id}">${st.editFav || esFav(p) ? `<span class="star">${esFav(p) ? '⭐' : '☆'}</span>` : ''}<b>${esc(p.nombre)}</b><span>${p.precio_libre ? 'precio libre' : S(p.precio_venta)}</span></button>`).join('')
     || `<p style="color:var(--gris)">${st.cat === 'fav' ? 'Aún no hay favoritos. Toca "✎ Editar favoritos" y marca con ⭐ los productos que más piden en mesa.' : 'Sin productos.'}</p>`;
 }
 $('dm-cats').onclick = async e => {
