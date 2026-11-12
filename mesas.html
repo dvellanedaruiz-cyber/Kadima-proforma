@@ -101,6 +101,10 @@ input,select,textarea{font:inherit;padding:10px 12px;border:1px solid var(--bord
 .prod{position:relative}
 .prod .star{position:absolute;top:6px;right:8px;font-size:18px;line-height:1}
 .prods.editfav .prod{outline:2px dashed #f2a900;outline-offset:-2px}
+.subcats{margin-top:-2px;padding:6px 8px;background:#fdf1ef;border-radius:10px}
+.subcats button{background:#fff;border:1.5px solid var(--borde);font-size:14px;padding:7px 12px}
+.subcats button.activa{background:var(--rojo);border-color:var(--rojo);color:#fff}
+.subcats small{font-weight:600;opacity:.7;margin-left:4px}
 .cats .editar{background:#fff3c4;color:#6b4c15}
 .cats.ordenando button[data-c^="p:"]{background:#fff;border:2px dashed var(--borde);display:flex;align-items:center;gap:6px}
 .cats .mv{background:var(--fondo);border-radius:6px;padding:0 6px;font-size:15px;cursor:pointer}
@@ -204,7 +208,7 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
     <button id="b-editar">✎ Editar plano</button>
     <button id="b-comanda" title="Imprimir comanda al enviar (solo en este equipo)">🖨️ Comanda</button>
     <span class="usr" id="usr" title="Cambiar de usuario"></span>
-    <span style="font-size:11px;opacity:.7">v1.7</span>
+    <span style="font-size:11px;opacity:.7">v1.9</span>
   </div>
   <div class="leyenda"><span><i style="background:#fff;border:1px solid var(--borde)"></i>Libre</span><span><i style="background:var(--rojo)"></i>Ocupada</span><span><i style="background:var(--ok)"></i>Hay algo por servir</span><span>⚠️ Producto de despacho por llevar a la mesa</span><span>👨‍🍳 Cocina aún preparando</span><span>🔗 Mesas unidas</span></div>
   <div class="aviso-modo oculto" id="aviso-modo"></div>
@@ -244,6 +248,7 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
       <h3>➕ Agregar productos</h3>
       <input id="dm-buscar" placeholder="Buscar producto…" autocomplete="off" style="margin-bottom:6px">
       <div class="cats" id="dm-cats"></div>
+      <div class="cats subcats oculto" id="dm-subcats"></div>
       <div class="prods" id="dm-prods"></div>
     </div>
   </div>
@@ -500,7 +505,18 @@ async function abrirApp() {
     setInterval(() => { cargar().then(() => st.actual && pintarDetalle()); }, 20000);
   }
 }
-async function cargar() {
+// una sola carga a la vez: si piden otra mientras carga, se hace una más al terminar
+// (evita que una respuesta vieja pise a una nueva y la pantalla "parpadee")
+let cargando = null, otraVez = false;
+function cargar() {
+  if (cargando) { otraVez = true; return cargando; }
+  cargando = (async () => {
+    try { do { otraVez = false; await cargarYa(); } while (otraVez); }
+    finally { cargando = null; }
+  })();
+  return cargando;
+}
+async function cargarYa() {
   if (!st.disp) return;
   const [m, a] = await Promise.all([
     sb.from('mesas').select('*').eq('sede_id', st.disp.sede_id).eq('activo', true).order('orden').order('id'),
@@ -568,7 +584,7 @@ function pintarGrid() {
   const fuera = st.abiertas.filter(a => !usados.has(a.id));
   if (fuera.length) html += `<div class="zona-h">Otras cuentas</div>` + fuera.map(a => tile(a.mesa, a, true)).join('');
   if (st.modo === 'editar') html += `<div class="zona-h"><button data-nuevazona="1">+ Nueva zona</button></div>`;
-  $('grid').innerHTML = html;
+  if (html !== pintarGrid.ult) { $('grid').innerHTML = html; pintarGrid.ult = html; }
   const av = $('aviso-modo');
   av.classList.toggle('oculto', st.modo === 'normal');
   if (st.modo === 'unir') av.innerHTML = `🔗 Toca las mesas que quieres unir (${st.sel.size} elegidas). <button class="btn" id="b-unir-ok" ${st.sel.size < 2 ? 'disabled' : ''}>Unir ${st.sel.size || ''}</button><button class="btn-sec" id="b-unir-no">Cancelar</button>`;
@@ -661,6 +677,11 @@ async function unirSeleccion() {
   const label = etiquetaUnion(unicos);
   const cuentas = [...new Set([...st.sel].map(n => cuentaDe(n)).filter(Boolean))];
   if (!(await preguntar(`¿Unir ${unicos.join(' y ')} en una sola cuenta?\n→ ${label}${cuentas.length > 1 ? `\nSe juntarán ${cuentas.length} cuentas abiertas.` : ''}`, '🔗 Sí, unir'))) return;
+  // se ve unida al instante; la base se actualiza por detrás
+  const antes = st.abiertas.slice();
+  if (!cuentas.length) st.abiertas.push({ id: 'tmp' + Date.now(), sede_id: st.disp.sede_id, mesa: label, total: 0, creado_en: new Date().toISOString() });
+  else { cuentas[0].mesa = label; st.abiertas = st.abiertas.filter(x => !cuentas.slice(1).includes(x)); }
+  st.modo = 'normal'; st.sel.clear(); pintarGrid();
   try {
     if (!cuentas.length) {
       const { error } = await sb.rpc('mesa_abierta', { p_sede: st.disp.sede_id, p_canal: st.canal.id, p_mesa: label, p_mozo: st.usuario.rol === 'mozo' ? st.usuario.id : null, p_usuario: st.usuario.id });
@@ -669,8 +690,8 @@ async function unirSeleccion() {
       for (const c of cuentas) { const { error } = await sb.rpc('cambiar_mesa', { p_pedido: c.id, p_nueva: label }); if (error) throw error; }
     }
     toast(`✓ Unidas: ${label}`);
-  } catch (e) { aviso(errTxt(e)); }
-  st.modo = 'normal'; st.sel.clear(); await cargar();
+  } catch (e) { st.abiertas = antes; pintarGrid(); aviso(errTxt(e)); }
+  cargar();
 }
 
 // ===================== DETALLE DE MESA =====================
@@ -684,6 +705,7 @@ function abrirMesa(nombre) {
 }
 function cuentaActual() { return st.actual ? (st.actual.id ? st.abiertas.find(a => a.id === st.actual.id) : null) || cuentaDe(st.actual.nombre) : null; }
 function pintarDetalle() {
+  if (!st.actual) return;   // ya se cerró la mesa
   const a = cuentaActual();
   if (a) st.actual.id = a.id;
   const its = a ? (st.items[a.id] || []) : [];
@@ -742,10 +764,22 @@ function pintarCats() {
     : b('fav', '⭐ Favoritos') + b('todas', 'Todas') + pr.map(p => b('p:' + p, p)).join('')
       + `<button class="editar" id="b-editfav">${st.editFav ? '✓ Listo' : '✎ Editar favoritos'}</button><button class="editar" id="b-ordcats">⇄ Ordenar categorías</button>`;
 }
+// categorías (las de /recetas) dentro de la principal elegida: Bebidas › Jugos Clásicos, Bebidas Calientes…
+function pintarSubcats() {
+  const box = $('dm-subcats'), pr = st.cat.startsWith('p:') ? st.cat.slice(2) : null;
+  const subs = pr && !st.ordCats ? st.categorias.filter(c => principalDe(c) === pr && c.nombre !== pr).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')) : [];
+  box.classList.toggle('oculto', subs.length < 2 || !!$('dm-buscar').value.trim());
+  if (subs.length < 2) { st.sub = null; return; }
+  const n = id => st.productos.filter(p => p.categoria_id === id).length;
+  box.innerHTML = `<button data-sub="" class="${!st.sub ? 'activa' : ''}">Todo ${esc(pr)}</button>`
+    + subs.map(c => `<button data-sub="${c.id}" class="${st.sub === c.id ? 'activa' : ''}">${esc(c.nombre)}<small>${n(c.id)}</small></button>`).join('');
+}
+$('dm-subcats').onclick = e => { const b = e.target.closest('[data-sub]'); if (!b) return; st.sub = b.dataset.sub ? Number(b.dataset.sub) : null; pintarSubcats(); pintarProds(); };
 function pintarProds() {
+  pintarSubcats();
   const q = $('dm-buscar').value.trim().toLowerCase();
   const l = st.productos.filter(p => (!q || p.nombre.toLowerCase().includes(q) || String(p.codigo || '').toLowerCase().includes(q))
-    && (q || st.cat === 'todas' || (st.cat === 'fav' ? (st.editFav || esFav(p)) : principalDe(catDe(p.categoria_id)) === st.cat.slice(2))));
+    && (q || st.cat === 'todas' || (st.cat === 'fav' ? (st.editFav || esFav(p)) : principalDe(catDe(p.categoria_id)) === st.cat.slice(2) && (!st.sub || p.categoria_id === st.sub))));
   $('dm-prods').classList.toggle('editfav', !!st.editFav);
   $('dm-prods').innerHTML = l.slice(0, 300).map(p => `<button class="prod ${p.area_preparacion === 'cocina' ? 'coc' : ''}" data-p="${p.id}">${st.editFav || esFav(p) ? `<span class="star">${esFav(p) ? '⭐' : '☆'}</span>` : ''}<b>${esc(p.nombre)}</b><span>${p.precio_libre ? 'precio libre' : S(p.precio_venta)}</span></button>`).join('')
     || `<p style="color:var(--gris)">${st.cat === 'fav' ? 'Aún no hay favoritos. Toca "✎ Editar favoritos" y marca con ⭐ los productos que más piden en mesa.' : 'Sin productos.'}</p>`;
@@ -760,7 +794,7 @@ $('dm-cats').onclick = async e => {
     return;
   }
   if (e.target.closest('#b-editfav')) { st.editFav = !st.editFav; if (st.editFav && !$('dm-buscar').value) st.cat = 'todas'; pintarCats(); return pintarProds(); }
-  const b = e.target.closest('[data-c]'); if (!b) return; st.cat = b.dataset.c; pintarCats(); pintarProds();
+  const b = e.target.closest('[data-c]'); if (!b) return; if (st.cat !== b.dataset.c) st.sub = null; st.cat = b.dataset.c; pintarCats(); pintarProds();
 };
 $('dm-buscar').oninput = pintarProds;
 $('dm-prods').onclick = async e => {
@@ -1168,9 +1202,11 @@ $('dm-separar').onclick = () => {
   const a = cuentaActual(); if (!a) return;
   const partes = cuadrosDe(a.mesa).map(x => st.mesas.find(m => clave(m.nombre) === x)?.nombre || x);
   elegirMesa('Separar mesas', 'La cuenta se queda en la mesa que elijas; las demás quedan libres.', partes, async n => {
+    const antes = a.mesa;
+    a.mesa = n; st.actual = { nombre: n, id: a.id }; pintarGrid(); pintarDetalle();   // se ve separada al instante
     const { error } = await sb.rpc('cambiar_mesa', { p_pedido: a.id, p_nueva: n });
-    if (error) return $('dm-error').textContent = errTxt(error);
-    toast(`✓ La cuenta quedó en ${n}`); st.actual = { nombre: n, id: a.id }; await cargar(); pintarDetalle();
+    if (error) { a.mesa = antes; pintarGrid(); pintarDetalle(); return $('dm-error').textContent = errTxt(error); }
+    toast(`✓ La cuenta quedó en ${n}`); await cargar(); pintarDetalle();
   });
 };
 // --- precuenta
