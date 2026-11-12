@@ -204,7 +204,7 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
     <button id="b-editar">✎ Editar plano</button>
     <button id="b-comanda" title="Imprimir comanda al enviar (solo en este equipo)">🖨️ Comanda</button>
     <span class="usr" id="usr" title="Cambiar de usuario"></span>
-    <span style="font-size:11px;opacity:.7">v1.4</span>
+    <span style="font-size:11px;opacity:.7">v1.7</span>
   </div>
   <div class="leyenda"><span><i style="background:#fff;border:1px solid var(--borde)"></i>Libre</span><span><i style="background:var(--rojo)"></i>Ocupada</span><span><i style="background:var(--ok)"></i>Hay algo por servir</span><span>⚠️ Producto de despacho por llevar a la mesa</span><span>👨‍🍳 Cocina aún preparando</span><span>🔗 Mesas unidas</span></div>
   <div class="aviso-modo oculto" id="aviso-modo"></div>
@@ -230,12 +230,13 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
       </div>
       <div class="acciones">
         <button class="btn-ok oculto" id="dm-servido">🍽️ Marcar servido</button>
-        <button class="btn-sec" id="dm-precuenta">Precuenta</button>
+        <button class="btn-sec oculto" id="dm-precuenta" hidden>Precuenta</button>
         <button class="btn-sec" id="dm-reimp">🖨️ Reimprimir comanda</button>
         <button class="btn-sec" id="dm-mover">Cambiar mesa</button>
         <button class="btn-sec oculto" id="dm-separar">Separar</button>
         <button class="btn-sec" id="dm-anular">Anular mesa</button>
-        <button class="btn" id="dm-cobrar">💵 Cobrar</button>
+        <button class="btn oculto" id="dm-cobrar" hidden>💵 Cobrar</button>
+        <p style="flex-basis:100%;margin:6px 0 0;color:var(--gris);font-size:13px;text-align:center">🧾 La precuenta y el cobro se hacen en caja.</p>
       </div>
       <div class="error" id="dm-error"></div>
     </div>
@@ -369,6 +370,15 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
     <button class="btn-sec" id="pr-imprimir" style="width:100%;margin-top:10px">🖨️ Imprimir</button>
   </div>
 </div>
+<!-- ===== AVISOS Y PREGUNTAS (en la misma pantalla, sin ventanas del navegador) ===== -->
+<div class="modal oculto" id="m-dlg" style="z-index:95">
+  <div class="caja" style="max-width:460px">
+    <p id="dg-msg" style="font-size:18px;font-weight:700;margin:0 0 12px;white-space:pre-line;line-height:1.4"></p>
+    <div class="chipsg oculto" id="dg-ops" style="margin-bottom:10px"></div>
+    <input id="dg-in" class="oculto" style="font-size:18px;margin-bottom:12px">
+    <div class="fila"><button class="btn-sec" id="dg-no" style="padding:14px;font-size:16px">Cancelar</button><button class="btn" id="dg-si" style="padding:14px;font-size:16px">Aceptar</button></div>
+  </div>
+</div>
 <div id="ticket"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
@@ -396,6 +406,28 @@ const EMPRESA = { nombre: 'Kadima Pastelería & Panadería' };
 
 const st = { usuario: null, disp: null, caja: null, canal: null, productos: [], categorias: [], cat: 'todas',
   mesas: [], abiertas: [], items: {}, modo: 'normal', sel: new Set(), actual: null, envio: [], cobro: null };
+
+// ===================== AVISOS Y PREGUNTAS EN PANTALLA =====================
+// reemplazan a confirm / prompt / alert del navegador
+function dialogo({ msg, input = false, valor = '', ops = null, si = 'Aceptar', no = 'Cancelar', soloOk = false, num = false }) {
+  return new Promise(res => {
+    $('dg-msg').textContent = msg;
+    $('dg-in').classList.toggle('oculto', !input); $('dg-in').value = valor; $('dg-in').inputMode = num ? 'decimal' : 'text';
+    $('dg-ops').classList.toggle('oculto', !ops);
+    $('dg-ops').innerHTML = (ops || []).map(o => `<button data-op="${esc(o)}">${esc(o)}</button>`).join('');
+    $('dg-si').textContent = si; $('dg-no').textContent = no; $('dg-no').classList.toggle('oculto', soloOk);
+    $('m-dlg').classList.remove('oculto');
+    if (input) setTimeout(() => { $('dg-in').focus(); $('dg-in').select(); }, 50);
+    const fin = v => { $('m-dlg').classList.add('oculto'); $('dg-si').onclick = $('dg-no').onclick = $('dg-ops').onclick = $('dg-in').onkeydown = null; res(v); };
+    $('dg-si').onclick = () => fin(input ? $('dg-in').value : true);
+    $('dg-no').onclick = () => fin(input ? null : false);
+    $('dg-ops').onclick = e => { const b = e.target.closest('[data-op]'); if (b) fin(b.dataset.op); };
+    $('dg-in').onkeydown = e => { if (e.key === 'Enter') $('dg-si').click(); };
+  });
+}
+const preguntar = (msg, si = 'Sí', no = 'Cancelar') => dialogo({ msg, si, no });
+const pedirTexto = (msg, valor = '', extra = {}) => dialogo({ msg, input: true, valor, ...extra });
+const aviso = msg => dialogo({ msg, soloOk: true, si: 'Entendido' });
 
 // ===================== SESIÓN Y PIN =====================
 function vista(id) { ['v-login', 'v-pin', 'v-app'].forEach(v => $(v).classList.toggle('oculto', v !== id)); }
@@ -428,7 +460,7 @@ async function validarPin() {
   if (!ROLES.includes(u.rol)) { $('pin-error').textContent = 'Este usuario no atiende mesas.'; pin = ''; return dibujarPin(); }
   st.usuario = u; abrirApp();
 }
-$('usr').onclick = () => { if (confirm('¿Cambiar de usuario?')) pedirPin(); };
+$('usr').onclick = async () => { if (await preguntar('¿Cambiar de usuario?', 'Sí, cambiar')) pedirPin(); };
 
 // ===================== CARGA =====================
 let canalRT = null;
@@ -488,13 +520,15 @@ async function cargar() {
 
 // ===================== PLANO DE MESAS =====================
 // "Mesa 3+4" ocupa los cuadros "Mesa 3" y "Mesa 4"; "Barra + Mesa 2" ocupa "Barra" y "Mesa 2"
+// "Mesa 05" y "Mesa 5" son la misma mesa (se compara el número, sin ceros a la izquierda)
+const clave = n => { const t = String(n || '').trim().toLowerCase(), m = t.match(/^mesa\s*0*(\d+)$/); return m ? 'mesa ' + Number(m[1]) : t; };
 function cuadrosDe(label) {
   const m = String(label || '').match(/^Mesa\s+(\d+(?:\+\d+)+)$/i);
-  if (m) return m[1].split('+').map(n => 'mesa ' + n);
-  return String(label || '').split(/\s+\+\s+/).map(x => x.trim().toLowerCase());
+  if (m) return m[1].split('+').map(n => 'mesa ' + Number(n));
+  return String(label || '').split(/\s+\+\s+/).map(clave);
 }
 const unida = label => cuadrosDe(label).length > 1;
-function cuentaDe(nombre) { return st.abiertas.find(a => cuadrosDe(a.mesa).includes(nombre.toLowerCase())); }
+function cuentaDe(nombre) { return st.abiertas.find(a => cuadrosDe(a.mesa).includes(clave(nombre))); }
 // estado de la mesa por sus productos (sin contar extras):
 //  ⚠️ despacho (vitrina) por llevar · 👨‍🍳 cocina aún preparando (cocina avisa con su campana cuando sale)
 function iconosMesa(a) {
@@ -554,7 +588,7 @@ function zonas() { const z = []; st.mesas.forEach(m => { if (!z.includes(zonaDe(
 $('grid').onclick = async e => {
   const b = e.target.closest('button');
   if (b && b.dataset.renzona) return renombrarZona(b.dataset.renzona);
-  if (b && b.dataset.nuevazona) { const n = prompt('Nombre de la nueva zona (ej. Terraza, Segundo piso):', 'Zona ' + (zonas().length + 1)); if (n && n.trim()) { st.zonasNuevas = [...(st.zonasNuevas || []), n.trim()]; pintarGrid(); } return; }
+  if (b && b.dataset.nuevazona) { const n = await pedirTexto('Nombre de la nueva zona (ej. Terraza, Segundo piso):', 'Zona ' + (zonas().length + 1), { si: 'Crear' }); if (n && n.trim()) { st.zonasNuevas = [...(st.zonasNuevas || []), n.trim()]; pintarGrid(); } return; }
   if (b && st.modo === 'editar') return editarMesa(b);
   const nz = e.target.closest('[data-nueva]'); if (nz) return agregarMesa(nz.dataset.nueva);
   const t = e.target.closest('[data-mesa]'); if (!t) return;
@@ -564,20 +598,20 @@ $('grid').onclick = async e => {
   abrirMesa(nombre);
 };
 async function renombrarZona(z) {
-  const n = prompt('Nuevo nombre de la zona:', z); if (!n || !n.trim() || n.trim() === z) return;
+  const n = await pedirTexto('Nuevo nombre de la zona:', z, { si: 'Guardar' }); if (!n || !n.trim() || n.trim() === z) return;
   const ids = st.mesas.filter(m => zonaDe(m) === z).map(m => m.id);
   st.zonasNuevas = (st.zonasNuevas || []).map(x => x === z ? n.trim() : x);
-  if (ids.length) { const { error } = await sb.from('mesas').update({ zona: n.trim() }).in('id', ids); if (error) return alert(/zona/.test(error.message) ? 'Falta correr 62_mesas_zonas.sql en Supabase.' : errTxt(error)); }
+  if (ids.length) { const { error } = await sb.from('mesas').update({ zona: n.trim() }).in('id', ids); if (error) return aviso(/zona/.test(error.message) ? 'Falta correr 62_mesas_zonas.sql en Supabase.' : errTxt(error)); }
   cargar();
 }
 async function agregarMesa(zona) {
   const nums = st.mesas.map(m => Number((m.nombre.match(/^Mesa\s+(\d+)$/i) || [])[1] || 0));
   const sug = 'Mesa ' + (Math.max(0, ...nums) + 1);
-  const n = prompt('Nombre de la mesa (ej. "Mesa 9", "Barra", "Terraza 1"):', sug);
+  const n = await pedirTexto('Nombre de la mesa (ej. "Mesa 9", "Barra", "Terraza 1"):', sug, { si: 'Agregar' });
   if (!n || !n.trim()) return;
   const nombre = /^\d+$/.test(n.trim()) ? 'Mesa ' + n.trim() : n.trim().replace(/^mesa\s*/i, m => 'Mesa ');
   const { error } = await sb.from('mesas').insert({ sede_id: st.disp.sede_id, nombre, orden: Math.max(0, ...st.mesas.map(m => m.orden)) + 1, ...(zona ? { zona } : {}) });
-  if (error) return alert(/duplicate|unique/i.test(error.message) ? 'Ya existe una mesa con ese nombre.' : errTxt(error));
+  if (error) return aviso(/duplicate|unique/i.test(error.message) ? 'Ya existe una mesa con ese nombre.' : errTxt(error));
   cargar();
 }
 async function editarMesa(b) {
@@ -586,21 +620,21 @@ async function editarMesa(b) {
   if (b.dataset.zona) {
     const zs = zonas(), otras = zs.filter(z => z !== zonaDe(m));
     let dest = otras.length === 1 ? otras[0] : null;
-    if (!dest) { const n = prompt(`¿A qué zona pasa ${m.nombre}?\n${zs.map((z, i) => `${i + 1}. ${z}`).join('\n')}\n\nEscribe el número o el nombre de una zona nueva:`); if (!n || !n.trim()) return; dest = zs[Number(n) - 1] || n.trim(); }
-    else if (!confirm(`¿Pasar ${m.nombre} a ${dest}?`)) return;
+    if (!dest) { const n = await pedirTexto(`¿A qué zona pasa ${m.nombre}?\nToca una zona o escribe el nombre de una nueva:`, '', { ops: otras, si: 'Pasar' }); if (!n || !n.trim()) return; dest = n.trim(); }
+    else if (!(await preguntar(`¿Pasar ${m.nombre} a ${dest}?`, 'Sí, pasar'))) return;
     const { error } = await sb.from('mesas').update({ zona: dest }).eq('id', id);
-    if (error) return alert(/zona/.test(error.message) ? 'Falta correr 62_mesas_zonas.sql en Supabase.' : errTxt(error));
+    if (error) return aviso(/zona/.test(error.message) ? 'Falta correr 62_mesas_zonas.sql en Supabase.' : errTxt(error));
   }
   if (b.dataset.ren) {
-    if (cuentaDe(m.nombre)) return alert('Solo se puede renombrar una mesa libre.');
-    const n = prompt('Nuevo nombre:', m.nombre); if (!n || !n.trim()) return;
+    if (cuentaDe(m.nombre)) return aviso('Solo se puede renombrar una mesa libre.');
+    const n = await pedirTexto('Nuevo nombre de la mesa:', m.nombre, { si: 'Guardar' }); if (!n || !n.trim()) return;
     const { error } = await sb.from('mesas').update({ nombre: /^\d+$/.test(n.trim()) ? 'Mesa ' + n.trim() : n.trim() }).eq('id', id);
-    if (error) return alert(errTxt(error));
+    if (error) return aviso(errTxt(error));
   }
   if (b.dataset.del) {
-    if (!confirm(`¿Quitar ${m.nombre} del plano?`)) return;
+    if (!(await preguntar(`¿Quitar ${m.nombre} del plano?`, 'Sí, quitar'))) return;
     const { error } = await sb.from('mesas').update({ activo: false }).eq('id', id);
-    if (error) return alert(errTxt(error));
+    if (error) return aviso(errTxt(error));
   }
   if (b.dataset.izq || b.dataset.der) {
     // se ordena dentro de su zona; el orden global queda zona por zona
@@ -610,7 +644,7 @@ async function editarMesa(b) {
     [enZona[i], enZona[j]] = [enZona[j], enZona[i]];
     const lista = zonas().flatMap(z => z === zonaDe(m) ? enZona : st.mesas.filter(x => zonaDe(x) === z));
     const res = await Promise.all(lista.map((x, k) => x.orden === k + 1 ? null : sb.from('mesas').update({ orden: k + 1 }).eq('id', x.id)));
-    const er = res.find(r => r && r.error); if (er) return alert(errTxt(er.error));
+    const er = res.find(r => r && r.error); if (er) return aviso(errTxt(er.error));
   }
   cargar();
 }
@@ -621,12 +655,12 @@ function etiquetaUnion(nombres) {
   return nombres.join(' + ');
 }
 async function unirSeleccion() {
-  const nombres = [...st.sel].flatMap(n => { const a = cuentaDe(n); return a ? cuadrosDe(a.mesa).map(x => st.mesas.find(m => m.nombre.toLowerCase() === x)?.nombre || x) : [n]; });
+  const nombres = [...st.sel].flatMap(n => { const a = cuentaDe(n); return a ? cuadrosDe(a.mesa).map(x => st.mesas.find(m => clave(m.nombre) === x)?.nombre || x) : [n]; });
   const unicos = [...new Set(nombres)];
   if (unicos.length < 2) return;
   const label = etiquetaUnion(unicos);
   const cuentas = [...new Set([...st.sel].map(n => cuentaDe(n)).filter(Boolean))];
-  if (!confirm(`¿Unir ${unicos.join(', ')} en una sola cuenta (${label})?${cuentas.length > 1 ? `\nSe juntarán ${cuentas.length} cuentas abiertas.` : ''}`)) return;
+  if (!(await preguntar(`¿Unir ${unicos.join(' y ')} en una sola cuenta?\n→ ${label}${cuentas.length > 1 ? `\nSe juntarán ${cuentas.length} cuentas abiertas.` : ''}`, '🔗 Sí, unir'))) return;
   try {
     if (!cuentas.length) {
       const { error } = await sb.rpc('mesa_abierta', { p_sede: st.disp.sede_id, p_canal: st.canal.id, p_mesa: label, p_mozo: st.usuario.rol === 'mozo' ? st.usuario.id : null, p_usuario: st.usuario.id });
@@ -635,7 +669,7 @@ async function unirSeleccion() {
       for (const c of cuentas) { const { error } = await sb.rpc('cambiar_mesa', { p_pedido: c.id, p_nueva: label }); if (error) throw error; }
     }
     toast(`✓ Unidas: ${label}`);
-  } catch (e) { alert(errTxt(e)); }
+  } catch (e) { aviso(errTxt(e)); }
   st.modo = 'normal'; st.sel.clear(); await cargar();
 }
 
@@ -729,12 +763,12 @@ $('dm-cats').onclick = async e => {
   const b = e.target.closest('[data-c]'); if (!b) return; st.cat = b.dataset.c; pintarCats(); pintarProds();
 };
 $('dm-buscar').oninput = pintarProds;
-$('dm-prods').onclick = e => {
+$('dm-prods').onclick = async e => {
   const b = e.target.closest('[data-p]'); if (!b) return;
   const p = st.productos.find(x => x.id === Number(b.dataset.p));
   if (st.editFav) return alternarFav(p);
   let precio = Number(p.precio_venta || 0);
-  if (p.precio_libre || !(precio > 0)) { const v = prompt(`Precio de ${p.nombre} (S/):`); if (v === null) return; precio = Number(String(v).replace(',', '.')); if (!(precio > 0)) return; }
+  if (p.precio_libre || !(precio > 0)) { const v = await pedirTexto(`Precio de ${p.nombre} (S/):`, '', { num: true, si: 'Agregar' }); if (v === null) return; precio = Number(String(v).replace(',', '.')); if (!(precio > 0)) return; }
   const l = { producto_id: p.id, nombre: p.nombre, precio_unit: precio, cantidad: 1, chips: [], texto: '', area: p.area_preparacion };
   // categorías directas (Abarrotes, Embolsados…): se agregan al toque, sin observaciones ni extras
   if (esDirecta(p) && !esExtra(p)) {
@@ -1006,10 +1040,10 @@ $('no-borrar').onclick = () => { st.notaSel = []; st.notaTxt = ''; st.notaOrden 
 // marcar / desmarcar favorito (lo ven todos los equipos de Mesas)
 async function alternarFav(p) {
   const col = st.favCol ? 'favorito_mesa' : 'favorito', nuevo = !esFav(p);
-  if (!st.favCol && !confirm('Falta correr 55_favoritos_mesa.sql: por ahora se usarían los mismos favoritos de la caja. ¿Continuar?')) return;
+  if (!st.favCol && !(await preguntar('Falta correr 55_favoritos_mesa.sql: por ahora se usarían los mismos favoritos de la caja. ¿Continuar?', 'Continuar'))) return;
   p[col] = nuevo; pintarProds();
   const { error } = await sb.from('productos').update({ [col]: nuevo }).eq('id', p.id);
-  if (error) { p[col] = !nuevo; pintarProds(); alert(errTxt(error)); }
+  if (error) { p[col] = !nuevo; pintarProds(); aviso(errTxt(error)); }
 }
 // precios por PAQUETE (bocaditos): 30 und = paquete de 25 a su precio + 5 sueltas a precio unitario
 function paquetes(p, n) {
@@ -1122,17 +1156,17 @@ $('el-x').onclick = () => $('m-elegir').classList.add('oculto');
 $('dm-mover').onclick = () => {
   const a = cuentaActual(); if (!a) return;
   elegirMesa(`Mover ${a.mesa} a…`, 'Si eliges una mesa ocupada (en rojo), las dos cuentas se juntan.', null, async n => {
-    if (cuentaDe(n) && cuentaDe(n).id !== a.id && !confirm(`${n} ya tiene cuenta. ¿Juntar ambas cuentas?`)) return;
+    if (cuentaDe(n) && cuentaDe(n).id !== a.id && !(await preguntar(`${n} ya tiene cuenta. ¿Juntar ambas cuentas?`, 'Sí, juntar'))) return;
     const { data, error } = await sb.rpc('cambiar_mesa', { p_pedido: a.id, p_nueva: n });
     if (error) return $('dm-error').textContent = errTxt(error);
     toast(data?.unida ? `✓ Juntada con ${data.mesa}` : `✓ Ahora es ${data?.mesa || n}`);
-    st.actual = { nombre: data?.mesa ? cuadrosDe(data.mesa).map(x => st.mesas.find(m => m.nombre.toLowerCase() === x)?.nombre || x)[0] : n, id: data?.pedido };
+    st.actual = { nombre: data?.mesa ? cuadrosDe(data.mesa).map(x => st.mesas.find(m => clave(m.nombre) === x)?.nombre || x)[0] : n, id: data?.pedido };
     await cargar(); pintarDetalle();
   });
 };
 $('dm-separar').onclick = () => {
   const a = cuentaActual(); if (!a) return;
-  const partes = cuadrosDe(a.mesa).map(x => st.mesas.find(m => m.nombre.toLowerCase() === x)?.nombre || x);
+  const partes = cuadrosDe(a.mesa).map(x => st.mesas.find(m => clave(m.nombre) === x)?.nombre || x);
   elegirMesa('Separar mesas', 'La cuenta se queda en la mesa que elijas; las demás quedan libres.', partes, async n => {
     const { error } = await sb.rpc('cambiar_mesa', { p_pedido: a.id, p_nueva: n });
     if (error) return $('dm-error').textContent = errTxt(error);
@@ -1140,7 +1174,8 @@ $('dm-separar').onclick = () => {
   });
 };
 // --- precuenta
-$('dm-precuenta').onclick = () => {
+$('dm-precuenta').onclick = () => { return;   // precuenta solo en caja
+
   const a = cuentaActual(); if (!a) return;
   const its = agrupar(st.items[a.id] || []);
   $('pr-mesa').textContent = a.mesa;
@@ -1170,7 +1205,7 @@ $('dm-reimp').onclick = () => {
 // ===== ¿DÓNDE APARECE UNA OBSERVACIÓN? (categorías y/o productos) =====
 function abrirDonde(o) {
   if (!o) return;
-  if (!st.obsDonde) return alert('Falta correr 79_observaciones_por_producto.sql en Supabase.');
+  if (!st.obsDonde) return aviso('Falta correr 79_observaciones_por_producto.sql en Supabase.');
   st.od = { o, cats: [...(o.categorias || [])], prods: (o.productos || []).map(Number), excl: (o.excluidos || []).map(Number) };
   $('od-nom').textContent = o.texto; $('od-buscar').value = '';
   pintarDonde(); $('m-obsdonde').classList.remove('oculto');
@@ -1269,7 +1304,8 @@ function agrupar(its) {
 }
 
 // ===================== COBRO (entra al turno abierto de la caja) =====================
-$('dm-cobrar').onclick = () => {
+$('dm-cobrar').onclick = () => { return;   // cobro solo en caja
+
   const a = cuentaActual(); if (!a) return;
   st.cobro = { a, doc: 'boleta', items: agrupar(st.items[a.id] || []), ret: false };
   $('cb-mesa').textContent = a.mesa; $('cb-error').textContent = ''; $('cb-doc').value = ''; $('cb-nom').value = ''; $('cb-rec').value = ''; $('cb-op').value = '';
