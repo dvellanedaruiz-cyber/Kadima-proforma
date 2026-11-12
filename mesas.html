@@ -204,7 +204,7 @@ label{display:block;font-size:12.5px;color:var(--gris);font-weight:600;margin-bo
     <button id="b-editar">✎ Editar plano</button>
     <button id="b-comanda" title="Imprimir comanda al enviar (solo en este equipo)">🖨️ Comanda</button>
     <span class="usr" id="usr" title="Cambiar de usuario"></span>
-    <span style="font-size:11px;opacity:.7">v1.3</span>
+    <span style="font-size:11px;opacity:.7">v1.4</span>
   </div>
   <div class="leyenda"><span><i style="background:#fff;border:1px solid var(--borde)"></i>Libre</span><span><i style="background:var(--rojo)"></i>Ocupada</span><span><i style="background:var(--ok)"></i>Hay algo por servir</span><span>⚠️ Producto de despacho por llevar a la mesa</span><span>👨‍🍳 Cocina aún preparando</span><span>🔗 Mesas unidas</span></div>
   <div class="aviso-modo oculto" id="aviso-modo"></div>
@@ -752,7 +752,7 @@ let OBS_ORDEN = ['Sacar todo junto', 'Primero las bebidas', 'Cliente apurado', '
 st.obsOrden = null; st.obsAmbito = false;
 async function cargarObs() {
   // con script 79: cada observación puede ir solo en ciertas categorías / productos
-  let r = await sb.from('obs_rapidas').select('id,texto,orden,ambito,categorias,productos').eq('activo', true).order('orden').order('id');
+  let r = await sb.from('obs_rapidas').select('id,texto,orden,ambito,categorias,productos,excluidos').eq('activo', true).order('orden').order('id');
   st.obsDonde = !r.error;
   if (r.error) r = await sb.from('obs_rapidas').select('id,texto,orden,ambito').eq('activo', true).order('orden').order('id');
   st.obsAmbito = !r.error;
@@ -770,65 +770,106 @@ async function cargarExtrasPlato() {
   if (error) { st.pextras = null; return; }
   st.pextras = {}; (data || []).forEach(x => (st.pextras[x.plato_id] = st.pextras[x.plato_id] || []).push(x.extra_id));
 }
-// observaciones que le tocan a un producto: sin nada asignado = en todos
+// observaciones que le tocan a un producto: sin nada asignado = en todos (menos los excluidos)
 const paraTodos = o => !(o.categorias || []).length && !(o.productos || []).length;
+const ids = a => (a || []).map(Number);
 function aplicaA(o, p) {
-  if (paraTodos(o) || !p) return true;
-  if ((o.productos || []).map(Number).includes(Number(p.id))) return true;
+  if (!p) return true;
+  if (ids(o.excluidos).includes(Number(p.id))) return false;
+  if (paraTodos(o) || ids(o.productos).includes(Number(p.id))) return true;
   const c = catDe(p.categoria_id), nombres = [principalDe(c), c && c.nombre].filter(Boolean).map(x => x.toLowerCase());
   return (o.categorias || []).some(x => nombres.includes(String(x).toLowerCase()));
 }
+// ¿esta opción es solo de este producto? (entonces se puede cambiar o borrar sin afectar a otros)
+const soloDe = (o, p) => !(o.categorias || []).length && ids(o.productos).length === 1 && ids(o.productos)[0] === Number(p.id);
 function obsDe(p) { return st.obs ? st.obs.filter(o => aplicaA(o, p)).map(o => o.texto) : OBS_PROD; }
 function dondeTxt(o) {
-  if (paraTodos(o)) return 'Todos';
-  const ps = (o.productos || []).map(id => st.productos.find(x => x.id === Number(id))?.nombre).filter(Boolean);
-  return [...(o.categorias || []), ...ps].join(', ');
+  const ps = ids(o.productos).map(id => st.productos.find(x => x.id === id)?.nombre).filter(Boolean);
+  const t = paraTodos(o) ? 'Todos' : [...(o.categorias || []), ...ps].join(', ');
+  return t + (ids(o.excluidos).length ? ` (menos ${ids(o.excluidos).length})` : '');
+}
+const ppProd = () => st.pp && st.productos.find(x => x.id === st.pp.l.producto_id);
+const upObs = (id, cambios) => sb.from('obs_rapidas').update(cambios).eq('id', id);
+// quitar UNA opción de UN producto (las demás siguen igual)
+async function quitarDeProducto(o, p) {
+  if (soloDe(o, p)) return upObs(o.id, { activo: false });
+  if (ids(o.productos).includes(Number(p.id))) return upObs(o.id, { productos: ids(o.productos).filter(x => x !== Number(p.id)) });
+  return upObs(o.id, { excluidos: [...new Set([...ids(o.excluidos), Number(p.id)])] });
+}
+// poner UNA opción en UN producto
+async function ponerEnProducto(o, p) {
+  if (ids(o.excluidos).includes(Number(p.id))) { const r = await upObs(o.id, { excluidos: ids(o.excluidos).filter(x => x !== Number(p.id)) }); if (r.error || aplicaA({ ...o, excluidos: [] }, p)) return r; }
+  return upObs(o.id, { productos: [...new Set([...ids(o.productos), Number(p.id)])] });
 }
 function pintarObsEd() {
   if (!st.obs) { $('pp-obslista').innerHTML = '<p style="color:var(--mal);margin:0">Falta correr 65_vitrina_mesa_y_observaciones.sql en Supabase.</p>'; return; }
-  const p = st.pp && st.productos.find(x => x.id === st.pp.l.producto_id);
-  $('pp-obslista').innerHTML = `<p style="margin:0 0 6px;color:var(--gris);font-size:13px">Todas las opciones. Con <b>📌</b> eliges en qué productos aparece cada una. ${p ? `Las <b style="color:var(--ok)">verdes</b> salen en ${esc(p.nombre)}.` : ''}</p>`
-    + st.obs.map((o, i) => `<div style="display:flex;gap:6px;align-items:center;padding:4px 0">
-    <button data-oarr="${i}" title="Subir" style="background:var(--fondo);width:38px;height:38px">↑</button>
-    <input data-oed="${o.id}" value="${esc(o.texto)}" maxlength="40" style="flex:1;${p && aplicaA(o, p) ? 'border:2px solid var(--ok)' : ''}">
-    <button data-odonde="${o.id}" class="odtag ${paraTodos(o) ? 'todos' : ''}" title="¿Dónde aparece?">📌 ${esc(dondeTxt(o))}</button>
-    <button data-odel="${o.id}" title="Quitar" style="background:var(--rojo-s);color:var(--rojo);width:38px;height:38px">✕</button></div>`).join('') || '<p style="color:var(--gris);margin:0">Sin opciones.</p>';
+  if (!st.obsDonde) { $('pp-obslista').innerHTML = '<p style="color:var(--mal);margin:0">Falta correr 79_observaciones_por_producto.sql en Supabase.</p>'; return; }
+  const p = ppProd(); if (!p) return;
+  const mias = st.obs.filter(o => aplicaA(o, p)), otras = st.obs.filter(o => !aplicaA(o, p));
+  $('pp-obslista').innerHTML = `<p style="margin:0 0 6px;font-weight:700">Opciones de <span style="color:var(--rojo)">${esc(p.nombre)}</span></p>
+    <p style="margin:0 0 6px;color:var(--gris);font-size:13px">Lo que cambies o quites aquí es <b>solo para este producto</b>. Con <b>📌</b> puedes ponerla en varios a la vez.</p>`
+    + (mias.map(o => `<div style="display:flex;gap:6px;align-items:center;padding:4px 0">
+    <button data-oarr="${st.obs.indexOf(o)}" title="Subir" style="background:var(--fondo);width:38px;height:38px">↑</button>
+    <input data-oed="${o.id}" value="${esc(o.texto)}" maxlength="40" style="flex:1">
+    <button data-odonde="${o.id}" class="odtag ${paraTodos(o) ? 'todos' : ''}" title="¿En qué otros productos aparece?">📌 ${esc(dondeTxt(o))}</button>
+    <button data-odel="${o.id}" title="Quitar de este producto" style="background:var(--rojo-s);color:var(--rojo);width:38px;height:38px">✕</button></div>`).join('') || '<p style="color:var(--gris);margin:4px 0">Este producto aún no tiene opciones.</p>')
+    + (otras.length ? `<p style="margin:12px 0 6px;color:var(--gris);font-size:13px">Otras opciones que ya existen (toca para ponerla en este producto):</p>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">${otras.map(o => `<button data-oadd="${o.id}" style="background:#fff;border:1.5px dashed var(--borde);padding:8px 12px;font-weight:600">＋ ${esc(o.texto)}</button>`).join('')}</div>` : '');
 }
 $('pp-editobs').onclick = async () => {
   const ab = $('pp-obsed').classList.toggle('oculto') === false;
   $('pp-editobs').textContent = ab ? '✓ Listo' : '✎ Editar opciones';
   if (ab) { await cargarObs(); pintarObsEd(); } pintarProducto();
 };
+const refrescarObs = async () => { await cargarObs(); pintarObsEd(); pintarProducto(); };
+// nueva opción: queda SOLO en este producto (si ya existe con ese nombre, se le agrega a este producto)
 $('pp-obsmas').onclick = async () => {
-  const t = $('pp-obsnueva').value.trim(); if (!t || !st.obs) return;
-  if (st.obs.some(o => o.texto.toLowerCase() === t.toLowerCase())) return toast('Esa opción ya existe');
-  const { error } = await sb.from('obs_rapidas').insert({ texto: t, orden: (st.obs.length ? Math.max(...st.obs.map(o => o.orden)) : 0) + 1, ...(st.obsAmbito ? { ambito: 'producto' } : {}) });
+  const t = $('pp-obsnueva').value.trim(), p = ppProd(); if (!t || !st.obs || !p) return;
+  if (!st.obsDonde) return toast('Falta correr 79_observaciones_por_producto.sql');
+  const ya = st.obs.find(o => o.texto.toLowerCase() === t.toLowerCase());
+  if (ya && aplicaA(ya, p)) return toast('Este producto ya tiene esa opción');
+  const { error } = ya ? await ponerEnProducto(ya, p)
+    : await sb.from('obs_rapidas').insert({ texto: t, orden: (st.obs.length ? Math.max(...st.obs.map(o => o.orden)) : 0) + 1, ambito: 'producto', productos: [p.id] });
   if (error) return toast(errTxt(error));
-  $('pp-obsnueva').value = ''; await cargarObs(); pintarObsEd(); pintarProducto();
+  $('pp-obsnueva').value = ''; refrescarObs();
 };
 $('pp-obsnueva').onkeydown = e => { if (e.key === 'Enter') $('pp-obsmas').click(); };
+// cambiar el nombre: si la opción es solo de este producto se renombra; si la comparten otros, se crea una nueva solo para este
 $('pp-obslista').onchange = async e => {
-  const id = e.target.dataset.oed; if (!id) return;
-  const t = e.target.value.trim(); if (!t) return pintarObsEd();
-  const { error } = await sb.from('obs_rapidas').update({ texto: t }).eq('id', Number(id));
-  if (error) toast(errTxt(error)); await cargarObs(); pintarObsEd(); pintarProducto();
+  const id = Number(e.target.dataset.oed); if (!id) return;
+  const o = st.obs.find(x => x.id === id), p = ppProd(), t = e.target.value.trim();
+  if (!o || !p || !t || t === o.texto) return pintarObsEd();
+  let r;
+  if (soloDe(o, p)) r = await upObs(o.id, { texto: t });
+  else {
+    const ya = st.obs.find(x => x.id !== o.id && x.texto.toLowerCase() === t.toLowerCase());
+    r = ya ? await ponerEnProducto(ya, p) : await sb.from('obs_rapidas').insert({ texto: t, orden: o.orden, ambito: 'producto', productos: [p.id] });
+    if (!r.error) r = await quitarDeProducto(o, p);
+    if (!r.error) toast(`✓ Cambiado solo en ${p.nombre}`);
+  }
+  if (r.error) toast(errTxt(r.error));
+  refrescarObs();
 };
 $('pp-obslista').onclick = async e => {
+  const p = ppProd();
   const dn = e.target.closest('[data-odonde]');
   if (dn) return abrirDonde(st.obs.find(x => x.id === Number(dn.dataset.odonde)));
+  const ad = e.target.closest('[data-oadd]');
+  if (ad) { const { error } = await ponerEnProducto(st.obs.find(x => x.id === Number(ad.dataset.oadd)), p); if (error) toast(errTxt(error)); return refrescarObs(); }
   const d = e.target.closest('[data-odel]'), u = e.target.closest('[data-oarr]');
   if (d) {
     const o = st.obs.find(x => x.id === Number(d.dataset.odel));
-    if (!confirm(`¿Quitar la opción "${o.texto}"?`)) return;
-    const { error } = await sb.from('obs_rapidas').update({ activo: false }).eq('id', o.id); if (error) return toast(errTxt(error));
+    if (!dobleToque(d, 'odel' + o.id, '✕?')) return;
+    const { error } = await quitarDeProducto(o, p); if (error) return toast(errTxt(error));
+    st.pp.l.chips = st.pp.l.chips.filter(c => c !== o.texto);
   }
   if (u) {
     const i = Number(u.dataset.oarr); if (i === 0) return;
     const l = st.obs.slice(); [l[i - 1], l[i]] = [l[i], l[i - 1]];
-    const r = await Promise.all(l.map((o, k) => o.orden === k + 1 ? null : sb.from('obs_rapidas').update({ orden: k + 1 }).eq('id', o.id)));
+    const r = await Promise.all(l.map((o, k) => o.orden === k + 1 ? null : upObs(o.id, { orden: k + 1 })));
     const er = r.find(x => x && x.error); if (er) return toast(errTxt(er.error));
   }
-  if (d || u) { await cargarObs(); pintarObsEd(); pintarProducto(); }
+  if (d || u) refrescarObs();
 };
 const notaDe = l => [...l.chips, l.texto.trim()].filter(Boolean).join(', ');
 // productos de la categoría "Extras" (manjar, fudge, miel…): se cuelgan de un plato y se cobran aparte
@@ -1130,7 +1171,7 @@ $('dm-reimp').onclick = () => {
 function abrirDonde(o) {
   if (!o) return;
   if (!st.obsDonde) return alert('Falta correr 79_observaciones_por_producto.sql en Supabase.');
-  st.od = { o, cats: [...(o.categorias || [])], prods: (o.productos || []).map(Number) };
+  st.od = { o, cats: [...(o.categorias || [])], prods: (o.productos || []).map(Number), excl: (o.excluidos || []).map(Number) };
   $('od-nom').textContent = o.texto; $('od-buscar').value = '';
   pintarDonde(); $('m-obsdonde').classList.remove('oculto');
 }
@@ -1145,17 +1186,20 @@ function pintarDonde() {
   const bus = q ? st.productos.filter(p => !d.prods.includes(p.id) && p.nombre.toLowerCase().includes(q)).slice(0, 24) : [];
   $('od-prods').innerHTML = [...marc, ...bus].map(p => `<button data-odp="${p.id}" class="${d.prods.includes(p.id) ? 'on' : ''}">${d.prods.includes(p.id) ? '✓ ' : '＋ '}${esc(p.nombre)}</button>`).join('')
     || `<p style="color:var(--gris);margin:0;grid-column:1/-1">${q ? 'Sin resultados.' : 'Ningún producto suelto. Busca arriba para agregar uno.'}</p>`;
-  const n = st.productos.filter(p => aplicaA({ categorias: d.cats, productos: d.prods }, p)).length;
-  $('od-res').innerHTML = todos ? 'Aparecerá en <b>todos</b> los productos.' : `Aparecerá en <b>${n}</b> producto(s).`;
+  const n = st.productos.filter(p => aplicaA({ categorias: d.cats, productos: d.prods, excluidos: d.excl }, p)).length;
+  const ex = d.excl.map(id => st.productos.find(x => x.id === id)).filter(Boolean);
+  $('od-res').innerHTML = (todos && !ex.length ? 'Aparecerá en <b>todos</b> los productos.' : `Aparecerá en <b>${n}</b> producto(s).`)
+    + (ex.length ? `<div style="margin-top:8px">Quitada de: ${ex.map(p => `<button data-odex="${p.id}" style="background:var(--rojo-s);color:var(--rojo);padding:5px 10px;font-size:13px;font-weight:700;margin:2px">${esc(p.nombre)} ↺</button>`).join('')} <small>(toca para volver a ponerla)</small></div>` : '');
 }
 $('od-cats').onclick = e => { const b = e.target.closest('[data-odc]'); if (!b) return; const c = b.dataset.odc, i = st.od.cats.findIndex(x => x.toLowerCase() === c.toLowerCase()); i >= 0 ? st.od.cats.splice(i, 1) : st.od.cats.push(c); pintarDonde(); };
 $('od-prods').onclick = e => { const b = e.target.closest('[data-odp]'); if (!b) return; const id = Number(b.dataset.odp), i = st.od.prods.indexOf(id); i >= 0 ? st.od.prods.splice(i, 1) : st.od.prods.push(id); pintarDonde(); };
 $('od-buscar').oninput = pintarDonde;
+$('od-res').onclick = e => { const b = e.target.closest('[data-odex]'); if (!b) return; st.od.excl = st.od.excl.filter(x => x !== Number(b.dataset.odex)); pintarDonde(); };
 $('od-todos').onclick = () => { st.od.cats = []; st.od.prods = []; pintarDonde(); };
 $('od-x').onclick = $('od-no').onclick = () => $('m-obsdonde').classList.add('oculto');
 $('od-ok').onclick = async () => {
   const b = $('od-ok'); b.disabled = true;
-  const { error } = await sb.from('obs_rapidas').update({ categorias: st.od.cats, productos: st.od.prods }).eq('id', st.od.o.id);
+  const { error } = await sb.from('obs_rapidas').update({ categorias: st.od.cats, productos: st.od.prods, excluidos: st.od.excl }).eq('id', st.od.o.id);
   b.disabled = false;
   if (error) return toast(errTxt(error));
   $('m-obsdonde').classList.add('oculto'); toast('✓ Guardado');
