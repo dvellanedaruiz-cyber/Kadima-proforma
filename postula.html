@@ -31,8 +31,7 @@
   .opt span { display:block; text-align:center; padding:13px 10px; border:1.5px solid var(--ln); border-radius:12px; font-weight:500; cursor:pointer; }
   .opt input:checked + span { border-color:var(--g); background:var(--g); color:#fff; }
   .opt input:focus-visible + span { outline:2px solid var(--g); outline-offset:2px; }
-  .chk { display:flex; gap:10px; align-items:flex-start; padding:12px 14px; border:1.5px solid var(--ln); border-radius:12px; margin-bottom:10px; font-size:15px; cursor:pointer; }
-  .chk input { width:20px; height:20px; margin:0; accent-color:var(--g); flex:none; }
+  .aviso { background:var(--cr); border-radius:12px; padding:12px 14px; font-size:14px; line-height:1.45; margin-top:20px; }
   .hide { display:none; }
   button { width:100%; margin-top:26px; padding:15px; font:inherit; font-size:17px; font-weight:600; color:#fff; background:var(--g); border:0; border-radius:14px; cursor:pointer; }
   button:disabled { opacity:.6; }
@@ -54,6 +53,7 @@
   <div class="card" id="formCard">
     <h1>¡Trabaja con nosotros!</h1>
     <p class="intro">Déjanos tus datos y te contactaremos por WhatsApp o llamada.</p>
+    <div class="aviso">Buscamos personas que <strong>vivan en San Juan de Lurigancho</strong> y puedan <strong>empezar de inmediato o a inicios de diciembre</strong>.</div>
 
     <form id="f" novalidate>
       <label class="f">¿A qué puesto postulas? <span class="hint">(tiempo completo)</span></label>
@@ -75,14 +75,9 @@
       <input type="tel" id="celular" name="celular" inputmode="numeric" maxlength="9" placeholder="9 dígitos" autocomplete="tel-national">
       <div class="err" data-for="celular"></div>
 
-      <label class="f" for="direccion">Dirección <span class="hint">(solo personas que viven en San Juan de Lurigancho)</span></label>
+      <label class="f" for="direccion">Dirección <span class="hint">(en San Juan de Lurigancho)</span></label>
       <input type="text" id="direccion" name="direccion" maxlength="200" autocomplete="street-address" placeholder="Ej. Av. Próceres Mz. K2 Lt. 3A, Urb. ...">
       <div class="err" data-for="direccion"></div>
-
-      <label class="f">Requisitos <span class="hint">(marca ambos)</span></label>
-      <label class="chk"><input type="checkbox" name="sjl"><span>Vivo en San Juan de Lurigancho</span></label>
-      <label class="chk"><input type="checkbox" name="inmediata"><span>Tengo disponibilidad inmediata para empezar</span></label>
-      <div class="err" data-for="req"></div>
 
       <label class="f">¿Tienes experiencia en un puesto similar?</label>
       <div class="opts two">
@@ -91,11 +86,14 @@
       </div>
       <div class="err" data-for="experiencia"></div>
       <div id="expBox" class="hide">
-        <label class="f" for="detalle">Cuéntanos dónde y por cuánto tiempo <span class="hint">(opcional)</span></label>
-        <textarea id="detalle" name="detalle" maxlength="500"></textarea>
+        <label class="f" for="detalle">Cuéntanos tu experiencia</label>
+        <textarea id="detalle" name="detalle" maxlength="500" placeholder="¿Dónde trabajaste, qué hacías y por cuánto tiempo?"></textarea>
+        <div class="err" data-for="detalle"></div>
       </div>
 
       <input class="hp" type="text" name="web" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+      <div class="aviso"><strong>Importante:</strong> al enviar este formulario confirmas que <strong>vives en San Juan de Lurigancho</strong> y que puedes <strong>empezar a trabajar de inmediato o a inicios de diciembre</strong>.</div>
 
       <button type="submit" id="btn">Enviar mi postulación</button>
       <div id="msg" class="msg hide" role="alert"></div>
@@ -117,7 +115,6 @@ const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
 const f = document.getElementById('f');
 const $ = n => f.elements[n];
 const val = n => { const e = $(n); return e instanceof RadioNodeList ? e.value : e.value.trim(); };
-const marcado = n => $(n).checked;
 
 ['dni','celular'].forEach(n => $(n).addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g,''); }));
 f.querySelectorAll('input[name=experiencia]').forEach(r => r.addEventListener('change', () => {
@@ -133,8 +130,8 @@ function validar() {
   chk('dni', /^\d{8}$/.test(val('dni')), 'El DNI debe tener 8 dígitos.');
   chk('celular', /^9\d{8}$/.test(val('celular')), 'El celular debe tener 9 dígitos y empezar con 9.');
   chk('direccion', val('direccion').length >= 5, 'Escribe tu dirección.');
-  chk('req', marcado('sjl') && marcado('inmediata'), 'Para postular debes vivir en San Juan de Lurigancho y tener disponibilidad inmediata.');
   chk('experiencia', !!val('experiencia'), 'Elige Sí o No.');
+  chk('detalle', val('experiencia') !== 'si' || val('detalle').length >= 10, 'Cuéntanos un poco de tu experiencia.');
   return ok;
 }
 
@@ -148,7 +145,7 @@ f.addEventListener('submit', async e => {
   const body = {
     puesto: val('puesto'), nombres: val('nombres'), dni: val('dni'), celular: val('celular'),
     direccion: val('direccion'), vive_sjl: true, disponibilidad_inmediata: true, experiencia: exp,
-    experiencia_detalle: exp && val('detalle') ? val('detalle') : null
+    experiencia_detalle: exp ? val('detalle') : null
   };
   try {
     const r = await fetch(SUPABASE_URL + '/rest/v1/postulantes', {
