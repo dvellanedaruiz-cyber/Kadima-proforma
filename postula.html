@@ -31,6 +31,8 @@
   .opt span { display:block; text-align:center; padding:13px 10px; border:1.5px solid var(--ln); border-radius:12px; font-weight:500; cursor:pointer; }
   .opt input:checked + span { border-color:var(--g); background:var(--g); color:#fff; }
   .opt input:focus-visible + span { outline:2px solid var(--g); outline-offset:2px; }
+  .chk { display:flex; gap:10px; align-items:flex-start; padding:12px 14px; border:1.5px solid var(--ln); border-radius:12px; margin-bottom:10px; font-size:15px; cursor:pointer; }
+  .chk input { width:20px; height:20px; margin:0; accent-color:var(--g); flex:none; }
   .hide { display:none; }
   button { width:100%; margin-top:26px; padding:15px; font:inherit; font-size:17px; font-weight:600; color:#fff; background:var(--g); border:0; border-radius:14px; cursor:pointer; }
   button:disabled { opacity:.6; }
@@ -73,9 +75,14 @@
       <input type="tel" id="celular" name="celular" inputmode="numeric" maxlength="9" placeholder="9 dígitos" autocomplete="tel-national">
       <div class="err" data-for="celular"></div>
 
-      <label class="f" for="distrito">Distrito donde vives</label>
-      <input type="text" id="distrito" name="distrito" maxlength="60" placeholder="Ej. San Juan de Lurigancho">
-      <div class="err" data-for="distrito"></div>
+      <label class="f" for="direccion">Dirección <span class="hint">(solo personas que viven en San Juan de Lurigancho)</span></label>
+      <input type="text" id="direccion" name="direccion" maxlength="200" autocomplete="street-address" placeholder="Ej. Av. Próceres Mz. K2 Lt. 3A, Urb. ...">
+      <div class="err" data-for="direccion"></div>
+
+      <label class="f">Requisitos <span class="hint">(marca ambos)</span></label>
+      <label class="chk"><input type="checkbox" name="sjl"><span>Vivo en San Juan de Lurigancho</span></label>
+      <label class="chk"><input type="checkbox" name="inmediata"><span>Tengo disponibilidad inmediata para empezar</span></label>
+      <div class="err" data-for="req"></div>
 
       <label class="f">¿Tienes experiencia en un puesto similar?</label>
       <div class="opts two">
@@ -87,16 +94,6 @@
         <label class="f" for="detalle">Cuéntanos dónde y por cuánto tiempo <span class="hint">(opcional)</span></label>
         <textarea id="detalle" name="detalle" maxlength="500"></textarea>
       </div>
-
-      <label class="f" for="disp">¿Desde cuándo puedes empezar?</label>
-      <select id="disp" name="disp">
-        <option value="">Elige una opción</option>
-        <option>Inmediato</option>
-        <option>En 1 semana</option>
-        <option>En 2 semanas</option>
-        <option>Más adelante</option>
-      </select>
-      <div class="err" data-for="disp"></div>
 
       <input class="hp" type="text" name="web" tabindex="-1" autocomplete="off" aria-hidden="true">
 
@@ -120,6 +117,7 @@ const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
 const f = document.getElementById('f');
 const $ = n => f.elements[n];
 const val = n => { const e = $(n); return e instanceof RadioNodeList ? e.value : e.value.trim(); };
+const marcado = n => $(n).checked;
 
 ['dni','celular'].forEach(n => $(n).addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g,''); }));
 f.querySelectorAll('input[name=experiencia]').forEach(r => r.addEventListener('change', () => {
@@ -134,9 +132,9 @@ function validar() {
   chk('nombres', val('nombres').length >= 3, 'Escribe tus nombres y apellidos.');
   chk('dni', /^\d{8}$/.test(val('dni')), 'El DNI debe tener 8 dígitos.');
   chk('celular', /^9\d{8}$/.test(val('celular')), 'El celular debe tener 9 dígitos y empezar con 9.');
-  chk('distrito', val('distrito').length >= 2, 'Escribe tu distrito.');
+  chk('direccion', val('direccion').length >= 5, 'Escribe tu dirección.');
+  chk('req', marcado('sjl') && marcado('inmediata'), 'Para postular debes vivir en San Juan de Lurigancho y tener disponibilidad inmediata.');
   chk('experiencia', !!val('experiencia'), 'Elige Sí o No.');
-  chk('disp', !!val('disp'), 'Elige una opción.');
   return ok;
 }
 
@@ -149,9 +147,8 @@ f.addEventListener('submit', async e => {
   const exp = val('experiencia') === 'si';
   const body = {
     puesto: val('puesto'), nombres: val('nombres'), dni: val('dni'), celular: val('celular'),
-    distrito: val('distrito'), experiencia: exp,
-    experiencia_detalle: exp && val('detalle') ? val('detalle') : null,
-    disponibilidad: val('disp')
+    direccion: val('direccion'), vive_sjl: true, disponibilidad_inmediata: true, experiencia: exp,
+    experiencia_detalle: exp && val('detalle') ? val('detalle') : null
   };
   try {
     const r = await fetch(SUPABASE_URL + '/rest/v1/postulantes', {
