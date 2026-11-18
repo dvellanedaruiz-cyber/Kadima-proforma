@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trabaja con nosotros — Kadima</title>
+<meta name="description" content="Postula a Kadima Panadería & Pastelería: Ayudante de cocina y Atención al cliente, tiempo completo.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --g:#6B0F14; --g2:#8a1d23; --cr:#F5ECE0; --tx:#2b1a1b; --mu:#7a6a6b; --ln:#e3d6c6; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"Work Sans",sans-serif; color:var(--tx); background:var(--cr); }
+  header { background:var(--g); color:#fff; text-align:center; padding:28px 20px 56px; }
+  .brand { font-family:Fraunces,serif; font-style:italic; font-weight:600; font-size:38px; margin:0; }
+  .sub { letter-spacing:4px; font-size:11px; opacity:.85; margin-top:2px; }
+  main { max-width:520px; margin:-36px auto 40px; padding:0 16px; }
+  .card { background:#fff; border-radius:22px 22px 14px 14px; padding:26px 22px; box-shadow:0 6px 24px rgba(107,15,20,.08); }
+  h1 { font-family:Fraunces,serif; color:var(--g); font-size:28px; margin:0 0 6px; text-align:center; }
+  .intro { text-align:center; color:var(--mu); margin:0 0 22px; font-size:15px; }
+  label.f { display:block; font-weight:600; font-size:14px; margin:18px 0 6px; }
+  .hint { font-weight:400; color:var(--mu); font-size:13px; }
+  input[type=text], input[type=tel], textarea, select {
+    width:100%; font:inherit; font-size:16px; padding:12px 14px; border:1.5px solid var(--ln); border-radius:12px; background:#fff; color:var(--tx);
+  }
+  input:focus, textarea:focus, select:focus { outline:none; border-color:var(--g); }
+  textarea { min-height:80px; resize:vertical; }
+  .opts { display:grid; gap:10px; }
+  .opts.two { grid-template-columns:1fr 1fr; }
+  .opt input { position:absolute; opacity:0; pointer-events:none; }
+  .opt span { display:block; text-align:center; padding:13px 10px; border:1.5px solid var(--ln); border-radius:12px; font-weight:500; cursor:pointer; }
+  .opt input:checked + span { border-color:var(--g); background:var(--g); color:#fff; }
+  .opt input:focus-visible + span { outline:2px solid var(--g); outline-offset:2px; }
+  .hide { display:none; }
+  button { width:100%; margin-top:26px; padding:15px; font:inherit; font-size:17px; font-weight:600; color:#fff; background:var(--g); border:0; border-radius:14px; cursor:pointer; }
+  button:disabled { opacity:.6; }
+  .err { color:#b00020; font-size:13px; margin-top:6px; min-height:0; }
+  .msg { margin-top:14px; padding:12px 14px; border-radius:12px; background:#fdecec; color:#8a1d23; font-size:14px; }
+  .ok { text-align:center; padding:12px 4px; }
+  .ok .big { font-family:Fraunces,serif; font-size:30px; color:var(--g); margin:8px 0; }
+  .hp { position:absolute; left:-9999px; }
+  footer { text-align:center; font-family:Fraunces,serif; font-style:italic; color:var(--g); font-size:14px; padding:0 20px 30px; }
+</style>
+</head>
+<body>
+<header>
+  <p class="brand">Kadima</p>
+  <div class="sub">PANADERÍA &amp; PASTELERÍA</div>
+</header>
+
+<main>
+  <div class="card" id="formCard">
+    <h1>¡Trabaja con nosotros!</h1>
+    <p class="intro">Déjanos tus datos y te contactaremos por WhatsApp o llamada.</p>
+
+    <form id="f" novalidate>
+      <label class="f">¿A qué puesto postulas? <span class="hint">(tiempo completo)</span></label>
+      <div class="opts">
+        <label class="opt"><input type="radio" name="puesto" value="Ayudante de cocina"><span>Ayudante de cocina</span></label>
+        <label class="opt"><input type="radio" name="puesto" value="Atención al cliente"><span>Atención al cliente</span></label>
+      </div>
+      <div class="err" data-for="puesto"></div>
+
+      <label class="f" for="nombres">Nombres y apellidos</label>
+      <input type="text" id="nombres" name="nombres" autocomplete="name" maxlength="120">
+      <div class="err" data-for="nombres"></div>
+
+      <label class="f" for="dni">DNI</label>
+      <input type="tel" id="dni" name="dni" inputmode="numeric" maxlength="8" placeholder="8 dígitos">
+      <div class="err" data-for="dni"></div>
+
+      <label class="f" for="celular">Celular / WhatsApp</label>
+      <input type="tel" id="celular" name="celular" inputmode="numeric" maxlength="9" placeholder="9 dígitos" autocomplete="tel-national">
+      <div class="err" data-for="celular"></div>
+
+      <label class="f" for="distrito">Distrito donde vives</label>
+      <input type="text" id="distrito" name="distrito" maxlength="60" placeholder="Ej. San Juan de Lurigancho">
+      <div class="err" data-for="distrito"></div>
+
+      <label class="f">¿Tienes experiencia en un puesto similar?</label>
+      <div class="opts two">
+        <label class="opt"><input type="radio" name="experiencia" value="si"><span>Sí</span></label>
+        <label class="opt"><input type="radio" name="experiencia" value="no"><span>No</span></label>
+      </div>
+      <div class="err" data-for="experiencia"></div>
+      <div id="expBox" class="hide">
+        <label class="f" for="detalle">Cuéntanos dónde y por cuánto tiempo <span class="hint">(opcional)</span></label>
+        <textarea id="detalle" name="detalle" maxlength="500"></textarea>
+      </div>
+
+      <label class="f" for="disp">¿Desde cuándo puedes empezar?</label>
+      <select id="disp" name="disp">
+        <option value="">Elige una opción</option>
+        <option>Inmediato</option>
+        <option>En 1 semana</option>
+        <option>En 2 semanas</option>
+        <option>Más adelante</option>
+      </select>
+      <div class="err" data-for="disp"></div>
+
+      <input class="hp" type="text" name="web" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+      <button type="submit" id="btn">Enviar mi postulación</button>
+      <div id="msg" class="msg hide" role="alert"></div>
+    </form>
+  </div>
+
+  <div class="card ok hide" id="okCard">
+    <div class="big">¡Gracias!</div>
+    <p>Recibimos tu postulación. Si tu perfil encaja, te escribiremos por WhatsApp o te llamaremos.</p>
+  </div>
+</main>
+
+<footer>¡Somos Kadima! Creamos historias y conectamos corazones.</footer>
+
+<script>
+const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
+
+const f = document.getElementById('f');
+const $ = n => f.elements[n];
+const val = n => { const e = $(n); return e instanceof RadioNodeList ? e.value : e.value.trim(); };
+
+['dni','celular'].forEach(n => $(n).addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g,''); }));
+f.querySelectorAll('input[name=experiencia]').forEach(r => r.addEventListener('change', () => {
+  document.getElementById('expBox').classList.toggle('hide', val('experiencia') !== 'si');
+}));
+
+function setErr(n, t) { const e = f.querySelector('.err[data-for="'+n+'"]'); if (e) e.textContent = t || ''; }
+
+function validar() {
+  let ok = true; const chk = (n, cond, t) => { setErr(n, cond ? '' : t); if (!cond) ok = false; };
+  chk('puesto', !!val('puesto'), 'Elige un puesto.');
+  chk('nombres', val('nombres').length >= 3, 'Escribe tus nombres y apellidos.');
+  chk('dni', /^\d{8}$/.test(val('dni')), 'El DNI debe tener 8 dígitos.');
+  chk('celular', /^9\d{8}$/.test(val('celular')), 'El celular debe tener 9 dígitos y empezar con 9.');
+  chk('distrito', val('distrito').length >= 2, 'Escribe tu distrito.');
+  chk('experiencia', !!val('experiencia'), 'Elige Sí o No.');
+  chk('disp', !!val('disp'), 'Elige una opción.');
+  return ok;
+}
+
+f.addEventListener('submit', async e => {
+  e.preventDefault();
+  const msg = document.getElementById('msg'); msg.classList.add('hide');
+  if (!validar()) { const first = f.querySelector('.err:not(:empty)'); if (first) first.scrollIntoView({behavior:'smooth', block:'center'}); return; }
+  if (val('web')) { mostrarOk(); return; } // anti-spam
+  const btn = document.getElementById('btn'); btn.disabled = true; btn.textContent = 'Enviando…';
+  const exp = val('experiencia') === 'si';
+  const body = {
+    puesto: val('puesto'), nombres: val('nombres'), dni: val('dni'), celular: val('celular'),
+    distrito: val('distrito'), experiencia: exp,
+    experiencia_detalle: exp && val('detalle') ? val('detalle') : null,
+    disponibilidad: val('disp')
+  };
+  try {
+    const r = await fetch(SUPABASE_URL + '/rest/v1/postulantes', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) throw new Error(await r.text());
+    mostrarOk();
+  } catch (err) {
+    console.error(err);
+    msg.textContent = 'No pudimos enviar tu postulación. Revisa tu conexión e inténtalo otra vez, o deja tus datos en la caja de la tienda.';
+    msg.classList.remove('hide');
+    btn.disabled = false; btn.textContent = 'Enviar mi postulación';
+  }
+});
+
+function mostrarOk() {
+  document.getElementById('formCard').classList.add('hide');
+  document.getElementById('okCard').classList.remove('hide');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+</script>
+</body>
+</html>
