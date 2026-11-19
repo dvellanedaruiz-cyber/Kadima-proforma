@@ -134,6 +134,7 @@ table.hor tr.area td{font-size:11.5px;font-weight:700;color:var(--vino);text-tra
       <button data-tab="trab">Trabajadores</button>
       <button data-tab="acc">Accesos y PIN</button>
       <button data-tab="hor">Horarios</button>
+      <button data-tab="post">Postulantes</button>
     </nav>
   </header>
   <main id="main"></main>
@@ -223,10 +224,10 @@ async function cargarTodo() {
 }
 $('tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (b) irTab(b.dataset.tab); };
 function irTab(t) {
-  if (!['trab', 'acc', 'hor'].includes(t)) t = 'trab';
+  if (!['trab', 'acc', 'hor', 'post'].includes(t)) t = 'trab';
   st.tab = t; guardar('tab', t); $('main').onclick = null;
   [...$('tabs').children].forEach(b => b.classList.toggle('activa', b.dataset.tab === t));
-  ({ trab: tabTrab, acc: tabAcc, hor: tabHor })[t]();
+  ({ trab: tabTrab, acc: tabAcc, hor: tabHor, post: tabPost })[t]();
 }
 function abrirModal(html) { $('modal-caja').innerHTML = html; $('modal').classList.remove('oculto'); }
 function cerrarModal() { $('modal').classList.add('oculto'); $('modal-caja').innerHTML = ''; }
@@ -580,6 +581,74 @@ function editarAcceso(u) {
     if (r.error) return $('ac-err').textContent = errTxt(r.error);
     await cargarTodo(); cerrarModal(); toast(n ? `✓ Acceso creado · PIN ${pin}` : '✓ Acceso guardado'); irTab(st.tab);
   };
+}
+
+// ===================== POSTULANTES =====================
+const EST_POST = ['Nuevo', 'Contactado', 'Entrevista', 'Contratado', 'Descartado'];
+st.post = { lista: null, estado: 'activos', puesto: '', q: '' };
+async function cargarPostulantes() {
+  const r = await sb.from('postulantes').select('*').order('creado_en', { ascending: false });
+  if (r.error) throw r.error;
+  st.post.lista = r.data || [];
+}
+const fechaHora = s => { const d = new Date(s); return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+async function tabPost(recargar) {
+  const p = st.post;
+  if (!p.lista || recargar) {
+    $('main').innerHTML = '<div class="cargando">Cargando postulantes…</div>';
+    try { await cargarPostulantes(); }
+    catch (e) { $('main').innerHTML = `<div class="bloque error">${/postulantes/.test(e?.message || '') && /exist|schema cache/.test(e?.message || '') ? 'Falta correr postulantes.sql y postulantes_rh.sql en Supabase.' : esc(errTxt(e))}</div>`; return; }
+  }
+  const todos = p.lista;
+  const nuevos = todos.filter(x => x.estado === 'Nuevo');
+  const enProceso = todos.filter(x => x.estado === 'Contactado' || x.estado === 'Entrevista');
+  const cuenta = pu => todos.filter(x => x.puesto === pu && !['Contratado', 'Descartado'].includes(x.estado)).length;
+  const lista = todos.filter(x =>
+    (p.estado === 'todos' || (p.estado === 'activos' ? !['Contratado', 'Descartado'].includes(x.estado) : x.estado === p.estado))
+    && (!p.puesto || x.puesto === p.puesto)
+    && (!p.q || norm([x.nombres, x.dni, x.celular, x.direccion].join(' ')).includes(norm(p.q))));
+  $('main').innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="t">Nuevos sin revisar</div><div class="v" style="${nuevos.length ? 'color:var(--vino)' : ''}">${nuevos.length}</div><div class="s">de ${todos.length} postulantes en total</div></div>
+      <div class="kpi"><div class="t">En proceso</div><div class="v">${enProceso.length}</div><div class="s">contactados o en entrevista</div></div>
+      <div class="kpi"><div class="t">Ayudante de cocina</div><div class="v">${cuenta('Ayudante de cocina')}</div><div class="s">postulantes activos</div></div>
+      <div class="kpi"><div class="t">Atención al cliente</div><div class="v">${cuenta('Atención al cliente')}</div><div class="s">postulantes activos</div></div>
+    </div>
+    <div class="bloque">
+      <div class="barra-acc">
+        <span class="chips" id="p-estado">${[['activos', 'Activos'], ...EST_POST.map(e => [e, e]), ['todos', 'Todos']].map(([k, n]) => `<button data-v="${k}" class="${p.estado === k ? 'activa' : ''}">${n}</button>`).join('')}</span>
+        <span class="chips" id="p-puesto">${[['', 'Ambos puestos'], ['Ayudante de cocina', 'Cocina'], ['Atención al cliente', 'Atención']].map(([k, n]) => `<button data-v="${k}" class="${p.puesto === k ? 'activa' : ''}">${n}</button>`).join('')}</span>
+        <input id="p-q" placeholder="Buscar nombre, DNI, celular…" value="${esc(p.q)}" style="max-width:230px">
+        <span class="esp"></span>
+        <button class="btn sec peq" id="p-rec">↻ Actualizar</button>
+      </div>
+      ${lista.length ? `<div class="tablawrap"><table class="t">
+        <tr><th>Fecha</th><th>Postulante</th><th>Puesto</th><th>Celular</th><th class="m-ocultar">DNI</th><th class="m-ocultar">Dirección</th><th>Experiencia</th><th>Estado</th></tr>
+        ${lista.map(x => `<tr>
+          <td class="cod" style="white-space:nowrap">${fechaHora(x.creado_en)}</td>
+          <td><b>${esc(x.nombres)}</b>${x.origen === 'caja' ? ' <span class="tag">caja</span>' : ''}</td>
+          <td>${x.puesto === 'Ayudante de cocina' ? 'Cocina' : 'Atención'}</td>
+          <td style="white-space:nowrap"><a href="https://wa.me/51${esc(x.celular)}" target="_blank" rel="noopener" style="color:var(--vino);font-weight:600">${esc(x.celular)}</a></td>
+          <td class="m-ocultar">${esc(x.dni)}</td>
+          <td class="m-ocultar" style="min-width:160px">${esc(x.direccion)}</td>
+          <td style="min-width:150px;max-width:280px">${x.experiencia ? `<span class="tag ok">Sí</span> <span style="font-size:12.5px">${esc(x.experiencia_detalle || '')}</span>` : '<span class="tag">No</span>'}</td>
+          <td><select data-id="${x.id}" class="p-est" style="width:auto;padding:5px 8px">${EST_POST.map(e => `<option ${x.estado === e ? 'selected' : ''}>${e}</option>`).join('')}</select></td>
+        </tr>`).join('')}
+      </table></div>` : `<div class="vacio">${todos.length ? 'No hay postulantes con estos filtros.' : 'Todavía no hay postulantes.<br>Llegan desde <b>kadima.pe/postula</b>.'}</div>`}
+    </div>`;
+  $('p-estado').onclick = e => { const b = e.target.closest('[data-v]'); if (b) { p.estado = b.dataset.v; tabPost(); } };
+  $('p-puesto').onclick = e => { const b = e.target.closest('[data-v]'); if (b) { p.puesto = b.dataset.v; tabPost(); } };
+  $('p-q').oninput = e => { p.q = e.target.value; clearTimeout(st.post.t); st.post.t = setTimeout(() => { tabPost(); const i = $('p-q'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 300); };
+  $('p-rec').onclick = () => tabPost(true);
+  $('main').querySelectorAll('.p-est').forEach(s => s.onchange = async () => {
+    const id = Number(s.dataset.id), est = s.value;
+    s.disabled = true;
+    const r = await sb.from('postulantes').update({ estado: est }).eq('id', id);
+    s.disabled = false;
+    if (r.error) { alert(errTxt(r.error)); return tabPost(true); }
+    const x = p.lista.find(y => y.id === id); if (x) x.estado = est;
+    toast('✓ Estado: ' + est); tabPost();
+  });
 }
 
 // ===================== HORARIOS =====================
