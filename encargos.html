@@ -262,6 +262,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
 .pk tr{page-break-inside:avoid}
 </style>
 <!-- números sin flechitas: se escriben; la rueda del mouse o las flechas del teclado no los cambian -->
+<style>input.in-mal{border-color:#c62828!important;background:#fdecec!important}</style>
 <style>input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}input[type=number]{-moz-appearance:textfield;appearance:textfield}</style>
 <script>document.addEventListener('wheel',e=>{const t=e.target;if(t&&t.type==='number'&&t===document.activeElement)t.blur()},{passive:true});document.addEventListener('keydown',e=>{if((e.key==='ArrowUp'||e.key==='ArrowDown')&&e.target&&e.target.type==='number')e.preventDefault()},true);</script>
 </head>
@@ -344,15 +345,15 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
           <div class="fila">
             <div style="max-width:150px"><label>🎂 Ocasión (opcional)</label><select data-k="ocasion_tipo"><option value="">—</option><option value="cumpleanos">Cumpleaños</option><option value="aniversario">Aniversario</option><option value="otro">Otra fecha</option></select></div>
             <div style="flex:2"><label>¿De quién?</label><input data-k="ocasion_para" placeholder="Ej. Ana (hija), Carlos (esposo)"></div>
-            <div style="max-width:170px"><label>Fecha de la ocasión</label><input data-k="ocasion_fecha" type="date"></div>
+            <div style="max-width:170px"><label>Fecha de la ocasión</label><input data-k="ocasion_fecha" class="in-fecha" type="text" inputmode="numeric" placeholder="dd/mm/aa" maxlength="8" autocomplete="off"></div>
           </div>
           <p class="ayuda" style="margin:-4px 0 0">La ocasión queda en el CRM para escribirle el próximo año.</p>
         </div>
         <div class="bloque">
           <h3>🚚 Entrega</h3>
           <div class="fila">
-            <div><label>Fecha</label><input data-k="fecha_entrega" type="date"></div>
-            <div><label>Hora</label><input data-k="hora_entrega" type="time"></div>
+            <div><label>Fecha</label><input data-k="fecha_entrega" class="in-fecha" type="text" inputmode="numeric" placeholder="dd/mm/aa" maxlength="8" autocomplete="off"></div>
+            <div><label>Hora</label><input data-k="hora_entrega" class="in-hora" type="text" inputmode="numeric" placeholder="hh:mm (24 h)" maxlength="5" autocomplete="off"></div>
           </div>
           <div class="seg" id="seg-entrega" style="margin-bottom:10px"><button data-v="recojo" class="activa">🏬 Recojo en tienda</button><button data-v="delivery">🛵 Delivery</button></div>
           <div id="f-delivery" class="oculto">
@@ -446,7 +447,7 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
         <div id="t-mapa" class="mapa-form" style="height:380px"></div>
         <div class="fila" style="margin:6px 0 0;align-items:end">
           <div style="max-width:170px"><label>Probar: día de entrega</label><select id="t-pdia"><option value="1">Lunes</option><option value="2">Martes</option><option value="3">Miércoles</option><option value="4">Jueves</option><option value="5">Viernes</option><option value="6">Sábado</option><option value="7">Domingo</option></select></div>
-          <div style="max-width:130px"><label>Hora</label><input id="t-phora" type="time" value="12:00"></div>
+          <div style="max-width:130px"><label>Hora</label><input id="t-phora" class="in-hora" type="text" inputmode="numeric" placeholder="hh:mm (24 h)" maxlength="5" autocomplete="off" value="12:00"></div>
           <div class="ayuda" id="t-info" style="flex:4;margin:0 0 8px"></div>
         </div>
         <div class="fila">
@@ -747,7 +748,21 @@ const fstr = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate
 const dias = n => { const d = new Date(); d.setDate(d.getDate() + n); return fstr(d); };
 const hora12 = t => { if (!t) return ''; const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${pad2(m)} ${h >= 12 ? 'pm' : 'am'}`; };
 const horaCorta = t => { const [h, m] = String(t).split(':').map(Number); return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'pm' : 'am'}`; };
-const fechaCorta = f => f ? new Date(f + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric', month: 'short' }) : 'sin fecha';
+// ===== Fecha dd/mm/aa y hora 24 h (iguales en todas las PCs, sin AM/PM) =====
+const horaOk = t => /^([01]\d|2[0-3]):[0-5]\d$/.test(t || '');
+function fechaAIso(t) {
+  const m = String(t || '').match(/^(\d{2})\/(\d{2})\/(\d{2})$/); if (!m) return '';
+  const d = +m[1], me = +m[2], y = 2000 + +m[3], f = new Date(y, me - 1, d);
+  return f.getFullYear() === y && f.getMonth() === me - 1 && f.getDate() === d ? `${y}-${m[2]}-${m[1]}` : '';
+}
+const isoAFecha = v => { const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}/${m[2]}/${m[1].slice(2)}` : ''; };
+document.addEventListener('input', e => {
+  const i = e.target; if (!i.classList || !(i.classList.contains('in-fecha') || i.classList.contains('in-hora'))) return;
+  const esF = i.classList.contains('in-fecha'), d = i.value.replace(/\D/g, '');
+  i.value = esF ? [d.slice(0, 2), d.slice(2, 4), d.slice(4, 6)].filter(Boolean).join('/') : d.length > 2 ? d.slice(0, 2) + ':' + d.slice(2, 4) : d;
+  i.classList.toggle('in-mal', i.value.length === (esF ? 8 : 5) && !(esF ? fechaAIso(i.value) : horaOk(i.value)));
+}, true);
+const fechaCorta = f => f ? new Date(f + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric', month: 'short', ...(String(f).slice(0, 4) !== String(new Date().getFullYear()) ? { year: 'numeric' } : {}) }) : 'sin fecha';
 
 // ===================== MAESTROS Y COSTOS =====================
 async function cargarMaestros() {
@@ -1783,7 +1798,7 @@ function nuevoForm(base = {}) {
 }
 function pintarForm() {
   const f = st.f;
-  document.querySelectorAll('#s-nuevo [data-k]').forEach(i => { i.value = f[i.dataset.k] ?? ''; });
+  document.querySelectorAll('#s-nuevo [data-k]').forEach(i => { const v = f[i.dataset.k] ?? ''; i.value = i.classList.contains('in-fecha') ? isoAFecha(v) : i.classList.contains('in-hora') ? String(v).slice(0, 5) : v; i.classList.remove('in-mal'); });
   [...$('seg-entrega').children].forEach(b => b.classList.toggle('activa', b.dataset.v === f.tipo_entrega));
   $('f-delivery').classList.toggle('oculto', f.tipo_entrega !== 'delivery');
   $('ubi-link').value = f.ubicacion_link || ''; $('ubi-buscar').value = '';
@@ -1830,7 +1845,7 @@ function pintarResumen() {
     <span class="tot">Total</span><b class="tot">${S(tp + del)}${f.tipo_entrega === 'delivery' && f.delivery_modo === 'al_despachar' && !del ? ' + delivery' : ''}</b>
     ${fc != null ? `<span>Food cost del pedido</span><b class="fc ${fcClase(fc)}">${fc.toFixed(1)}%</b>` : ''}`;
 }
-document.querySelectorAll('#s-nuevo [data-k]').forEach(i => i.addEventListener('input', () => { ocultarAviso(); st.f[i.dataset.k] = i.value; if (i.dataset.k === 'costo_delivery') { st.f.delivAuto = false; cotizarFormDelivery(); } if (i.dataset.k === 'fecha_entrega' || i.dataset.k === 'hora_entrega') cotizarFormDelivery();
+document.querySelectorAll('#s-nuevo [data-k]').forEach(i => i.addEventListener('input', () => { ocultarAviso(); st.f[i.dataset.k] = i.classList.contains('in-fecha') ? fechaAIso(i.value) : i.classList.contains('in-hora') ? (horaOk(i.value) ? i.value : '') : i.value; if (i.dataset.k === 'costo_delivery') { st.f.delivAuto = false; cotizarFormDelivery(); } if (i.dataset.k === 'fecha_entrega' || i.dataset.k === 'hora_entrega') cotizarFormDelivery();
   if (i.dataset.k === 'delivery_modo') { if (i.value !== 'fijo' && st.f.delivery_costo_real == null) { st.f.costo_delivery = ''; st.f.delivAuto = false; } pintarModoForm(); cotizarFormDelivery(); }
   if (i.dataset.k === 'facturacion') {
     // factura mensual (ej. colegio): el delivery va al costo real del InDrive + IGV
@@ -1881,7 +1896,14 @@ async function guardarPedido(estado, cobrar) {
   if (!f.items.length) return $('f-error').textContent = 'Agrega al menos un producto.';
   if (estado !== 'cotizado' || cobrar) {
     if (!f.cliente_nombre.trim()) return $('f-error').textContent = 'Falta el nombre del cliente.';
+    const tF = document.querySelector('#s-nuevo [data-k="fecha_entrega"]').value.trim(), tH = document.querySelector('#s-nuevo [data-k="hora_entrega"]').value.trim();
+    if (tF && !f.fecha_entrega) return $('f-error').textContent = `La fecha "${tF}" no es válida. Escríbela así: 19/11/26 (día/mes/año).`;
+    if (tH && !f.hora_entrega) return $('f-error').textContent = `La hora "${tH}" no es válida. Escríbela en 24 horas, ej. 07:15 o 15:30.`;
     if (!f.fecha_entrega) return $('f-error').textContent = 'Falta la fecha de entrega.';
+    // año mal escrito (ej. 0026 en vez de 2026): el pedido se perdería de la Central, Producción y Calendar
+    const anioEnt = Number(String(f.fecha_entrega).slice(0, 4)), anioHoy = new Date().getFullYear();
+    if (!(anioEnt >= anioHoy - 1 && anioEnt <= anioHoy + 1)) return $('f-error').textContent = `La fecha de entrega tiene un año raro (${anioEnt}). Escribe el año completo, ej. ${anioHoy}.`;
+    if (!f.id && f.fecha_entrega < dias(0) && !confirm(`La fecha de entrega (${fechaCorta(f.fecha_entrega)}) ya pasó. ¿Guardar igual?`)) return;
     if (f.facturacion === 'mensual' && !/^(10|15|17|20)\d{9}$/.test((f.cliente_doc || '').trim())) return $('f-error').textContent = 'La factura mensual necesita el RUC del cliente (elige el cliente mensual).';
     if (f.tipo_entrega === 'delivery' && !f.direccion.trim() && f.ubicacion_lat == null) return $('f-error').textContent = 'Falta la dirección o la ubicación del delivery.';
     if (f.tipo_entrega === 'delivery' && f.ubicacion_lat == null && !confirm('El delivery no tiene ubicación en el mapa (no saldrá en el mapa de clientes). ¿Guardar igual?')) return;
@@ -2272,8 +2294,8 @@ function pintarTarifa(centrar) {
 function pintarHoras() {
   $('t-horas').innerHTML = st_t.horas.length ? st_t.horas.map((h, i) => `<div class="fila" style="align-items:center;margin-bottom:6px">
       <div class="chips" style="flex:0 0 auto">${DIAS_C.map((d, k) => `<button data-hd="${i}:${k + 1}" class="${(h.dias || []).includes(k + 1) ? 'activa' : ''}" style="min-width:32px">${d}</button>`).join('')}</div>
-      <div style="max-width:120px"><input type="time" data-hc="${i}:desde" value="${h.desde}"></div><span>a</span>
-      <div style="max-width:120px"><input type="time" data-hc="${i}:hasta" value="${h.hasta}"></div>
+      <div style="max-width:120px"><input class="in-hora" type="text" inputmode="numeric" placeholder="hh:mm (24 h)" maxlength="5" autocomplete="off" data-hc="${i}:desde" value="${(h.desde || '').slice(0, 5)}"></div><span>a</span>
+      <div style="max-width:120px"><input class="in-hora" type="text" inputmode="numeric" placeholder="hh:mm (24 h)" maxlength="5" autocomplete="off" data-hc="${i}:hasta" value="${(h.hasta || '').slice(0, 5)}"></div>
       <div style="max-width:110px;display:flex;align-items:center;gap:4px">+<input type="number" min="0" step="5" data-hc="${i}:recargo_pct" value="${h.recargo_pct}">%</div>
       <button class="btn-sec" data-hx="${i}" title="Quitar">✕</button></div>`).join('')
     : '<div class="ayuda">Sin horas punta: el precio es igual a cualquier hora.</div>';
@@ -2286,7 +2308,8 @@ $('t-horas').addEventListener('click', e => {
 });
 $('t-horas').addEventListener('input', e => {
   const c = e.target.closest('[data-hc]'); if (!c) return;
-  const [i, k] = c.dataset.hc.split(':'); st_t.horas[Number(i)][k] = k === 'recargo_pct' ? Number(c.value || 0) : c.value; pintarTarifa();
+  const [i, k] = c.dataset.hc.split(':'); if (k !== 'recargo_pct' && !horaOk(c.value)) return;
+  st_t.horas[Number(i)][k] = k === 'recargo_pct' ? Number(c.value || 0) : c.value; pintarTarifa();
 });
 $('t-hora-add').onclick = () => { st_t.horas.push({ dias: [1, 2, 3, 4, 5], desde: '12:00', hasta: '13:00', recargo_pct: 15 }); pintarHoras(); pintarTarifa(); };
 // ---- zonas por distrito ----
