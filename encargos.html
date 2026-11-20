@@ -262,7 +262,22 @@ table.t .x{background:var(--fondo);width:28px;height:28px}
 .pk tr{page-break-inside:avoid}
 </style>
 <!-- números sin flechitas: se escriben; la rueda del mouse o las flechas del teclado no los cambian -->
-<style>input.in-mal{border-color:#c62828!important;background:#fdecec!important}</style>
+<style>input.in-mal{border-color:#c62828!important;background:#fdecec!important}
+input.in-fecha,input.in-hora{cursor:pointer;background-repeat:no-repeat;background-position:right 10px center;background-size:16px;padding-right:32px!important}
+input.in-fecha{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b6b6b' stroke-width='2'%3E%3Crect x='3' y='5' width='18' height='16' rx='2'/%3E%3Cpath d='M3 10h18M8 3v4M16 3v4'/%3E%3C/svg%3E")}
+input.in-hora{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b6b6b' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E")}
+.selfh{position:absolute;z-index:9999;background:#fff;border:1px solid var(--borde);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.18);padding:10px;font-size:14px}
+.selfh .cab{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-weight:700}
+.selfh .cab button{background:var(--fondo);border:0;border-radius:8px;width:32px;height:30px;font-size:16px;cursor:pointer}
+.selfh .rap{display:flex;gap:6px;margin-bottom:8px}.selfh .rap button{flex:1;background:var(--rojo-s);color:var(--rojo);border:0;border-radius:8px;padding:6px;font-weight:700;cursor:pointer}
+.selfh .gr{display:grid;grid-template-columns:repeat(7,36px);gap:2px;text-align:center}
+.selfh .gr span{font-size:11px;color:var(--gris);padding:3px 0}
+.selfh .gr button{height:34px;border:0;border-radius:8px;background:none;cursor:pointer;font-size:14px}
+.selfh .gr button:hover{background:var(--fondo)}.selfh .gr button.hoy{outline:1.5px solid var(--rojo)}.selfh .gr button.sel{background:var(--rojo);color:#fff}.selfh .gr button:disabled{color:#ccc;cursor:default;background:none}
+.selfh.horas{max-height:260px;overflow:auto;padding:6px;width:150px}
+.selfh.horas button{display:block;width:100%;text-align:left;border:0;background:none;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:14px}
+.selfh.horas button:hover{background:var(--fondo)}.selfh.horas button.sel{background:var(--rojo);color:#fff}
+</style>
 <style>input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}input[type=number]{-moz-appearance:textfield;appearance:textfield}</style>
 <script>document.addEventListener('wheel',e=>{const t=e.target;if(t&&t.type==='number'&&t===document.activeElement)t.blur()},{passive:true});document.addEventListener('keydown',e=>{if((e.key==='ArrowUp'||e.key==='ArrowDown')&&e.target&&e.target.type==='number')e.preventDefault()},true);</script>
 </head>
@@ -762,6 +777,61 @@ document.addEventListener('input', e => {
   i.value = esF ? [d.slice(0, 2), d.slice(2, 4), d.slice(4, 6)].filter(Boolean).join('/') : d.length > 2 ? d.slice(0, 2) + ':' + d.slice(2, 4) : d;
   i.classList.toggle('in-mal', i.value.length === (esF ? 8 : 5) && !(esF ? fechaAIso(i.value) : horaOk(i.value)));
 }, true);
+// ===== Elegir fecha y hora de una lista (también se puede escribir) =====
+// Fecha: calendario. Hora: lista cada 15 min dentro del horario de atención (6:30 am a 11:30 pm).
+const selFH = { el: null, input: null, mes: null };
+function cerrarSelFH() { if (selFH.el) selFH.el.remove(); selFH.el = null; selFH.input = null; }
+function ponerValor(i, v) { i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); cerrarSelFH(); }
+function ubicarSelFH(i, el) {
+  const r = i.getBoundingClientRect(); el.style.visibility = 'hidden'; document.body.appendChild(el);
+  let top = r.bottom + window.scrollY + 4; const alto = el.offsetHeight;
+  if (r.bottom + alto + 8 > window.innerHeight && r.top > alto + 8) top = r.top + window.scrollY - alto - 4;
+  el.style.top = top + 'px'; el.style.left = Math.max(8, Math.min(r.left + window.scrollX, window.scrollX + document.documentElement.clientWidth - el.offsetWidth - 8)) + 'px';
+  el.style.visibility = '';
+}
+function pintarCalendario() {
+  const i = selFH.input, el = selFH.el, m = selFH.mes, sel = fechaAIso(i.value);
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const pasadoOk = i.dataset.k === 'ocasion_fecha';   // la fecha de la ocasión puede ser pasada; la de entrega no
+  const ini = new Date(m.getFullYear(), m.getMonth(), 1), off = (ini.getDay() + 6) % 7, dias = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate();
+  const mas = n => { const d = new Date(hoy); d.setDate(d.getDate() + n); return d; };
+  el.innerHTML = `<div class="rap"><button data-fd="${iso(hoy)}">Hoy</button><button data-fd="${iso(mas(1))}">Mañana</button><button data-fd="${iso(mas(2))}">Pasado</button></div>
+    <div class="cab"><button data-mm="-1">‹</button><span>${(t => t.charAt(0).toUpperCase() + t.slice(1))(m.toLocaleDateString('es-PE', { month: 'long', year: 'numeric' }))}</span><button data-mm="1">›</button></div>
+    <div class="gr">${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(x => `<span>${x}</span>`).join('')}${'<i></i>'.repeat(off)}${Array.from({ length: dias }, (_, k) => {
+      const d = new Date(m.getFullYear(), m.getMonth(), k + 1), s = iso(d);
+      return `<button data-fd="${s}" class="${s === iso(hoy) ? 'hoy' : ''} ${s === sel ? 'sel' : ''}" ${!pasadoOk && d < hoy ? 'disabled' : ''}>${k + 1}</button>`; }).join('')}</div>`;
+}
+function abrirCalendario(i) {
+  cerrarSelFH(); const el = document.createElement('div'); el.className = 'selfh';
+  const v = fechaAIso(i.value); selFH.input = i; selFH.el = el; selFH.mes = v ? new Date(v + 'T12:00:00') : new Date(); selFH.mes.setDate(1);
+  pintarCalendario(); ubicarSelFH(i, el);
+  el.addEventListener('mousedown', e => e.preventDefault());   // no quitar el foco del campo
+  el.addEventListener('click', e => {
+    const d = e.target.closest('[data-fd]'), mm = e.target.closest('[data-mm]');
+    if (d && !d.disabled) ponerValor(i, isoAFecha(d.dataset.fd));
+    if (mm) { selFH.mes.setMonth(selFH.mes.getMonth() + Number(mm.dataset.mm)); pintarCalendario(); }
+  });
+}
+const HORAS_LISTA = (() => { const l = []; for (let m = 6 * 60 + 30; m <= 23 * 60 + 30; m += 15) l.push(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`); return l; })();
+const hora12txt = t => { const [H, M] = t.split(':').map(Number); return `${H % 12 || 12}:${String(M).padStart(2, '0')} ${H < 12 ? 'am' : 'pm'}`; };
+function abrirHoras(i) {
+  cerrarSelFH(); const el = document.createElement('div'); el.className = 'selfh horas'; selFH.input = i; selFH.el = el;
+  const v = horaOk(i.value) ? i.value : '';
+  el.innerHTML = HORAS_LISTA.map(t => `<button data-h="${t}" class="${t === v ? 'sel' : ''}">${hora12txt(t)}</button>`).join('');
+  ubicarSelFH(i, el);
+  const ir = el.querySelector('.sel') || el.querySelector(`[data-h="${v ? v.slice(0, 3) : '12:'}00"]`) || el.querySelector('[data-h="12:00"]'); if (ir) el.scrollTop = ir.offsetTop - 90;
+  el.addEventListener('mousedown', e => e.preventDefault());
+  el.addEventListener('click', e => { const b = e.target.closest('[data-h]'); if (b) ponerValor(i, b.dataset.h); });
+}
+document.addEventListener('click', e => {
+  const i = e.target.closest && e.target.closest('input.in-fecha, input.in-hora');
+  if (i) { if (selFH.input === i) return; return i.classList.contains('in-fecha') ? abrirCalendario(i) : abrirHoras(i); }
+  if (selFH.el && !selFH.el.contains(e.target)) cerrarSelFH();
+});
+document.addEventListener('keydown', e => { if (selFH.el && (e.key === 'Escape' || e.key === 'Tab')) cerrarSelFH(); });
+document.addEventListener('input', e => { if (selFH.el && e.target === selFH.input && e.isTrusted) cerrarSelFH(); });   // si escribe, se cierra la lista
+window.addEventListener('scroll', e => { if (selFH.el && !selFH.el.contains(e.target)) cerrarSelFH(); }, true);
 const fechaCorta = f => f ? new Date(f + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric', month: 'short', ...(String(f).slice(0, 4) !== String(new Date().getFullYear()) ? { year: 'numeric' } : {}) }) : 'sin fecha';
 
 // ===================== MAESTROS Y COSTOS =====================
