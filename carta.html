@@ -170,8 +170,9 @@
 <script>
 // ====== CARTA (para cambiar un precio o plato, edita esta lista) ======
 const CARTA = [
-  { id: 'desayunos', t: 'Desayunos', ico: '☀️', items: [
+  { id: 'desayunos', t: 'Desayunos', ico: '☀️', nota: '* Disponibles solo en la mañana, hasta el mediodía', items: [
     ['Desayuno Proteico', 19, 'Pan de masa madre, huevos revueltos y palta, acompañado de yogurt griego con granola, café pasado o infusión clásica y jugo de la casa.'],
+    ['Desayuno Omelette', 18, 'Pan de masa madre, huevo, jamón, queso y tomate, café o infusión y jugo de naranja.'],
     ['Desayuno Americano', 17, 'Huevos, tocino, pan a elección, café pasado o infusión clásica y jugo de la casa.'],
     ['Tostón de Palta', 17, 'Pan de masa madre, huevos revueltos, palta, café pasado o infusión clásica y jugo de la casa.'],
     ['Desayuno Huachana', 16, 'Huevos, salchicha huachana, pan a elección, café pasado o infusión clásica y jugo de la casa.'],
@@ -183,8 +184,7 @@ const CARTA = [
     ['Bowl de Frutas', 15, 'Cinco frutas de temporada acompañadas de yogurt de vainilla, cañihua pop, chía y miel.'],
     ['Bowl de Avena', 14, 'Avena cremosa acompañada de fresa, plátano, miel y pecanas.'] ],
     extras: ['Extras para los bowls', 'Miel o algarrobina 1 cda. (+S/ 2.00) · Manjar o fudge 1 cda. (+S/ 2.50) · Mantequilla de maní o Nutella 1 cda. (+S/ 4.00) · Cañihua pop (+S/ 1.50) · Yogurt griego 90 ml (+S/ 4.00)'] },
-  { id: 'bowls-salados', t: 'Bowls salados', ico: '🥗', items: [
-    ['Teriyaki Bowl', 23, 'Pollo teriyaki, palta, zanahoria, lechuga americana, col morada, pepino, tomate, arroz blanco, tequeños en tiras y ajonjolí.'],
+  { id: 'bowls-salados', t: 'Bowls salados', ico: '🥗', nota: '* Disponibles solo en la tarde, desde el mediodía', items: [
     ['Crispy Chicken Bowl', 22, 'Pollo crocante, palta, zanahoria, lechuga americana, col morada, pepino, tomate, arroz blanco, tequeños en tiras y aliño de la casa.'],
     ['Chicken Bowl', 19, 'Pollo trozado a la plancha, palta, zanahoria, lechuga americana, col morada, pepino, tomate y aliño de la casa.'] ] },
   { id: 'sandwiches', t: 'Sándwiches', ico: '🥪', items: [
@@ -203,16 +203,6 @@ const CARTA = [
     ['Triple de Durazno', 10, 'Pan pullman, jamón inglés, pollo deshilachado con mayonesa y durazno en almíbar.'],
     ['Mixto Simple', 10, 'Pan pullman, jamón inglés y queso edam.'] ],
     extras: ['Extras para los sándwiches', 'Extra proteína pollo (+S/ 6.00) · Extra proteína carne (+S/ 9.00) · Tocino und (+S/ 2.50) · Huevo frito und (+S/ 2.00) · Papas fritas 150 g (+S/ 7.00)'] },
-  { id: 'bolleria', t: 'Bollerías especiales', ico: '🥐', nota: 'Cachito, croissant, focaccia y más', items: [
-    ['Croissant de Pistacho', 9, 'Masa hojaldrada rellena de crema de pistacho y cubierta de pistachos picados.'],
-    ['Croissant de Almendras', 8, 'Masa hojaldrada rellena de crema de almendras y cubierta de almendras laminadas.'],
-    ['Croissant de Fresa', 8, 'Masa hojaldrada rellena de crema pastelera y fresas frescas.'],
-    ['Croissant de Nutella', 8, 'Masa hojaldrada rellena de crema de avellanas.'],
-    ['Croissant Oreo', 7, 'Masa hojaldrada rellena de crema de Oreo y cubierta de galleta triturada.'],
-    ['Focaccia Mediterránea', 6, 'Pan italiano de alta hidratación cubierto de queso parmesano y embutidos, con orégano y romero.'],
-    ['Focaccia Clásica', 5, 'Pan italiano de alta hidratación cubierto de queso parmesano, cebolla y tomate, con orégano y romero.'],
-    ['Croissant Clásico', 3, 'Masa hojaldrada, crujiente por fuera y suave por dentro.'],
-    ['Cachito de Mantequilla', 2, 'Masa esponjosa sabor mantequilla, dorada y crujiente.'] ] },
   { id: 'jugos', t: 'Jugos', ico: '🍹', grupos: [
     ['Jugos clásicos', [
       ['Jugo de Guanábana con Leche', 15, 'Guanábana con leche.'],
@@ -260,8 +250,8 @@ const CARTA = [
     ['Jarra de Limonada (1 litro)', 18, ''],
     ['Jarra de Chicha Morada (1 litro)', 17, ''] ] },
   { id: 'compartir', t: 'Para compartir', ico: '🤝', nota: '* Válido solo para consumo en tienda', combos: [
-    ['Combo 1', 28, 'Entre 2 a 3 personas', ['6 mini hamburguesas clásicas', '6 sanguchitos de pollo', '6 boliquesos o 6 bocaditos dulces a elección', '2 mates de hierba natural o ½ jarra de limonada']],
-    ['Combo 2', 40, 'Entre 4 a 5 personas', ['8 mini croissants con manjar', '8 mini hamburguesas clásicas', '8 sanguchitos de pollo', '10 boliquesos', '1 tetera de mate de hierba natural o 1 jarra de limonada']] ] },
+    ['Combo 1', 28, 'Entre 2 a 3 personas', ['4 mini hamburguesas clásicas', '4 sanguchitos de pollo', '4 boliquesos o 4 bocaditos dulces a elección', '2 mates de hierba natural o ½ jarra de limonada']],
+    ['Combo 2', 40, 'Entre 4 a 5 personas', ['6 mini croissants con manjar', '6 mini hamburguesas clásicas', '6 sanguchitos de pollo', '8 boliquesos', '1 tetera de mate de hierba natural o 1 jarra de limonada']] ] },
 ];
 // ======================================================================
 const SB_URL = 'https://odhcnrjbmydjghafichc.supabase.co', SB_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK';
