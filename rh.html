@@ -134,6 +134,8 @@ table.hor tr.area td{font-size:11.5px;font-weight:700;color:var(--vino);text-tra
       <button data-tab="trab">Trabajadores</button>
       <button data-tab="acc">Accesos y PIN</button>
       <button data-tab="hor">Horarios</button>
+      <button data-tab="nov">Novedades</button>
+      <button data-tab="pla">Planilla</button>
       <button data-tab="post">Postulantes</button>
     </nav>
   </header>
@@ -224,10 +226,10 @@ async function cargarTodo() {
 }
 $('tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (b) irTab(b.dataset.tab); };
 function irTab(t) {
-  if (!['trab', 'acc', 'hor', 'post'].includes(t)) t = 'trab';
+  if (!['trab', 'acc', 'hor', 'nov', 'pla', 'post'].includes(t)) t = 'trab';
   st.tab = t; guardar('tab', t); $('main').onclick = null;
   [...$('tabs').children].forEach(b => b.classList.toggle('activa', b.dataset.tab === t));
-  ({ trab: tabTrab, acc: tabAcc, hor: tabHor, post: tabPost })[t]();
+  ({ trab: tabTrab, acc: tabAcc, hor: tabHor, nov: tabNov, pla: tabPla, post: tabPost })[t]();
 }
 function abrirModal(html) { $('modal-caja').innerHTML = html; $('modal').classList.remove('oculto'); }
 function cerrarModal() { $('modal').classList.add('oculto'); $('modal-caja').innerHTML = ''; }
@@ -814,6 +816,400 @@ async function nuevoTurno() {
   if (r.error) return alert(errTxt(r.error));
   await cargarTodo(); toast('✓ Turno agregado'); pintarHor();
 }
+
+// ===================== PLANILLA: cálculo (mensual, gratificación, CTS) =====================
+// Régimen REMYPE pequeña empresa. Todo en soles; mes = 30 días; hora = día / 8.
+const r2 = n => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+const NOV_TIPOS = [
+  ['adelanto', '💵 Adelanto', 'monto'], ['falta', '❌ Falta', 'dias'], ['permiso_sin_goce', '🚪 Permiso sin goce', 'dias_horas'],
+  ['permiso_con_goce', '🟢 Permiso con goce', 'dias_horas'], ['descanso_medico', '🩺 Descanso médico', 'dias'], ['vacaciones', '🏖️ Vacaciones', 'dias'],
+  ['horas_extra', '⏱️ Horas extra', 'horas'], ['feriado_trabajado', '📅 Feriado trabajado', 'dias'], ['bono', '➕ Bono', 'monto'], ['descuento', '➖ Otro descuento', 'monto'],
+];
+const NOV_TXT = Object.fromEntries(NOV_TIPOS.map(t => [t[0], t[1]]));
+const MESES_C = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+const perTxt = p => { const [y, m] = p.split('-').map(Number); return `${MESES[m - 1]} ${y}`; };
+const perMas = (p, n) => { const [y, m] = p.split('-').map(Number); const d = new Date(y, m - 1 + n, 1); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; };
+const finMes = p => { const [y, m] = p.split('-').map(Number); return iso(new Date(y, m, 0)); };
+const iniMes = p => p + '-01';
+
+// días trabajados del mes (base 30) según ingreso y cese
+function diasDelMes(t, p) {
+  const ini = iniMes(p), fin = finMes(p);
+  const a = t.fecha_ingreso && t.fecha_ingreso > ini ? t.fecha_ingreso : ini;
+  const b = t.fecha_cese && t.fecha_cese < fin ? t.fecha_cese : fin;
+  if (a > b) return 0;
+  if (a === ini && b === fin) return 30;
+  const dA = Number(a.slice(8)), dB = b === fin ? 30 : Number(b.slice(8));
+  return Math.max(0, Math.min(30, dB - dA + 1));
+}
+// ¿trabajó el mes calendario completo?
+const mesCompleto = (t, p) => (!t.fecha_ingreso || t.fecha_ingreso <= iniMes(p)) && (!t.fecha_cese || t.fecha_cese >= finMes(p));
+const asigFam = (t, P) => t.asignacion_familiar ? r2(P.rmv * P.asig_fam_pct / 100) : 0;
+
+// ---- MENSUAL ----
+function calcMensual(t, nov, P, AFP, p) {
+  const B = Number(t.sueldo_basico || 0), dias = diasDelMes(t, p);
+  const suma = (tipo, k) => nov.filter(n => n.tipo === tipo).reduce((a, n) => a + Number(n[k] || 0), 0);
+  const AF = r2(asigFam(t, P) * dias / 30);
+  const dia = B / 30, hora = (B + asigFam(t, P)) / 240;
+  const basico = r2(dia * dias);
+  const faltas = suma('falta', 'dias'), psgD = suma('permiso_sin_goce', 'dias'), psgH = suma('permiso_sin_goce', 'horas');
+  const descDias = r2(dia * (faltas + psgD) + (B / 240) * psgH);
+  let h25 = 0, h35 = 0;
+  nov.filter(n => n.tipo === 'horas_extra').forEach(n => { const h = Number(n.horas || 0); h25 += Math.min(2, h); h35 += Math.max(0, h - 2); });
+  const he = r2(hora * (h25 * (1 + P.he_25_pct / 100) + h35 * (1 + P.he_35_pct / 100)));
+  const feriados = suma('feriado_trabajado', 'dias'), feriado = r2(2 * (B + asigFam(t, P)) / 30 * feriados);
+  const bonos = r2(suma('bono', 'monto'));
+  const afecto = r2(Math.max(0, basico - descDias) + AF + he + feriado + bonos);
+  let onp = 0, afpAporte = 0, afpPrima = 0, afpComision = 0;
+  if (t.en_planilla) {
+    if (t.sistema_pension === 'ONP') onp = r2(afecto * P.onp_pct / 100);
+    else if (t.sistema_pension && t.sistema_pension.startsWith('AFP')) {
+      const a = AFP[t.sistema_pension] || { comision_flujo_pct: 0, comision_mixta_pct: 0 };
+      afpAporte = r2(afecto * P.afp_aporte_pct / 100);
+      afpPrima = r2(Math.min(afecto, P.afp_tope) * P.afp_prima_pct / 100);
+      afpComision = r2(afecto * (t.afp_comision === 'mixta' ? a.comision_mixta_pct : a.comision_flujo_pct) / 100);
+    }
+  }
+  const pension = r2(onp + afpAporte + afpPrima + afpComision);
+  const adelantos = r2(suma('adelanto', 'monto')), otros = r2(suma('descuento', 'monto'));
+  const descuentos = r2(pension + adelantos + otros);
+  const essalud = t.en_planilla && t.seguro_salud === 'EsSalud' && dias > 0 ? r2(Math.max(afecto, P.rmv * dias / 30) * P.essalud_pct / 100) : 0;
+  return {
+    dias, sueldo: B, basico, asig_fam: AF, faltas, permiso_sg_dias: psgD, permiso_sg_horas: psgH, desc_dias: descDias,
+    h25, h35, horas_extra: he, feriados, feriado, bonos, ingresos: afecto,
+    onp, afp_aporte: afpAporte, afp_prima: afpPrima, afp_comision: afpComision, pension, adelantos, otros_desc: otros, descuentos,
+    neto: r2(afecto - descuentos), essalud, empleador: essalud,
+    dm_dias: suma('descanso_medico', 'dias'), vac_dias: suma('vacaciones', 'dias'), pcg_dias: suma('permiso_con_goce', 'dias'), pcg_horas: suma('permiso_con_goce', 'horas'),
+  };
+}
+
+// ---- GRATIFICACIÓN (julio: ene–jun · diciembre: jul–dic) ----
+function semestreGrati(p) { const [y, m] = p.split('-').map(Number); return m === 7 ? [`${y}-01`, `${y}-06`] : [`${y}-07`, `${y}-12`]; }
+function calcGrati(t, P, p) {
+  const [a] = semestreGrati(p);
+  const meses = [0, 1, 2, 3, 4, 5].filter(i => mesCompleto(t, perMas(a, i))).length;
+  const base = r2(Number(t.sueldo_basico || 0) + asigFam(t, P));
+  const grati = r2(base * P.grati_pct / 100 * meses / 6);
+  const bonif = t.en_planilla && t.seguro_salud === 'EsSalud' ? r2(grati * P.bonif_extra_pct / 100) : 0;
+  return { meses, base, grati, bonif, ingresos: r2(grati + bonif), descuentos: 0, neto: r2(grati + bonif), empleador: 0 };
+}
+
+// ---- CTS (mayo: nov–abr · noviembre: may–oct) ----
+function periodoCTS(p) { const [y, m] = p.split('-').map(Number); return m === 5 ? [`${y - 1}-11`, `${y}-04`] : [`${y}-05`, `${y}-10`]; }
+function calcCTS(t, P, p, gratiAnterior, faltasPeriodo) {
+  const [a, b] = periodoCTS(p);
+  const ini = t.fecha_ingreso && t.fecha_ingreso > iniMes(a) ? t.fecha_ingreso : iniMes(a);
+  const fin = t.fecha_cese && t.fecha_cese < finMes(b) ? t.fecha_cese : finMes(b);
+  let meses = 0, dias = 0;
+  if (ini <= fin) for (let i = 0; i < 6; i++) { const m = perMas(a, i); const d = diasDelMes({ fecha_ingreso: ini, fecha_cese: fin }, m); if (d === 30) meses++; else dias += d; }
+  const extra = Math.floor(dias / 30); meses += extra; dias -= extra * 30;
+  const computables = Math.max(0, meses * 30 + dias - faltasPeriodo);
+  const AF = asigFam(t, P), B = Number(t.sueldo_basico || 0);
+  const sexto = r2((gratiAnterior || 0) / 6);
+  const rc = r2(B + AF + sexto);
+  const cts = computables >= 30 ? r2(rc * (P.cts_dias_anio / 30) / 360 * computables) : 0;
+  return { meses, dias, faltas: faltasPeriodo, computables, sueldo: B, asig_fam: AF, sexto_grati: sexto, grati_base: gratiAnterior || 0, rc, cts, ingresos: cts, descuentos: 0, neto: cts, empleador: 0 };
+}
+
+// ===================== PLANILLA: pantallas =====================
+const hoyPer = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; };
+st.pl = {
+  per: hoyPer(), tipo: leer('pl_tipo') || 'mensual', P: null, AFP: null,
+  perG: (() => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() < 7 ? '07' : '12'}`; })(),
+  perC: (() => { const d = new Date(), m = d.getMonth() + 1; return m <= 5 ? `${d.getFullYear()}-05` : m <= 11 ? `${d.getFullYear()}-11` : `${d.getFullYear() + 1}-05`; })(),
+};
+st.nv = { per: hoyPer(), lista: [] };
+const faltaScript = e => /rh_(parametros|afp|novedades|planillas|planilla_detalle)/.test(e?.message || '') && /exist|schema cache/.test(e?.message || '');
+const msgScript = e => faltaScript(e) ? 'Falta correr rh_2_planilla.sql en Supabase.' : errTxt(e);
+async function cargarParametros() {
+  const [p, a] = await Promise.all([sb.from('rh_parametros').select('*').order('orden'), sb.from('rh_afp').select('*').order('nombre')]);
+  if (p.error) throw p.error; if (a.error) throw a.error;
+  st.pl.Plista = p.data; st.pl.P = Object.fromEntries(p.data.map(x => [x.clave, Number(x.valor)]));
+  st.pl.AFPlista = a.data; st.pl.AFP = Object.fromEntries(a.data.map(x => [x.nombre, { comision_flujo_pct: Number(x.comision_flujo_pct), comision_mixta_pct: Number(x.comision_mixta_pct) }]));
+}
+const selPer = (id, txt) => `<div class="semana"><button class="btn gris peq" data-per="${id}" data-d="-1">‹</button><b style="min-width:160px">${esc(txt)}</b><button class="btn gris peq" data-per="${id}" data-d="1">›</button></div>`;
+const nomT = id => st.trab.find(t => t.id === id)?.nombre_corto || '¿?';
+
+// ---------- NOVEDADES ----------
+async function tabNov() {
+  $('main').innerHTML = '<div class="cargando">Cargando…</div>';
+  const r = await sb.from('rh_novedades').select('*').eq('periodo', st.nv.per).order('fecha', { ascending: true, nullsFirst: false }).order('id');
+  if (r.error) { $('main').innerHTML = `<div class="bloque error">${esc(msgScript(r.error))}</div>`; return; }
+  st.nv.lista = r.data || [];
+  const L = st.nv.lista;
+  const cuenta = tipo => L.filter(n => n.tipo === tipo).length;
+  const det = n => [n.dias != null ? `${Number(n.dias)} día(s)` : '', n.horas != null ? `${Number(n.horas)} h` : '', n.monto != null ? S(n.monto) : ''].filter(Boolean).join(' · ');
+  $('main').innerHTML = `
+    <div class="bloque">
+      <div class="barra-acc">${selPer('nv', 'Planilla de ' + perTxt(st.nv.per))}<span class="esp"></span>
+        <button class="btn gris peq" id="nv-hor" title="Crea las faltas, descansos médicos, vacaciones y permisos marcados en el horario de este mes">⬇ Traer del horario</button>
+        <button class="btn" id="nv-nuevo">+ Registrar</button></div>
+      <p class="ayuda">Todo lo que cambia el sueldo de este mes: adelantos, faltas, permisos, descansos médicos, horas extra, feriados trabajados, bonos y descuentos.</p>
+      <div class="barra-acc">${NOV_TIPOS.filter(t => cuenta(t[0])).map(t => `<span class="tag az">${t[1]}: ${cuenta(t[0])}</span>`).join(' ') || '<span class="cod">Sin novedades este mes.</span>'}</div>
+      ${L.length ? `<div class="tablawrap"><table class="t">
+        <tr><th>Fecha</th><th>Trabajador</th><th>Novedad</th><th>Detalle</th><th class="m-ocultar">Nota</th><th></th></tr>
+        ${L.map(n => `<tr class="clic" data-nv="${n.id}"><td class="cod">${fechaTxt(n.fecha)}</td><td><b>${esc(nomT(n.trabajador_id))}</b></td><td>${NOV_TXT[n.tipo] || n.tipo}${n.origen === 'horario' ? ' <span class="tag">horario</span>' : ''}</td>
+          <td>${det(n)}</td><td class="m-ocultar cod">${esc(n.nota || '')}</td><td class="n"><button class="btn gris peq" data-borrar="${n.id}">🗑</button></td></tr>`).join('')}
+      </table></div>` : ''}
+    </div>`;
+  $('nv-nuevo').onclick = () => editarNov(null);
+  $('nv-hor').onclick = traerHorario;
+  $('main').onclick = async e => {
+    const pb = e.target.closest('[data-per]'); if (pb) { st.nv.per = perMas(st.nv.per, Number(pb.dataset.d)); return tabNov(); }
+    const b = e.target.closest('[data-borrar]');
+    if (b) { e.stopPropagation(); if (!confirm('¿Borrar esta novedad?')) return; const x = await sb.from('rh_novedades').delete().eq('id', Number(b.dataset.borrar)); if (x.error) return alert(msgScript(x.error)); return tabNov(); }
+    const f = e.target.closest('[data-nv]'); if (f) editarNov(L.find(n => n.id === Number(f.dataset.nv)));
+  };
+}
+function editarNov(n) {
+  const nuevo = !n; n = n || { tipo: 'adelanto', trabajador_id: null, fecha: iso(new Date()) };
+  const trabs = st.trab.filter(t => t.activo || t.id === n.trabajador_id);
+  abrirModal(`
+    <div class="cab"><h3>${nuevo ? 'Registrar novedad' : 'Editar novedad'} · ${esc(perTxt(st.nv.per))}</h3><button class="cerrar" id="nn-x">×</button></div>
+    <div class="form" style="margin-top:8px">
+      <label class="d2">Trabajador <select id="nn-t"><option value="">— elige —</option>${trabs.map(t => `<option value="${t.id}" ${t.id === n.trabajador_id ? 'selected' : ''}>${esc(t.nombre_corto)}</option>`).join('')}</select></label>
+      <label>Fecha <input id="nn-f" class="in-fecha" placeholder="dd/mm/aa" maxlength="8" inputmode="numeric" value="${isoAFecha(n.fecha)}"></label>
+    </div>
+    <div class="secc">Tipo</div>
+    <div class="pinceles" id="nn-tipos">${NOV_TIPOS.map(t => `<button data-tp="${t[0]}" class="borrar ${n.tipo === t[0] ? 'on' : ''}" style="color:var(--txt)">${t[1]}</button>`).join('')}</div>
+    <div class="form" style="margin-top:12px">
+      <label id="nn-wd">Días <input id="nn-d" type="number" min="0" step="0.5" value="${n.dias ?? ''}"></label>
+      <label id="nn-wh">Horas <input id="nn-h" type="number" min="0" step="0.25" value="${n.horas ?? ''}"></label>
+      <label id="nn-wm">Monto S/ <input id="nn-m" type="number" min="0" step="0.01" value="${n.monto ?? ''}"></label>
+      <label class="d4">Nota <input id="nn-n" value="${esc(n.nota || '')}" placeholder="Opcional"></label>
+    </div>
+    <p class="ayuda" id="nn-ayuda" style="margin-top:8px"></p>
+    <div class="error" id="nn-err"></div>
+    <div class="pie"><span class="esp"></span><button class="btn sec" id="nn-no">Cancelar</button><button class="btn" id="nn-ok">${nuevo ? 'Registrar' : 'Guardar'}</button></div>`);
+  let tipo = n.tipo;
+  const AYUDA = {
+    adelanto: 'Se descuenta del neto de este mes.', falta: 'Se descuenta 1 día de sueldo (S/ sueldo ÷ 30) por cada falta.',
+    permiso_sin_goce: 'Se descuenta por días o por horas (sueldo ÷ 30 ÷ 8 por hora).', permiso_con_goce: 'Solo se registra; no se descuenta.',
+    descanso_medico: 'Se paga normal (los primeros 20 días del año los paga la empresa). Solo se registra.', vacaciones: 'Se pagan normal. Solo se registra.',
+    horas_extra: 'Horas extra de UN día: las 2 primeras +25%, desde la 3.ª +35%. Registra un día por fila.', feriado_trabajado: 'Feriado trabajado sin descanso sustitutorio: se paga 2 días adicionales por cada uno.',
+    bono: 'Se suma a los ingresos del mes (afecto a pensión).', descuento: 'Se descuenta del neto (ej. faltante de caja, consumo).',
+  };
+  const pinta = () => {
+    const k = (NOV_TIPOS.find(t => t[0] === tipo) || [])[2];
+    $('nn-wd').classList.toggle('oculto', !(k === 'dias' || k === 'dias_horas')); $('nn-wh').classList.toggle('oculto', !(k === 'horas' || k === 'dias_horas')); $('nn-wm').classList.toggle('oculto', k !== 'monto');
+    $('nn-ayuda').textContent = AYUDA[tipo] || '';
+    [...$('nn-tipos').children].forEach(b => b.classList.toggle('on', b.dataset.tp === tipo));
+    if (k === 'dias' && !$('nn-d').value) $('nn-d').value = 1;
+  };
+  pinta();
+  $('nn-tipos').onclick = e => { const b = e.target.closest('[data-tp]'); if (b) { tipo = b.dataset.tp; pinta(); } };
+  $('nn-x').onclick = $('nn-no').onclick = cerrarModal;
+  $('nn-ok').onclick = async () => {
+    const k = (NOV_TIPOS.find(t => t[0] === tipo) || [])[2], num = id => $(id).value === '' ? null : Number($(id).value);
+    const d = { trabajador_id: Number($('nn-t').value) || null, periodo: st.nv.per, tipo, fecha: fechaAIso($('nn-f').value) || null, nota: $('nn-n').value.trim() || null,
+      dias: k === 'dias' || k === 'dias_horas' ? num('nn-d') : null, horas: k === 'horas' || k === 'dias_horas' ? num('nn-h') : null, monto: k === 'monto' ? num('nn-m') : null };
+    if (!d.trabajador_id) return $('nn-err').textContent = 'Elige el trabajador.';
+    if ($('nn-f').value && !d.fecha) return $('nn-err').textContent = 'Fecha no válida. Escríbela así: 19/11/26.';
+    if (k === 'monto' && !(d.monto > 0)) return $('nn-err').textContent = 'Escribe el monto.';
+    if (k === 'dias' && !(d.dias > 0)) return $('nn-err').textContent = 'Escribe los días.';
+    if (k === 'horas' && !(d.horas > 0)) return $('nn-err').textContent = 'Escribe las horas.';
+    if (k === 'dias_horas' && !(d.dias > 0) && !(d.horas > 0)) return $('nn-err').textContent = 'Escribe los días o las horas.';
+    if (tipo === 'horas_extra' && d.horas > 12) return $('nn-err').textContent = 'Registra las horas extra de un solo día por fila.';
+    $('nn-ok').disabled = true;
+    const r = nuevo ? await sb.from('rh_novedades').insert(d) : await sb.from('rh_novedades').update(d).eq('id', n.id);
+    $('nn-ok').disabled = false;
+    if (r.error) return $('nn-err').textContent = msgScript(r.error);
+    cerrarModal(); toast('✓ Guardado'); tabNov();
+  };
+}
+async function traerHorario() {
+  const p = st.nv.per;
+  const r = await sb.from('horario_dias').select('trabajador_id,fecha,turno').gte('fecha', iniMes(p)).lte('fecha', finMes(p));
+  if (r.error) return alert(errTxt(r.error));
+  const MAPA = { ausencia: 'falta', descanso_medico: 'descanso_medico', vacaciones: 'vacaciones', permiso: 'permiso_sin_goce' };
+  const tipoTurno = Object.fromEntries(st.turnos.map(t => [t.codigo, t.tipo]));
+  const ya = new Set(st.nv.lista.map(n => `${n.trabajador_id}|${n.fecha}|${n.tipo}`));
+  const nuevos = (r.data || []).map(h => ({ h, tipo: MAPA[tipoTurno[h.turno]] })).filter(x => x.tipo && !ya.has(`${x.h.trabajador_id}|${x.h.fecha}|${x.tipo}`))
+    .map(({ h, tipo }) => ({ trabajador_id: h.trabajador_id, periodo: p, tipo, fecha: h.fecha, dias: 1, origen: 'horario', nota: tipo === 'permiso_sin_goce' ? 'Del horario: si fue con goce, cámbialo' : 'Del horario' }));
+  if (!nuevos.length) return alert('No hay nada nuevo en el horario de ' + perTxt(p) + ' (faltas, descansos médicos, vacaciones o permisos).');
+  const res = NOV_TIPOS.map(t => [t[1], nuevos.filter(x => x.tipo === t[0]).length]).filter(x => x[1]).map(x => `${x[0]}: ${x[1]}`).join('\n');
+  if (!confirm(`Se van a registrar ${nuevos.length} novedades del horario:\n\n${res}\n\nLos permisos entran como "sin goce" (se descuentan). ¿Continuar?`)) return;
+  const x = await sb.from('rh_novedades').insert(nuevos);
+  if (x.error) return alert(msgScript(x.error));
+  toast(`✓ ${nuevos.length} novedades del horario`); tabNov();
+}
+
+// ---------- PLANILLA ----------
+const perPlan = () => ({ mensual: st.pl.per, gratificacion: st.pl.perG, cts: st.pl.perC })[st.pl.tipo];
+const TIT = { mensual: 'Planilla mensual', gratificacion: 'Gratificación', cts: 'CTS' };
+async function tabPla() {
+  const pl = st.pl;
+  $('main').innerHTML = '<div class="cargando">Calculando…</div>';
+  try { if (!pl.P) await cargarParametros(); } catch (e) { $('main').innerHTML = `<div class="bloque error">${esc(msgScript(e))}</div>`; return; }
+  const per = perPlan();
+  // ¿ya está cerrada?
+  const c = await sb.from('rh_planillas').select('*, rh_planilla_detalle(*)').eq('tipo', pl.tipo).eq('periodo', per).maybeSingle();
+  if (c.error) { $('main').innerHTML = `<div class="bloque error">${esc(msgScript(c.error))}</div>`; return; }
+  let filas, cerrada = c.data;
+  if (cerrada) filas = cerrada.rh_planilla_detalle.map(d => ({ t: st.trab.find(x => x.id === d.trabajador_id) || { id: d.trabajador_id, nombre_corto: '¿?' }, c: d.datos }));
+  else {
+    try { filas = await calcularTodo(pl.tipo, per); } catch (e) { $('main').innerHTML = `<div class="bloque error">${esc(msgScript(e))}</div>`; return; }
+  }
+  pl.filas = filas; pl.cerrada = cerrada;
+  pintarPla();
+}
+async function calcularTodo(tipo, per) {
+  const P = st.pl.P, AFP = st.pl.AFP;
+  if (tipo === 'mensual') {
+    const r = await sb.from('rh_novedades').select('*').eq('periodo', per); if (r.error) throw r.error;
+    return st.trab.filter(t => diasDelMes(t, per) > 0).sort((a, b) => (b.en_planilla - a.en_planilla) || a.nombre_corto.localeCompare(b.nombre_corto))
+      .map(t => ({ t, c: { tipo, en_planilla: t.en_planilla, sistema_pension: t.sistema_pension || '', ...calcMensual(t, (r.data || []).filter(n => n.trabajador_id === t.id), P, AFP, per) } }));
+  }
+  if (tipo === 'gratificacion') return st.trab.filter(t => t.en_planilla || t.recibe_gratificacion).map(t => ({ t, c: { tipo, en_planilla: t.en_planilla, ...calcGrati(t, P, per) } }))
+    .filter(x => x.c.meses > 0 && (x.t.activo || (x.t.fecha_cese && x.t.fecha_cese >= finMes(semestreGrati(per)[1])))).sort((a, b) => a.t.nombre_corto.localeCompare(b.t.nombre_corto));
+  // CTS
+  const [a, b] = periodoCTS(per), perGr = per.endsWith('-05') ? `${Number(per.slice(0, 4)) - 1}-12` : `${per.slice(0, 4)}-07`;
+  const [nv, gr] = await Promise.all([
+    sb.from('rh_novedades').select('trabajador_id,tipo,dias,periodo').gte('periodo', a).lte('periodo', b).in('tipo', ['falta', 'permiso_sin_goce']),
+    sb.from('rh_planillas').select('rh_planilla_detalle(trabajador_id,datos)').eq('tipo', 'gratificacion').eq('periodo', perGr).maybeSingle(),
+  ]);
+  if (nv.error) throw nv.error; if (gr.error) throw gr.error;
+  const grGuardada = Object.fromEntries((gr.data?.rh_planilla_detalle || []).map(d => [d.trabajador_id, Number(d.datos.grati || 0)]));
+  return st.trab.filter(t => t.en_planilla).map(t => {
+    const ga = grGuardada[t.id] ?? calcGrati(t, P, perGr).grati;
+    const f = (nv.data || []).filter(n => n.trabajador_id === t.id).reduce((s, n) => s + Number(n.dias || 0), 0);
+    return { t, c: { tipo, en_planilla: true, grati_guardada: t.id in grGuardada, grati_periodo: perGr, ...calcCTS(t, P, per, ga, f) } };
+  }).filter(x => x.c.computables > 0 && (x.t.activo || (x.t.fecha_cese && x.t.fecha_cese >= finMes(b)))).sort((a, b) => a.t.nombre_corto.localeCompare(b.t.nombre_corto));
+}
+function pintarPla() {
+  const pl = st.pl, F = pl.filas, tipo = pl.tipo, per = perPlan(), sum = k => r2(F.reduce((a, x) => a + Number(x.c[k] || 0), 0));
+  const [y, m] = per.split('-');
+  const selector = tipo === 'mensual' ? selPer('pl', perTxt(per))
+    : `<div class="semana"><button class="btn gris peq" data-anio="-1">‹</button><b>${y}</b><button class="btn gris peq" data-anio="1">›</button></div>
+       <span class="chips" id="pl-mes">${(tipo === 'gratificacion' ? [['07', 'Julio (ene–jun)'], ['12', 'Diciembre (jul–dic)']] : [['05', 'Mayo (nov–abr)'], ['11', 'Noviembre (may–oct)']]).map(([k, n]) => `<button data-m="${k}" class="${m === k ? 'activa' : ''}">${n}</button>`).join('')}</span>`;
+  let kpis, cab, fila, pie;
+  if (tipo === 'mensual') {
+    const plan = F.filter(x => x.c.en_planilla);
+    kpis = [['Neto a pagar', S(sum('neto')), `${F.length} trabajador(es)`], ['Pensiones (ONP + AFP)', S(sum('pension')), 'se descuentan y se declaran'], ['EsSalud', S(sum('essalud')), 'a cargo de la empresa'], ['Costo total del mes', S(r2(sum('ingresos') + sum('empleador'))), `${plan.length} en planilla · ${F.length - plan.length} fuera`]];
+    cab = '<th>Trabajador</th><th class="n">Días</th><th class="n">Sueldo</th><th class="n m-ocultar">Faltas / permisos</th><th class="n m-ocultar">Asig. fam.</th><th class="n m-ocultar">HE · feriados · bonos</th><th class="n">Ingresos</th><th class="n">Pensión</th><th class="n m-ocultar">Adelantos · otros</th><th class="n">Neto</th><th class="n m-ocultar">EsSalud</th>';
+    fila = x => `<td><b>${esc(x.t.nombre_corto)}</b>${x.c.en_planilla ? `<div class="cod">${esc(x.c.sistema_pension || 'sin pensión')}</div>` : '<div><span class="tag">Fuera de planilla</span></div>'}</td><td class="n">${x.c.dias}</td><td class="n">${S(x.c.basico)}</td>
+      <td class="n m-ocultar">${x.c.desc_dias ? '−' + S(x.c.desc_dias) : '—'}</td><td class="n m-ocultar">${x.c.asig_fam ? S(x.c.asig_fam) : '—'}</td><td class="n m-ocultar">${r2(x.c.horas_extra + x.c.feriado + x.c.bonos) ? S(r2(x.c.horas_extra + x.c.feriado + x.c.bonos)) : '—'}</td>
+      <td class="n">${S(x.c.ingresos)}</td><td class="n">${x.c.pension ? '−' + S(x.c.pension) : '—'}</td><td class="n m-ocultar">${r2(x.c.adelantos + x.c.otros_desc) ? '−' + S(r2(x.c.adelantos + x.c.otros_desc)) : '—'}</td><td class="n"><b>${S(x.c.neto)}</b></td><td class="n m-ocultar">${x.c.essalud ? S(x.c.essalud) : '—'}</td>`;
+    pie = `<td><b>Total</b></td><td></td><td class="n">${S(sum('basico'))}</td><td class="n m-ocultar">−${S(sum('desc_dias'))}</td><td class="n m-ocultar">${S(sum('asig_fam'))}</td><td class="n m-ocultar">${S(r2(sum('horas_extra') + sum('feriado') + sum('bonos')))}</td><td class="n">${S(sum('ingresos'))}</td><td class="n">−${S(sum('pension'))}</td><td class="n m-ocultar">−${S(r2(sum('adelantos') + sum('otros_desc')))}</td><td class="n"><b>${S(sum('neto'))}</b></td><td class="n m-ocultar">${S(sum('essalud'))}</td>`;
+  } else if (tipo === 'gratificacion') {
+    kpis = [['Total a pagar', S(sum('neto')), `${F.length} trabajador(es)`], ['Gratificación', S(sum('grati')), `${P0().grati_pct}% de un sueldo (pequeña empresa)`], ['Bonificación extraordinaria', S(sum('bonif')), `${P0().bonif_extra_pct}% (en lugar de EsSalud)`], ['Semestre', semestreGrati(per).map(perTxt).join(' – '), 'meses completos']];
+    cab = '<th>Trabajador</th><th class="n">Meses</th><th class="n">Sueldo + asig. fam.</th><th class="n">Gratificación</th><th class="n">Bonif. extra</th><th class="n">Total</th>';
+    fila = x => `<td><b>${esc(x.t.nombre_corto)}</b>${x.c.en_planilla ? '' : ' <span class="tag">Fuera de planilla</span>'}</td><td class="n">${x.c.meses}/6</td><td class="n">${S(x.c.base)}</td><td class="n">${S(x.c.grati)}</td><td class="n">${x.c.bonif ? S(x.c.bonif) : '—'}</td><td class="n"><b>${S(x.c.neto)}</b></td>`;
+    pie = `<td><b>Total</b></td><td></td><td></td><td class="n">${S(sum('grati'))}</td><td class="n">${S(sum('bonif'))}</td><td class="n"><b>${S(sum('neto'))}</b></td>`;
+  } else {
+    kpis = [['CTS a depositar', S(sum('neto')), `${F.length} trabajador(es) en planilla`], ['Periodo', periodoCTS(per).map(perTxt).join(' – '), 'se deposita hasta el 15'], ['Cálculo', `${P0().cts_dias_anio} días por año`, 'pequeña empresa'], ['1/6 de gratificación', F.some(x => !x.c.grati_guardada) ? 'calculada' : 'de la planilla cerrada', perTxt(F[0]?.c.grati_periodo || per)]];
+    cab = '<th>Trabajador</th><th class="n">Tiempo</th><th class="n">Faltas</th><th class="n">Sueldo + asig. fam.</th><th class="n">1/6 grati</th><th class="n">Rem. computable</th><th class="n">CTS</th>';
+    fila = x => `<td><b>${esc(x.t.nombre_corto)}</b></td><td class="n">${x.c.meses} m ${x.c.dias ? x.c.dias + ' d' : ''}</td><td class="n">${x.c.faltas || '—'}</td><td class="n">${S(r2(x.c.sueldo + x.c.asig_fam))}</td><td class="n">${S(x.c.sexto_grati)}</td><td class="n">${S(x.c.rc)}</td><td class="n"><b>${S(x.c.cts)}</b></td>`;
+    pie = `<td><b>Total</b></td><td></td><td></td><td></td><td></td><td></td><td class="n"><b>${S(sum('cts'))}</b></td>`;
+  }
+  $('main').innerHTML = `
+    <div class="bloque" style="padding:10px 16px"><div class="barra-acc" style="margin:0">
+      <span class="chips" id="pl-tipo">${Object.entries(TIT).map(([k, n]) => `<button data-v="${k}" class="${tipo === k ? 'activa' : ''}">${n}</button>`).join('')}</span>
+      ${selector}<span class="esp"></span>
+      ${pl.cerrada ? `<span class="tag ok">🔒 Cerrada${pl.cerrada.cerrada_en ? ' el ' + new Date(pl.cerrada.cerrada_en).toLocaleDateString('es-PE') : ''}</span><button class="btn gris peq" id="pl-reabrir">Reabrir</button>` : '<span class="tag med">Borrador: se recalcula solo</span>'}
+    </div></div>
+    <div class="kpis">${kpis.map(([t, v, s]) => `<div class="kpi"><div class="t">${t}</div><div class="v" style="font-size:19px">${v}</div><div class="s">${s}</div></div>`).join('')}</div>
+    <div class="bloque">
+      ${F.length ? `<div class="tablawrap"><table class="t"><tr>${cab}</tr>${F.map((x, i) => `<tr class="clic" data-i="${i}">${fila(x)}</tr>`).join('')}<tr style="background:var(--suave)">${pie}</tr></table></div>`
+        : '<div class="vacio">No hay trabajadores para este periodo. Revisa en la pestaña Trabajadores el sueldo, la fecha de ingreso y si está en planilla.</div>'}
+      <div class="pie">
+        <span class="ayuda" style="margin:0">Toca un trabajador para ver el detalle.${tipo === 'mensual' ? ' Los adelantos, faltas y horas extra se registran en <b>Novedades</b>.' : ''}</span><span class="esp"></span>
+        <button class="btn gris peq" id="pl-excel">⬇ Excel</button>
+        ${pl.cerrada ? '' : `<button class="btn peq" id="pl-cerrar" ${F.length ? '' : 'disabled'}>🔒 Cerrar ${TIT[tipo].toLowerCase()}</button>`}
+      </div>
+    </div>
+    <details class="bloque" id="pl-par"><summary style="cursor:pointer;font-weight:700">⚙️ Parámetros (RMV, EsSalud, ONP, AFP…)</summary>
+      <p class="ayuda" style="margin-top:8px">Revisa las tasas de AFP en la SBS cuando cambien. Los cambios se aplican a las planillas que aún no están cerradas.</p>
+      <div class="form">${pl.Plista.map(p => `<label>${esc(p.nombre)}<input type="number" step="0.01" data-par="${esc(p.clave)}" value="${Number(p.valor)}"></label>`).join('')}</div>
+      <div class="secc">Comisión de cada AFP (%)</div>
+      <div class="tablawrap"><table class="t"><tr><th>AFP</th><th>Comisión sobre el flujo</th><th>Mixta (parte sobre el flujo)</th></tr>
+        ${pl.AFPlista.map(a => `<tr><td><b>${esc(a.nombre)}</b></td><td><input type="number" step="0.01" data-afp="${esc(a.nombre)}|comision_flujo_pct" value="${Number(a.comision_flujo_pct)}" style="max-width:110px"></td><td><input type="number" step="0.01" data-afp="${esc(a.nombre)}|comision_mixta_pct" value="${Number(a.comision_mixta_pct)}" style="max-width:110px"></td></tr>`).join('')}</table></div>
+      <div class="pie"><span class="esp"></span><button class="btn peq" id="pl-guardar-par">Guardar parámetros</button></div>
+    </details>`;
+  $('pl-tipo').onclick = e => { const b = e.target.closest('[data-v]'); if (b) { pl.tipo = b.dataset.v; guardar('pl_tipo', pl.tipo); tabPla(); } };
+  $('main').onclick = e => {
+    const pb = e.target.closest('[data-per]'); if (pb) { pl.per = perMas(pl.per, Number(pb.dataset.d)); return tabPla(); }
+    const an = e.target.closest('[data-anio]'); if (an) { const k = tipo === 'gratificacion' ? 'perG' : 'perC'; pl[k] = `${Number(pl[k].slice(0, 4)) + Number(an.dataset.anio)}${pl[k].slice(4)}`; return tabPla(); }
+    const mm = e.target.closest('[data-m]'); if (mm) { const k = tipo === 'gratificacion' ? 'perG' : 'perC'; pl[k] = `${pl[k].slice(0, 4)}-${mm.dataset.m}`; return tabPla(); }
+    const r = e.target.closest('tr[data-i]'); if (r) detallePla(F[Number(r.dataset.i)]);
+  };
+  $('pl-excel').onclick = excelPla;
+  if ($('pl-cerrar')) $('pl-cerrar').onclick = cerrarPla;
+  if ($('pl-reabrir')) $('pl-reabrir').onclick = async () => {
+    if (!confirm(`¿Reabrir ${TIT[tipo].toLowerCase()} de ${perTxt(per)}? Se vuelve a calcular con los datos actuales.`)) return;
+    const x = await sb.from('rh_planillas').delete().eq('id', pl.cerrada.id); if (x.error) return alert(msgScript(x.error)); tabPla();
+  };
+  $('pl-guardar-par').onclick = guardarParametros;
+}
+const P0 = () => st.pl.P || {};
+function detallePla(x) {
+  const c = x.c, L = [];
+  const add = (t, v, cls) => { if (v) L.push(`<tr><td>${t}</td><td class="n ${cls || ''}">${S(v)}</td></tr>`); };
+  if (c.tipo === 'mensual') {
+    L.push(`<tr><td colspan="2" class="cod">Ingresos</td></tr>`);
+    add(`Sueldo básico (${c.dias} días de ${S(c.sueldo)})`, c.basico);
+    if (c.desc_dias) add(`Faltas / permisos sin goce (${[c.faltas + c.permiso_sg_dias ? c.faltas + c.permiso_sg_dias + ' día(s)' : '', c.permiso_sg_horas ? c.permiso_sg_horas + ' h' : ''].filter(Boolean).join(' + ')})`, -c.desc_dias);
+    add('Asignación familiar', c.asig_fam); add(`Horas extra (${c.h25} h al 25% + ${c.h35} h al 35%)`, c.horas_extra); add(`Feriados trabajados (${c.feriados})`, c.feriado); add('Bonos', c.bonos);
+    L.push(`<tr><td><b>Total ingresos</b></td><td class="n"><b>${S(c.ingresos)}</b></td></tr><tr><td colspan="2" class="cod">Descuentos</td></tr>`);
+    add('ONP', c.onp); add('AFP aporte', c.afp_aporte); add('AFP prima de seguro', c.afp_prima); add('AFP comisión', c.afp_comision); add('Adelantos', c.adelantos); add('Otros descuentos', c.otros_desc);
+    L.push(`<tr><td><b>Neto a pagar</b></td><td class="n"><b>${S(c.neto)}</b></td></tr><tr><td colspan="2" class="cod">A cargo de la empresa</td></tr>`);
+    add('EsSalud', c.essalud);
+    const info = [c.dm_dias ? `🩺 ${c.dm_dias} día(s) de descanso médico` : '', c.vac_dias ? `🏖️ ${c.vac_dias} día(s) de vacaciones` : '', c.pcg_dias || c.pcg_horas ? `🟢 permiso con goce: ${[c.pcg_dias ? c.pcg_dias + ' día(s)' : '', c.pcg_horas ? c.pcg_horas + ' h' : ''].filter(Boolean).join(' + ')}` : ''].filter(Boolean);
+    if (info.length) L.push(`<tr><td colspan="2" class="cod" style="padding-top:12px">${info.join(' · ')} (se pagan normal)</td></tr>`);
+  } else if (c.tipo === 'gratificacion') {
+    add(`Sueldo + asignación familiar`, c.base);
+    L.push(`<tr><td>Meses completos en el semestre</td><td class="n">${c.meses} de 6</td></tr>`);
+    add(`Gratificación (${P0().grati_pct}% × ${c.meses}/6)`, c.grati); add(`Bonificación extraordinaria (${P0().bonif_extra_pct}%)`, c.bonif);
+    L.push(`<tr><td><b>Total</b></td><td class="n"><b>${S(c.neto)}</b></td></tr><tr><td colspan="2" class="cod" style="padding-top:12px">No tiene descuento de AFP/ONP.</td></tr>`);
+  } else {
+    add('Sueldo', c.sueldo); add('Asignación familiar', c.asig_fam); add(`1/6 de la gratificación de ${perTxt(c.grati_periodo)} (${S(c.grati_base)}${c.grati_guardada ? '' : ', calculada'})`, c.sexto_grati);
+    L.push(`<tr><td><b>Remuneración computable</b></td><td class="n"><b>${S(c.rc)}</b></td></tr>`);
+    L.push(`<tr><td>Tiempo: ${c.meses} mes(es) y ${c.dias} día(s)${c.faltas ? ` − ${c.faltas} falta(s)` : ''}</td><td class="n">${c.computables} días</td></tr>`);
+    L.push(`<tr><td><b>CTS = rem. computable × ${P0().cts_dias_anio}/30 ÷ 360 × ${c.computables} días</b></td><td class="n"><b>${S(c.cts)}</b></td></tr>`);
+  }
+  abrirModal(`<div class="cab"><h3>${esc(x.t.nombre_corto)} · ${TIT[c.tipo]} ${esc(perTxt(perPlan()))}</h3><button class="cerrar" id="dp-x">×</button></div>
+    <div class="tablawrap"><table class="t">${L.join('')}</table></div>`);
+  $('dp-x').onclick = cerrarModal;
+}
+async function cerrarPla() {
+  const pl = st.pl, per = perPlan(), F = pl.filas, sum = k => r2(F.reduce((a, x) => a + Number(x.c[k] || 0), 0));
+  if (!confirm(`¿Cerrar ${TIT[pl.tipo].toLowerCase()} de ${perTxt(per)}?\n\nTotal a pagar: ${S(sum('neto'))}\n\nQueda guardada tal cual (aunque luego cambien sueldos o novedades). Se puede reabrir.`)) return;
+  const c = await sb.from('rh_planillas').insert({ tipo: pl.tipo, periodo: per, total_neto: sum('neto'), total_empleador: sum('empleador') }).select().single();
+  if (c.error) return alert(msgScript(c.error));
+  const d = await sb.from('rh_planilla_detalle').insert(F.map(x => ({ planilla_id: c.data.id, trabajador_id: x.t.id, ingresos: x.c.ingresos, descuentos: x.c.descuentos, neto: x.c.neto, empleador: x.c.empleador || 0, datos: x.c })));
+  if (d.error) { await sb.from('rh_planillas').delete().eq('id', c.data.id); return alert('No se pudo cerrar: ' + msgScript(d.error)); }
+  toast('🔒 Cerrada'); tabPla();
+}
+async function guardarParametros() {
+  const fallas = [];
+  for (const i of $('main').querySelectorAll('[data-par]')) { const r = await sb.from('rh_parametros').update({ valor: Number(i.value) }).eq('clave', i.dataset.par); if (r.error) fallas.push(msgScript(r.error)); }
+  for (const i of $('main').querySelectorAll('[data-afp]')) { const [n, k] = i.dataset.afp.split('|'); const r = await sb.from('rh_afp').update({ [k]: Number(i.value) }).eq('nombre', n); if (r.error) fallas.push(msgScript(r.error)); }
+  if (fallas.length) return alert(fallas[0]);
+  await cargarParametros(); toast('✓ Parámetros guardados'); tabPla();
+}
+function excelPla() {
+  const pl = st.pl, per = perPlan(), F = pl.filas;
+  let cols;
+  if (pl.tipo === 'mensual') cols = [['Trabajador', x => x.t.nombre_corto], ['Código', x => x.t.codigo], ['En planilla', x => x.c.en_planilla ? 'Sí' : 'No'], ['Pensión', x => x.c.sistema_pension], ['Días', x => x.c.dias], ['Sueldo', x => x.c.sueldo], ['Básico del mes', x => x.c.basico], ['Faltas/permisos (días)', x => x.c.faltas + x.c.permiso_sg_dias], ['Permiso sin goce (h)', x => x.c.permiso_sg_horas], ['Descuento faltas/permisos', x => x.c.desc_dias], ['Asig. familiar', x => x.c.asig_fam], ['HE 25% (h)', x => x.c.h25], ['HE 35% (h)', x => x.c.h35], ['Horas extra S/', x => x.c.horas_extra], ['Feriados', x => x.c.feriado], ['Bonos', x => x.c.bonos], ['Total ingresos', x => x.c.ingresos], ['ONP', x => x.c.onp], ['AFP aporte', x => x.c.afp_aporte], ['AFP prima', x => x.c.afp_prima], ['AFP comisión', x => x.c.afp_comision], ['Adelantos', x => x.c.adelantos], ['Otros descuentos', x => x.c.otros_desc], ['Neto', x => x.c.neto], ['EsSalud', x => x.c.essalud], ['DM (días)', x => x.c.dm_dias], ['Vacaciones (días)', x => x.c.vac_dias]];
+  else if (pl.tipo === 'gratificacion') cols = [['Trabajador', x => x.t.nombre_corto], ['Código', x => x.t.codigo], ['Meses', x => x.c.meses], ['Sueldo + asig. fam.', x => x.c.base], ['Gratificación', x => x.c.grati], ['Bonif. extraordinaria', x => x.c.bonif], ['Total', x => x.c.neto]];
+  else cols = [['Trabajador', x => x.t.nombre_corto], ['Código', x => x.t.codigo], ['Meses', x => x.c.meses], ['Días', x => x.c.dias], ['Faltas', x => x.c.faltas], ['Días computables', x => x.c.computables], ['Sueldo', x => x.c.sueldo], ['Asig. fam.', x => x.c.asig_fam], ['1/6 grati', x => x.c.sexto_grati], ['Rem. computable', x => x.c.rc], ['CTS', x => x.c.cts]];
+  const ws = XLSX.utils.aoa_to_sheet([[`${TIT[pl.tipo]} · ${perTxt(per)}${pl.cerrada ? ' · cerrada' : ' · borrador'}`], [], cols.map(c => c[0]), ...F.map(x => cols.map(c => c[1](x)))]);
+  ws['!cols'] = cols.map(c => ({ wch: Math.max(10, c[0].length + 2) }));
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Planilla'); XLSX.writeFile(wb, `${pl.tipo}_${per}.xlsx`);
+}
+
+// ---- fecha dd/mm/aa (igual que en Pedidos: no depende del idioma de la PC) ----
+function fechaAIso(t) {
+  const m = String(t || '').match(/^(\d{2})\/(\d{2})\/(\d{2})$/); if (!m) return '';
+  const d = +m[1], me = +m[2], y = 2000 + +m[3], f = new Date(y, me - 1, d);
+  return f.getFullYear() === y && f.getMonth() === me - 1 && f.getDate() === d ? `${y}-${m[2]}-${m[1]}` : '';
+}
+const isoAFecha = v => { const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}/${m[2]}/${m[1].slice(2)}` : ''; };
+document.addEventListener('input', e => {
+  const i = e.target; if (!i.classList || !i.classList.contains('in-fecha')) return;
+  const d = i.value.replace(/\D/g, ''); i.value = [d.slice(0, 2), d.slice(2, 4), d.slice(4, 6)].filter(Boolean).join('/');
+}, true);
 
 iniciar();
 </script>
