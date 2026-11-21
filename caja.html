@@ -780,9 +780,9 @@ $('e-ok').onclick = () => { guardar('dispositivo', Number($('e-disp').value)); i
 
 async function cargarCajaYCanal() {
   const tipoCaja = st.disp.rol === 'digital' ? 'virtual' : 'fisica';
-  const nombreCanal = st.disp.rol === 'digital' ? 'WhatsApp' : 'Tienda';
+  const nombreCanal = st.disp.rol === 'digital' ? ['Pedidos', 'WhatsApp'] : ['Tienda'];
   st.caja = await conCopia('caja', () => sb.from('cajas').select('*').eq('sede_id', st.disp.sede_id).eq('tipo', tipoCaja).eq('activo', true).order('id').limit(1).single());
-  st.canal = await conCopia('canal', () => sb.from('canales').select('*').eq('nombre', nombreCanal).single());
+  st.canal = await conCopia('canal', () => sb.from('canales').select('*').in('nombre', nombreCanal).order('id').limit(1).single());
 }
 
 // ===== 3. PIN =====
@@ -1823,15 +1823,21 @@ $('b-pedido').onclick = () => {
   msg('v-error'); msg('pd-error');
   if (st.carrito.length) return msg('v-error', 'Primero termina o vacía la venta actual.');
   $('pd-cod').value = ''; $('pd-monto').value = ''; $('pd-delivery').value = ''; $('pd-prev').innerHTML = ''; pagadoPedido = 0;
-  const digital = st.canales.find(c => c.nombre !== 'Tienda');
-  $('pd-canal').value = st.canal.nombre === 'Tienda' && digital ? digital.id : st.canal.id;
+  // todo cobro de pedido va al canal Pedidos (los W… de la web, a E-commerce)
+  const ped = canalPedido('');
+  $('pd-canal').value = ped ? ped.id : st.canal.id;
   tipoCobro('adelanto');
   $('m-pedido').classList.remove('oculto'); $('pd-cod').focus();
 };
 $('pd-cancelar').onclick = () => $('m-pedido').classList.add('oculto');
+function canalPedido(cod) {
+  const de = n => st.canales.find(c => c.nombre === n);
+  return /^W/i.test(cod) ? (de('E-commerce') || de('Web')) : (de('Pedidos') || de('WhatsApp'));
+}
 // al escribir el código, muestra lo que ya se pagó de ese pedido
 $('pd-cod').onchange = async () => {
   const cod = $('pd-cod').value.trim(); $('pd-prev').innerHTML = ''; pagadoPedido = 0;
+  const cp = canalPedido(cod); if (cp) $('pd-canal').value = cp.id;
   if (!cod || !navigator.onLine) return;
   const { data } = await sb.from('v_pagos_pedido').select('*').eq('pedido_externo', cod).order('emitida_en');
   if (!data || !data.length) { $('pd-prev').innerHTML = '<div class="prev-pagos">Sin pagos anteriores para este pedido.</div>'; return; }

@@ -77,6 +77,8 @@ label{display:block;font-size:12px;color:var(--gris);margin:0 0 4px;font-weight:
 .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;margin:6px 0 0 12px;background:#eef3fb;color:var(--azul)}
 .tag.delivery{background:#fff1e0;color:#9a5300}
 .tag.origen{background:#f1ecf7;color:var(--yape)}.tag.origen.enc{background:#e7f6ec;color:var(--wa)}
+.tag.hoy{background:#8B0000;color:#fff}
+.kc{margin:6px 12px 0;font-size:12.5px;font-weight:700;color:#9a5b00;background:#fff4e5;border-radius:8px;padding:5px 9px}.kc.ok{color:#1e6b34;background:#e7f4ea}
 .dir{padding:4px 12px 0;font-size:13px}
 .dir .maps{display:inline-block;margin-top:6px;background:#e8f0fb;color:var(--azul);font-weight:700;font-size:13px;padding:5px 10px;border-radius:8px;text-decoration:none}
 .its{padding:6px 12px;margin:0;list-style:none}
@@ -964,8 +966,8 @@ const COLS = [
   { id: 'en_produccion', titulo: '👩‍🍳 En producción' },
   { id: 'listo', titulo: '✅ Listos' },
 ];
-// la Central solo valida el Yape (web) y marca entregado; "en producción" y "listo" los marca Producción
-const SIGUIENTE = { por_validar: 'confirmado', listo: 'entregado' };
+// la Central valida el Yape (web), marca 📦 Alistado (→ listo) y entregado; "en producción" lo marca Producción
+const SIGUIENTE = { por_validar: 'confirmado', confirmado: 'listo', en_produccion: 'listo', listo: 'entregado' };
 const ANTERIOR = {};
 
 function filtrarRango(q, campoEstado = 'estado') {
@@ -997,6 +999,12 @@ async function cargarCentral() {
     const vp = await sb.from('v_pagos_pedido').select('pedido_externo,total,comprobante,tipo_cobro').in('pedido_externo', cods);
     (vp.data || []).forEach(x => (st.pagosComp[x.pedido_externo] = st.pagosComp[x.pedido_externo] || []).push(x));
   }
+  st.cocina = {};
+  const idsCocina = (w.data || []).map(p => p.pedido_cocina_id).filter(Boolean);
+  if (idsCocina.length) {
+    const ci = await sb.from('pedido_items').select('pedido_id,estado_cocina').in('pedido_id', idsCocina);
+    (ci.data || []).forEach(x => { if (x.estado_cocina === 'anulado') return; const k = st.cocina[x.pedido_id] = st.cocina[x.pedido_id] || { n: 0, ok: 0 }; k.n++; if (['listo', 'entregado'].includes(x.estado_cocina)) k.ok++; });
+  }
   const lista = [...(w.data || []).map(normWeb), ...(e.data || []).map(normEnc)]
     .sort((a, b) => (a.fecha || '9999').localeCompare(b.fecha || '9999') || (a.hora || '99').localeCompare(b.hora || '99'));
   await firmar(lista.flatMap(p => p.items.flatMap(i => i.fotos)));
@@ -1016,6 +1024,7 @@ function normWeb(p) {
     total: Number(p.total_productos || 0), delivery: p.costo_delivery, pagado: p.pago_validado ? Number(p.total_productos || 0) + (p.delivery_incluido ? Number(p.costo_delivery || 0) : 0) : 0,
     yape_op: p.yape_operacion, pago_validado: p.pago_validado, delivIncl: !!p.delivery_incluido, real: p.delivery_costo_real,
     modo: p.delivery_modo || (p.delivery_incluido ? 'fijo' : 'al_despachar'), inc: p.incompleto || null, raw: p,
+    hoy: !!p.para_hoy, captura: p.yape_captura || null, cocina: p.pedido_cocina_id || null,
   };
 }
 function normEnc(p) {
@@ -1057,7 +1066,10 @@ function tarjeta(p, hoy, ahoraMin, nuevo) {
   const resumen = p.items.map(i => `${Number(i.cant)}× ${esc(i.desc)}`).join(' · ');
   const totDel = p.total + Number(p.delivery || 0), saldo = Math.max(totDel - p.pagado, 0);
   const sig = SIGUIENTE[p.estado];
-  const txtSig = { por_validar: '✓ Yape recibido', listo: '✓ Entregado' }[p.estado];
+  const txtSig = { por_validar: '✓ Yape recibido', confirmado: '📦 Alistado', en_produccion: '📦 Alistado', listo: '✓ Entregado' }[p.estado];
+  const kc = p.cocina && st.cocina && st.cocina[p.cocina];
+  const avance = kc && kc.n && ['confirmado', 'en_produccion'].includes(p.estado) ? `<div class="kc ${kc.ok >= kc.n ? 'ok' : ''}">🍳 Cocina: ${kc.ok} de ${kc.n} listos${kc.ok >= kc.n ? ' ✓' : ''}</div>` : '';
+  const avisos = p.estado === 'confirmado' || p.estado === 'en_produccion' ? [['confirmado', 'Confirmado']] : p.estado === 'listo' ? [['listo', 'Listo'], ...(p.tipo_entrega === 'delivery' ? [['camino', 'En camino']] : [])] : [];
   const origen = p.origen === 'web' ? '<span class="tag origen">🌐 Web</span>' : `<span class="tag origen enc">${{ whatsapp: '💬 WhatsApp', tienda: '🏪 Tienda', telefono: '📞 Teléfono', otro: '✳️ Otro' }[p.canal] || '💬'}</span>`;
   const abierto = st.abiertos.has(p.key);
   const tagUnico = p.raw && p.raw.comprobante_modo === 'unico' && !p.mensual ? '<span class="tag" style="background:#fff4e5;color:#9a5b00">🧾 1 comprobante al final</span>' : '';
@@ -1065,8 +1077,9 @@ function tarjeta(p, hoy, ahoraMin, nuevo) {
   <div class="ped ${p.estado} ${nuevo ? 'nuevo' : ''} ${abierto ? 'abierto' : ''}">
     <div class="c1 tog" data-tog="${p.key}" title="Ver / ocultar detalle"><span class="cod"><span class="flecha">${abierto ? '▾' : '▸'}</span>${esc(p.codigo)}</span><span class="cuando ${tarde ? 'tarde' : ''}">${esc(cuando)}</span></div>
     <div class="cli">${esc(p.cliente || 'Sin nombre')}${tel ? ` · <a href="https://wa.me/51${tel}" target="_blank" rel="noopener">${esc(p.tel)}</a>` : ''}</div>
-    ${origen}<span class="tag ${p.tipo_entrega}">${p.tipo_entrega === 'delivery' ? '🛵 Delivery' : '🏬 Recojo'}</span>${!p.mensual && saldo > 0 ? `<span class="tag saldo">Saldo ${S(saldo)}</span>` : '<span class="tag pagado">✓ Pagado</span>'}${tagUnico}${p.inc ? '<span class="tag incomp">⚠ Incompleto</span>' : ''}
+    ${origen}${p.hoy ? '<span class="tag hoy">⚡ Para hoy</span>' : ''}<span class="tag ${p.tipo_entrega}">${p.tipo_entrega === 'delivery' ? '🛵 Delivery' : '🏬 Recojo'}</span>${!p.mensual && saldo > 0 ? `<span class="tag saldo">Saldo ${S(saldo)}</span>` : '<span class="tag pagado">✓ Pagado</span>'}${tagUnico}${p.inc ? '<span class="tag incomp">⚠ Incompleto</span>' : ''}
     <div class="res">${resumen || 'Sin productos'}</div>
+    ${avance}
     ${p.inc ? `<div class="falta"><b>📦 Falta:</b>${textoFalta(p.inc)}</div>` : ''}
     <div class="cuerpo">
     ${p.tipo_entrega === 'delivery' ? `<div class="dir">📍 ${p.direccion ? esc(p.direccion) : p.lat != null ? 'Dirección en Google Maps' : 'sin dirección'}${p.distrito ? ', ' + esc(p.distrito) : ''}${p.referencia ? `<br><small>${esc(p.referencia)}</small>` : ''}${p.lat != null ? `<br><a class="maps" href="https://www.google.com/maps?q=${p.lat},${p.lng}" target="_blank" rel="noopener">🗺️ Abrir en Google Maps</a>` : ''}</div>` : ''}
@@ -1084,8 +1097,11 @@ function tarjeta(p, hoy, ahoraMin, nuevo) {
     </div>
     <div class="acc">
       ${p.origen === 'enc' ? `${p.estado === 'confirmado' ? `<button class="b-sec" data-editar="${p.id}" title="Editar pedido">✏️ <span>Editar</span></button>` : ''}<button class="b-sec" data-pago="${p.id}" title="Cobrar / comprobantes">💵 <span>Cobrar</span></button>` : ''}
+      ${p.captura ? `<button class="b-sec" data-captura="${p.key}" title="Ver la captura del Yape que subió el cliente">🧾 <span>Captura</span></button>` : ''}
       <button class="b-sec" data-wa="${p.key}" title="Enviar resumen por WhatsApp">💬 <span>WhatsApp</span></button>
+      ${avisos.map(([t, n]) => `<button class="b-sec" data-aviso="${t}" data-k="${p.key}" title="Mensaje listo para WhatsApp">💬 <span>${n}</span></button>`).join('')}
       <button class="b-sec" data-comanda="${p.key}" title="Imprimir comanda (ticketera 80 mm)">🖨️ <span>Comanda</span></button>
+      ${['confirmado', 'en_produccion', 'listo'].includes(p.estado) ? `<button class="b-sec" data-etiqueta="${p.key}" title="Etiqueta para pegar en el paquete">🏷️ <span>Etiqueta</span></button>` : ''}
       ${['confirmado', 'en_produccion', 'listo'].includes(p.estado) ? `<button class="b-sec" data-inc="${p.key}" title="Alistado a medias: marca lo que falta e imprime etiqueta">📦 <span>${p.inc ? 'Falta…' : 'Incompleto'}</span></button>` : ''}
       ${sig && txtSig ? `<button class="${p.estado === 'por_validar' ? 'b-yape' : 'b-sig'}" data-sig="${p.key}">${txtSig}</button>` : ''}
     </div>
@@ -1118,6 +1134,46 @@ function imprimirComanda(p) {
     ${p.notas ? `<div class="div"></div><div class="lb">Observaciones</div><div class="obs">${esc(p.notas)}</div>` : ''}
     ${p.inc ? `<div class="div"></div><div class="lb">⚠ INCOMPLETO · FALTA</div><div class="obs">${textoFalta(p.inc, true)}</div>` : ''}
     <div class="tot"><div class="r"><span>Total</span><span>S/ ${f2(totDel)}</span></div><div class="r"><span>Pagado</span><span>S/ ${f2(p.pagado)}</span></div><div class="r s"><span>SALDO</span><span>S/ ${f2(p.mensual ? 0 : saldo)}</span></div></div>
+    <div class="pie">Kadima Pastelería &amp; Panadería</div>
+  </body></html>`;
+  let fr = $('fr-comanda');
+  if (!fr) { fr = document.createElement('iframe'); fr.id = 'fr-comanda'; fr.style.cssText = 'position:fixed;width:0;height:0;border:0;left:-9999px'; document.body.appendChild(fr); }
+  fr.srcdoc = html;
+  fr.onload = () => setTimeout(() => { try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (e) { alert('No se pudo abrir la impresión.'); } }, 200);
+}
+
+// mensajes listos para WhatsApp según el estado
+function avisoWA(p, tipo) {
+  const nom = (p.cliente || '').trim().split(/\s+/)[0];
+  const hola = `Hola${nom ? ' ' + nom : ''} 👋`;
+  const cuando = p.fecha ? `${fechaCorta(p.fecha)}${p.hora ? ' a las ' + hora12(p.hora) : ''}` : '';
+  const saldo = p.mensual ? 0 : Math.max(p.total + Number(p.delivery || 0) - p.pagado, 0);
+  const s = saldo > 0.009 ? `\nSaldo por pagar: *${S(saldo)}*` : '';
+  const del = p.tipo_entrega === 'delivery';
+  if (tipo === 'confirmado') return `${hola}, tu pedido *${p.codigo}* en Kadima está *confirmado* ✅\n${del ? '🛵 Delivery' : '🏬 Recojo en tienda'}${cuando ? ': ' + cuando : ''}\nTe avisamos apenas esté listo.${s}`;
+  if (tipo === 'listo') return del ? `${hola}, tu pedido *${p.codigo}* ya está *listo* 🎂 y sale en breve 🛵${s}` : `${hola}, tu pedido *${p.codigo}* ya está *listo* 🎂\nPuedes recogerlo en Kadima cuando gustes.${s}`;
+  return `${hola}, tu pedido *${p.codigo}* ya va *en camino* 🛵${p.direccion ? '\n📍 ' + p.direccion : ''}\nPor favor, ten tu celular a la mano.${s}`;
+}
+// etiqueta para pegar en el paquete (ticketera 80 mm)
+function imprimirEtiqueta(p) {
+  if (!p) return;
+  const filas = p.items.map(i => `<tr><td class="cant">${Number(i.cant)}</td><td>${esc(i.desc)}${i.pers ? `<div class="sub">${esc(i.pers)}</div>` : ''}</td></tr>`).join('');
+  const del = p.tipo_entrega === 'delivery';
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Etiqueta ${esc(p.codigo)}</title><style>
+    @page{size:80mm auto;margin:0}*{box-sizing:border-box}
+    body{width:70mm;margin:0 auto;padding:3mm 3mm 3mm 2mm;font-family:Arial,'Segoe UI',sans-serif;font-weight:700;font-size:13px;line-height:1.35;color:#000}
+    .cod{border:3px solid #000;text-align:center;font-size:26px;letter-spacing:1px;padding:2mm 0;margin-bottom:2mm}
+    .nom{font-size:18px;text-align:center}.c{text-align:center}.tipo{text-align:center;font-size:15px;margin-top:1mm}
+    .div{border-top:1px dashed #000;margin:2mm 0}table{width:100%;border-collapse:collapse}td{vertical-align:top;padding:.5mm 0}
+    td.cant{width:9mm;font-size:15px}.sub{font-size:11px;font-weight:400;white-space:pre-wrap}.dir{font-size:12px;word-break:break-word}
+    .pie{text-align:center;margin-top:3mm;font-size:10px;font-weight:400}
+  </style></head><body>
+    <div class="cod">${esc(p.codigo)}</div>
+    <div class="nom">${esc(p.cliente || '-')}</div>
+    ${p.tel ? `<div class="c">${esc(p.tel)}</div>` : ''}
+    <div class="tipo">${del ? '🛵 DELIVERY' : '🏬 RECOJO'} · ${p.fecha ? esc(fechaCorta(p.fecha)) : '-'}${p.hora ? ' · ' + esc(hora12(p.hora)) : ''}</div>
+    ${del && (p.direccion || p.distrito) ? `<div class="div"></div><div class="dir">📍 ${esc(p.direccion || '')}${p.distrito ? ', ' + esc(p.distrito) : ''}${p.referencia ? ' (' + esc(p.referencia) + ')' : ''}</div>` : ''}
+    <div class="div"></div><table>${filas}</table>
     <div class="pie">Kadima Pastelería &amp; Panadería</div>
   </body></html>`;
   let fr = $('fr-comanda');
@@ -1252,6 +1308,16 @@ $('tablero').addEventListener('click', async e => {
   const tg = e.target.closest('[data-tog]');
   if (tg && !e.target.closest('a')) { const k = tg.dataset.tog; st.abiertos.has(k) ? st.abiertos.delete(k) : st.abiertos.add(k); guardarAbiertos(); return dibujarCentral(); }
   const cm = e.target.closest('[data-comanda]'); if (cm) return imprimirComanda(pk(cm.dataset.comanda));
+  const et = e.target.closest('[data-etiqueta]'); if (et) return imprimirEtiqueta(pk(et.dataset.etiqueta));
+  const av = e.target.closest('[data-aviso]'); if (av) { const p = pk(av.dataset.k); return abrirWhatsApp(p.tel, avisoWA(p, av.dataset.aviso)); }
+  const cp = e.target.closest('[data-captura]');
+  if (cp) {
+    const p = pk(cp.dataset.captura), win = window.open('', '_blank');
+    const { data, error } = await sb.storage.from('pagos-web').createSignedUrl(p.captura, 600);
+    if (error || !data) { if (win) win.close(); return alert('No se pudo abrir la captura: ' + errTxt(error || 'sin archivo')); }
+    if (win) win.location.href = data.signedUrl; else window.location.href = data.signedUrl;
+    return;
+  }
   const ic = e.target.closest('[data-inc]'); if (ic) return abrirIncompleto(pk(ic.dataset.inc));
   const s = e.target.closest('[data-sig]');
   if (s) {
@@ -1261,7 +1327,12 @@ $('tablero').addEventListener('click', async e => {
       if (!confirm(`¿Confirmas que llegó el Yape de ${S(yapeo)}${p.delivIncl ? ` (productos ${S(p.total)} + delivery ${S(p.delivery)})` : ''} (op. ${p.yape_op})?`)) return;
       return cambiarEstado(p, 'confirmado', { pago_validado: true, pago_validado_por: st.usuario?.nombre || null, pago_validado_en: new Date().toISOString() });
     }
-    if (p.inc && ['en_produccion', 'listo'].includes(p.estado)
+    if (['confirmado', 'en_produccion'].includes(p.estado)) {
+      const k = p.cocina && st.cocina && st.cocina[p.cocina];
+      if (k && k.ok < k.n && !confirm(`🍳 Cocina aún no termina ${p.codigo} (${k.ok} de ${k.n} listos).\n\n¿Marcarlo como alistado igual?`)) return;
+      if (!p.inc && !(k && k.ok < k.n) && !confirm(`¿${p.codigo} ya está alistado? (empacado y listo para ${p.tipo_entrega === 'delivery' ? 'despachar' : 'recoger'})`)) return;
+    }
+    if (p.inc && ['confirmado', 'en_produccion', 'listo'].includes(p.estado)
       && !confirm(`⚠️ ${p.codigo} está marcado INCOMPLETO.\n\nFalta:\n${textoFalta(p.inc, true).replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")}\n\n¿Continuar igual? (Si ya se completó, mejor usa 📦 Falta… → “Ya está completo”.)`)) return;
     if (p.estado === 'listo') {
       const noCobra = p.modo === 'cliente', alDesp = p.modo === 'al_despachar' && !p.delivIncl, esDel = p.tipo_entrega === 'delivery';
@@ -1538,7 +1609,7 @@ $('p-ok').onclick = async () => {
   if (x.cobrar > k.saldo + 0.01 && !confirm(`El monto (${S(x.cobrar)}) es mayor al saldo pendiente (${S(k.saldo)}). ¿Emitir igual?`)) return;
   const turno = await turnoDigital();
   if (!turno) return err('La Caja Digital no tiene un turno abierto. Ábrelo en la caja (PC digital) y vuelve a intentar.');
-  const canal = st.emi.canales.find(z => z.nombre === (p.canal === 'tienda' ? 'Tienda' : 'WhatsApp')) || st.emi.canales[0];
+  const canal = (st.emi.canales.find(z => z.nombre === 'Pedidos') || st.emi.canales.find(z => z.nombre === 'WhatsApp') || st.emi.canales[0]);  // canal de venta: Pedidos (el medio de contacto queda en pedidos_encargo.canal)
   const items = lineasComprobante(c, x);
   const payload = {
     id_local: uuid(), emitida_en: new Date().toISOString(), tipo_doc: c.doc,
@@ -2663,7 +2734,7 @@ async function emitirFM() {
   tortas.forEach(p => (p.pedidos_encargo_items || []).sort((a, b) => a.orden - b.orden).forEach(i => items.push({ producto_id: st.emi.sv900, cantidad: Number(i.cantidad), precio_unit: Number(i.precio_unit),
     descripcion: `${i.descripcion}${i.personalizacion ? ' - ' + i.personalizacion : ''} (entrega ${ddmm(p.fecha_entrega)}, ${p.codigo})`.slice(0, 250) })));
   delivs.forEach(p => items.push({ producto_id: st.emi.sv901, cantidad: 1, precio_unit: Number(p.cobro), descripcion: `SERVICIO DE DELIVERY ${ddmm(p.fecha_entrega)} (${p.codigo})` }));
-  const canal = st.emi.canales.find(z => z.nombre === 'WhatsApp') || st.emi.canales[0];
+  const canal = (st.emi.canales.find(z => z.nombre === 'Pedidos') || st.emi.canales.find(z => z.nombre === 'WhatsApp') || st.emi.canales[0]);
   const payload = {
     id_local: uuid(), emitida_en: new Date().toISOString(), tipo_doc: 'factura',
     dispositivo_id: st.emi.disp.id, caja_id: st.emi.caja.id, canal_id: canal ? canal.id : null, turno_id: turno.id, usuario_id: st.usuario?.id || null,

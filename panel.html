@@ -322,15 +322,18 @@ let pidiendo = 0;
 async function cargar() {
   const yo = ++pidiendo, rc = rangoComp();
   $('cargando').classList.remove('oculto');
-  const [r1, r2] = await Promise.all([
+  const [r1, r2, k1, k2] = await Promise.all([
     sb.rpc('panel_datos', { p_desde: st.desde, p_hasta: st.hasta }),
     rc ? sb.rpc('panel_datos', { p_desde: rc[0], p_hasta: rc[1] }) : Promise.resolve({ data: null }),
+    sb.rpc('panel_canales', { p_desde: st.desde, p_hasta: st.hasta }),
+    rc ? sb.rpc('panel_canales', { p_desde: rc[0], p_hasta: rc[1] }) : Promise.resolve({ data: null }),
   ]);
   if (yo !== pidiendo) return;
   $('cargando').classList.add('oculto');
   const error = r1.error || r2.error;
   if (error) { $('main').innerHTML = `<div class="caja"><div class="error">No se pudo cargar: ${esc(error.message)}</div></div>`; return; }
-  st.d = r1.data; st.c = rc ? r2.data : null; st.rc = rc; st.rKey = null; st.fKey = null; st.kKey = null;
+  st.d = r1.data; st.c = rc ? r2.data : null; st.rc = rc;
+  st.can = k1.error ? null : k1.data; st.canC = rc && !k2.error ? k2.data : null; st.rKey = null; st.fKey = null; st.kKey = null;
   pintar();
   revisarSync();
 }
@@ -528,6 +531,7 @@ function ventas(d, c) {
       ${kpi('Ventas al crédito', S(KV(k, 'credito', 'credito_neto')), 'Facturas por cobrar · neto')}
       ${kpi('Ventas con IGV', S(k.ventas), `IGV: ${S0(num(k.ventas) - KV(k, 'ventas', 'neto'))}`)}
     </div>
+    ${st.can ? `<div class="grid">${caja('c12', 'Ventas por canal', tablaCanales(st.can, st.canC), 'Productos sin delivery · ticket promedio = productos ÷ tickets · en Pedidos y E-commerce un ticket es un pedido (adelanto + saldo cuentan una vez) · el delivery va aparte.')}</div>` : ''}
     <div class="grid">${caja('c12', '¿Vendes más por más clientes o por un ticket más alto?', `
       <div class="sync tv-ctrl">
         <div class="fila" id="tv-rango">${Object.entries(TV_RANGOS).map(([x, t]) => `<button class="chip ${st.tvRango === x ? 'activa' : ''}" data-x="${x}">${t}</button>`).join('')}</div>
@@ -572,7 +576,9 @@ function ventas(d, c) {
   g('g-dow', { tooltip: tipS, legend: c ? leyenda : undefined, grid: rejilla,
     xAxis: { type: 'category', data: dw.map(x => DIAS[x]), axisTick: { show: false } }, yAxis: ejeS, series: sD });
   const it = (x, campo, et = v => v) => (x?.[campo] || []).map(y => ({ name: et(y[{ por_canal: 'canal', por_tipo: 'tipo', por_metodo: 'metodo', por_comprobante: 'tipo' }[campo]]) || 'Sin dato', value: +V(y).toFixed(2) }));
-  dona('g-canal', it(d, 'por_canal'), null, c ? it(c, 'por_canal') : null);
+  const itCan = x => (x || []).map(y => ({ name: ICON_CANAL[y.canal] ? ICON_CANAL[y.canal] + ' ' + y.canal : y.canal, value: +V(y).toFixed(2) }));
+  if (st.can) dona('g-canal', itCan(st.can), null, c && st.canC ? itCan(st.canC) : null);
+  else dona('g-canal', it(d, 'por_canal'), null, c ? it(c, 'por_canal') : null);
   dona('g-tipo', it(d, 'por_tipo'), null, c ? it(c, 'por_tipo') : null);
   dona('g-metodo', it(d, 'por_metodo', etiquetaMetodo), null, c ? it(c, 'por_metodo', etiquetaMetodo) : null);
   const et = t => etiquetaTipoDoc[t] || t;
@@ -589,6 +595,23 @@ function ventas(d, c) {
     xAxis: { type: 'category', data: vm.map(x => fMes(x.mes)), boundaryGap: false }, yAxis: ejeS, series: sM,
   });
   tendenciaVentas();
+}
+
+// ===== Ventas por canal: Tienda · Pedidos · E-commerce =====
+const ICON_CANAL = { Tienda: '🏪', Pedidos: '📦', 'E-commerce': '🌐' };
+function tablaCanales(a, c) {
+  const prod = x => V({ total: num(x.total) - num(x.deliv_total), neto: num(x.neto) - num(x.deliv_neto) });
+  const del = x => V({ total: x.deliv_total, neto: x.deliv_neto });
+  const tot = a.reduce((s, x) => s + prod(x), 0);
+  const deC = n => (c || []).find(y => y.canal === n);
+  const filas = a.map(x => {
+    const pr = prod(x), tk = num(x.tickets), y = deC(x.canal);
+    const comp = c ? `<td class="n">${y ? `${S(prod(y))} <small>${varTxt(pr, prod(y))}</small>` : '—'}</td>` : '';
+    return `<tr><td><b>${ICON_CANAL[x.canal] || ''} ${esc(x.canal)}</b></td><td class="n">${tk}</td><td class="n"><b>${S(pr)}</b></td><td class="n">${tk ? S(pr / tk) : '—'}</td><td class="n">${P(tot ? pr / tot * 100 : 0)}</td><td class="n">${num(x.deliv_total) ? S(del(x)) : '—'}</td>${comp}</tr>`;
+  }).join('');
+  const tkT = a.reduce((s, x) => s + num(x.tickets), 0), dT = a.reduce((s, x) => s + del(x), 0);
+  return `<div class="scroll"><table class="t"><tr><th>Canal</th><th class="n">Tickets</th><th class="n">Productos</th><th class="n">Ticket prom.</th><th class="n">% venta</th><th class="n">Delivery</th>${c ? `<th class="n">Productos ${lblC()}</th>` : ''}</tr>
+    ${filas}<tr><td><b>Total</b></td><td class="n"><b>${tkT}</b></td><td class="n"><b>${S(tot)}</b></td><td class="n">${tkT ? S(tot / tkT) : '—'}</td><td class="n">100%</td><td class="n">${dT ? S(dT) : '—'}</td>${c ? '<td></td>' : ''}</tr></table></div>`;
 }
 
 // ===== Ventas = transacciones × ticket =====
