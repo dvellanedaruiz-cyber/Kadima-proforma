@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#8B0000">
 <link rel="icon" href="pos-icon-192.png">
 <style>
-:root{--guinda:#8B0000;--guinda-osc:#6a0000;--crema:#f6efe4;--crema-borde:#e6dccd;--blanco:#fff;--texto:#2a1a1a;--gris:#7a6a62;--ok:#1e7d3a;--mal:#b00020}
+:root{--guinda:#8B0000;--crema:#f6efe4;--crema-borde:#e6dccd;--blanco:#fff;--texto:#2a1a1a;--gris:#7a6a62;--ok:#1e7d3a;--mal:#b00020}
 *{box-sizing:border-box}
 html,body{margin:0}
 body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--crema);color:var(--texto);font-size:16px;-webkit-tap-highlight-color:transparent}
@@ -31,24 +31,23 @@ input,select{font:inherit;font-size:16px;padding:12px;border:1px solid var(--cre
 .barra{background:var(--guinda);color:var(--blanco);padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:5}
 .barra b{font-size:17px}.barra small{opacity:.85;display:block;font-size:12px}
 .barra button{margin-left:auto;background:rgba(255,255,255,.18);color:var(--blanco);padding:8px 12px;font-weight:700;font-size:14px}
-.tabs{display:flex;background:var(--blanco);border-bottom:1px solid var(--crema-borde);position:sticky;top:56px;z-index:4}
-.tabs button{flex:1;background:none;padding:14px 8px;font-weight:700;color:var(--gris);border-radius:0;border-bottom:3px solid transparent}
-.tabs button.activa{color:var(--guinda);border-bottom-color:var(--guinda)}
 main{padding:16px;max-width:640px;margin:0 auto}
 .bloque{background:var(--blanco);border-radius:16px;padding:16px;margin-bottom:14px}
 .camara{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:var(--guinda);color:var(--blanco);border-radius:16px;padding:26px 16px;font-weight:800;font-size:19px;cursor:pointer;text-align:center}
 .camara small{font-weight:400;font-size:13px;opacity:.9}
 .camara input{display:none}
+.camara.apagada{opacity:.45;pointer-events:none}
 .vista{width:100%;max-height:260px;object-fit:contain;border-radius:12px;background:#000;margin-bottom:12px}
 .ayuda{color:var(--gris);font-size:14px;margin:0 0 12px}
-.item{display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--crema)}
+.item{display:grid;grid-template-columns:52px 1fr auto;gap:8px 10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--crema)}
 .item:last-child{border-bottom:none}
 .mini{width:52px;height:52px;border-radius:10px;object-fit:cover;background:var(--crema);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--gris);text-align:center}
 .nom{font-weight:700;line-height:1.2}.nom small{display:block;font-weight:400;color:var(--gris);font-size:13px;margin-top:2px}
-.cant{display:flex;align-items:center;gap:6px}
-.cant input{width:84px;text-align:right;padding:10px}
 .x{background:none;color:var(--mal);font-size:22px;padding:4px 6px}
-.foto-btn{background:var(--crema);color:var(--guinda);padding:10px 12px;font-weight:700;font-size:14px;white-space:nowrap}
+.detalle{grid-column:1/-1;display:grid;grid-template-columns:1fr 96px;gap:8px;align-items:center}
+.detalle select,.detalle input{padding:10px}
+.detalle input{text-align:right}
+.eq{grid-column:1/-1;font-size:13px;color:var(--gris);text-align:right;min-height:16px}
 .buscador{position:relative}
 .resultados{position:absolute;left:0;right:0;top:100%;background:var(--blanco);border:1px solid var(--crema-borde);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:8;max-height:260px;overflow:auto}
 .resultados div{padding:12px;border-bottom:1px solid var(--crema)}
@@ -62,7 +61,7 @@ main{padding:16px;max-width:640px;margin:0 auto}
 
 <section id="v-inicio" class="centro"><p class="cargando">Cargando…</p></section>
 
-<!-- 1) Sesión del equipo (una vez por celular) -->
+<!-- 1) Sesión del local (una vez por celular) -->
 <section id="v-equipo" class="centro oculto">
   <form class="tarjeta" id="f-equipo">
     <img class="logo" src="Kadima_Logo.jpg" alt="">
@@ -98,36 +97,26 @@ main{padding:16px;max-width:640px;margin:0 auto}
   </div>
 </section>
 
-<!-- 4) App -->
+<!-- 4) Contar -->
 <section id="v-app" class="oculto">
   <div class="barra"><div><b id="a-modo"></b><small id="a-usr"></small></div><button id="a-cambiar">Cambiar</button></div>
-  <div class="tabs"><button data-t="contar" class="activa">Contar</button><button data-t="maestro">Fotos del maestro</button></div>
   <main>
-    <div id="t-contar">
-      <div class="bloque" id="c-inicio">
-        <label class="camara">📷 Tomar foto para contar<small>Que se vean bien los productos</small><input type="file" accept="image/*" capture="environment" id="c-foto"></label>
-      </div>
-      <div class="bloque oculto" id="c-resultado">
-        <img class="vista" id="c-vista" alt="Foto del conteo">
-        <div id="c-estado"></div>
-        <div id="c-lista"></div>
-        <div class="buscador" style="margin-top:12px"><input id="c-add" placeholder="+ Agregar producto que falta" autocomplete="off"><div class="resultados oculto" id="c-res"></div></div>
-        <div class="acciones">
-          <button class="btn" id="c-guardar">Guardar conteo</button>
-          <button class="btn-sec" id="c-nueva">Descartar y tomar otra foto</button>
-        </div>
-        <div class="error" id="c-error"></div>
-      </div>
-      <div class="okmsg" id="c-ok"></div>
+    <div class="bloque" id="c-inicio">
+      <div class="campo"><label>1. ¿Qué categoría vas a contar?</label><select id="c-cat"></select></div>
+      <label class="camara apagada" id="c-camara">📷 2. Tomar foto para contar<small>Que se vean bien los productos y sus envases</small><input type="file" accept="image/*" capture="environment" id="c-foto"></label>
     </div>
-    <div id="t-maestro" class="oculto">
-      <div class="bloque">
-        <p class="ayuda" id="f-resumen"></p>
-        <input id="f-q" placeholder="Buscar producto" autocomplete="off">
+    <div class="bloque oculto" id="c-resultado">
+      <img class="vista" id="c-vista" alt="Foto del conteo">
+      <div id="c-estado"></div>
+      <div id="c-lista"></div>
+      <div class="buscador" style="margin-top:12px"><input id="c-add" placeholder="+ Agregar producto que falta" autocomplete="off"><div class="resultados oculto" id="c-res"></div></div>
+      <div class="acciones">
+        <button class="btn" id="c-guardar">Guardar conteo</button>
+        <button class="btn-sec" id="c-nueva">Descartar y tomar otra foto</button>
       </div>
-      <div class="bloque" id="f-lista"></div>
-      <input type="file" accept="image/*" capture="environment" id="f-foto" class="oculto">
+      <div class="error" id="c-error"></div>
     </div>
+    <div class="okmsg" id="c-ok"></div>
   </main>
 </section>
 
@@ -136,9 +125,9 @@ main{padding:16px;max-width:640px;margin:0 auto}
 const SUPABASE_URL = 'https://odhcnrjbmydjghafichc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_mQOvV92En3KhDElmhStMSQ_TI04BdOK'; // clave pública (no es secreta)
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const BUCKET = 'productos-fotos';
 const MODOS = { almacen: { nombre: 'Almacén', tipo: 'insumo' }, tienda: { nombre: 'Tienda', tipo: 'producto_terminado' } };
 const UNI = { Kilo: 'kg', Litro: 'L', Unidad: 'und' };
+const SIN = 'sin';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -147,7 +136,7 @@ const errTxt = e => { const m = (e && (e.message || e.error_description)) || Str
 const ses = { leer: k => { try { return JSON.parse(sessionStorage.getItem('kadima_inv_' + k)); } catch (e) { return null; } },
               poner: (k, v) => { try { v == null ? sessionStorage.removeItem('kadima_inv_' + k) : sessionStorage.setItem('kadima_inv_' + k, JSON.stringify(v)); } catch (e) {} } };
 
-const st = { usuario: ses.leer('usuario'), modo: ses.leer('modo'), productos: [], filas: [] };
+const st = { usuario: ses.leer('usuario'), modo: ses.leer('modo'), productos: [], categorias: [], pres: {}, filas: [] };
 
 function vista(id) { ['v-inicio', 'v-equipo', 'v-login', 'v-modo', 'v-app'].forEach(v => $(v).classList.toggle('oculto', v !== id)); window.scrollTo(0, 0); }
 
@@ -156,11 +145,9 @@ function reducir(file, max, calidad) {
   return new Promise((ok, mal) => {
     const url = URL.createObjectURL(file), img = new Image();
     img.onload = () => {
-      const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
-      const c = document.createElement('canvas');
+      const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight)), c = document.createElement('canvas');
       c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-      URL.revokeObjectURL(url);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
       c.toBlob(b => b ? ok(b) : mal(new Error('No se pudo procesar la foto.')), 'image/jpeg', calidad);
     };
     img.onerror = () => { URL.revokeObjectURL(url); mal(new Error('No se pudo leer la foto.')); };
@@ -208,33 +195,51 @@ $('f-login').addEventListener('submit', async ev => {
 function elegirModo() { vista('v-modo'); $('m-hola').textContent = `Hola, ${st.usuario.nombre}. ¿Dónde vas a contar?`; }
 document.querySelector('.modos').onclick = e => { const b = e.target.closest('[data-modo]'); if (!b) return; st.modo = b.dataset.modo; ses.poner('modo', st.modo); abrirApp(); };
 $('m-salir').onclick = () => { st.usuario = null; st.modo = null; ses.poner('usuario', null); ses.poner('modo', null); pedirLogin(); };
-$('a-cambiar').onclick = () => { st.modo = null; ses.poner('modo', null); limpiarConteo(); elegirModo(); };
+$('a-cambiar').onclick = () => { if (st.filas.length && !confirm('¿Salir sin guardar este conteo?')) return; st.modo = null; ses.poner('modo', null); limpiarConteo(); elegirModo(); };
 
-// 4) App
+// 4) Contar
 async function abrirApp() {
   vista('v-app');
   $('a-modo').textContent = 'Inventario · ' + MODOS[st.modo].nombre; $('a-usr').textContent = st.usuario.nombre;
-  pestaña('contar'); limpiarConteo();
-  await cargarProductos();
+  limpiarConteo(); $('c-ok').textContent = '';
+  $('c-cat').innerHTML = '<option value="">Cargando…</option>';
+  const [p, c] = await Promise.all([
+    sb.from('productos').select('id,codigo,nombre,unidad_medida,categoria_id,foto_url').eq('activo', true).eq('tipo_item', MODOS[st.modo].tipo).order('nombre'),
+    sb.from('categorias').select('id,nombre,categoria_principal').order('nombre'),
+  ]);
+  if (p.error || c.error) { $('c-cat').innerHTML = '<option value="">—</option>'; alert('No se pudo cargar el maestro: ' + errTxt(p.error || c.error)); return; }
+  st.productos = p.data || []; st.categorias = c.data || [];
+  st.pres = {};
+  const ids = st.productos.map(x => x.id);
+  if (ids.length) {
+    const pr = await sb.from('producto_presentaciones').select('id,producto_id,nombre,factor').eq('activo', true).in('producto_id', ids).order('orden').order('id');
+    (pr.data || []).forEach(x => (st.pres[x.producto_id] = st.pres[x.producto_id] || []).push({ id: x.id, nombre: x.nombre, factor: Number(x.factor) }));
+  }
+  pintarCategorias();
 }
-async function cargarProductos() {
-  const { data, error } = await sb.from('productos').select('id,codigo,nombre,unidad_medida,foto_url')
-    .eq('activo', true).eq('tipo_item', MODOS[st.modo].tipo).order('nombre');
-  if (error) { $('c-error').textContent = errTxt(error); return; }
-  st.productos = data || [];
-  if (!$('t-maestro').classList.contains('oculto')) pintarMaestro();
-}
-function pestaña(t) {
-  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('activa', b.dataset.t === t));
-  $('t-contar').classList.toggle('oculto', t !== 'contar'); $('t-maestro').classList.toggle('oculto', t !== 'maestro');
-  if (t === 'maestro') pintarMaestro();
-}
-document.querySelector('.tabs').onclick = e => { const b = e.target.closest('[data-t]'); if (b) pestaña(b.dataset.t); };
 
-const miniatura = p => p && p.foto_url ? `<img class="mini" src="${esc(p.foto_url)}" alt="" loading="lazy">` : '<div class="mini">Sin foto</div>';
+// Solo las categorías que tienen productos de este modo, agrupadas por categoría principal
+function pintarCategorias() {
+  const usadas = new Set(st.productos.map(x => x.categoria_id));
+  const cats = st.categorias.filter(x => usadas.has(x.id));
+  const grupos = {};
+  cats.forEach(x => (grupos[x.categoria_principal || 'Otras'] = grupos[x.categoria_principal || 'Otras'] || []).push(x));
+  const cuenta = id => st.productos.filter(x => x.categoria_id === id).length;
+  $('c-cat').innerHTML = '<option value="">Elige una categoría</option>' +
+    Object.keys(grupos).sort((a, b) => a.localeCompare(b, 'es')).map(g => `<optgroup label="${esc(g)}">${grupos[g].map(x => `<option value="${esc(x.id)}">${esc(x.nombre)} (${cuenta(x.id)})</option>`).join('')}</optgroup>`).join('') +
+    (usadas.has(null) || usadas.has(undefined) ? `<option value="${SIN}">Sin categoría (${cuenta(null)})</option>` : '');
+  const previa = ses.leer('cat_' + st.modo);
+  if (previa != null && [...$('c-cat').options].some(o => o.value === String(previa))) $('c-cat').value = String(previa);
+  camaraSegunCategoria();
+}
+function camaraSegunCategoria() { $('c-camara').classList.toggle('apagada', !$('c-cat').value); }
+$('c-cat').onchange = () => { ses.poner('cat_' + st.modo, $('c-cat').value || null); camaraSegunCategoria(); };
+
 const prodDe = id => st.productos.find(p => String(p.id) === String(id));
+const presDe = id => st.pres[id] || [];
+const miniatura = p => p && p.foto_url ? `<img class="mini" src="${esc(p.foto_url)}" alt="" loading="lazy">` : '<div class="mini">Sin foto</div>';
+const factorDe = f => { const x = presDe(f.producto_id).find(x => String(x.id) === String(f.presentacion_id)); return x ? x.factor : 1; };
 
-// ===== Conteo con foto =====
 function limpiarConteo() {
   st.filas = []; $('c-foto').value = '';
   $('c-inicio').classList.remove('oculto'); $('c-resultado').classList.add('oculto');
@@ -244,6 +249,8 @@ $('c-nueva').onclick = () => { if (st.filas.length && !confirm('¿Descartar este
 
 $('c-foto').onchange = async () => {
   const file = $('c-foto').files[0]; if (!file) return;
+  const categoria = $('c-cat').value;
+  if (!categoria) { $('c-foto').value = ''; return alert('Primero elige la categoría.'); }
   $('c-ok').textContent = ''; $('c-error').textContent = '';
   $('c-inicio').classList.add('oculto'); $('c-resultado').classList.remove('oculto');
   $('c-vista').src = URL.createObjectURL(file);
@@ -251,47 +258,61 @@ $('c-foto').onchange = async () => {
   $('c-estado').innerHTML = '<p class="cargando">🔎 Reconociendo productos… puede tardar unos segundos</p>';
   try {
     const blob = await reducir(file, 1280, 0.8);
-    const { data, error } = await sb.functions.invoke('contar-inventario', { body: { modo: st.modo, imagen: await aBase64(blob), mime: 'image/jpeg' } });
+    const { data, error } = await sb.functions.invoke('contar-inventario', { body: { modo: st.modo, categoria, imagen: await aBase64(blob), mime: 'image/jpeg' } });
     if (error) {
       let m = error.message;
       try { const j = await error.context.json(); if (j && j.error) m = j.error; } catch (e) {}
       throw new Error(m);
     }
-    st.filas = (data.items || []).map(x => ({ producto_id: x.producto_id, sugerida: Number(x.cantidad_sugerida), final: String(x.cantidad_sugerida) }));
+    st.filas = (data.items || []).filter(x => prodDe(x.producto_id)).map(x => ({
+      producto_id: x.producto_id, presentacion_id: x.presentacion_id ?? '', sugerida: Number(x.cantidad_sugerida), final: String(x.cantidad_sugerida) }));
     $('c-estado').innerHTML = st.filas.length
-      ? '<p class="ayuda">Revisa la cantidad final de cada producto. Puedes corregirla, quitar filas o agregar lo que falte.</p>'
+      ? '<p class="ayuda">Revisa cada fila: la presentación y la cantidad final. Puedes corregirlas, quitar filas o agregar lo que falte.</p>'
       : '<p class="ayuda">La IA no reconoció productos en esta foto. Agrégalos a mano o toma otra foto.</p>';
   } catch (e) {
-    st.filas = [];
-    $('c-estado').innerHTML = '';
+    st.filas = []; $('c-estado').innerHTML = '';
     $('c-error').textContent = 'No se pudo analizar la foto: ' + errTxt(e) + '\nPuedes agregar los productos a mano.';
   }
   $('c-guardar').disabled = false;
   pintarFilas();
 };
 
+function equivalencia(f) {
+  const p = prodDe(f.producto_id), k = factorDe(f);
+  if (k === 1 || f.final === '' || !(Number(f.final) >= 0)) return '';
+  return `= ${num(Number(f.final) * k)} ${UNI[p.unidad_medida] || ''}`;
+}
 function pintarFilas() {
   $('c-lista').innerHTML = st.filas.map((f, i) => {
-    const p = prodDe(f.producto_id) || { nombre: '(producto)', unidad_medida: '' };
+    const p = prodDe(f.producto_id), u = UNI[p.unidad_medida] || '';
+    const pres = presDe(p.id);
+    const presSug = f.sugerida == null ? '' : (pres.find(x => String(x.id) === String(f.presentacion_id_ia ?? f.presentacion_id)) || {}).nombre;
     return `<div class="item">${miniatura(p)}
-      <div class="nom">${esc(p.nombre)}<small>IA sugiere: ${f.sugerida == null ? '— (agregado a mano)' : num(f.sugerida)} ${UNI[p.unidad_medida] || ''}</small></div>
-      <div class="cant"><input type="number" inputmode="decimal" step="any" min="0" data-i="${i}" value="${esc(f.final)}" aria-label="Cantidad final"><button class="x" data-quitar="${i}" aria-label="Quitar">✕</button></div></div>`;
+      <div class="nom">${esc(p.nombre)}<small>IA sugiere: ${f.sugerida == null ? '— (agregado a mano)' : num(f.sugerida) + ' ' + esc(presSug || u)}</small></div>
+      <button class="x" data-quitar="${i}" aria-label="Quitar">✕</button>
+      <div class="detalle">
+        <select data-pres="${i}" aria-label="Presentación"><option value="">${esc(u)} (suelto / unidad base)</option>${pres.map(x => `<option value="${esc(x.id)}" ${String(x.id) === String(f.presentacion_id) ? 'selected' : ''}>${esc(x.nombre)} (trae ${num(x.factor)} ${esc(u)})</option>`).join('')}</select>
+        <input type="number" inputmode="decimal" step="any" min="0" data-i="${i}" value="${esc(f.final)}" aria-label="Cantidad final">
+      </div>
+      <div class="eq" id="eq-${i}">${equivalencia(f)}</div></div>`;
   }).join('');
 }
-$('c-lista').oninput = e => { const i = e.target.dataset.i; if (i !== undefined) st.filas[i].final = e.target.value; };
+$('c-lista').oninput = e => { const i = e.target.dataset.i; if (i === undefined) return; st.filas[i].final = e.target.value; $('eq-' + i).textContent = equivalencia(st.filas[i]); };
+$('c-lista').onchange = e => { const i = e.target.dataset.pres; if (i === undefined) return; const f = st.filas[i];
+  if (f.presentacion_id_ia === undefined) f.presentacion_id_ia = f.presentacion_id;
+  f.presentacion_id = e.target.value; $('eq-' + i).textContent = equivalencia(f); };
 $('c-lista').onclick = e => { const i = e.target.dataset.quitar; if (i === undefined) return; st.filas.splice(Number(i), 1); pintarFilas(); };
 
 $('c-add').oninput = () => {
   const q = $('c-add').value.trim().toLowerCase();
   if (q.length < 2) return $('c-res').classList.add('oculto');
-  const enc = st.productos.filter(p => !st.filas.some(f => String(f.producto_id) === String(p.id)) && (p.nombre.toLowerCase().includes(q) || String(p.codigo || '').toLowerCase().includes(q))).slice(0, 12);
+  const enc = st.productos.filter(p => p.nombre.toLowerCase().includes(q) || String(p.codigo || '').toLowerCase().includes(q)).slice(0, 12);
   $('c-res').innerHTML = enc.map(p => `<div data-p="${esc(p.id)}">${esc(p.nombre)} <small>${esc(p.codigo || '')}</small></div>`).join('') || '<div class="vacio">Sin resultados</div>';
   $('c-res').classList.remove('oculto');
 };
 $('c-res').onclick = e => {
   const d = e.target.closest('[data-p]'); if (!d) return;
-  const p = prodDe(d.dataset.p);
-  st.filas.push({ producto_id: p.id, sugerida: null, final: '' });
+  st.filas.push({ producto_id: prodDe(d.dataset.p).id, presentacion_id: '', sugerida: null, final: '' });
   $('c-add').value = ''; $('c-res').classList.add('oculto'); pintarFilas();
   const ins = $('c-lista').querySelectorAll('input'); ins[ins.length - 1].focus();
 };
@@ -299,46 +320,19 @@ $('c-res').onclick = e => {
 $('c-guardar').onclick = async () => {
   $('c-error').textContent = '';
   if (!st.filas.length) return $('c-error').textContent = 'No hay productos para guardar.';
-  const malas = st.filas.filter(f => f.final === '' || !(Number(f.final) >= 0));
-  if (malas.length) return $('c-error').textContent = 'Revisa las cantidades: todas deben tener un número (0 o más).';
+  if (st.filas.some(f => f.final === '' || !(Number(f.final) >= 0))) return $('c-error').textContent = 'Revisa las cantidades: todas deben tener un número (0 o más).';
+  const claves = st.filas.map(f => f.producto_id + '|' + f.presentacion_id);
+  if (new Set(claves).size !== claves.length) return $('c-error').textContent = 'Hay un producto repetido en la misma presentación. Súmalos en una sola fila.';
   const conteo_id = crypto.randomUUID();
   const filas = st.filas.map(f => ({ conteo_id, usuario_id: st.usuario.id, local: st.modo, producto_id: f.producto_id,
+    presentacion_id: f.presentacion_id === '' ? null : Number(f.presentacion_id), factor: factorDe(f),
     cantidad_sugerida: f.sugerida, cantidad_final: Number(f.final) }));
   $('c-guardar').disabled = true;
   const { error } = await sb.from('conteos_foto').insert(filas);
   $('c-guardar').disabled = false;
   if (error) return $('c-error').textContent = 'No se guardó: ' + errTxt(error);
   limpiarConteo();
-  $('c-ok').textContent = `✓ Conteo guardado (${filas.length} producto${filas.length === 1 ? '' : 's'}).`;
-};
-
-// ===== Fotos del maestro =====
-let fotoPara = null;
-function pintarMaestro() {
-  const q = $('f-q').value.trim().toLowerCase();
-  const conFoto = st.productos.filter(p => p.foto_url).length;
-  $('f-resumen').textContent = `${conFoto} de ${st.productos.length} productos de ${MODOS[st.modo].nombre} tienen foto de referencia. Una buena foto ayuda a la IA a reconocerlos.`;
-  const lista = st.productos.filter(p => !q || p.nombre.toLowerCase().includes(q) || String(p.codigo || '').toLowerCase().includes(q));
-  $('f-lista').innerHTML = lista.map(p => `<div class="item">${miniatura(p)}<div class="nom">${esc(p.nombre)}<small>${esc(p.codigo || '')} · ${UNI[p.unidad_medida] || ''}</small></div>
-    <button class="foto-btn" data-foto="${esc(p.id)}">📷 ${p.foto_url ? 'Cambiar' : 'Tomar'}</button></div>`).join('') || '<div class="vacio">Sin productos.</div>';
-}
-$('f-q').oninput = pintarMaestro;
-$('f-lista').onclick = e => { const b = e.target.closest('[data-foto]'); if (!b) return; fotoPara = prodDe(b.dataset.foto); $('f-foto').value = ''; $('f-foto').click(); };
-$('f-foto').onchange = async () => {
-  const file = $('f-foto').files[0], p = fotoPara; if (!file || !p) return;
-  const btn = $('f-lista').querySelector(`[data-foto="${CSS.escape(String(p.id))}"]`);
-  if (btn) { btn.disabled = true; btn.textContent = 'Subiendo…'; }
-  try {
-    const blob = await reducir(file, 640, 0.8);
-    const ruta = `${p.id}.jpg`;
-    const up = await sb.storage.from(BUCKET).upload(ruta, blob, { upsert: true, contentType: 'image/jpeg' });
-    if (up.error) throw up.error;
-    const url = sb.storage.from(BUCKET).getPublicUrl(ruta).data.publicUrl + '?v=' + Date.now();
-    const { error } = await sb.from('productos').update({ foto_url: url }).eq('id', p.id);
-    if (error) throw error;
-    p.foto_url = url;
-  } catch (e) { alert('No se pudo guardar la foto: ' + errTxt(e)); }
-  pintarMaestro();
+  $('c-ok').textContent = `✓ Conteo guardado (${filas.length} fila${filas.length === 1 ? '' : 's'}).`;
 };
 
 iniciar();
