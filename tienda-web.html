@@ -7,6 +7,12 @@
 <meta name="theme-color" content="#8B0000">
 <link rel="icon" href="pos-icon-192.png">
 <style>
+.sec-row{display:flex;gap:8px;align-items:center;font-size:12.5px;color:#666;margin-top:8px;white-space:nowrap}.sec-row input{flex:1;min-width:0}.sec-fila{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid #eee}.sec-fila:last-child{border-bottom:0}
+.sec-fila input{flex:1;min-width:0;font-weight:600}.sec-fila small{color:#777;white-space:nowrap}.sec-fila .flechas{display:flex;gap:4px}
+.sec-fila .flechas button{width:34px;height:34px;padding:0;font-size:15px}.sec-fila.mov{animation:secmov .35s ease}
+@keyframes secmov{from{background:#fff4d6}}
+.portada-prev{width:100%;max-width:520px;aspect-ratio:16/7;border-radius:12px;background:#efe5da center/cover no-repeat;display:flex;align-items:center;justify-content:center;color:#8a7a6e;font-size:13px;margin:6px 0 10px;border:1px dashed #d8c9bb}
+.portada-prev.con{border:0}
 :root{--rojo:#8B0000;--fondo:#f6f4f2;--borde:#e3dfdb;--gris:#6b6b6b;--texto:#1f1f1f;--ok:#1e7d3a;--aviso:#b26a00;--mal:#b00020}
 *{box-sizing:border-box}
 body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--fondo);color:var(--texto);font-size:14px}
@@ -110,6 +116,7 @@ input,select,textarea{font:inherit;padding:9px 10px;border:1px solid var(--borde
     </div>
     <div class="tabs" id="tabs">
       <button data-tab="cat" class="activa">🛒 Catálogo</button>
+      <button data-tab="sec">🗂️ Secciones</button>
       <button data-tab="hoy">🛵 Apertura de hoy</button>
       <button data-tab="aj">⚙️ Ajustes</button>
     </div>
@@ -132,6 +139,14 @@ input,select,textarea{font:inherit;padding:9px 10px;border:1px solid var(--borde
       </div>
     </div>
     <div class="lista" id="lista"></div>
+    </div>
+
+    <div id="t-sec" class="oculto">
+      <div class="ayuda">Estas son las <b>secciones (botones) de la app</b>, en el orden en que salen. Ordénalas con ▲ ▼ y cámbiales el nombre si quieres; luego toca <b>Guardar</b>.<br>
+        Para mover un producto a otra sección (o crear una nueva), escribe la sección en su ficha del <b>Catálogo</b>. Si un producto no tiene sección, sale en la de su categoría.</div>
+      <div class="cab" style="margin-bottom:8px"><h2 style="font-size:17px">Secciones de la app</h2>
+        <div class="der"><span class="estado" id="sec-estado"></span><button class="btn" id="b-guardar-sec">Guardar</button></div></div>
+      <div class="caja" id="sec-lista"></div>
     </div>
 
     <div id="t-hoy" class="oculto">
@@ -158,6 +173,10 @@ input,select,textarea{font:inherit;padding:9px 10px;border:1px solid var(--borde
           <label>Minutos de preparación<small>Lo más pronto que el cliente puede pedir</small><input type="number" id="aj-prep" min="5" max="240"></label>
           <label>Horas de anticipación (encargos)<input type="number" id="aj-antic" min="0" max="240"></label>
           <label>Stock de seguridad (vitrina)<small>Unidades que la web no ofrece</small><input type="number" id="aj-seg" min="0" max="99"></label>
+          <div style="grid-column:1/-1"><b style="font-size:14px">Foto de portada</b><small style="display:block;color:#777">Sale arriba al entrar a la app. Mejor una foto horizontal (de vitrina o productos).</small>
+            <div class="portada-prev" id="portada-prev">Sin foto: se usa el color de Kadima</div>
+            <button class="btn-sec" type="button" id="b-portada">📷 Subir foto de portada</button> <button class="btn-mini" type="button" id="b-portada-quitar">Quitar</button> <span class="estado" id="portada-estado"></span>
+            <input type="file" id="archivo-portada" accept="image/*" class="oculto"></div>
           <label style="grid-column:1/-1">Mensaje del banner (opcional)<input type="text" id="aj-banner" maxlength="90" placeholder="Ej. ¡Este fin de semana 10% en frappés!"></label>
         </div>
         <div style="margin-top:14px;display:flex;gap:10px;align-items:center"><button class="btn" id="b-guardar-aj">Guardar ajustes</button><span class="estado" id="aj-estado"></span></div>
@@ -167,6 +186,7 @@ input,select,textarea{font:inherit;padding:9px 10px;border:1px solid var(--borde
 </section>
 
 <input type="file" id="archivo" accept="image/*" class="oculto">
+<datalist id="dl-secciones"></datalist>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.79.0/dist/umd/supabase.js"></script>
 <script>
@@ -216,16 +236,19 @@ async function abrirApp() {
   vista('v-app'); $('usr').textContent = st.usuario?.nombre || '';
   $('lista').innerHTML = '<div class="vacio">Cargando productos…</div>';
   const [p, c] = await Promise.all([
-    sb.from('productos').select('id,codigo,nombre,precio_venta,precio_libre,categoria_id,web_visible,web_descripcion,web_imagen,web_orden,web_hoy,web_encargo')
+    sb.from('productos').select('id,codigo,nombre,precio_venta,precio_libre,categoria_id,web_visible,web_descripcion,web_imagen,web_orden,web_hoy,web_encargo,web_seccion')
       .eq('vendible', true).eq('activo', true).order('nombre'),
     sb.from('categorias').select('id,nombre').order('nombre'),
   ]);
   if (p.error || c.error) {
     const m = errTxt(p.error || c.error);
+    if (/web_seccion/.test(m)) { $('lista').innerHTML = '<div class="vacio">Falta correr el script <b>secciones_portada.sql</b> en Supabase.</div>'; return; }
     $('lista').innerHTML = `<div class="vacio">${/web_visible/.test(m) ? 'Falta correr el script <b>39_tienda_web.sql</b> en Supabase.' : /web_hoy|web_encargo/.test(m) ? 'Falta correr el script <b>pedidos_app.sql</b> en Supabase.' : esc(m)}</div>`;
     return;
   }
   st.productos = p.data; st.cats = Object.fromEntries(c.data.map(x => [x.id, x.nombre]));
+  if (p.data.length && !('web_seccion' in p.data[0])) st.sinSecciones = true;
+  llenarSecciones();
   const usadas = [...new Set(st.productos.map(x => x.categoria_id).filter(Boolean))].sort((a, b) => (st.cats[a] || '').localeCompare(st.cats[b] || ''));
   $('f-cat').innerHTML = '<option value="">Todas las categorías</option>' + usadas.map(id => `<option value="${id}">${esc(st.cats[id])}</option>`).join('');
   pintar();
@@ -275,6 +298,7 @@ function tarjeta(p) {
         <label class="switch" title="Se vende para hoy con el cupo de la apertura"><input type="checkbox" data-flag="web_hoy" data-id="${p.id}" ${p.web_hoy ? 'checked' : ''}><span class="t"></span><span>🛵 Para hoy</span></label>
         <label class="switch" title="Se puede pedir con anticipación"><input type="checkbox" data-flag="web_encargo" data-id="${p.id}" ${p.web_encargo !== false ? 'checked' : ''}><span class="t"></span><span>📅 Por encargo</span></label></div>` : ''}
       <textarea data-desc="${p.id}" maxlength="300" placeholder="Descripción para el cliente (ej. Bizcocho de chocolate con fudge, para 12 personas)">${esc(p.web_descripcion || '')}</textarea>
+      <label class="sec-row">Botón en la app <input  list="dl-secciones" maxlength="40" data-sec="${p.id}" value="${esc(p.web_seccion || '')}" placeholder="${esc(st.cats[p.categoria_id] || 'Sin categoría')}" title="Botón de la app donde sale. Vacío = su categoría"></label>
       <div class="fila2">
         <label>Orden</label><input type="number" min="1" max="999" data-orden="${p.id}" value="${p.web_orden ?? 100}" title="Número menor = aparece primero">
         ${p.web_imagen ? `<button class="btn-mini" data-quitar="${p.id}">Quitar foto</button>` : ''}
@@ -377,6 +401,8 @@ document.addEventListener('change', async e => {
   if (fl) { const ok = await guardar(fl.dataset.id, { [fl.dataset.flag]: fl.checked }); if (!ok) fl.checked = !fl.checked; return; }
   const d = e.target.closest('[data-desc]');
   if (d) { const t = d.value.trim(); const p = st.productos.find(x => x.id == d.dataset.desc); if ((p.web_descripcion || '') !== t) guardar(d.dataset.desc, { web_descripcion: t || null }); return; }
+  const sc = e.target.closest('[data-sec]');
+  if (sc) { const t = sc.value.trim().replace(/\s+/g, ' '); sc.value = t; const p = st.productos.find(x => x.id == sc.dataset.sec); if ((p.web_seccion || '') !== t && await guardar(sc.dataset.sec, { web_seccion: t || null })) llenarSecciones(); return; }
   const o = e.target.closest('[data-orden]');
   if (o) { const n = Math.max(1, Math.min(999, parseInt(o.value, 10) || 100)); o.value = n; guardar(o.dataset.orden, { web_orden: n }); }
 });
@@ -385,9 +411,92 @@ const hoyLima = (d = 0) => new Date(Date.now() + d * 864e5).toLocaleDateString('
 $('tabs').onclick = e => {
   const b = e.target.closest('[data-tab]'); if (!b) return;
   [...$('tabs').children].forEach(x => x.classList.toggle('activa', x === b));
-  ['cat', 'hoy', 'aj'].forEach(t => $('t-' + t).classList.toggle('oculto', t !== b.dataset.tab));
+  ['cat', 'sec', 'hoy', 'aj'].forEach(t => $('t-' + t).classList.toggle('oculto', t !== b.dataset.tab));
+  if (b.dataset.tab === 'sec') cargarSecciones();
   if (b.dataset.tab === 'hoy') cargarHoy();
   if (b.dataset.tab === 'aj') cargarAjustes();
+};
+
+// ===== Secciones (botones de la app) =====
+const secDe = p => (p.web_seccion || '').trim() || st.cats[p.categoria_id] || 'Sin categoría';
+function llenarSecciones() {
+  const n = [...new Set([...st.productos.map(p => (p.web_seccion || '').trim()).filter(Boolean), ...Object.values(st.cats)])].sort((a, b) => a.localeCompare(b));
+  $('dl-secciones').innerHTML = n.map(x => `<option value="${esc(x)}">`).join('');
+}
+async function cargarSecciones() {
+  $('sec-lista').innerHTML = '<div class="vacio">Cargando…</div>'; $('sec-estado').textContent = '';
+  const { data, error } = await sb.from('web_secciones').select('nombre,orden');
+  if (error) { $('sec-lista').innerHTML = `<div class="vacio">${/web_secciones/.test(error.message) ? 'Falta correr el script <b>secciones_portada.sql</b> en Supabase.' : esc(errTxt(error))}</div>`; return; }
+  const ord = Object.fromEntries((data || []).map(x => [x.nombre, x.orden]));
+  const vis = st.productos.filter(p => p.web_visible), cuenta = {};
+  vis.forEach(p => { const k = secDe(p); cuenta[k] = cuenta[k] || { n: 0, hoy: 0 }; cuenta[k].n++; if (p.web_hoy) cuenta[k].hoy++; });
+  st.secs = Object.keys(cuenta).sort((a, b) => (ord[a] ?? 1000) - (ord[b] ?? 1000) || a.localeCompare(b)).map(x => ({ nombre: x, orig: x, ...cuenta[x] }));
+  st.secOrigTabla = (data || []).map(x => x.nombre);
+  pintarSecciones();
+}
+function pintarSecciones(mov) {
+  if (!st.secs.length) { $('sec-lista').innerHTML = '<div class="vacio">No hay productos visibles en la web.</div>'; return; }
+  $('sec-lista').innerHTML = st.secs.map((s, i) => `<div class="sec-fila ${mov === i ? 'mov' : ''}">
+    <div class="flechas"><button class="btn-mini" data-sub="${i}" ${i ? '' : 'disabled'} title="Subir">▲</button><button class="btn-mini" data-baj="${i}" ${i < st.secs.length - 1 ? '' : 'disabled'} title="Bajar">▼</button></div>
+    <input data-ren="${i}" value="${esc(s.nombre)}" maxlength="40"><small>${s.n} producto${s.n === 1 ? '' : 's'} · ${s.hoy} para hoy</small></div>`).join('');
+}
+$('sec-lista').onclick = e => {
+  const u = e.target.closest('[data-sub]'), d = e.target.closest('[data-baj]'); if (!u && !d) return;
+  const i = Number((u || d).dataset[u ? 'sub' : 'baj']), j = u ? i - 1 : i + 1;
+  [st.secs[i], st.secs[j]] = [st.secs[j], st.secs[i]]; pintarSecciones(j); $('sec-estado').textContent = 'Sin guardar';
+};
+$('sec-lista').oninput = e => { const r = e.target.closest('[data-ren]'); if (r) { st.secs[Number(r.dataset.ren)].nombre = r.value; $('sec-estado').textContent = 'Sin guardar'; } };
+$('b-guardar-sec').onclick = async () => {
+  const est = $('sec-estado'); est.className = 'estado';
+  st.secs.forEach(s => s.nombre = s.nombre.trim().replace(/\s+/g, ' '));
+  if (st.secs.some(s => !s.nombre)) { est.textContent = 'Ninguna sección puede quedar sin nombre.'; est.className = 'estado mal'; return; }
+  if (new Set(st.secs.map(s => s.nombre.toLowerCase())).size !== st.secs.length) { est.textContent = 'Hay dos secciones con el mismo nombre.'; est.className = 'estado mal'; return; }
+  const b = $('b-guardar-sec'); b.disabled = true; est.textContent = 'Guardando…';
+  try {
+    // 1) cambios de nombre: los productos de esa sección pasan al nombre nuevo
+    for (const s of st.secs.filter(x => x.nombre !== x.orig)) {
+      const ids = st.productos.filter(p => secDe(p) === s.orig).map(p => p.id);
+      if (ids.length) { const r = await sb.from('productos').update({ web_seccion: s.nombre }).in('id', ids); if (r.error) throw r.error; }
+      st.productos.filter(p => ids.includes(p.id)).forEach(p => p.web_seccion = s.nombre);
+    }
+    // 2) orden
+    const filas = st.secs.map((s, i) => ({ nombre: s.nombre, orden: (i + 1) * 10, actualizado_en: new Date().toISOString() }));
+    const r = await sb.from('web_secciones').upsert(filas, { onConflict: 'nombre' }); if (r.error) throw r.error;
+    const viejos = st.secOrigTabla.filter(n => !filas.some(f => f.nombre === n) && !st.productos.some(p => secDe(p) === n));
+    if (viejos.length) await sb.from('web_secciones').delete().in('nombre', viejos);
+    st.secs.forEach(s => s.orig = s.nombre); st.secOrigTabla = filas.map(f => f.nombre);
+    llenarSecciones(); if (!$('t-cat').classList.contains('oculto')) pintar();
+    est.textContent = '✓ Guardado: así salen en la app'; est.className = 'estado ok';
+  } catch (er) { est.textContent = errTxt(er); est.className = 'estado mal'; }
+  b.disabled = false;
+};
+
+// ===== Portada =====
+function pintarPortada(url) {
+  const v = $('portada-prev'); st.portada = url || null;
+  v.classList.toggle('con', !!url); v.style.backgroundImage = url ? `url("${url}")` : ''; v.textContent = url ? '' : 'Sin foto: se usa el color de Kadima';
+  $('b-portada-quitar').classList.toggle('oculto', !url);
+}
+$('b-portada').onclick = () => { $('archivo-portada').value = ''; $('archivo-portada').click(); };
+$('archivo-portada').onchange = async () => {
+  const f = $('archivo-portada').files[0]; if (!f) return;
+  const e = $('portada-estado'); e.className = 'estado'; e.textContent = 'Subiendo…';
+  try {
+    const blob = await reducir(f, 1800), ruta = `portada-${Date.now()}.jpg`;
+    const up = await sb.storage.from(BUCKET).upload(ruta, blob, { contentType: 'image/jpeg', cacheControl: '31536000' }); if (up.error) throw up.error;
+    const url = sb.storage.from(BUCKET).getPublicUrl(ruta).data.publicUrl, vieja = rutaDe(st.portada);
+    const r = await sb.from('web_ajustes').update({ portada: url }).eq('id', 1);
+    if (r.error) { sb.storage.from(BUCKET).remove([ruta]); throw r.error; }
+    if (vieja) sb.storage.from(BUCKET).remove([vieja]).then(() => {});
+    pintarPortada(url); e.textContent = '✓ Portada guardada'; e.className = 'estado ok';
+  } catch (er) { e.textContent = /portada/.test(er.message || '') ? 'Falta correr secciones_portada.sql' : errTxt(er); e.className = 'estado mal'; }
+};
+$('b-portada-quitar').onclick = async () => {
+  if (!confirm('¿Quitar la foto de portada?')) return;
+  const vieja = rutaDe(st.portada), r = await sb.from('web_ajustes').update({ portada: null }).eq('id', 1);
+  if (r.error) { $('portada-estado').textContent = errTxt(r.error); return; }
+  if (vieja) sb.storage.from(BUCKET).remove([vieja]).then(() => {});
+  pintarPortada(null); $('portada-estado').textContent = '✓ Quitada';
 };
 
 // ===== Apertura de hoy =====
@@ -453,6 +562,7 @@ async function cargarAjustes() {
   if (error) { $('aj-estado').textContent = /hoy_activo/.test(error.message) ? 'Falta correr pedidos_app.sql' : errTxt(error); $('aj-estado').className = 'estado mal'; return; }
   $('aj-activo').checked = !!a.hoy_activo; $('aj-desde').value = (a.hoy_desde || '').slice(0, 5); $('aj-hasta').value = (a.hoy_hasta || '').slice(0, 5);
   $('aj-prep').value = a.hoy_prep_min; $('aj-antic').value = a.anticipacion_horas; $('aj-seg').value = a.stock_seguridad; $('aj-banner').value = a.banner || '';
+  pintarPortada(a.portada);
 }
 $('b-guardar-aj').onclick = async () => {
   const c = { hoy_activo: $('aj-activo').checked, hoy_desde: $('aj-desde').value || '07:00', hoy_hasta: $('aj-hasta').value || '22:30',
