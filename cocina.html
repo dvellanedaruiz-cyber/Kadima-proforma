@@ -242,7 +242,7 @@ function agrupar() {
   });
   return [...g.values()].sort((a, b) => a.desde.localeCompare(b.desde));
 }
-function titulo(p) { return p.tipo === 'mesa' ? esc(p.mesa) : p.tipo === 'llevar' ? 'Para llevar' : p.tipo === 'encargo' ? 'Encargo' : 'Mostrador'; }
+function titulo(p) { return p.tipo === 'mesa' ? esc(p.mesa) : p.tipo === 'llevar' ? (p.mesa ? esc(p.mesa) : 'Para llevar') : p.tipo === 'encargo' ? 'Encargo' : 'Mostrador'; }
 // ===== CONSOLIDADO =====
 // Tanda = mismo producto + misma observación (del producto y de la orden), llegados dentro de 5 min desde el primero.
 // Si la tanda ya está "preparando", lo que llega después abre una tanda nueva (no se puede sumar a algo que ya está en marcha).

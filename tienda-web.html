@@ -65,6 +65,21 @@ input,select,textarea{font:inherit;padding:9px 10px;border:1px solid var(--borde
 .estado.ok{color:var(--ok)}.estado.mal{color:var(--mal)}
 .aviso-precio{font-size:12px;color:var(--aviso)}
 .vacio{grid-column:1/-1;text-align:center;color:var(--gris);padding:40px}
+.tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}.tabs button{background:#fff;border:1px solid var(--borde);padding:9px 14px;font-weight:700;color:var(--gris)}
+.tabs button.activa{background:var(--rojo);color:#fff;border-color:var(--rojo)}
+.sw2{display:flex;gap:14px;flex-wrap:wrap}.sw2 .switch{font-size:12.5px;font-weight:600}.sw2 .switch .t{width:36px;height:20px}.sw2 .switch .t::after{width:14px;height:14px}.sw2 .switch input:checked+.t::after{left:19px}
+.caja{background:#fff;border-radius:14px;padding:14px;margin-bottom:12px}
+.ap-fila{display:grid;grid-template-columns:1fr 90px 80px 80px auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--borde)}
+.ap-fila.cab{font-size:12px;color:var(--gris);font-weight:700;border-bottom:2px solid var(--borde)}
+.ap-fila input{padding:7px 8px;text-align:center;font-weight:700}
+.ap-fila .n{font-weight:600}.ap-fila small{display:block;color:var(--gris);font-size:12px;font-weight:400}
+.num{text-align:center;font-weight:700}.num.cero{color:var(--mal)}
+.estado-hoy{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 14px;border-radius:12px;font-weight:600;margin-bottom:12px}
+.estado-hoy.on{background:#e7f6ec;color:var(--ok)}.estado-hoy.off{background:#fde8ea;color:var(--mal)}
+.aj{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.aj label{display:flex;flex-direction:column;gap:6px;font-size:12.5px;font-weight:700;color:var(--gris)}
+.aj label small{font-weight:400}
+@media (max-width:760px){.ap-fila{grid-template-columns:1fr 70px 60px 60px}.ap-fila .acc{grid-column:1/-1}}
 @media (max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}.filtros{grid-template-columns:1fr}.lista{grid-template-columns:1fr}}
 </style>
 </head>
@@ -93,6 +108,12 @@ input,select,textarea{font:inherit;padding:9px 10px;border:1px solid var(--borde
       <h2>🛒 Catálogo de la tienda web</h2>
       <div class="der"><a class="btn-sec" href="/pedidos" target="_blank" rel="noopener">Ver tienda ↗</a></div>
     </div>
+    <div class="tabs" id="tabs">
+      <button data-tab="cat" class="activa">🛒 Catálogo</button>
+      <button data-tab="hoy">🛵 Apertura de hoy</button>
+      <button data-tab="aj">⚙️ Ajustes</button>
+    </div>
+    <div id="t-cat">
     <div class="kpis">
       <div class="kpi"><span>Visibles en la web</span><b id="k-vis">0</b></div>
       <div class="kpi"><span>Visibles sin foto</span><b id="k-sinfoto">0</b></div>
@@ -111,6 +132,37 @@ input,select,textarea{font:inherit;padding:9px 10px;border:1px solid var(--borde
       </div>
     </div>
     <div class="lista" id="lista"></div>
+    </div>
+
+    <div id="t-hoy" class="oculto">
+      <div class="estado-hoy" id="hoy-estado"></div>
+      <div class="ayuda">Al abrir el turno, pon <b>cuántas porciones puede vender la web hoy</b> de cada producto. Cada pedido web pagado descuenta del cupo y, al llegar a 0, sale <b>Agotado</b> en la web. Si algo se acaba en tienda, toca <b>Agotar</b>. Solo aparecen los productos marcados como <b>“Para hoy”</b> en el Catálogo.</div>
+      <div class="cab" style="margin-bottom:8px">
+        <h2 style="font-size:17px" id="hoy-fecha"></h2>
+        <div class="der">
+          <button class="btn-mini" id="b-ayer">↺ Copiar cupos de ayer</button>
+          <button class="btn-mini" id="b-cero">Todo en 0</button>
+          <button class="btn" id="b-guardar-hoy">Guardar apertura</button>
+        </div>
+      </div>
+      <div class="caja" id="hoy-lista"></div>
+      <div class="error" id="hoy-err"></div>
+    </div>
+
+    <div id="t-aj" class="oculto">
+      <div class="caja">
+        <div class="aj">
+          <label class="switch" style="flex-direction:row;color:var(--texto);font-size:14px"><input type="checkbox" id="aj-activo"><span class="t"></span><span>Recibir pedidos para hoy</span></label>
+          <label>Desde (hora)<input type="time" id="aj-desde"></label>
+          <label>Hasta (última hora de entrega)<input type="time" id="aj-hasta"></label>
+          <label>Minutos de preparación<small>Lo más pronto que el cliente puede pedir</small><input type="number" id="aj-prep" min="5" max="240"></label>
+          <label>Horas de anticipación (encargos)<input type="number" id="aj-antic" min="0" max="240"></label>
+          <label>Stock de seguridad (vitrina)<small>Unidades que la web no ofrece</small><input type="number" id="aj-seg" min="0" max="99"></label>
+          <label style="grid-column:1/-1">Mensaje del banner (opcional)<input type="text" id="aj-banner" maxlength="90" placeholder="Ej. ¡Este fin de semana 10% en frappés!"></label>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:10px;align-items:center"><button class="btn" id="b-guardar-aj">Guardar ajustes</button><span class="estado" id="aj-estado"></span></div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -164,13 +216,13 @@ async function abrirApp() {
   vista('v-app'); $('usr').textContent = st.usuario?.nombre || '';
   $('lista').innerHTML = '<div class="vacio">Cargando productos…</div>';
   const [p, c] = await Promise.all([
-    sb.from('productos').select('id,codigo,nombre,precio_venta,precio_libre,categoria_id,web_visible,web_descripcion,web_imagen,web_orden')
+    sb.from('productos').select('id,codigo,nombre,precio_venta,precio_libre,categoria_id,web_visible,web_descripcion,web_imagen,web_orden,web_hoy,web_encargo')
       .eq('vendible', true).eq('activo', true).order('nombre'),
     sb.from('categorias').select('id,nombre').order('nombre'),
   ]);
   if (p.error || c.error) {
     const m = errTxt(p.error || c.error);
-    $('lista').innerHTML = `<div class="vacio">${/web_visible/.test(m) ? 'Falta correr el script <b>39_tienda_web.sql</b> en Supabase.' : esc(m)}</div>`;
+    $('lista').innerHTML = `<div class="vacio">${/web_visible/.test(m) ? 'Falta correr el script <b>39_tienda_web.sql</b> en Supabase.' : /web_hoy|web_encargo/.test(m) ? 'Falta correr el script <b>pedidos_app.sql</b> en Supabase.' : esc(m)}</div>`;
     return;
   }
   st.productos = p.data; st.cats = Object.fromEntries(c.data.map(x => [x.id, x.nombre]));
@@ -219,6 +271,9 @@ function tarjeta(p) {
       ${conPrecio
         ? `<label class="switch"><input type="checkbox" data-vis="${p.id}" ${p.web_visible ? 'checked' : ''}><span class="t"></span><span>${p.web_visible ? 'Se muestra en la web' : 'Oculto'}</span></label>`
         : `<div class="aviso-precio">⚠ Sin precio fijo: ponle precio en Recetas para poder mostrarlo.</div>`}
+      ${conPrecio && p.web_visible ? `<div class="sw2">
+        <label class="switch" title="Se vende para hoy con el cupo de la apertura"><input type="checkbox" data-flag="web_hoy" data-id="${p.id}" ${p.web_hoy ? 'checked' : ''}><span class="t"></span><span>🛵 Para hoy</span></label>
+        <label class="switch" title="Se puede pedir con anticipación"><input type="checkbox" data-flag="web_encargo" data-id="${p.id}" ${p.web_encargo !== false ? 'checked' : ''}><span class="t"></span><span>📅 Por encargo</span></label></div>` : ''}
       <textarea data-desc="${p.id}" maxlength="300" placeholder="Descripción para el cliente (ej. Bizcocho de chocolate con fudge, para 12 personas)">${esc(p.web_descripcion || '')}</textarea>
       <div class="fila2">
         <label>Orden</label><input type="number" min="1" max="999" data-orden="${p.id}" value="${p.web_orden ?? 100}" title="Número menor = aparece primero">
@@ -315,13 +370,99 @@ document.addEventListener('change', async e => {
     $('p-' + id).classList.toggle('visible', p.web_visible);
     v.nextElementSibling.nextElementSibling.textContent = p.web_visible ? 'Se muestra en la web' : 'Oculto';
     if (p.web_visible && !p.web_imagen) marca(id, '✓ Visible (falta foto)');
+    $('p-' + id).outerHTML = tarjeta(p);
     return;
   }
+  const fl = e.target.closest('[data-flag]');
+  if (fl) { const ok = await guardar(fl.dataset.id, { [fl.dataset.flag]: fl.checked }); if (!ok) fl.checked = !fl.checked; return; }
   const d = e.target.closest('[data-desc]');
   if (d) { const t = d.value.trim(); const p = st.productos.find(x => x.id == d.dataset.desc); if ((p.web_descripcion || '') !== t) guardar(d.dataset.desc, { web_descripcion: t || null }); return; }
   const o = e.target.closest('[data-orden]');
   if (o) { const n = Math.max(1, Math.min(999, parseInt(o.value, 10) || 100)); o.value = n; guardar(o.dataset.orden, { web_orden: n }); }
 });
+// ===== Pestañas =====
+const hoyLima = (d = 0) => new Date(Date.now() + d * 864e5).toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+$('tabs').onclick = e => {
+  const b = e.target.closest('[data-tab]'); if (!b) return;
+  [...$('tabs').children].forEach(x => x.classList.toggle('activa', x === b));
+  ['cat', 'hoy', 'aj'].forEach(t => $('t-' + t).classList.toggle('oculto', t !== b.dataset.tab));
+  if (b.dataset.tab === 'hoy') cargarHoy();
+  if (b.dataset.tab === 'aj') cargarAjustes();
+};
+
+// ===== Apertura de hoy =====
+st.hoy = { cupos: {}, vendidos: {}, aj: null };
+async function cargarHoy() {
+  const f = hoyLima();
+  $('hoy-fecha').textContent = 'Hoy, ' + new Date(f + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
+  $('hoy-lista').innerHTML = '<div class="vacio">Cargando…</div>'; $('hoy-err').textContent = '';
+  const [c, v, a] = await Promise.all([
+    sb.from('web_cupos').select('producto_id,cupo').eq('fecha', f),
+    sb.from('pedidos_web_items').select('producto_id,cantidad,pedidos_web!inner(para_hoy,estado,fecha_entrega)').eq('pedidos_web.para_hoy', true).eq('pedidos_web.fecha_entrega', f).neq('pedidos_web.estado', 'anulado'),
+    sb.from('web_ajustes').select('*').eq('id', 1).single(),
+  ]);
+  const er = c.error || v.error || a.error;
+  if (er) { $('hoy-lista').innerHTML = `<div class="vacio">${/web_cupos|para_hoy|hoy_activo/.test(er.message) ? 'Falta correr el script <b>pedidos_app.sql</b> en Supabase.' : esc(errTxt(er))}</div>`; return; }
+  st.hoy.cupos = Object.fromEntries(c.data.map(x => [x.producto_id, x.cupo]));
+  st.hoy.vendidos = {}; v.data.forEach(x => st.hoy.vendidos[x.producto_id] = (st.hoy.vendidos[x.producto_id] || 0) + Number(x.cantidad));
+  st.hoy.aj = a.data;
+  pintarHoy();
+}
+function pintarHoy() {
+  const a = st.hoy.aj, abierta = Object.keys(st.hoy.cupos).length > 0;
+  const ok = a.hoy_activo && abierta;
+  $('hoy-estado').className = 'estado-hoy ' + (ok ? 'on' : 'off');
+  $('hoy-estado').innerHTML = ok ? `🟢 La web está recibiendo pedidos para hoy (${a.hoy_desde.slice(0, 5)} a ${a.hoy_hasta.slice(0, 5)})`
+    : !a.hoy_activo ? '🔴 “Recibir pedidos para hoy” está apagado en Ajustes.' : '🔴 Todavía no guardas la apertura de hoy: la web muestra todo como cerrado.';
+  const prods = st.productos.filter(p => p.web_hoy && p.web_visible);
+  if (!prods.length) { $('hoy-lista').innerHTML = '<div class="vacio">No hay productos marcados como <b>🛵 Para hoy</b>. Márcalos en la pestaña Catálogo.</div>'; return; }
+  $('hoy-lista').innerHTML = `<div class="ap-fila cab"><span>Producto</span><span>Cupo de hoy</span><span class="num">Vendido</span><span class="num">Quedan</span><span></span></div>` +
+    prods.map(p => { const cu = st.hoy.cupos[p.id], ve = st.hoy.vendidos[p.id] || 0, q = Math.max(0, (cu || 0) - ve);
+      return `<div class="ap-fila"><span class="n">${esc(p.nombre)}<small>${esc(st.cats[p.categoria_id] || '')}</small></span>
+        <input type="number" min="0" max="999" data-cupo="${p.id}" value="${cu ?? ''}" placeholder="0">
+        <span class="num">${ve}</span><span class="num ${cu != null && q === 0 ? 'cero' : ''}">${cu == null ? '—' : q}</span>
+        <span class="acc"><button class="btn-mini" data-agotar="${p.id}">Agotar</button></span></div>`; }).join('');
+}
+async function guardarHoy(filas) {
+  $('hoy-err').textContent = '';
+  const f = hoyLima(), por = st.usuario?.nombre || null;
+  const datos = filas.map(([id, cupo]) => ({ fecha: f, producto_id: Number(id), cupo, actualizado_en: new Date().toISOString(), actualizado_por: por }));
+  if (!datos.length) return;
+  const { error } = await sb.from('web_cupos').upsert(datos, { onConflict: 'fecha,producto_id' });
+  if (error) { $('hoy-err').textContent = errTxt(error); return; }
+  await cargarHoy();
+}
+$('b-guardar-hoy').onclick = () => guardarHoy([...document.querySelectorAll('[data-cupo]')].map(i => [i.dataset.cupo, Math.max(0, parseInt(i.value, 10) || 0)]));
+$('b-cero').onclick = () => document.querySelectorAll('[data-cupo]').forEach(i => i.value = 0);
+$('b-ayer').onclick = async () => {
+  const { data, error } = await sb.from('web_cupos').select('producto_id,cupo').eq('fecha', hoyLima(-1));
+  if (error) return $('hoy-err').textContent = errTxt(error);
+  if (!data.length) return $('hoy-err').textContent = 'Ayer no hubo apertura para copiar.';
+  data.forEach(x => { const i = document.querySelector(`[data-cupo="${x.producto_id}"]`); if (i) i.value = x.cupo; });
+  $('hoy-err').textContent = 'Cupos de ayer copiados: revisa y toca “Guardar apertura”.';
+};
+$('hoy-lista').onclick = e => {
+  const b = e.target.closest('[data-agotar]'); if (!b) return;
+  const id = b.dataset.agotar;
+  guardarHoy([[id, st.hoy.vendidos[id] || 0]]);
+};
+
+// ===== Ajustes =====
+async function cargarAjustes() {
+  const { data: a, error } = await sb.from('web_ajustes').select('*').eq('id', 1).single();
+  if (error) { $('aj-estado').textContent = /hoy_activo/.test(error.message) ? 'Falta correr pedidos_app.sql' : errTxt(error); $('aj-estado').className = 'estado mal'; return; }
+  $('aj-activo').checked = !!a.hoy_activo; $('aj-desde').value = (a.hoy_desde || '').slice(0, 5); $('aj-hasta').value = (a.hoy_hasta || '').slice(0, 5);
+  $('aj-prep').value = a.hoy_prep_min; $('aj-antic').value = a.anticipacion_horas; $('aj-seg').value = a.stock_seguridad; $('aj-banner').value = a.banner || '';
+}
+$('b-guardar-aj').onclick = async () => {
+  const c = { hoy_activo: $('aj-activo').checked, hoy_desde: $('aj-desde').value || '07:00', hoy_hasta: $('aj-hasta').value || '22:30',
+    hoy_prep_min: Math.max(5, Math.min(240, parseInt($('aj-prep').value, 10) || 30)), anticipacion_horas: Math.max(0, parseInt($('aj-antic').value, 10) || 0),
+    stock_seguridad: Math.max(0, parseInt($('aj-seg').value, 10) || 0), banner: $('aj-banner').value.trim() || null };
+  if (c.hoy_hasta <= c.hoy_desde) { $('aj-estado').textContent = 'La hora “hasta” debe ser mayor que “desde”.'; $('aj-estado').className = 'estado mal'; return; }
+  const { error } = await sb.from('web_ajustes').update(c).eq('id', 1);
+  $('aj-estado').textContent = error ? errTxt(error) : '✓ Guardado'; $('aj-estado').className = 'estado ' + (error ? 'mal' : 'ok');
+};
+
 $('buscar').addEventListener('input', e => { st.busca = e.target.value.trim(); pintar(); });
 $('f-cat').onchange = e => { st.cat = e.target.value; pintar(); };
 

@@ -2,7 +2,8 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#7A2E3D">
 <title>Haz tu pedido — Kadima | Panadería y Pastelería</title>
 <meta name="description" content="Pide tus panes, tortas y postres de Kadima. Recojo en tienda o delivery en San Juan de Lurigancho. Paga con Yape.">
 <link rel="icon" href="/Kadima_Logo.jpg">
@@ -196,36 +197,162 @@
   .ins-nota { background: #fff8ea; border: 1px solid #e8cf9a; color: #6b4c15; border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-top: 10px; }
   .ins-ok { width: 100%; margin-top: 14px; background: var(--wine); color: #fff; border: none; border-radius: 8px; padding: 13px; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
   @media (max-width: 480px) { .paso { grid-template-columns: 46% 1fr; gap: 10px; } }
+
+  /* ================= FORMATO APP ================= */
+  body { background: #f7f3ef; padding-bottom: 96px; }
+  .wrap { max-width: 760px; }
+  .app-top { position: sticky; top: 0; z-index: 50; background: #fff; box-shadow: 0 2px 10px rgba(46,27,18,.07); padding-bottom: 10px; }
+  .top-in { display: flex; align-items: center; gap: 10px; padding-top: 10px; padding-bottom: 8px; }
+  .top-in .logo { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 1px solid var(--line); }
+  .top-txt b { font-family: 'Fraunces', serif; font-size: 19px; display: block; line-height: 1.1; color: var(--wine); }
+  .top-txt small { color: var(--muted-2); font-size: 12.5px; }
+  .top-wa { margin-left: auto; width: 40px; height: 40px; border-radius: 50%; background: #eef8f1; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 19px; }
+  .modos { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #f3ece6; padding: 4px; border-radius: 14px; }
+  .modos button { border: none; background: none; border-radius: 11px; padding: 8px 6px; font-family: inherit; cursor: pointer; color: var(--muted); display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
+  .modos button span { font-weight: 600; font-size: 14.5px; }
+  .modos button small { font-size: 11.5px; }
+  .modos button.on { background: #fff; color: var(--wine); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+  .buscar { margin-top: 8px; }
+  .buscar input { width: 100%; font-family: inherit; font-size: 15px; padding: 11px 16px 11px 40px; border: none; border-radius: 12px; background: #f3ece6 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' fill='none' stroke='%238a7256' stroke-width='2'%3E%3Ccircle cx='8' cy='8' r='6'/%3E%3Cpath d='M13 13l4 4'/%3E%3C/svg%3E") no-repeat 13px center; color: var(--espresso); }
+  .buscar input:focus { outline: 2px solid var(--wine); }
+  main.wrap { padding-top: 14px; }
+  .banner { background: var(--wine); color: #fff; border-radius: 18px; padding: 18px 20px; display: flex; align-items: center; gap: 12px; }
+  .banner b { font-family: 'Fraunces', serif; font-size: 19px; font-weight: 500; display: block; line-height: 1.25; }
+  .banner small { opacity: .85; font-size: 13px; }
+  .banner-ico { font-size: 40px; margin-left: auto; }
+  .aviso-modo { background: #fff8ea; border: 1px solid #e8cf9a; color: #6b4c15; border-radius: 14px; padding: 12px 14px; font-size: 14px; margin-top: 12px; }
+  .aviso-modo button { background: none; border: none; color: var(--wine); font: inherit; font-weight: 700; cursor: pointer; padding: 0; text-decoration: underline; }
+  .g-tit { font-size: 19px; font-weight: 600; margin: 22px 0 10px; }
+  .carr { display: flex; gap: 12px; overflow-x: auto; padding: 2px 2px 8px; scrollbar-width: none; scroll-snap-type: x mandatory; }
+  .carr::-webkit-scrollbar { display: none; }
+  .mini { flex: 0 0 138px; scroll-snap-align: start; cursor: pointer; }
+  .mini.ag { opacity: .5; }
+  .m-foto { position: relative; width: 138px; height: 138px; border-radius: 14px; overflow: hidden; background: #efe5da; }
+  .m-foto img, .f-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-size: 40px; color: #c9b08c; }
+  .m-nom { font-size: 14px; font-weight: 600; margin-top: 6px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .m-pie { font-size: 13.5px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .f-mas { position: absolute; right: 6px; bottom: 6px; width: 34px; height: 34px; border-radius: 50%; border: none; background: #fff; color: var(--wine); font-size: 24px; line-height: 1; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.2); font-family: inherit; }
+  .f-q { position: absolute; right: 6px; bottom: 6px; min-width: 30px; height: 30px; border-radius: 15px; background: var(--wine); color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 8px; }
+  .rt { color: #b07a10; font-weight: 600; font-size: 12.5px; white-space: nowrap; }
+  .rt small { color: var(--muted-2); font-weight: 400; }
+  .pocos { color: #b3261e; font-weight: 600; font-size: 12.5px; }
+  .cats { position: sticky; top: 148px; z-index: 40; background: #f7f3ef; padding: 12px 0 8px; margin-top: 8px; }
+  .cat-btn { padding: 8px 15px; font-size: 13.5px; }
+  .fila { display: flex; gap: 12px; background: #fff; border-radius: 16px; padding: 12px; margin-bottom: 10px; cursor: pointer; box-shadow: 0 1px 3px rgba(46,27,18,.06); }
+  .fila.ag { opacity: .55; }
+  .f-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .f-nom { font-weight: 600; font-size: 15.5px; line-height: 1.3; }
+  .f-desc { font-size: 13px; color: var(--muted); margin-top: 3px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .f-pie { margin-top: auto; padding-top: 8px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 15px; }
+  .f-foto { position: relative; flex: 0 0 104px; height: 104px; border-radius: 12px; overflow: hidden; background: #efe5da; }
+  #cart-bar { background: transparent; padding: 0 12px 12px; box-shadow: none; justify-content: center; pointer-events: none; }
+  #cart-bar button { pointer-events: auto; width: 100%; max-width: 736px; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--wine); color: #fff; border: none; border-radius: 16px; padding: 15px 18px; font-family: inherit; font-size: 15.5px; font-weight: 600; cursor: pointer; box-shadow: 0 6px 20px rgba(122,46,61,.35); }
+  .cb-n { background: rgba(255,255,255,.22); border-radius: 10px; padding: 2px 10px; }
+  .hoja-fondo { position: fixed; inset: 0; background: rgba(30,18,12,.5); z-index: 120; display: flex; align-items: flex-end; justify-content: center; }
+  .hoja { background: #fff; width: 100%; max-width: 640px; max-height: 92vh; overflow-y: auto; border-radius: 20px 20px 0 0; position: relative; display: flex; flex-direction: column; }
+  @media (min-width: 700px) { .hoja-fondo { align-items: center; } .hoja { border-radius: 20px; } }
+  .hoja-cab { display: flex; align-items: center; padding: 16px 16px 8px; position: sticky; top: 0; background: #fff; z-index: 2; }
+  .hoja-cab h3 { flex: 1; font-size: 21px; }
+  .hoja-cab h3 small { font-family: 'Work Sans', sans-serif; font-size: 13px; color: var(--muted-2); font-weight: 400; margin-left: 6px; }
+  .hoja-cab button, .hp-x { background: #f3eeea; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 17px; cursor: pointer; }
+  .hp-x { position: absolute; top: 12px; right: 12px; z-index: 3; background: rgba(255,255,255,.92); }
+  .hp-foto { position: relative; aspect-ratio: 4/3; background: #efe5da; flex-shrink: 0; }
+  .hp-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .hp-cuerpo { padding: 16px; }
+  .hp-cuerpo h2 { font-size: 24px; font-weight: 500; }
+  .hp-rt { color: #b07a10; font-weight: 600; font-size: 14px; margin-top: 4px; }
+  .hp-desc { color: var(--muted); margin: 8px 0 0; font-size: 14.5px; }
+  .hp-precio { font-size: 20px; font-weight: 700; color: var(--wine); margin-top: 10px; }
+  .sec-t { font-weight: 700; font-size: 16px; margin: 20px 0 10px; }
+  .res { border-top: 1px solid var(--line); padding: 10px 0; font-size: 14px; }
+  .res-c { margin-bottom: 2px; }
+  .res .est { color: #d4a017; letter-spacing: 1px; }
+  .res small { color: var(--muted-2); }
+  .hoja-pie { position: sticky; bottom: 0; background: #fff; padding: 12px 16px 16px; display: flex; gap: 10px; align-items: center; border-top: 1px solid var(--line); margin-top: auto; }
+  .hoja-pie:empty { display: none; }
+  .hp-add { flex: 1; background: var(--wine); color: #fff; border: none; border-radius: 14px; padding: 15px; font-family: inherit; font-size: 15.5px; font-weight: 600; cursor: pointer; }
+  .hp-add:disabled { background: #bbb; cursor: default; }
+  .hoja-pie .stepper { border-radius: 12px; }
+  .hoja-pie .stepper button { width: 40px; height: 44px; }
+  #hc-lista, #hc-sug { padding: 0 16px; }
+  .hc-item { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .hc-foto { position: relative; flex: 0 0 56px; height: 56px; border-radius: 10px; overflow: hidden; background: #efe5da; }
+  .hc-foto img { width: 100%; height: 100%; object-fit: cover; }
+  .hc-foto .ph { font-size: 22px; }
+  .hc-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 14px; }
+  .hc-txt small { color: var(--muted-2); }
+  .hc-txt span { font-weight: 600; }
+  .pagina { position: fixed; inset: 0; z-index: 110; background: #fff; overflow-y: auto; }
+  .pag-bar { position: sticky; top: 0; z-index: 5; background: #fff; display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .pag-bar button { background: #f3eeea; border: none; width: 38px; height: 38px; border-radius: 50%; font-size: 18px; cursor: pointer; }
+  .pag-bar b { font-family: 'Fraunces', serif; font-size: 19px; font-weight: 500; }
+  .pagina #checkout { padding-top: 20px; }
+  .cap-box { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; border: 1.5px dashed var(--yape); border-radius: 10px; color: var(--yape); font-weight: 600; cursor: pointer; padding: 10px; text-align: center; background: #faf5fc; }
+  .cap-box img { max-height: 160px; max-width: 100%; border-radius: 8px; }
+  .modo-tag { display: inline-block; font-size: 13px; font-family: 'Work Sans', sans-serif; background: var(--wine-soft); color: var(--wine); border-radius: 999px; padding: 3px 10px; margin-left: 8px; vertical-align: middle; }
+  .toast { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); background: var(--espresso); color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 14px; z-index: 300; max-width: 90vw; }
+  @media (min-width: 760px) { #lista { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; } #lista .g-tit, #lista .estado-carga { grid-column: 1 / -1; } }
 </style>
 </head>
 <body>
 
-<div class="wrap">
-  <section class="hero">
-    <div class="hero-copy">
-      <div class="kicker">Kadima | Panadería y Pastelería</div>
-      <h1>Haz tu pedido</h1>
-      <p>Elige tus productos y recógelos en tienda o pide delivery. Pagas fácil con Yape.</p>
-      <div class="chips"><span class="chip">🏬 Recojo en tienda</span><span class="chip">🛵 Delivery</span><span class="chip">💜 Pago con Yape</span></div>
+<header class="app-top">
+  <div class="wrap top-in">
+    <img src="/Kadima_Logo.jpg" alt="Kadima" class="logo">
+    <div class="top-txt"><b>Kadima</b><small>Panadería y Pastelería · SJL</small></div>
+    <a class="top-wa" href="https://wa.me/51987023767" target="_blank" rel="noopener" aria-label="Escríbenos por WhatsApp">💬</a>
+  </div>
+  <div class="wrap">
+    <div class="modos" id="modos">
+      <button type="button" data-modo="hoy"><span>🛵 Para hoy</span><small id="modo-hoy-sub">…</small></button>
+      <button type="button" data-modo="enc"><span>📅 Encargos</span><small id="modo-enc-sub">…</small></button>
     </div>
-    <div class="hero-logo-box"><img src="/Kadima_Logo.jpg" alt="Kadima"></div>
-  </section>
+    <div class="buscar"><input type="search" id="buscador" placeholder="Buscar en Kadima…" aria-label="Buscar producto"></div>
+  </div>
+</header>
 
-  <div class="search-bar"><input type="search" id="buscador" placeholder="Buscar producto..." aria-label="Buscar producto"></div>
+<main class="wrap">
+  <div class="banner"><div><b id="banner-txt"></b><small>Recojo en tienda o delivery · Paga con Yape</small></div><span class="banner-ico" aria-hidden="true">🥐</span></div>
+  <div class="aviso-modo oculto" id="aviso-modo"></div>
+  <section id="carr-top" class="oculto"><h3 class="g-tit">🔥 Más vendidos</h3><div class="carr" id="top"></div></section>
+  <section id="carr-mejor" class="oculto"><h3 class="g-tit">⭐ Mejor calificados</h3><div class="carr" id="mejor"></div></section>
   <div class="cats" id="cats"></div>
-  <div class="grid" id="grid"><div class="estado-carga">Cargando productos…</div></div>
-</div>
+  <div id="lista"><div class="estado-carga">Cargando productos…</div></div>
+</main>
 
 <!-- ============ BARRA DEL CARRITO ============ -->
 <div id="cart-bar">
-  <div class="info"><strong id="cart-count">0</strong> productos — S/ <span id="cart-total-mini">0.00</span></div>
-  <button id="btn-ver-pedido">Ver pedido</button>
+  <button id="btn-ver-pedido" type="button"><span class="cb-n" id="cart-count">0</span><span>Ver carrito</span><span>S/ <span id="cart-total-mini">0.00</span></span></button>
 </div>
 
+<!-- ============ HOJA: CARRITO ============ -->
+<div class="hoja-fondo oculto" id="hoja-carrito" data-fondo="hoja-carrito">
+  <div class="hoja">
+    <div class="hoja-cab"><h3>Tu carrito <small id="hc-modo"></small></h3><button type="button" data-cerrar="hoja-carrito" aria-label="Cerrar">✕</button></div>
+    <div id="hc-lista"></div>
+    <div id="hc-sug"></div>
+    <div class="hoja-pie" id="hc-pie"></div>
+  </div>
+</div>
+
+<!-- ============ HOJA: PRODUCTO ============ -->
+<div class="hoja-fondo oculto" id="hoja-prod" data-fondo="hoja-prod">
+  <div class="hoja">
+    <button type="button" class="hp-x" data-cerrar="hoja-prod" aria-label="Cerrar">✕</button>
+    <div class="hp-foto" id="hp-foto"></div>
+    <div class="hp-cuerpo" id="hp-cuerpo"></div>
+    <div class="hoja-pie" id="hp-pie"></div>
+  </div>
+</div>
+
+<!-- ============ PÁGINA: FINALIZAR PEDIDO ============ -->
+<div class="pagina oculto" id="pagar">
+  <div class="pag-bar"><button type="button" id="btn-pag-atras" aria-label="Volver">←</button><b>Finalizar pedido</b></div>
 <div class="wrap">
   <!-- ============ CHECKOUT ============ -->
   <section id="checkout">
-    <div class="section-title">Tu pedido</div>
+    <div class="section-title">Tu pedido <span class="modo-tag" id="pag-modo"></span></div>
     <div id="order-lines"></div>
     <div class="order-total"><span>Total productos</span><span>S/ <span id="order-total-amount">0.00</span></span></div>
     <div class="order-total oculto" id="fila-delivery" style="font-size:15px;font-weight:500;padding-top:4px"><span id="lbl-delivery">Delivery</span><span>S/ <span id="delivery-monto">0.00</span></span></div>
@@ -245,10 +372,10 @@
     </div>
 
     <div class="field-row">
-      <div class="field">
+      <div class="field" id="campo-fecha">
         <label for="fecha" id="lbl-fecha">Fecha de recojo</label>
         <input type="date" id="fecha" required>
-        <p class="aviso-anticipo">Preparamos tu pedido con mínimo 20 horas de anticipación.</p>
+        <p class="aviso-anticipo" id="aviso-anticipo"></p>
       </div>
       <div class="field">
         <label for="hora" id="lbl-hora">Hora de recojo</label>
@@ -334,8 +461,8 @@
         <div class="yape-dato">A nombre de: <strong id="yape-titular"></strong></div>
         <ol class="pasos">
           <li>Escanea el QR o yapea al número.</li>
-          <li>Copia el <b>número de operación</b> que aparece en tu constancia.</li>
-          <li>Pégalo abajo y confirma tu pedido.</li>
+          <li>Toma una <b>captura</b> de tu constancia de Yape.</li>
+          <li>Adjúntala abajo, escribe el <b>número de operación</b> y confirma.</li>
         </ol>
       </div>
     </div>
@@ -343,6 +470,10 @@
       <div class="field full">
         <label for="operacion">N° de operación de Yape</label>
         <input type="text" id="operacion" inputmode="numeric" maxlength="20" placeholder="Ej. 01234567">
+      </div>
+      <div class="field full">
+        <label for="captura">Captura del Yape <span style="color:#b3261e">*</span></label>
+        <label class="cap-box" id="cap-box"><input type="file" id="captura" accept="image/*" hidden><span id="cap-txt">📷 Toca para adjuntar la captura de tu Yape</span><img id="cap-img" class="oculto" alt="Captura del Yape"></label>
       </div>
     </div>
 
@@ -356,10 +487,14 @@
     <h3>¡Recibimos tu pedido!</h3>
     <div class="code-box" id="codigo-pedido"></div>
     <p id="resumen-entrega"></p>
-    <p>Último paso: envíanos tu pedido y la <b>captura del Yape</b> por WhatsApp para validarlo más rápido.</p>
-    <a class="wa-btn" id="wa-link" target="_blank" rel="noopener">💬 Enviar por WhatsApp</a>
+    <p>Ya tenemos tu captura del Yape. La validamos y te confirmamos por WhatsApp. Si quieres, también puedes escribirnos con el detalle de tu pedido.</p>
+    <a class="wa-btn" id="wa-link" target="_blank" rel="noopener">💬 Escribirnos por WhatsApp</a>
+    <div><button type="button" class="como-link" id="btn-seguir" style="margin-top:18px">← Volver a la tienda</button></div>
   </section>
+</div>
+</div>
 
+<div class="wrap">
   <footer class="site-footer">
     <div class="footer-cols">
       <div>
@@ -435,92 +570,254 @@
   let avisoMapa = '';           // mensaje extra sobre el mapa (ej. dirección no encontrada)
   let delivery = null;          // cotización: { ok, km, precio } (el servidor la vuelve a calcular al guardar)
 
+
+  // =======================================================================
+  // FORMATO APP: modo (para hoy / encargos), catálogo, hojas y carrito
+  // =======================================================================
+  let MODO = leer('modo') === 'enc' ? 'enc' : 'hoy';
+  let EST = { hoy_activo: false, hoy_desde: '07:00', hoy_hasta: '22:30', hoy_prep_min: 30, anticipacion_horas: CONFIG.MIN_LEAD_HOURS, apertura: false, banner: '' };
+  const carts = { hoy: {}, enc: {} };
+  const RES = {}, COMB = {};
+  let hojaP = null, hojaQ = 1, capturaBlob = null;
+
+  const aMin = s => Number(String(s).slice(0, 2)) * 60 + Number(String(s).slice(3, 5));
+  const limaMin = () => aMin(new Date().toLocaleTimeString('en-GB', { timeZone: 'America/Lima', hour12: false }));
+  const fechaCorta = f => f ? new Date(f + 'T12:00:00').toLocaleDateString('es-PE', { day: 'numeric', month: 'short' }) : '';
+  function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2200); }
+
+  function slotsHoy() {
+    const ini = Math.max(limaMin() + Number(EST.hoy_prep_min || 30), aMin(EST.hoy_desde)), out = [];
+    for (let m = Math.ceil(ini / 15) * 15; m <= aMin(EST.hoy_hasta); m += 15) out.push(m);
+    return out;
+  }
+  const hoyAbierto = () => !!EST.hoy_activo && !!EST.apertura && slotsHoy().length > 0;
+  const disponibleEn = (p, modo) => modo === 'hoy' ? !!p.web_hoy : p.web_encargo !== false;
+  const stockHoy = p => MODO === 'hoy' ? Math.max(0, Number(p.hoy_disponible || 0)) : 99;
+  const agotado = p => MODO === 'hoy' && (!hoyAbierto() || stockHoy(p) <= 0);
+  const listaModo = () => PRODUCTOS.filter(p => disponibleEn(p, MODO));
+  const foto = p => p.imagen ? `<img src="${esc(p.imagen)}" alt="" loading="lazy">` : `<div class="ph">${esc(p.nombre.charAt(0))}</div>`;
+  const estrellas = p => p.rating && p.n_resenas ? `<span class="rt">★ ${p.rating.toFixed(1)} <small>(${p.n_resenas})</small></span>` : '';
+  const paqTotal = (p, n) => Math.round(paquetes(p, n).reduce((a, x) => a + x.c * x.pr, 0) * 100) / 100;
+
   // ---------- Catálogo ----------
   async function cargarProductos() {
-    const { data, error } = await sb.rpc('catalogo_web');
-    if (error) {
-      $('grid').innerHTML = '<div class="estado-carga">No pudimos cargar los productos. Revisa tu conexión y recarga la página.</div>';
-      return;
-    }
-    PRODUCTOS = (data || []).map(p => ({ ...p, precio: Number(p.precio), categoria: p.categoria || 'Otros', en_tienda: Number(p.en_tienda || 0),
-      escala: (Array.isArray(p.escala) ? p.escala : []).map(e => ({ desde: Number(e.desde), precio: Number(e.precio) })).sort((a, b) => a.desde - b.desde) }));
-    if (PRODUCTOS.some(p => p.en_tienda > 0)) categoria = EN_TIENDA;
-    // el carrito guardado solo conserva productos que siguen disponibles
-    const previo = leer('carrito') || {};
-    Object.entries(previo).forEach(([id, q]) => { if (PRODUCTOS.some(p => p.id == id) && q > 0) cart[id] = Math.min(999, q); });
+    const [e, c0] = await Promise.all([sb.rpc('web_estado'), sb.rpc('catalogo_app')]);
+    let c = c0;
+    if (c.error && /catalogo_app/.test(c.error.message || '')) c = await sb.rpc('catalogo_web');   // todavía no se corrió el SQL nuevo
+    if (c.error) { $('lista').innerHTML = '<div class="estado-carga">No pudimos cargar los productos. Revisa tu conexión y recarga la página.</div>'; return; }
+    if (!e.error && e.data) EST = { ...EST, ...e.data };
+    CONFIG.MIN_LEAD_HOURS = Number(EST.anticipacion_horas || CONFIG.MIN_LEAD_HOURS);
+    PRODUCTOS = (c.data || []).map(p => ({ ...p, precio: Number(p.precio), categoria: p.categoria || 'Otros', en_tienda: Number(p.en_tienda || 0),
+      web_hoy: !!p.web_hoy, web_encargo: p.web_encargo !== false, hoy_disponible: p.hoy_disponible == null ? 0 : Number(p.hoy_disponible),
+      vendidos: Number(p.vendidos || 0), rating: p.rating == null ? null : Number(p.rating), n_resenas: Number(p.n_resenas || 0),
+      escala: (Array.isArray(p.escala) ? p.escala : []).map(x => ({ desde: Number(x.desde), precio: Number(x.precio) })).sort((a, b) => a.desde - b.desde) }));
+    ['hoy', 'enc'].forEach(m => {
+      const prev = leer('carrito_' + m) || {}; carts[m] = {};
+      Object.entries(prev).forEach(([id, q]) => { const p = PRODUCTOS.find(x => x.id == id); if (p && disponibleEn(p, m) && q > 0) carts[m][id] = Math.min(99, q); });
+    });
+    if (!PRODUCTOS.some(p => p.web_hoy)) MODO = 'enc';     // si nada se vende para hoy, se abre en encargos
+    cart = carts[MODO];
   }
 
-  const EN_TIENDA = 'Disponible en tienda';
+  function pintarModo() {
+    document.querySelectorAll('#modos [data-modo]').forEach(b => b.classList.toggle('on', b.dataset.modo === MODO));
+    $('modo-hoy-sub').textContent = hoyAbierto() ? `Listo en ~${EST.hoy_prep_min} min` : 'Cerrado por ahora';
+    $('modo-enc-sub').textContent = `Con ${CONFIG.MIN_LEAD_HOURS} h de anticipación`;
+    const av = $('aviso-modo');
+    if (MODO === 'hoy' && !hoyAbierto()) {
+      av.innerHTML = `<b>Por ahora no recibimos pedidos para hoy.</b> Atendemos pedidos del día de ${etiquetaHora(aMin(EST.hoy_desde))} a ${etiquetaHora(aMin(EST.hoy_hasta))}. También puedes hacer un <button type="button" data-modo="enc">encargo para otro día →</button>`;
+      av.classList.remove('oculto');
+    } else av.classList.add('oculto');
+    $('banner-txt').textContent = EST.banner || (MODO === 'hoy' ? 'Pide lo de nuestra carta y recíbelo hoy' : 'Tortas, bocaditos y más, con anticipación');
+  }
+  function cambiarModo(m) {
+    if (m === MODO) return;
+    MODO = m; guardar('modo', m); cart = carts[m]; categoria = 'Todos';
+    pintarTodo(); window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  function pintarTodo() { pintarModo(); pintarCategorias(); pintarGrid(); actualizarBarra(); }
+
+  function fila(p) {
+    const q = cart[p.id] || 0, ag = agotado(p), poco = MODO === 'hoy' && !ag && stockHoy(p) <= 3;
+    return `<div class="fila ${ag ? 'ag' : ''}" data-ver="${p.id}">
+      <div class="f-txt"><div class="f-nom">${esc(p.nombre)}</div>${p.descripcion ? `<div class="f-desc">${esc(p.descripcion)}</div>` : ''}
+        <div class="f-pie"><b>S/ ${soles(p.precio)}</b>${estrellas(p)}${poco ? `<span class="pocos">¡Quedan ${stockHoy(p)}!</span>` : ''}${ag && hoyAbierto() ? '<span class="pocos">Agotado</span>' : ''}</div></div>
+      <div class="f-foto">${foto(p)}${ag ? '' : q ? `<span class="f-q">${q}</span>` : `<button type="button" class="f-mas" data-mas="${p.id}" aria-label="Agregar ${esc(p.nombre)}">+</button>`}</div></div>`;
+  }
+  function mini(p) {
+    const ag = agotado(p), q = cart[p.id] || 0;
+    return `<div class="mini ${ag ? 'ag' : ''}" data-ver="${p.id}"><div class="m-foto">${foto(p)}${ag ? '' : q ? `<span class="f-q">${q}</span>` : `<button type="button" class="f-mas" data-mas="${p.id}" aria-label="Agregar ${esc(p.nombre)}">+</button>`}</div>
+      <div class="m-nom">${esc(p.nombre)}</div><div class="m-pie"><b>S/ ${soles(p.precio)}</b>${estrellas(p)}</div></div>`;
+  }
+
   function pintarCategorias() {
-    const hay = PRODUCTOS.some(p => p.en_tienda > 0);
-    if (!hay && categoria === EN_TIENDA) categoria = 'Todos';
-    const cats = [...(hay ? [EN_TIENDA] : []), 'Todos', ...new Set(PRODUCTOS.map(p => p.categoria))];
-    $('cats').innerHTML = cats.map(c => `<button class="cat-btn ${c === EN_TIENDA ? 'tienda' : ''} ${c === categoria ? 'active' : ''}" data-cat="${esc(c)}">${c === EN_TIENDA ? '🟢 ' : ''}${esc(c)}</button>`).join('');
+    const cats = ['Todos', ...new Set(listaModo().map(p => p.categoria))];
+    if (!cats.includes(categoria)) categoria = 'Todos';
+    $('cats').innerHTML = cats.length > 2 ? cats.map(c => `<button type="button" class="cat-btn ${c === categoria ? 'active' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('') : '';
   }
 
   function pintarGrid() {
-    let lista = categoria === 'Todos' ? PRODUCTOS : categoria === EN_TIENDA ? PRODUCTOS.filter(p => p.en_tienda > 0) : PRODUCTOS.filter(p => p.categoria === categoria);
-    if (busqueda) lista = lista.filter(p => (p.nombre + ' ' + (p.descripcion || '')).toLowerCase().includes(busqueda));
-    if (!PRODUCTOS.length) { $('grid').innerHTML = '<div class="estado-carga">Pronto tendremos productos disponibles aquí.</div>'; return; }
-    if (!lista.length) { $('grid').innerHTML = '<div class="estado-carga">No encontramos productos con esa búsqueda.</div>'; return; }
-    $('grid').innerHTML = lista.map(p => `
-      <div class="card">
-        <div class="card-photo">
-          ${p.imagen ? `<img src="${esc(p.imagen)}" alt="${esc(p.nombre)}" loading="lazy">` : `<div class="ph">${esc(p.nombre.charAt(0))}</div>`}
-          ${p.en_tienda > 0 ? `<span class="badge-tienda">En tienda: ${p.en_tienda}</span>` : ''}
-        </div>
-        <div class="card-body">
-          <div class="card-cat">${esc(p.categoria)}</div>
-          <div class="card-name">${esc(p.nombre)}</div>
-          ${p.descripcion ? `<div class="card-desc">${esc(p.descripcion)}</div>` : ''}
-          ${p.escala.length ? `<div class="escala-web">${p.escala.map(e => `<button data-fijar="${p.id}" data-n="${e.desde}">Paquete ${e.desde} · S/ ${soles(e.desde * e.precio)}</button>`).join('')}</div>` : ''}
-          <div class="card-foot">
-            <div class="card-price">S/ ${soles(p.precio)}</div>
-            <div id="ctl-${p.id}">${controlCantidad(p.id)}</div>
-          </div>
-        </div>
-      </div>`).join('');
+    const base = listaModo();
+    let lista = categoria === 'Todos' ? base : base.filter(p => p.categoria === categoria);
+    if (busqueda) lista = base.filter(p => (p.nombre + ' ' + (p.descripcion || '') + ' ' + p.categoria).toLowerCase().includes(busqueda));
+    const home = !busqueda && categoria === 'Todos';
+    const top = base.filter(p => p.vendidos > 0 && !agotado(p)).sort((a, b) => b.vendidos - a.vendidos).slice(0, 10);
+    const mejor = base.filter(p => p.rating >= 4 && p.n_resenas >= 2 && !agotado(p)).sort((a, b) => b.rating - a.rating || b.n_resenas - a.n_resenas).slice(0, 10);
+    $('carr-top').classList.toggle('oculto', !home || top.length < 3); $('top').innerHTML = top.map(mini).join('');
+    $('carr-mejor').classList.toggle('oculto', !home || mejor.length < 2); $('mejor').innerHTML = mejor.map(mini).join('');
+    if (!lista.length) {
+      $('lista').innerHTML = `<div class="estado-carga">${busqueda ? 'No encontramos productos con esa búsqueda.' : MODO === 'hoy' ? 'Hoy todavía no hay productos disponibles. Mira nuestros encargos.' : 'Pronto tendremos productos aquí.'}</div>`;
+      return;
+    }
+    const grupos = {};
+    lista.forEach(p => (grupos[p.categoria] = grupos[p.categoria] || []).push(p));
+    $('lista').innerHTML = Object.entries(grupos).map(([c, ps]) =>
+      `<h3 class="g-tit">${esc(c)}</h3>${ps.slice().sort((a, b) => agotado(a) - agotado(b)).map(fila).join('')}`).join('');
   }
 
-  function controlCantidad(id) {
-    const q = cart[id] || 0;
-    if (!q) return `<button class="add-btn" data-mas="${id}">Agregar</button>`;
-    return `<div class="stepper"><button data-menos="${id}" aria-label="Quitar uno">−</button><span>${q}</span><button data-mas="${id}" aria-label="Agregar uno">+</button></div>`;
-  }
-
-  function cambiar(id, delta) {
-    const q = Math.max(0, Math.min(999, (cart[id] || 0) + delta));
+  function cambiar(id, delta, abs) {
+    const p = PRODUCTOS.find(x => x.id == id); if (!p) return;
+    if (agotado(p)) return toast(hoyAbierto() ? 'Se agotó por hoy' : 'Por ahora no recibimos pedidos para hoy');
+    let q = abs != null ? abs : (cart[id] || 0) + delta;
+    const max = MODO === 'hoy' ? stockHoy(p) : 99;
+    if (q > max) { toast(`Solo quedan ${max} para hoy`); q = max; }
+    q = Math.max(0, Math.min(99, q));
     if (q) cart[id] = q; else delete cart[id];
-    guardar('carrito', cart);
-    const ctl = $('ctl-' + id); if (ctl) ctl.innerHTML = controlCantidad(id);
-    actualizarBarra();
-    if ($('checkout').style.display === 'block') pintarLineas();
+    guardar('carrito_' + MODO, cart);
+    pintarGrid(); actualizarBarra();
+    if (!$('hoja-carrito').classList.contains('oculto')) pintarCarrito();
+    if (pagarAbierto()) pintarLineas();
   }
+
+  // ---------- Hojas ----------
+  function abrirHoja(id) { $(id).classList.remove('oculto'); document.body.style.overflow = 'hidden'; }
+  function cerrarHoja(id) {
+    $(id).classList.add('oculto');
+    if (!pagarAbierto() && [...document.querySelectorAll('.hoja-fondo')].every(h => h.classList.contains('oculto'))) document.body.style.overflow = '';
+  }
+
+  function sugeridos(ids, excluir) {
+    const out = [], ya = new Set(excluir.map(String));
+    const ok = p => p && disponibleEn(p, MODO) && !agotado(p) && !ya.has(String(p.id));
+    ids.forEach(i => { const p = PRODUCTOS.find(x => x.id == i); if (ok(p) && out.length < 6) { out.push(p); ya.add(String(p.id)); } });
+    // completa con lo más vendido de otros tipos de producto (ej. una bebida para el sándwich)
+    const tipos = new Set(excluir.map(i => (PRODUCTOS.find(x => x.id == i) || {}).categoria_principal));
+    listaModo().filter(p => ok(p) && !tipos.has(p.categoria_principal)).sort((a, b) => b.vendidos - a.vendidos || a.precio - b.precio)
+      .forEach(p => { if (out.length < 6 && !ya.has(String(p.id))) { out.push(p); ya.add(String(p.id)); } });
+    return out;
+  }
+
+  function verProducto(id) {
+    const p = PRODUCTOS.find(x => x.id == id); if (!p) return;
+    hojaP = p; hojaQ = 1;
+    pintarHoja(); abrirHoja('hoja-prod'); $('hoja-prod').querySelector('.hoja').scrollTop = 0;
+    if (!RES[id]) sb.rpc('web_resenas', { p_producto: Number(id) }).then(r => { RES[id] = r.error ? [] : r.data || []; if (hojaP === p) pintarHoja(); });
+    if (!COMB[id]) sb.rpc('web_combina', { p_producto: Number(id) }).then(r => { COMB[id] = r.error ? [] : (r.data || []).map(x => x.producto_id); if (hojaP === p) pintarHoja(); });
+  }
+  function pintarHoja() {
+    const p = hojaP, ag = agotado(p), res = RES[p.id], comb = COMB[p.id] ? sugeridos(COMB[p.id], [p.id]) : [];
+    $('hp-foto').innerHTML = foto(p);
+    $('hp-cuerpo').innerHTML = `
+      <h2>${esc(p.nombre)}</h2>
+      ${p.rating && p.n_resenas ? `<div class="hp-rt">★ ${p.rating.toFixed(1)} · ${p.n_resenas} ${p.n_resenas === 1 ? 'opinión' : 'opiniones'} de clientes</div>` : ''}
+      ${p.descripcion ? `<p class="hp-desc">${esc(p.descripcion)}</p>` : ''}
+      <div class="hp-precio">S/ ${soles(p.precio)}</div>
+      ${MODO === 'hoy' && !ag && stockHoy(p) <= 5 ? `<div class="pocos">¡Quedan ${stockHoy(p)} para hoy!</div>` : ''}
+      ${p.escala.length ? `<div class="escala-web">${p.escala.map(e => `<button type="button" data-hq="${e.desde}">Paquete ${e.desde} · S/ ${soles(e.desde * e.precio)}</button>`).join('')}</div>` : ''}
+      ${comb.length ? `<div class="sec-t">Otros lo combinaron con</div><div class="carr">${comb.map(mini).join('')}</div>` : ''}
+      ${res && res.length ? `<div class="sec-t">Lo que dicen nuestros clientes</div>${res.map(r => `<div class="res"><div class="res-c"><span class="est">${'★'.repeat(r.estrellas)}${'☆'.repeat(Math.max(0, 5 - r.estrellas))}</span> <b>${esc(r.nombre || 'Cliente')}</b> <small>${fechaCorta(r.fecha)}</small></div><div>${esc(r.comentario)}</div></div>`).join('')}` : ''}`;
+    $('hp-pie').innerHTML = ag ? `<button type="button" class="hp-add" disabled>${hoyAbierto() ? 'Agotado por hoy' : 'Cerrado por ahora'}</button>`
+      : `<div class="stepper"><button type="button" data-hmenos aria-label="Uno menos">−</button><span>${hojaQ}</span><button type="button" data-hmas aria-label="Uno más">+</button></div>
+         <button type="button" class="hp-add" data-hadd>Agregar · S/ ${soles(paqTotal(p, hojaQ))}</button>`;
+  }
+
+  function abrirCarrito() { pintarCarrito(); abrirHoja('hoja-carrito'); }
+  function pintarCarrito() {
+    const its = items();
+    $('hc-modo').textContent = MODO === 'hoy' ? '🛵 Para hoy' : '📅 Encargo';
+    if (!its.length) { $('hc-lista').innerHTML = '<div class="estado-carga">Tu carrito está vacío.</div>'; $('hc-sug').innerHTML = ''; $('hc-pie').innerHTML = ''; return; }
+    $('hc-lista').innerHTML = its.map(i => `<div class="hc-item"><div class="hc-foto">${foto(i)}</div>
+      <div class="hc-txt"><b>${esc(i.nombre)}</b><small>${i.detalle ? esc(i.detalle) : 'S/ ' + soles(i.precio) + ' c/u'}</small><span>S/ ${soles(i.sub)}</span></div>
+      <div class="stepper"><button type="button" data-menos="${i.id}" aria-label="Quitar uno">−</button><span>${i.qty}</span><button type="button" data-mas="${i.id}" aria-label="Agregar uno">+</button></div></div>`).join('');
+    const ids = its.map(i => i.id);
+    ids.filter(i => !COMB[i]).forEach(i => { COMB[i] = []; sb.rpc('web_combina', { p_producto: Number(i) }).then(r => { COMB[i] = r.error ? [] : (r.data || []).map(x => x.producto_id); if (!$('hoja-carrito').classList.contains('oculto')) pintarCarrito(); }); });
+    const sug = sugeridos(ids.flatMap(i => COMB[i] || []), ids);
+    $('hc-sug').innerHTML = sug.length ? `<div class="sec-t">¿Te falta algo?</div><div class="carr">${sug.map(mini).join('')}</div>` : '';
+    $('hc-pie').innerHTML = `<button type="button" class="hp-add" id="btn-ir-pagar">Continuar · S/ ${soles(total())}</button>`;
+  }
+
 
   // precio por cantidad (bocaditos: medio ciento / ciento); el servidor aplica la misma escala al guardar
-  // precios por paquete: 30 = paquete de 25 a su precio + 5 sueltas a precio normal (paquetes grandes primero)
   const paquetes = (p, n) => { const out = []; (p.escala || []).slice().reverse().forEach(e => { const k = Math.floor(n / e.desde); if (k > 0) { out.push({ c: k * e.desde, pr: e.precio, paq: e.desde, k }); n -= k * e.desde; } }); if (n > 0) out.push({ c: n, pr: p.precio }); return out; };
   const items = () => Object.entries(cart).map(([id, qty]) => { const p = PRODUCTOS.find(x => x.id == id); if (!p) return {}; const ps = paquetes(p, qty), sub = Math.round(ps.reduce((a, x) => a + x.c * x.pr, 0) * 100) / 100;
     return { ...p, qty, sub, precio: sub / qty, detalle: ps.some(x => x.paq) ? ps.map(x => x.paq ? `${x.k > 1 ? x.k + ' paq.' : 'paq.'} ${x.paq} a S/ ${soles(x.pr)}` : `${x.c} sueltas a S/ ${soles(x.pr)}`).join(' + ') : '' }; }).filter(i => i.id && i.qty > 0);
   const total = () => items().reduce((s, i) => s + i.sub, 0);
-
   function actualizarBarra() {
     const its = items();
-    $('cart-bar').style.display = its.length ? 'flex' : 'none';
+    $('cart-bar').style.display = its.length && !pagarAbierto() ? 'flex' : 'none';
     $('cart-count').textContent = its.reduce((s, i) => s + i.qty, 0);
-    const d = typeof precioDelivery === 'function' ? precioDelivery() : 0;
-    $('cart-total-mini').textContent = d ? `${soles(total())} + delivery S/ ${soles(d)} = S/ ${soles(total() + d)}` : soles(total());
+    $('cart-total-mini').textContent = soles(total());
   }
 
+  // ---------- Página de pago ----------
+  const pagarAbierto = () => !$('pagar').classList.contains('oculto');
   function verPedido() {
-    pintarLineas();
-    $('checkout').style.display = 'block';
-    $('checkout').scrollIntoView({ behavior: 'smooth' });
+    if (!items().length) return;
+    cerrarHoja('hoja-carrito');
+    prepararEntrega(); pintarLineas();
+    $('checkout').style.display = 'block'; $('confirmacion').style.display = 'none';
+    $('pagar').classList.remove('oculto'); document.body.style.overflow = 'hidden'; $('pagar').scrollTop = 0;
+    $('pag-modo').textContent = MODO === 'hoy' ? '🛵 Para hoy' : '📅 Encargo';
+    actualizarBarra();
+    if (typeof mapa !== 'undefined' && mapa) setTimeout(() => mapa.invalidateSize(), 250);
+  }
+  function cerrarPagar() {
+    const listo = $('confirmacion').style.display === 'block';
+    $('pagar').classList.add('oculto'); document.body.style.overflow = ''; actualizarBarra();
+    if (listo) { $('confirmacion').style.display = 'none'; cargarProductos().then(pintarTodo); }
+  }
+  function prepararEntrega() {
+    const hoy = MODO === 'hoy';
+    $('campo-fecha').classList.toggle('oculto', hoy);
+    $('aviso-anticipo').textContent = hoy ? '' : `Preparamos tu pedido con mínimo ${CONFIG.MIN_LEAD_HOURS} horas de anticipación.`;
+    if (hoy) { $('fecha').min = ''; $('fecha').value = fechaLima(Date.now()); }
+    else { const f = primeraFecha(); $('fecha').min = f; if (!$('fecha').value || $('fecha').value < f) $('fecha').value = f; }
+    $('fecha').dispatchEvent(new Event('change'));
+    if (hoy && $('hora').options.length > 1) { $('hora').selectedIndex = 1; $('hora').dispatchEvent(new Event('change')); }
+    $('lbl-hora').textContent = hoy ? (tipoEntrega === 'delivery' ? '¿A qué hora lo quieres hoy?' : '¿A qué hora lo recoges hoy?') : (tipoEntrega === 'delivery' ? 'Hora aproximada de entrega' : 'Hora de recojo');
+  }
+
+  // ---------- Captura del Yape ----------
+  async function elegirCaptura(file) {
+    if (!file) return;
+    try {
+      capturaBlob = await reducirImagen(file, 1400);
+      $('cap-img').src = URL.createObjectURL(capturaBlob); $('cap-img').classList.remove('oculto');
+      $('cap-txt').textContent = '✓ Captura lista · toca para cambiarla';
+    } catch (e) { capturaBlob = null; $('cap-img').classList.add('oculto'); $('cap-txt').textContent = '⚠️ Ese archivo no es una imagen. Toca para elegir otra.'; }
+  }
+  function reducirImagen(file, max) {
+    return new Promise((ok, mal) => {
+      const img = new Image();
+      img.onload = () => {
+        const r = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement('canvas');
+        c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
+        const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height);
+        c.toBlob(b => b ? ok(b) : mal(new Error('imagen')), 'image/jpeg', 0.82); URL.revokeObjectURL(img.src);
+      };
+      img.onerror = () => mal(new Error('imagen')); img.src = URL.createObjectURL(file);
+    });
+  }
+  async function subirCaptura() {
+    const ruta = `${fechaLima(Date.now())}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+    const { error } = await sb.storage.from('pagos-web').upload(ruta, capturaBlob, { contentType: 'image/jpeg' });
+    if (error) throw error;
+    return ruta;
   }
 
   function pintarLineas() {
     const its = items();
-    if (!its.length) { $('checkout').style.display = 'none'; return; }
+    if (!its.length) { if (pagarAbierto()) cerrarPagar(); return; }
     $('order-lines').innerHTML = its.map(i => `
       <div class="order-line">
         <span>${esc(i.nombre)}<br><small style="color:var(--muted-2)">${i.detalle ? esc(i.detalle) : `S/ ${soles(i.precio)} c/u`}</small></span>
@@ -577,7 +874,7 @@
     $('bloque-delivery').classList.toggle('oculto', tipo !== 'delivery');
     pintarTotales();
     $('lbl-fecha').textContent = tipo === 'delivery' ? 'Fecha de entrega' : 'Fecha de recojo';
-    $('lbl-hora').textContent = tipo === 'delivery' ? 'Hora aproximada de entrega' : 'Hora de recojo';
+    $('lbl-hora').textContent = MODO === 'hoy' ? (tipo === 'delivery' ? '¿A qué hora lo quieres hoy?' : '¿A qué hora lo recoges hoy?') : tipo === 'delivery' ? 'Hora aproximada de entrega' : 'Hora de recojo';
   }
 
   const pad2 = n => String(n).padStart(2, '0');
@@ -596,6 +893,7 @@
 
   function horarios(fecha) {
     const min = minimo(), lista = [];
+    if (MODO === 'hoy') return fecha === fechaLima(Date.now()) ? slotsHoy() : [];
     for (let m = CONFIG.STORE_OPEN_HOUR * 60; m <= CONFIG.STORE_CLOSE_HOUR * 60; m += 30) if (instanteLima(fecha, m) >= min) lista.push(m);
     return lista;
   }
@@ -857,6 +1155,7 @@
       lng: tipoEntrega === 'delivery' && ubicacion ? ubicacion.lng : null,
       notas: [$('notas').value.trim(), tipoEntrega === 'delivery' && ubicLink && !ubicacion ? 'Ubicación (link): ' + ubicLink : ''].filter(Boolean).join(' · '),
       yape_operacion: $('operacion').value.trim(),
+      para_hoy: MODO === 'hoy',
       items: items().map(i => ({ producto_id: i.id, cantidad: i.qty })),
     };
     if (!datos.items.length) return err('Tu carrito está vacío.');
@@ -871,12 +1170,17 @@
     if (!/^9\d{8}$/.test(tel)) return err('El celular debe tener 9 dígitos y empezar con 9.');
     if (datos.yape_operacion.replace(/\D/g, '').length < 4) return err('Escribe el número de operación de tu Yape.');
 
-    $('btn-confirmar').disabled = true; $('btn-confirmar').textContent = 'Enviando pedido…';
+    if (!capturaBlob) { $('cap-box').scrollIntoView({ behavior: 'smooth', block: 'center' }); return err('Adjunta la captura de tu Yape.'); }
+
+    $('btn-confirmar').disabled = true; $('btn-confirmar').textContent = 'Subiendo captura…';
+    try { datos.yape_captura = await subirCaptura(); }
+    catch (e) { $('btn-confirmar').disabled = false; $('btn-confirmar').textContent = 'Confirmar pedido'; return err('No pudimos subir la captura. Revisa tu conexión e inténtalo otra vez.'); }
+    $('btn-confirmar').textContent = 'Enviando pedido…';
     const { data, error } = await sb.rpc('crear_pedido_web', { p: datos });
     $('btn-confirmar').disabled = false; $('btn-confirmar').textContent = 'Confirmar pedido';
     if (error) {
       const msg = /fetch|network/i.test(error.message) ? 'Sin conexión. Revisa tu internet e inténtalo otra vez.' : error.message;
-      if (/ya no está disponible/.test(msg)) { await cargarProductos(); pintarCategorias(); pintarGrid(); pintarLineas(); actualizarBarra(); }
+      if (/ya no está disponible|agotó|Solo quedan|no está disponible para hoy/.test(msg)) { await cargarProductos(); pintarTodo(); pintarLineas(); }
       return err(msg);
     }
     datos.delivery = precioDelivery();
@@ -888,9 +1192,10 @@
     const tp = total();   // con precios por cantidad (el servidor calcula igual)
     const fechaTxt = new Date(datos.fecha + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
     const horaTxt = etiquetaHora(Number(datos.hora.slice(0, 2)) * 60 + Number(datos.hora.slice(3, 5)));
+    const cuando = datos.para_hoy ? `hoy, ${horaTxt}` : `el ${fechaTxt}, ${horaTxt}`;
     const entregaTxt = datos.tipo_entrega === 'delivery'
-      ? `Delivery el ${fechaTxt}, ${horaTxt} aprox.`
-      : `Recojo en tienda el ${fechaTxt}, ${horaTxt}.`;
+      ? `Delivery ${cuando} aprox.`
+      : `Recojo en tienda ${cuando}.`;
 
     $('codigo-pedido').textContent = res.codigo;
     const dv = datos.tipo_entrega === 'delivery' ? datos.delivery : 0;
@@ -915,27 +1220,40 @@
     }
     if (datos.notas) lineas.push(`• *Indicaciones:* ${datos.notas}`);
     lineas.push(`• *Yape N° operación:* ${datos.yape_operacion}`, ``);
-    lineas.push(`Adjunto la captura del Yape.`);
+    lineas.push(`Ya subí la captura del Yape en la web.`);
     $('wa-link').href = `https://wa.me/${CONFIG.WHATSAPP_NUMBER}?text=${encodeURIComponent(lineas.join('\n'))}`;
 
-    cart = {}; guardar('carrito', {}); ubicacion = null; ubicLink = ''; delivery = null; confirmada = false; manual = false; $('maps-link').value = '';
+    carts[MODO] = {}; cart = carts[MODO]; guardar('carrito_' + MODO, {}); capturaBlob = null; $('cap-img').classList.add('oculto'); $('cap-txt').textContent = '📷 Toca para adjuntar la captura de tu Yape'; $('operacion').value = ''; ubicacion = null; ubicLink = ''; delivery = null; confirmada = false; manual = false; $('maps-link').value = '';
     guardar('cliente', { nombre: datos.nombre, telefono: datos.telefono, distrito: datos.distrito, direccion: datos.direccion, referencia: datos.referencia });
     $('checkout').style.display = 'none';
     $('cart-bar').style.display = 'none';
     $('confirmacion').style.display = 'block';
-    $('confirmacion').scrollIntoView({ behavior: 'smooth' });
+    $('pagar').scrollTop = 0;
   }
 
   // ---------- Eventos ----------
   document.addEventListener('click', e => {
-    const fj = e.target.closest('[data-fijar]'); if (fj) return cambiar(fj.dataset.fijar, Number(fj.dataset.n) - (cart[fj.dataset.fijar] || 0));
-    const mas = e.target.closest('[data-mas]'); if (mas) return cambiar(mas.dataset.mas, 1);
-    const menos = e.target.closest('[data-menos]'); if (menos) return cambiar(menos.dataset.menos, -1);
-    const cat = e.target.closest('[data-cat]'); if (cat) { categoria = cat.dataset.cat; pintarCategorias(); pintarGrid(); return; }
-    const opt = e.target.closest('.delivery-opt'); if (opt) return elegirEntrega(opt.dataset.tipo);
+    const t = e.target;
+    const cerrar = t.closest('[data-cerrar]'); if (cerrar) return cerrarHoja(cerrar.dataset.cerrar);
+    const fondo = t.matches('[data-fondo]') ? t : null; if (fondo) return cerrarHoja(fondo.dataset.fondo);
+    const mas = t.closest('[data-mas]'); if (mas) { cambiar(mas.dataset.mas, 1); if (!mas.closest('.stepper')) toast('Agregado al carrito'); return; }
+    const menos = t.closest('[data-menos]'); if (menos) return cambiar(menos.dataset.menos, -1);
+    const hq = t.closest('[data-hq]'); if (hq) { hojaQ = Number(hq.dataset.hq); return pintarHoja(); }
+    if (t.closest('[data-hmas]')) { hojaQ = Math.min(MODO === 'hoy' ? Math.max(1, stockHoy(hojaP) - (cart[hojaP.id] || 0)) : 99, hojaQ + 1); return pintarHoja(); }
+    if (t.closest('[data-hmenos]')) { hojaQ = Math.max(1, hojaQ - 1); return pintarHoja(); }
+    if (t.closest('[data-hadd]')) { const id = hojaP.id; cambiar(id, 0, (cart[id] || 0) + hojaQ); cerrarHoja('hoja-prod'); return toast('Agregado al carrito'); }
+    const ver = t.closest('[data-ver]'); if (ver) return verProducto(ver.dataset.ver);
+    const modo = t.closest('[data-modo]'); if (modo) return cambiarModo(modo.dataset.modo);
+    const cat = t.closest('[data-cat]'); if (cat) { categoria = cat.dataset.cat; pintarCategorias(); pintarGrid(); window.scrollTo({ top: $('cats').offsetTop - 160, behavior: 'smooth' }); return; }
+    if (t.closest('#btn-ir-pagar')) return verPedido();
+    const opt = t.closest('.delivery-opt'); if (opt) return elegirEntrega(opt.dataset.tipo);
   });
   $('buscador').addEventListener('input', e => { busqueda = e.target.value.trim().toLowerCase(); pintarGrid(); });
-  $('btn-ver-pedido').onclick = verPedido;
+  $('btn-ver-pedido').onclick = abrirCarrito;
+  $('btn-pag-atras').onclick = cerrarPagar;
+  $('btn-seguir').onclick = cerrarPagar;
+  $('captura').onchange = e => elegirCaptura(e.target.files[0]);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') ['hoja-prod', 'hoja-carrito'].forEach(cerrarHoja); });
   $('btn-confirmar').onclick = confirmar;
   $('btn-ubicacion').onclick = usarUbicacion;
   $('btn-quitar-ubic').onclick = () => { ubicacion = null; ubicLink = ''; confirmada = false; manual = false; avisoMapa = ''; leerLink.ultimo = ''; $('maps-link').value = ''; pintarUbicacion(); };
@@ -972,8 +1290,11 @@
     const cli = leer('cliente');
     if (cli) ['nombre', 'telefono', 'distrito', 'direccion', 'referencia'].forEach(k => { if (cli[k]) $(k).value = cli[k]; });
     iniciarFechas();
+    const fijarCats = () => document.querySelector('.cats').style.top = document.querySelector('.app-top').offsetHeight + 'px';
+    fijarCats(); window.addEventListener('resize', fijarCats);
     await cargarProductos();
-    pintarCategorias(); pintarGrid(); actualizarBarra();
+    pintarTodo();
+    setInterval(() => { if (!pagarAbierto()) pintarModo(); }, 60000);
   })();
 </script>
 </body>
