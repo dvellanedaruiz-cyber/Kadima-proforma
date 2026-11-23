@@ -614,12 +614,13 @@ async function tabPost(recargar) {
       <div class="kpi"><div class="t">Nuevos sin revisar</div><div class="v" style="${nuevos.length ? 'color:var(--vino)' : ''}">${nuevos.length}</div><div class="s">de ${todos.length} postulantes en total</div></div>
       <div class="kpi"><div class="t">En proceso</div><div class="v">${enProceso.length}</div><div class="s">contactados o en entrevista</div></div>
       <div class="kpi"><div class="t">Ayudante de cocina</div><div class="v">${cuenta('Ayudante de cocina')}</div><div class="s">postulantes activos</div></div>
+      <div class="kpi"><div class="t">Ayudante de pastelería y panadería</div><div class="v">${cuenta('Ayudante de pastelería y panadería')}</div><div class="s">postulantes activos</div></div>
       <div class="kpi"><div class="t">Atención al cliente</div><div class="v">${cuenta('Atención al cliente')}</div><div class="s">postulantes activos</div></div>
     </div>
     <div class="bloque">
       <div class="barra-acc">
         <span class="chips" id="p-estado">${[['activos', 'Activos'], ...EST_POST.map(e => [e, e]), ['todos', 'Todos']].map(([k, n]) => `<button data-v="${k}" class="${p.estado === k ? 'activa' : ''}">${n}</button>`).join('')}</span>
-        <span class="chips" id="p-puesto">${[['', 'Ambos puestos'], ['Ayudante de cocina', 'Cocina'], ['Atención al cliente', 'Atención']].map(([k, n]) => `<button data-v="${k}" class="${p.puesto === k ? 'activa' : ''}">${n}</button>`).join('')}</span>
+        <span class="chips" id="p-puesto">${[['', 'Todos los puestos'], ['Ayudante de cocina', 'Cocina'], ['Ayudante de pastelería y panadería', 'Pastelería y panadería'], ['Atención al cliente', 'Atención']].map(([k, n]) => `<button data-v="${k}" class="${p.puesto === k ? 'activa' : ''}">${n}</button>`).join('')}</span>
         <input id="p-q" placeholder="Buscar nombre, DNI, celular…" value="${esc(p.q)}" style="max-width:230px">
         <span class="esp"></span>
         <button class="btn sec peq" id="p-rec">↻ Actualizar</button>
@@ -629,7 +630,7 @@ async function tabPost(recargar) {
         ${lista.map(x => `<tr>
           <td class="cod" style="white-space:nowrap">${fechaHora(x.creado_en)}</td>
           <td><b>${esc(x.nombres)}</b>${x.origen === 'caja' ? ' <span class="tag">caja</span>' : ''}</td>
-          <td>${x.puesto === 'Ayudante de cocina' ? 'Cocina' : 'Atención'}</td>
+          <td>${({ 'Ayudante de cocina': 'Cocina', 'Ayudante de pastelería y panadería': 'Pastelería y panadería', 'Atención al cliente': 'Atención' })[x.puesto] || esc(x.puesto)}</td>
           <td style="white-space:nowrap"><a href="https://wa.me/51${esc(x.celular)}" target="_blank" rel="noopener" style="color:var(--vino);font-weight:600">${esc(x.celular)}</a></td>
           <td class="m-ocultar">${esc(x.dni)}</td>
           <td class="m-ocultar" style="min-width:160px">${esc(x.direccion)}</td>
