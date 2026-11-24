@@ -829,7 +829,7 @@ function abrirHoras(i) {
 document.addEventListener('click', e => {
   const i = e.target.closest && e.target.closest('input.in-fecha, input.in-hora');
   if (i) { if (selFH.input === i) return; return i.classList.contains('in-fecha') ? abrirCalendario(i) : abrirHoras(i); }
-  if (selFH.el && !selFH.el.contains(e.target)) cerrarSelFH();
+  if (selFH.el && !e.composedPath().includes(selFH.el)) cerrarSelFH();   // composedPath: el botón ‹ › se redibuja y ya no está en la página
 });
 document.addEventListener('keydown', e => { if (selFH.el && (e.key === 'Escape' || e.key === 'Tab')) cerrarSelFH(); });
 document.addEventListener('input', e => { if (selFH.el && e.target === selFH.input && e.isTrusted) cerrarSelFH(); });   // si escribe, se cierra la lista
